@@ -23,7 +23,7 @@ export function TopbarTitle({ children }: { children: ReactNode }) {
   )
 }
 
-export function TopbarFeatureTitle({
+export function TopbarCardTitle({
   title,
   identifier,
 }: {

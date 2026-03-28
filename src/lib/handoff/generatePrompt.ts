@@ -4,8 +4,8 @@
  */
 
 interface HandoffContext {
-  featureIdentifier: string
-  featureTitle: string
+  cardIdentifier: string
+  cardTitle: string
   branchName: string
   baseBranch: string
   specs: { filePath: string; isNew: boolean }[]

@@ -10,7 +10,8 @@ type SpecFile = {
 };
 
 function getSpecs(): SpecFile[] {
-  const specsDir = path.join(process.cwd(), "specs");
+  const specsDir = path.join(process.cwd(), ".workhorse", "specs");
+  if (!fs.existsSync(specsDir)) return [];
   const files = fs.readdirSync(specsDir).filter((f) => f.endsWith(".md") && f !== "README.md");
 
   // Sort: overview first, then by WH number

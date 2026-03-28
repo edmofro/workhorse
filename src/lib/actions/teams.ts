@@ -3,10 +3,10 @@
 import { prisma } from '../prisma'
 import { revalidatePath } from 'next/cache'
 
-export async function getTeams(productId: string) {
+export async function getTeams(projectId: string) {
   return prisma.team.findMany({
-    where: { productId },
-    include: { features: true, members: true },
+    where: { projectId },
+    include: { cards: true, members: true },
     orderBy: { name: 'asc' },
   })
 }
@@ -14,7 +14,7 @@ export async function getTeams(productId: string) {
 export async function createTeam(data: {
   name: string
   colour: string
-  productId: string
+  projectId: string
 }) {
   const team = await prisma.team.create({ data })
   revalidatePath('/')

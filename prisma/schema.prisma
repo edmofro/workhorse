@@ -17,13 +17,14 @@ model User {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  features          Feature[]
+  cards             Card[]
   specMessages      SpecMessage[]
-  featureActivities FeatureActivity[]
+  cardActivities    CardActivity[]
   teamMemberships   TeamMember[]
+  comments          CardComment[]
 }
 
-model Product {
+model Project {
   id            String   @id @default(cuid())
   name          String   // e.g., "Tamanu", "Tupaia"
   githubUrl     String   @unique
@@ -40,12 +41,12 @@ model Team {
   id        String   @id @default(cuid())
   name      String
   colour    String   @default("#c2410c")
-  productId String
+  projectId String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  product  Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
-  features Feature[]
+  project  Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  cards    Card[]
   members  TeamMember[]
 }
 
@@ -60,7 +61,7 @@ model TeamMember {
   @@id([userId, teamId])
 }
 
-model Feature {
+model Card {
   id          String   @id @default(cuid())
   identifier  String   @unique // e.g., "WH-001"
   title       String
@@ -76,73 +77,87 @@ model Feature {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  team         Team        @relation(fields: [teamId], references: [id], onDelete: Cascade)
-  assignee     User?       @relation(fields: [assigneeId], references: [id], onDelete: SetNull)
+  team         Team             @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  assignee     User?            @relation(fields: [assigneeId], references: [id], onDelete: SetNull)
   specMessages SpecMessage[]
-  activities   FeatureActivity[]
-  specs        FeatureSpec[]
+  activities   CardActivity[]
+  specs        CardSpec[]
   mockups      Mockup[]
-  dependsOn    FeatureDependency[] @relation("dependent")
-  dependedOnBy FeatureDependency[] @relation("parent")
+  comments     CardComment[]
+  dependsOn    CardDependency[] @relation("dependent")
+  dependedOnBy CardDependency[] @relation("parent")
 }
 
-model FeatureSpec {
-  id        String   @id @default(cuid())
-  featureId        String
+model CardSpec {
+  id               String   @id @default(cuid())
+  cardId           String
   filePath         String   // e.g., ".workhorse/specs/patient/allergies.md"
   isNew            Boolean  @default(true) // new spec vs editing existing
   content          String   // current content (auto-saved to DB)
+  baselineContent  String?  // content from main at time of attachment (for tracked-changes diff)
   committedContent String?  // content as of last commit (null = never committed)
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
-  feature Feature @relation(fields: [featureId], references: [id], onDelete: Cascade)
+  card Card @relation(fields: [cardId], references: [id], onDelete: Cascade)
 
-  @@unique([featureId, filePath])
+  @@unique([cardId, filePath])
 }
 
 model Mockup {
   id        String   @id @default(cuid())
-  featureId String
+  cardId    String
   title     String
   html      String   // the HTML/CSS content
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  feature Feature @relation(fields: [featureId], references: [id], onDelete: Cascade)
+  card Card @relation(fields: [cardId], references: [id], onDelete: Cascade)
 }
 
-model FeatureDependency {
+model CardDependency {
   dependentId String
   parentId    String
 
-  dependent Feature @relation("dependent", fields: [dependentId], references: [id], onDelete: Cascade)
-  parent    Feature @relation("parent", fields: [parentId], references: [id], onDelete: Cascade)
+  dependent Card @relation("dependent", fields: [dependentId], references: [id], onDelete: Cascade)
+  parent    Card @relation("parent", fields: [parentId], references: [id], onDelete: Cascade)
 
   @@id([dependentId, parentId])
 }
 
 model SpecMessage {
   id        String   @id @default(cuid())
-  featureId String
+  cardId    String
   userId    String?
   role      String   // "user", "assistant", "system"
   content   String
-  metadata  String?  // JSON for mockup references, extracted specs, etc.
+  metadata  String?  // JSON for mockup references, extracted specs, auto-review results, etc.
   createdAt DateTime @default(now())
 
-  feature Feature @relation(fields: [featureId], references: [id], onDelete: Cascade)
-  user    User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+  card Card @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  user User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
 }
 
-model FeatureActivity {
+model CardActivity {
   id        String   @id @default(cuid())
-  featureId String
+  cardId    String
   userId    String?
-  action    String   // "created", "status_changed", "spec_updated", "committed", etc.
+  action    String   // "created", "status_changed", "spec_updated", "committed", "dependency_added", "dependency_removed"
   details   String?  // JSON with action-specific data
   createdAt DateTime @default(now())
 
-  feature Feature @relation(fields: [featureId], references: [id], onDelete: Cascade)
-  user    User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+  card Card @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  user User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+}
+
+model CardComment {
+  id        String   @id @default(cuid())
+  cardId    String
+  userId    String
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  card Card @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id])
 }

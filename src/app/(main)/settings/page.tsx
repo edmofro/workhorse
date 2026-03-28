@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import { getCurrentUser } from '../../../lib/auth/session'
-import { getProducts } from '../../../lib/actions/products'
+import { getProjects } from '../../../lib/actions/projects'
 import { getUserTeamIds } from '../../../lib/actions/teams'
 import { Topbar, TopbarTitle } from '../../../components/Topbar'
 import { SettingsForm } from '../../../components/SettingsForm'
@@ -9,8 +9,8 @@ export default async function SettingsPage() {
   const user = await getCurrentUser()
   if (!user) redirect('/sign-in')
 
-  const [products, memberTeamIds] = await Promise.all([
-    getProducts(),
+  const [projects, memberTeamIds] = await Promise.all([
+    getProjects(),
     getUserTeamIds(user.id),
   ])
 
@@ -24,7 +24,7 @@ export default async function SettingsPage() {
       <div className="flex-1 overflow-y-auto p-8">
         <div className="max-w-[600px]">
           <SettingsForm
-            products={products.map((p) => ({
+            projects={projects.map((p) => ({
               id: p.id,
               name: p.name,
               githubUrl: p.githubUrl,

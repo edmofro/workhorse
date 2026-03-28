@@ -5,7 +5,7 @@ import { Button } from './Button'
 import { Avatar } from './Avatar'
 import { useUser } from './UserProvider'
 import { updateUser } from '../lib/actions/user'
-import { createProduct, updateProduct, deleteProduct } from '../lib/actions/products'
+import { createProject, updateProject, deleteProject } from '../lib/actions/projects'
 import { createTeam, updateTeam, deleteTeam, joinTeam, leaveTeam } from '../lib/actions/teams'
 import { Trash2, Plus, UserPlus, UserMinus } from 'lucide-react'
 
@@ -16,7 +16,7 @@ interface TeamData {
   isMember: boolean
 }
 
-interface ProductData {
+interface ProjectData {
   id: string
   name: string
   githubUrl: string
@@ -27,15 +27,15 @@ interface ProductData {
 }
 
 interface SettingsFormProps {
-  products: ProductData[]
+  projects: ProjectData[]
 }
 
-export function SettingsForm({ products: initialProducts }: SettingsFormProps) {
+export function SettingsForm({ projects: initialProjects }: SettingsFormProps) {
   const { user, setUser } = useUser()
   const [displayName, setDisplayName] = useState(user.displayName)
-  const [products, setProducts] = useState(initialProducts)
+  const [projects, setProjects] = useState(initialProjects)
   const [isPending, startTransition] = useTransition()
-  const productSaveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
+  const projectSaveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
 
   function handleUpdateName() {
     if (!displayName.trim() || displayName === user.displayName) return
@@ -45,62 +45,62 @@ export function SettingsForm({ products: initialProducts }: SettingsFormProps) {
     })
   }
 
-  function handleAddProduct() {
+  function handleAddProject() {
     startTransition(async () => {
-      const product = await createProduct({
-        name: 'New Product',
+      const project = await createProject({
+        name: 'New Project',
         githubUrl: 'https://github.com/org/repo',
         owner: 'org',
         repoName: 'repo',
       })
-      setProducts((prev) => [
+      setProjects((prev) => [
         ...prev,
-        { ...product, teams: [] },
+        { ...project, teams: [] },
       ])
     })
   }
 
-  const debouncedUpdateProduct = useCallback(
-    (id: string, data: Partial<ProductData>) => {
-      if (productSaveTimers.current[id]) {
-        clearTimeout(productSaveTimers.current[id])
+  const debouncedUpdateProject = useCallback(
+    (id: string, data: Partial<ProjectData>) => {
+      if (projectSaveTimers.current[id]) {
+        clearTimeout(projectSaveTimers.current[id])
       }
-      productSaveTimers.current[id] = setTimeout(() => {
+      projectSaveTimers.current[id] = setTimeout(() => {
         startTransition(async () => {
-          await updateProduct(id, data)
+          await updateProject(id, data)
         })
-        delete productSaveTimers.current[id]
+        delete projectSaveTimers.current[id]
       }, 500)
     },
     [startTransition],
   )
 
-  function handleUpdateProduct(id: string, data: Partial<ProductData>) {
+  function handleUpdateProject(id: string, data: Partial<ProjectData>) {
     // Update local state immediately for responsiveness
-    setProducts((prev) =>
+    setProjects((prev) =>
       prev.map((p) => (p.id === id ? { ...p, ...data } : p)),
     )
     // Debounce the server action
-    debouncedUpdateProduct(id, data)
+    debouncedUpdateProject(id, data)
   }
 
-  function handleDeleteProduct(id: string) {
+  function handleDeleteProject(id: string) {
     startTransition(async () => {
-      await deleteProduct(id)
-      setProducts((prev) => prev.filter((p) => p.id !== id))
+      await deleteProject(id)
+      setProjects((prev) => prev.filter((p) => p.id !== id))
     })
   }
 
-  function handleAddTeam(productId: string) {
+  function handleAddTeam(projectId: string) {
     startTransition(async () => {
       const team = await createTeam({
         name: 'New Team',
         colour: '#c2410c',
-        productId,
+        projectId,
       })
-      setProducts((prev) =>
+      setProjects((prev) =>
         prev.map((p) =>
-          p.id === productId
+          p.id === projectId
             ? { ...p, teams: [...p.teams, { ...team, isMember: false }] }
             : p,
         ),
@@ -110,11 +110,11 @@ export function SettingsForm({ products: initialProducts }: SettingsFormProps) {
 
   const teamSaveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
 
-  function handleUpdateTeam(teamId: string, productId: string, data: Partial<TeamData>) {
+  function handleUpdateTeam(teamId: string, projectId: string, data: Partial<TeamData>) {
     // Update local state immediately
-    setProducts((prev) =>
+    setProjects((prev) =>
       prev.map((p) =>
-        p.id === productId
+        p.id === projectId
           ? {
               ...p,
               teams: p.teams.map((t) =>
@@ -136,12 +136,12 @@ export function SettingsForm({ products: initialProducts }: SettingsFormProps) {
     }, 500)
   }
 
-  function handleDeleteTeam(teamId: string, productId: string) {
+  function handleDeleteTeam(teamId: string, projectId: string) {
     startTransition(async () => {
       await deleteTeam(teamId)
-      setProducts((prev) =>
+      setProjects((prev) =>
         prev.map((p) =>
-          p.id === productId
+          p.id === projectId
             ? { ...p, teams: p.teams.filter((t) => t.id !== teamId) }
             : p,
         ),
@@ -149,12 +149,12 @@ export function SettingsForm({ products: initialProducts }: SettingsFormProps) {
     })
   }
 
-  function handleJoinTeam(teamId: string, productId: string) {
+  function handleJoinTeam(teamId: string, projectId: string) {
     startTransition(async () => {
       await joinTeam(user.id, teamId)
-      setProducts((prev) =>
+      setProjects((prev) =>
         prev.map((p) =>
-          p.id === productId
+          p.id === projectId
             ? {
                 ...p,
                 teams: p.teams.map((t) =>
@@ -167,12 +167,12 @@ export function SettingsForm({ products: initialProducts }: SettingsFormProps) {
     })
   }
 
-  function handleLeaveTeam(teamId: string, productId: string) {
+  function handleLeaveTeam(teamId: string, projectId: string) {
     startTransition(async () => {
       await leaveTeam(user.id, teamId)
-      setProducts((prev) =>
+      setProjects((prev) =>
         prev.map((p) =>
-          p.id === productId
+          p.id === projectId
             ? {
                 ...p,
                 teams: p.teams.map((t) =>
@@ -219,25 +219,25 @@ export function SettingsForm({ products: initialProducts }: SettingsFormProps) {
         </div>
       </section>
 
-      {/* Products */}
+      {/* Projects */}
       <section>
         <div className="flex items-center justify-between mb-3">
-          <SectionLabel>Products</SectionLabel>
-          <Button variant="secondary" size="sm" onClick={handleAddProduct} disabled={isPending}>
-            <Plus size={12} /> Add product
+          <SectionLabel>Projects</SectionLabel>
+          <Button variant="secondary" size="sm" onClick={handleAddProject} disabled={isPending}>
+            <Plus size={12} /> Add project
           </Button>
         </div>
 
-        {products.length === 0 && (
+        {projects.length === 0 && (
           <p className="text-[13px] text-[var(--text-muted)]">
-            No products yet. Add one to get started.
+            No projects yet. Add one to get started.
           </p>
         )}
 
         <div className="space-y-6">
-          {products.map((product) => (
+          {projects.map((project) => (
             <div
-              key={product.id}
+              key={project.id}
               className="border border-[var(--border-subtle)] rounded-[var(--radius-lg)] p-5 bg-[var(--bg-surface)]"
             >
               <div className="flex items-start justify-between gap-4 mb-4">
@@ -245,9 +245,9 @@ export function SettingsForm({ products: initialProducts }: SettingsFormProps) {
                   <FieldRow label="Name">
                     <input
                       type="text"
-                      value={product.name}
+                      value={project.name}
                       onChange={(e) =>
-                        handleUpdateProduct(product.id, { name: e.target.value })
+                        handleUpdateProject(project.id, { name: e.target.value })
                       }
                       className="flex-1 px-3 py-[6px] text-[13px] bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-[var(--radius-default)] outline-none focus:border-[var(--accent)] focus:shadow-[var(--shadow-input-focus)] transition-[border-color,box-shadow] duration-150"
                     />
@@ -255,14 +255,14 @@ export function SettingsForm({ products: initialProducts }: SettingsFormProps) {
                   <FieldRow label="GitHub URL">
                     <input
                       type="text"
-                      value={product.githubUrl}
+                      value={project.githubUrl}
                       onChange={(e) => {
                         const url = e.target.value
                         const match = url.match(/github\.com\/([^/]+)\/([^/]+)/)
-                        handleUpdateProduct(product.id, {
+                        handleUpdateProject(project.id, {
                           githubUrl: url,
-                          owner: match?.[1] ?? product.owner,
-                          repoName: match?.[2] ?? product.repoName,
+                          owner: match?.[1] ?? project.owner,
+                          repoName: match?.[2] ?? project.repoName,
                         })
                       }}
                       className="flex-1 px-3 py-[6px] text-[13px] bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-[var(--radius-default)] outline-none focus:border-[var(--accent)] focus:shadow-[var(--shadow-input-focus)] transition-[border-color,box-shadow] duration-150"
@@ -271,9 +271,9 @@ export function SettingsForm({ products: initialProducts }: SettingsFormProps) {
                   <FieldRow label="Default branch">
                     <input
                       type="text"
-                      value={product.defaultBranch}
+                      value={project.defaultBranch}
                       onChange={(e) =>
-                        handleUpdateProduct(product.id, {
+                        handleUpdateProject(project.id, {
                           defaultBranch: e.target.value,
                         })
                       }
@@ -282,7 +282,7 @@ export function SettingsForm({ products: initialProducts }: SettingsFormProps) {
                   </FieldRow>
                 </div>
                 <button
-                  onClick={() => handleDeleteProduct(product.id)}
+                  onClick={() => handleDeleteProject(project.id)}
                   className="text-[var(--text-muted)] hover:text-[var(--accent)] transition-colors duration-100 p-1 cursor-pointer"
                 >
                   <Trash2 size={14} />
@@ -296,23 +296,23 @@ export function SettingsForm({ products: initialProducts }: SettingsFormProps) {
                     Teams
                   </span>
                   <button
-                    onClick={() => handleAddTeam(product.id)}
+                    onClick={() => handleAddTeam(project.id)}
                     className="text-[11px] font-medium text-[var(--accent)] hover:text-[var(--accent-hover)] cursor-pointer transition-colors duration-100"
                   >
                     + Add team
                   </button>
                 </div>
-                {product.teams.length === 0 && (
+                {project.teams.length === 0 && (
                   <p className="text-[12px] text-[var(--text-muted)]">No teams yet.</p>
                 )}
                 <div className="space-y-2">
-                  {product.teams.map((team) => (
+                  {project.teams.map((team) => (
                     <div key={team.id} className="flex items-center gap-2">
                       <input
                         type="color"
                         value={team.colour}
                         onChange={(e) =>
-                          handleUpdateTeam(team.id, product.id, { colour: e.target.value })
+                          handleUpdateTeam(team.id, project.id, { colour: e.target.value })
                         }
                         className="w-6 h-6 rounded-full border-none cursor-pointer"
                       />
@@ -320,13 +320,13 @@ export function SettingsForm({ products: initialProducts }: SettingsFormProps) {
                         type="text"
                         value={team.name}
                         onChange={(e) =>
-                          handleUpdateTeam(team.id, product.id, { name: e.target.value })
+                          handleUpdateTeam(team.id, project.id, { name: e.target.value })
                         }
                         className="flex-1 px-3 py-[5px] text-[13px] bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-[var(--radius-default)] outline-none focus:border-[var(--accent)] focus:shadow-[var(--shadow-input-focus)] transition-[border-color,box-shadow] duration-150"
                       />
                       {team.isMember ? (
                         <button
-                          onClick={() => handleLeaveTeam(team.id, product.id)}
+                          onClick={() => handleLeaveTeam(team.id, project.id)}
                           disabled={isPending}
                           className="inline-flex items-center gap-1 text-[11px] font-medium text-[var(--text-muted)] hover:text-[var(--accent)] cursor-pointer transition-colors duration-100 px-2 py-1"
                           title="Leave team"
@@ -335,7 +335,7 @@ export function SettingsForm({ products: initialProducts }: SettingsFormProps) {
                         </button>
                       ) : (
                         <button
-                          onClick={() => handleJoinTeam(team.id, product.id)}
+                          onClick={() => handleJoinTeam(team.id, project.id)}
                           disabled={isPending}
                           className="inline-flex items-center gap-1 text-[11px] font-medium text-[var(--accent)] hover:text-[var(--accent-hover)] cursor-pointer transition-colors duration-100 px-2 py-1"
                           title="Join team"
@@ -344,7 +344,7 @@ export function SettingsForm({ products: initialProducts }: SettingsFormProps) {
                         </button>
                       )}
                       <button
-                        onClick={() => handleDeleteTeam(team.id, product.id)}
+                        onClick={() => handleDeleteTeam(team.id, project.id)}
                         className="text-[var(--text-muted)] hover:text-[var(--accent)] transition-colors duration-100 p-1 cursor-pointer"
                       >
                         <Trash2 size={12} />

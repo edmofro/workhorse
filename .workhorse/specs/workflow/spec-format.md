@@ -74,6 +74,11 @@ Summary paragraph describing what this feature does.
 - **Open questions** — blockquotes with bold labels
 - **No IDs on individual criteria** — keep it human-readable. Workhorse can manage traceability as an overlay if needed
 
+### Voice and framing
+
+- **Specs describe the system as it should be, not the changes to make.** Each spec is a coherent snapshot — it reads as "this is how the system works" rather than "change X to Y" or "no longer does Z". No references to "current behaviour", "remains unchanged", "now does", or "rather than the old way". The implementation agent receives a diff to work out what needs to change.
+- Acceptance criteria are stated as facts about the system's behaviour, not instructions to a developer.
+
 ## Format
 
 - [ ] Specs are markdown files with YAML frontmatter

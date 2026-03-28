@@ -11,7 +11,7 @@ Connects the AI chat interview to the rest of the system by automatically persis
 - [ ] After each assistant message is saved, the system runs mockup detection on the response content
 - [ ] Each detected mockup block is saved as a Mockup record linked to the feature
 - [ ] Duplicate detection prevents re-saving the same mockup if the title and HTML match an existing record
-- [ ] The MockupsPanel (already built) renders persisted mockups and is accessible from the feature detail view
+- [ ] The mockups panel renders persisted mockups and is accessible from the feature detail view
 - [ ] Mockups panel is visible on the Chat tab as a collapsible side panel, or on the Card tab alongside metadata
 
 ## Spec extraction and persistence
@@ -64,7 +64,7 @@ A fresh-context AI agent reviews the draft specs and posts its findings into the
 - [ ] Spec creation and updates record "spec_updated" activities
 - [ ] Committing specs records a "committed" activity with branch and PR URL
 - [ ] Dependency changes record "dependency_added" / "dependency_removed" activities
-- [ ] The Card tab's existing activity timeline displays these records (already built, just needs data)
+- [ ] The Card tab's activity timeline displays these records
 
 ## Open questions
 

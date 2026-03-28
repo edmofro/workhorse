@@ -4,16 +4,15 @@ area: workflow
 status: draft
 ---
 
-Ensures the commit and completion workflows enforce the ordering and quality constraints described in the product specs.
+Ordering and quality constraints in the commit and completion workflows.
 
-## Commit does not auto-complete
+## Committing and status are independent
 
-- [ ] Committing specs no longer automatically sets the feature status to SPEC_COMPLETE
-- [ ] If the feature is NOT_STARTED or SPECIFYING, committing leaves the status unchanged
-- [ ] A feature can be committed multiple times while still in SPECIFYING status (iterative workflow)
-- [ ] Status progression is an explicit user action via the status field on the Card tab (like changing status in Linear)
+- [ ] Committing specs pushes the current spec content to the product's codebase — it does not change the feature's status
+- [ ] A feature can be committed multiple times while in any status (iterative workflow)
+- [ ] Status progression is an explicit user action via the status field on the Card tab
 - [ ] The three statuses (Not started, Specifying, Spec complete) behave like column states — the user moves the card forward when they judge it ready
-- [ ] The AI completeness assessment (via `analyseCompleteness` and the fresh-eyes review in chat) informs the user's decision but does not gate the status change itself
+- [ ] The AI completeness assessment (via `analyseCompleteness` and the auto-review) informs the user's decision but does not gate the status change itself
 
 ## Dependency commit ordering
 
@@ -23,8 +22,8 @@ Ensures the commit and completion workflows enforce the ordering and quality con
 
 ## Dependency status ordering
 
-- [ ] A feature cannot be marked SPEC_COMPLETE if any of its parent features are not SPEC_COMPLETE
-- [ ] The "Mark spec complete" action checks parent statuses and shows a blocking message if parents are incomplete
+- [ ] A feature cannot move to SPEC_COMPLETE if any of its parent features are not SPEC_COMPLETE
+- [ ] Setting the status checks parent statuses and shows a blocking message if parents are incomplete
 
 ## Editing existing specs
 

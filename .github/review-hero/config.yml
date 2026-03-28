@@ -1,0 +1,15 @@
+# Review Hero configuration
+# https://github.com/beyondessential/review-hero
+
+project: Workhorse
+description: Spec-driven development workbench built with Next.js, Prisma, and Claude AI
+
+ignore_patterns:
+  - "prisma/migrations/**"
+  - ".workhorse/specs/**"
+  - ".workhorse/design/**"
+
+agents:
+  project-conventions:
+    name: "Project Conventions"
+    description: "Workhorse conventions — Australian/NZ English, design system, component patterns, Prisma schema"

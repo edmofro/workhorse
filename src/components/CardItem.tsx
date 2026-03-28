@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { Avatar } from './Avatar'
 import { Tag } from './Tag'
 
-interface Feature {
+interface CardData {
   id: string
   identifier: string
   title: string
@@ -14,21 +14,21 @@ interface Feature {
   team: { id: string; name: string; colour: string }
 }
 
-interface FeatureCardProps {
-  feature: Feature
-  productName: string
+interface CardItemProps {
+  card: CardData
+  projectName: string
 }
 
-export function FeatureCard({ feature, productName }: FeatureCardProps) {
+export function CardItem({ card, projectName }: CardItemProps) {
   const tags: string[] = (() => {
     try {
-      return JSON.parse(feature.tags)
+      return JSON.parse(card.tags)
     } catch {
       return []
     }
   })()
 
-  const href = `/${encodeURIComponent(productName.toLowerCase())}/features/${feature.identifier}`
+  const href = `/${encodeURIComponent(projectName.toLowerCase())}/cards/${card.identifier}`
 
   return (
     <Link
@@ -40,17 +40,17 @@ export function FeatureCard({ feature, productName }: FeatureCardProps) {
         className="text-xs text-[var(--text-muted)] font-mono font-medium"
         style={{ marginBottom: '4px' }}
       >
-        {feature.identifier}
+        {card.identifier}
       </div>
-      <div className="text-[14px] font-medium leading-[1.4]">{feature.title}</div>
-      {feature.description && (
+      <div className="text-[14px] font-medium leading-[1.4]">{card.title}</div>
+      {card.description && (
         <div
           className="text-[13px] text-[var(--text-muted)] leading-[1.5]"
           style={{ marginTop: '4px' }}
         >
-          {feature.description.length > 120
-            ? `${feature.description.slice(0, 120)}...`
-            : feature.description}
+          {card.description.length > 120
+            ? `${card.description.slice(0, 120)}...`
+            : card.description}
         </div>
       )}
       <div className="flex items-center gap-2" style={{ marginTop: '10px' }}>
@@ -62,11 +62,11 @@ export function FeatureCard({ feature, productName }: FeatureCardProps) {
             {tag}
           </Tag>
         ))}
-        {feature.assignee && (
+        {card.assignee && (
           <div className="ml-auto">
             <Avatar
               variant="human"
-              initial={feature.assignee.displayName}
+              initial={card.assignee.displayName}
               size="sm"
             />
           </div>

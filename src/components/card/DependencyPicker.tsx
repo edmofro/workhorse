@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import { Plus, X } from 'lucide-react'
-import { addDependency, removeDependency, searchFeatures } from '../../lib/actions/dependencies'
+import { addDependency, removeDependency, searchCards } from '../../lib/actions/dependencies'
 
 interface Dependency {
   id: string
@@ -11,11 +11,11 @@ interface Dependency {
 }
 
 interface DependencyPickerProps {
-  featureId: string
+  cardId: string
   currentDeps: Dependency[]
 }
 
-export function DependencyPicker({ featureId, currentDeps }: DependencyPickerProps) {
+export function DependencyPicker({ cardId, currentDeps }: DependencyPickerProps) {
   const [deps, setDeps] = useState(currentDeps)
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState<Dependency[]>([])
@@ -28,7 +28,7 @@ export function DependencyPicker({ featureId, currentDeps }: DependencyPickerPro
       setSearchResults([])
       return
     }
-    const results = await searchFeatures(query, featureId)
+    const results = await searchCards(query, cardId)
     setSearchResults(
       results
         .filter((r) => !deps.some((d) => d.id === r.id))
@@ -36,11 +36,11 @@ export function DependencyPicker({ featureId, currentDeps }: DependencyPickerPro
     )
   }
 
-  function handleAdd(feature: Dependency) {
+  function handleAdd(card: Dependency) {
     startTransition(async () => {
       try {
-        await addDependency(featureId, feature.id)
-        setDeps((prev) => [...prev, feature])
+        await addDependency(cardId, card.id)
+        setDeps((prev) => [...prev, card])
         setSearchQuery('')
         setSearchResults([])
         setShowSearch(false)
@@ -52,7 +52,7 @@ export function DependencyPicker({ featureId, currentDeps }: DependencyPickerPro
 
   function handleRemove(parentId: string) {
     startTransition(async () => {
-      await removeDependency(featureId, parentId)
+      await removeDependency(cardId, parentId)
       setDeps((prev) => prev.filter((d) => d.id !== parentId))
     })
   }
@@ -89,7 +89,7 @@ export function DependencyPicker({ featureId, currentDeps }: DependencyPickerPro
             type="text"
             value={searchQuery}
             onChange={(e) => handleSearch(e.target.value)}
-            placeholder="Search features..."
+            placeholder="Search cards..."
             autoFocus
             className="w-full px-2 py-1 text-[12px] bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-[var(--radius-default)] outline-none focus:border-[var(--accent)] transition-[border-color] duration-150"
           />

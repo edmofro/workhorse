@@ -1,16 +1,16 @@
 import { notFound } from 'next/navigation'
 import { prisma } from '../../../../../../lib/prisma'
-import { SpecTab } from '../../../../../../components/feature/SpecTab'
+import { SpecTab } from '../../../../../../components/card/SpecTab'
 
 interface Props {
-  params: Promise<{ featureId: string }>
+  params: Promise<{ cardId: string; projectSlug: string }>
 }
 
 export default async function SpecPage({ params }: Props) {
-  const { featureId } = await params
+  const { cardId, projectSlug } = await params
 
-  const feature = await prisma.feature.findUnique({
-    where: { identifier: featureId },
+  const card = await prisma.card.findUnique({
+    where: { identifier: cardId },
     include: {
       specs: { orderBy: { filePath: 'asc' } },
       specMessages: {
@@ -18,26 +18,27 @@ export default async function SpecPage({ params }: Props) {
         include: { user: true },
         where: { role: { in: ['user', 'assistant'] } },
       },
-      team: { include: { product: true } },
+      team: { include: { project: true } },
     },
   })
 
-  if (!feature) notFound()
+  if (!card) notFound()
 
   return (
     <SpecTab
-      feature={{
-        id: feature.id,
-        identifier: feature.identifier,
-        title: feature.title,
+      card={{
+        id: card.id,
+        identifier: card.identifier,
+        title: card.title,
       }}
-      specs={feature.specs.map((s) => ({
+      specs={card.specs.map((s) => ({
         id: s.id,
         filePath: s.filePath,
         isNew: s.isNew,
         content: s.content,
+        baselineContent: s.baselineContent,
       }))}
-      messages={feature.specMessages.map((m) => ({
+      messages={card.specMessages.map((m) => ({
         id: m.id,
         role: m.role,
         content: m.content,

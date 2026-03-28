@@ -2,12 +2,12 @@
 
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
-import { Topbar, TopbarFeatureTitle, TopbarRight } from '../Topbar'
+import { Topbar, TopbarCardTitle, TopbarRight } from '../Topbar'
 import { CommitButton } from './CommitButton'
 import { cn } from '../../lib/cn'
 
-interface FeatureDetailShellProps {
-  feature: {
+interface CardDetailShellProps {
+  card: {
     id: string
     identifier: string
     title: string
@@ -17,17 +17,17 @@ interface FeatureDetailShellProps {
     hasSpecs: boolean
     specsDirty: boolean
   }
-  productSlug: string
+  projectSlug: string
   children: React.ReactNode
 }
 
-export function FeatureDetailShell({
-  feature,
-  productSlug,
+export function CardDetailShell({
+  card,
+  projectSlug,
   children,
-}: FeatureDetailShellProps) {
+}: CardDetailShellProps) {
   const pathname = usePathname()
-  const basePath = `/${productSlug}/features/${feature.identifier}`
+  const basePath = `/${projectSlug}/cards/${card.identifier}`
 
   const activeTab = pathname.includes('/chat')
     ? 'chat'
@@ -44,9 +44,9 @@ export function FeatureDetailShell({
   return (
     <>
       <Topbar>
-        <TopbarFeatureTitle
-          title={feature.title}
-          identifier={feature.identifier}
+        <TopbarCardTitle
+          title={card.title}
+          identifier={card.identifier}
         />
         <TopbarRight>
           <div className="inline-flex bg-[var(--bg-page)] border border-[var(--border-subtle)] rounded-[var(--radius-default)] p-[2px] gap-[1px]">
@@ -69,12 +69,12 @@ export function FeatureDetailShell({
             })}
           </div>
           <CommitButton
-            featureId={feature.id}
-            hasSpecs={feature.hasSpecs}
-            specsDirty={feature.specsDirty}
-            status={feature.status}
-            existingPrUrl={feature.prUrl}
-            existingBranch={feature.specBranch}
+            cardId={card.id}
+            hasSpecs={card.hasSpecs}
+            specsDirty={card.specsDirty}
+            status={card.status}
+            existingPrUrl={card.prUrl}
+            existingBranch={card.specBranch}
           />
         </TopbarRight>
       </Topbar>

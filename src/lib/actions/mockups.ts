@@ -3,9 +3,9 @@
 import { prisma } from '../prisma'
 import { revalidatePath } from 'next/cache'
 
-export async function getMockups(featureId: string) {
+export async function getMockups(cardId: string) {
   return prisma.mockup.findMany({
-    where: { featureId },
+    where: { cardId },
     orderBy: { createdAt: 'desc' },
   })
 }
@@ -15,7 +15,7 @@ export async function getMockup(id: string) {
 }
 
 export async function createMockup(data: {
-  featureId: string
+  cardId: string
   title: string
   html: string
 }) {

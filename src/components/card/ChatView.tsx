@@ -7,7 +7,7 @@ import { ChatMessage } from './ChatMessage'
 import { ChatInput } from './ChatInput'
 
 interface ChatViewProps {
-  featureId: string
+  cardId: string
   initialMessages: {
     id: string
     role: string
@@ -17,10 +17,10 @@ interface ChatViewProps {
   }[]
 }
 
-export function ChatView({ featureId, initialMessages }: ChatViewProps) {
+export function ChatView({ cardId, initialMessages }: ChatViewProps) {
   const { user } = useUser()
   const { messages, isStreaming, sendMessage, initMessages } = useChat(
-    featureId,
+    cardId,
     user.id,
   )
   const scrollRef = useRef<HTMLDivElement>(null)

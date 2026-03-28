@@ -2,16 +2,16 @@
 
 import { prisma } from '../prisma'
 
-export async function getMessages(featureId: string) {
+export async function getMessages(cardId: string) {
   return prisma.specMessage.findMany({
-    where: { featureId },
+    where: { cardId },
     include: { user: true },
     orderBy: { createdAt: 'asc' },
   })
 }
 
 export async function createMessage(data: {
-  featureId: string
+  cardId: string
   userId?: string
   role: string
   content: string

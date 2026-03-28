@@ -3,8 +3,8 @@
 import { prisma } from '../prisma'
 import { revalidatePath } from 'next/cache'
 
-export async function getFeatures(teamIds: string[]) {
-  return prisma.feature.findMany({
+export async function getCards(teamIds: string[]) {
+  return prisma.card.findMany({
     where: { teamId: { in: teamIds } },
     include: {
       team: true,
@@ -14,21 +14,22 @@ export async function getFeatures(teamIds: string[]) {
   })
 }
 
-export async function getFeature(identifier: string) {
-  return prisma.feature.findUnique({
+export async function getCard(identifier: string) {
+  return prisma.card.findUnique({
     where: { identifier },
     include: {
-      team: { include: { product: true } },
+      team: { include: { project: true } },
       assignee: true,
       specs: true,
       mockups: true,
+      comments: { include: { user: true }, orderBy: { createdAt: 'asc' } },
       dependsOn: { include: { parent: true } },
       dependedOnBy: { include: { dependent: true } },
     },
   })
 }
 
-export async function createFeature(data: {
+export async function createCard(data: {
   title: string
   description?: string
   teamId: string
@@ -37,19 +38,19 @@ export async function createFeature(data: {
   tags?: string[]
 }) {
   // Generate next identifier
-  const lastFeature = await prisma.feature.findFirst({
+  const lastCard = await prisma.card.findFirst({
     orderBy: { identifier: 'desc' },
   })
 
   let nextNum = 1
-  if (lastFeature) {
-    const match = lastFeature.identifier.match(/WH-(\d+)/)
+  if (lastCard) {
+    const match = lastCard.identifier.match(/WH-(\d+)/)
     if (match) nextNum = parseInt(match[1], 10) + 1
   }
 
   const identifier = `WH-${String(nextNum).padStart(3, '0')}`
 
-  const feature = await prisma.feature.create({
+  const card = await prisma.card.create({
     data: {
       identifier,
       title: data.title,
@@ -62,10 +63,10 @@ export async function createFeature(data: {
   })
 
   revalidatePath('/')
-  return feature
+  return card
 }
 
-export async function updateFeature(
+export async function updateCard(
   id: string,
   data: {
     title?: string
@@ -82,33 +83,51 @@ export async function updateFeature(
     updateData.tags = JSON.stringify(data.tags)
   }
 
-  const feature = await prisma.feature.update({
+  const card = await prisma.card.update({
     where: { id },
     data: updateData,
   })
 
   revalidatePath('/')
-  return feature
+  return card
 }
 
-export async function deleteFeature(id: string) {
-  await prisma.feature.delete({ where: { id } })
+export async function deleteCard(id: string) {
+  await prisma.card.delete({ where: { id } })
   revalidatePath('/')
 }
 
-export async function getProductFeatures(productId: string) {
+export async function getProjectCards(projectId: string) {
   const teams = await prisma.team.findMany({
-    where: { productId },
+    where: { projectId },
     select: { id: true },
   })
   const teamIds = teams.map((t) => t.id)
 
-  return prisma.feature.findMany({
+  return prisma.card.findMany({
     where: { teamId: { in: teamIds } },
     include: {
       team: true,
       assignee: true,
     },
     orderBy: [{ status: 'asc' }, { createdAt: 'desc' }],
+  })
+}
+
+export async function addComment(cardId: string, userId: string, content: string) {
+  const comment = await prisma.cardComment.create({
+    data: { cardId, userId, content },
+    include: { user: true },
+  })
+
+  revalidatePath('/')
+  return comment
+}
+
+export async function getCardActivities(cardId: string) {
+  return prisma.cardActivity.findMany({
+    where: { cardId },
+    include: { user: true },
+    orderBy: { createdAt: 'desc' },
   })
 }

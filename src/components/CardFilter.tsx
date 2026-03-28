@@ -5,33 +5,25 @@ import { Filter } from 'lucide-react'
 import { useState } from 'react'
 import { Button } from './Button'
 
-interface Team {
-  id: string
-  name: string
-  colour: string
-}
-
 interface User {
   id: string
   displayName: string
 }
 
-interface FeatureFilterProps {
-  teams: Team[]
+interface CardFilterProps {
   users: User[]
   basePath: string
 }
 
-export function FeatureFilter({ teams, users, basePath }: FeatureFilterProps) {
+export function CardFilter({ users, basePath }: CardFilterProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [showFilters, setShowFilters] = useState(false)
 
-  const currentTeam = searchParams.get('team')
   const currentStatus = searchParams.get('status')
   const currentAssignee = searchParams.get('assignee')
 
-  const hasFilters = currentTeam || currentStatus || currentAssignee
+  const hasFilters = currentStatus || currentAssignee
 
   function applyFilter(key: string, value: string | null) {
     const params = new URLSearchParams(searchParams.toString())
@@ -80,25 +72,6 @@ export function FeatureFilter({ teams, users, basePath }: FeatureFilterProps) {
                 <option value="NOT_STARTED">Not started</option>
                 <option value="SPECIFYING">Specifying</option>
                 <option value="SPEC_COMPLETE">Spec complete</option>
-              </select>
-            </div>
-
-            {/* Team */}
-            <div>
-              <label className="block text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-[0.06em] mb-1">
-                Team
-              </label>
-              <select
-                value={currentTeam ?? ''}
-                onChange={(e) => applyFilter('team', e.target.value || null)}
-                className="w-full px-2 py-1 text-[12px] bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-[var(--radius-default)] outline-none"
-              >
-                <option value="">All teams</option>
-                {teams.map((team) => (
-                  <option key={team.id} value={team.id}>
-                    {team.name}
-                  </option>
-                ))}
               </select>
             </div>
 

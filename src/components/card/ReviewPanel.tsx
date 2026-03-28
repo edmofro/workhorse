@@ -6,11 +6,11 @@ import { Button } from '../Button'
 import { MarkdownContent } from './MarkdownContent'
 
 interface ReviewPanelProps {
-  featureId: string
+  cardId: string
   hasSpecs: boolean
 }
 
-export function ReviewPanel({ featureId, hasSpecs }: ReviewPanelProps) {
+export function ReviewPanel({ cardId, hasSpecs }: ReviewPanelProps) {
   const [reviewContent, setReviewContent] = useState<string | null>(null)
   const [isReviewing, setIsReviewing] = useState(false)
 
@@ -22,7 +22,7 @@ export function ReviewPanel({ featureId, hasSpecs }: ReviewPanelProps) {
       const res = await fetch('/api/review', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ featureId }),
+        body: JSON.stringify({ cardId }),
       })
 
       if (!res.ok || !res.body) throw new Error('Review failed')
@@ -42,13 +42,13 @@ export function ReviewPanel({ featureId, hasSpecs }: ReviewPanelProps) {
     } finally {
       setIsReviewing(false)
     }
-  }, [featureId])
+  }, [cardId])
 
   return (
     <div className="border-t border-[var(--border-subtle)] mt-6 pt-6">
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-[0.06em]">
-          Fresh-eyes review
+          Auto-review
         </h3>
         <Button
           variant="secondary"
@@ -57,7 +57,7 @@ export function ReviewPanel({ featureId, hasSpecs }: ReviewPanelProps) {
           disabled={isReviewing || !hasSpecs}
         >
           <ClipboardCheck size={12} />
-          {isReviewing ? 'Reviewing...' : 'Run review'}
+          {isReviewing ? 'Reviewing...' : 'Auto-review'}
         </Button>
       </div>
 

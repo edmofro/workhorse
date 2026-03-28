@@ -1,23 +1,22 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
-import { getProducts } from '../../lib/actions/products'
+import { getProjects } from '../../lib/actions/projects'
 
 export default async function HomePage() {
-  const products = await getProducts()
+  const projects = await getProjects()
 
-  if (products.length > 0) {
-    redirect(`/${encodeURIComponent(products[0].name.toLowerCase())}`)
+  if (projects.length > 0) {
+    redirect(`/${encodeURIComponent(projects[0].name.toLowerCase())}`)
   }
 
-  // No products yet — show empty state prompting to create one
   return (
     <div className="flex-1 flex items-center justify-center">
       <div className="text-center max-w-[320px]">
         <h2 className="text-[16px] font-semibold tracking-[-0.02em] mb-2">
-          No products yet
+          No projects yet
         </h2>
         <p className="text-[13px] text-[var(--text-muted)] mb-4">
-          Add a product in settings to get started.
+          Add a project in settings to get started.
         </p>
         <Link
           href="/settings"

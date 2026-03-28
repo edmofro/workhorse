@@ -1,28 +1,31 @@
 import { NextRequest } from 'next/server'
 import { anthropic } from '../../../lib/anthropic'
 import { prisma } from '../../../lib/prisma'
-import { buildReviewPrompt } from '../../../lib/ai/freshEyesReview'
+import { buildAutoReviewPrompt } from '../../../lib/ai/freshEyesReview'
 
 export async function POST(request: NextRequest) {
   const body = await request.json()
-  const { featureId } = body as { featureId: string }
+  const { cardId } = body as { cardId: string }
 
-  const feature = await prisma.feature.findUnique({
-    where: { id: featureId },
-    include: { specs: true },
+  const card = await prisma.card.findUnique({
+    where: { id: cardId },
+    include: {
+      specs: true,
+      team: { include: { project: true } },
+    },
   })
 
-  if (!feature) {
-    return new Response('Feature not found', { status: 404 })
+  if (!card) {
+    return new Response('Card not found', { status: 404 })
   }
 
-  const specContent = feature.specs.map((s) => s.content).join('\n\n---\n\n')
+  const specContent = card.specs.map((s) => s.content).join('\n\n---\n\n')
 
   if (!specContent.trim()) {
     return new Response('No spec content to review', { status: 400 })
   }
 
-  const reviewPrompt = buildReviewPrompt(specContent, feature.title)
+  const reviewPrompt = buildAutoReviewPrompt(specContent, card.title)
 
   const stream = await anthropic.messages.stream({
     model: 'claude-sonnet-4-20250514',
@@ -49,10 +52,10 @@ export async function POST(request: NextRequest) {
         // Save review as a system message
         await prisma.specMessage.create({
           data: {
-            featureId,
+            cardId,
             role: 'system',
             content: fullResponse,
-            metadata: JSON.stringify({ type: 'fresh-eyes-review' }),
+            metadata: JSON.stringify({ type: 'auto-review' }),
           },
         })
 

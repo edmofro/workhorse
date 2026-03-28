@@ -1,6 +1,6 @@
 'use client'
 
-import { MarkdownContent } from '../feature/MarkdownContent'
+import { MarkdownContent } from '../card/MarkdownContent'
 
 interface DesignFile {
   path: string

@@ -10,7 +10,7 @@ export interface ChatMessage {
   createdAt?: string
 }
 
-export function useChat(featureId: string, userId: string) {
+export function useChat(cardId: string, userId: string) {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [isStreaming, setIsStreaming] = useState(false)
   const abortRef = useRef<AbortController | null>(null)
@@ -47,7 +47,7 @@ export function useChat(featureId: string, userId: string) {
         const res = await fetch('/api/chat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ featureId, message: content, userId }),
+          body: JSON.stringify({ cardId, message: content, userId }),
           signal: abortRef.current.signal,
         })
 
@@ -83,7 +83,7 @@ export function useChat(featureId: string, userId: string) {
         abortRef.current = null
       }
     },
-    [featureId, userId, isStreaming],
+    [cardId, userId, isStreaming],
   )
 
   return { messages, isStreaming, sendMessage, initMessages }

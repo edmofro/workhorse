@@ -13,15 +13,23 @@ interface SpecData {
   filePath: string
   isNew: boolean
   content: string
+  baselineContent?: string | null
+}
+
+interface ProjectSpecData {
+  id: string
+  filePath: string
+  content: string
 }
 
 interface SpecTabProps {
-  feature: {
+  card: {
     id: string
     identifier: string
     title: string
   }
   specs: SpecData[]
+  projectSpecs?: ProjectSpecData[]
   messages: {
     id: string
     role: string
@@ -31,7 +39,7 @@ interface SpecTabProps {
   }[]
 }
 
-export function SpecTab({ feature, specs: initialSpecs, messages }: SpecTabProps) {
+export function SpecTab({ card, specs: initialSpecs, projectSpecs, messages }: SpecTabProps) {
   const { user } = useUser()
   const [specs, setSpecs] = useState(initialSpecs)
   const [activeSpecId, setActiveSpecId] = useState(specs[0]?.id ?? null)
@@ -39,14 +47,14 @@ export function SpecTab({ feature, specs: initialSpecs, messages }: SpecTabProps
   const activeSpec = specs.find((s) => s.id === activeSpecId) ?? null
 
   const handleAddSpec = useCallback(async () => {
-    const filePath = `.workhorse/specs/${feature.identifier.toLowerCase().replace(/[^a-z0-9]+/g, '-')}/new-spec.md`
+    const filePath = `.workhorse/specs/${card.identifier.toLowerCase().replace(/[^a-z0-9]+/g, '-')}/new-spec.md`
     const content = buildDefaultSpec(
       'New spec',
-      feature.identifier,
+      card.identifier,
     )
 
     const spec = await createSpec({
-      featureId: feature.id,
+      cardId: card.id,
       filePath,
       isNew: true,
       content,
@@ -54,7 +62,19 @@ export function SpecTab({ feature, specs: initialSpecs, messages }: SpecTabProps
 
     setSpecs((prev) => [...prev, spec])
     setActiveSpecId(spec.id)
-  }, [feature])
+  }, [card])
+
+  const handleAttachProjectSpec = useCallback(async (filePath: string, content: string) => {
+    const spec = await createSpec({
+      cardId: card.id,
+      filePath,
+      isNew: false,
+      content,
+    })
+
+    setSpecs((prev) => [...prev, spec])
+    setActiveSpecId(spec.id)
+  }, [card.id])
 
   const handleSpecUpdate = useCallback((id: string, content: string) => {
     setSpecs((prev) =>
@@ -88,21 +108,21 @@ export function SpecTab({ feature, specs: initialSpecs, messages }: SpecTabProps
     <div className="flex-1 flex overflow-hidden">
       {/* Chat sidebar */}
       <ChatSidebar
-        featureId={feature.id}
+        cardId={card.id}
         userId={user.id}
         userName={user.displayName}
         messages={messages}
       />
 
-      {/* Spec list (only if multiple specs) */}
-      {specs.length > 1 && (
-        <SpecListSidebar
-          specs={specs}
-          activeSpecId={activeSpecId}
-          onSelect={setActiveSpecId}
-          onAdd={handleAddSpec}
-        />
-      )}
+      {/* Spec list sidebar (two-layer design) */}
+      <SpecListSidebar
+        specs={specs}
+        projectSpecs={projectSpecs ?? []}
+        activeSpecId={activeSpecId}
+        onSelect={setActiveSpecId}
+        onAdd={handleAddSpec}
+        onAttachProjectSpec={handleAttachProjectSpec}
+      />
 
       {/* Spec document */}
       <div className="flex-1 overflow-y-auto bg-[var(--bg-surface)] flex justify-center">

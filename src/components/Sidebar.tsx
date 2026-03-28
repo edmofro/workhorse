@@ -2,78 +2,131 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Settings, LogOut } from 'lucide-react'
+import { Settings, LogOut, FileText, Palette, Users, ChevronDown, Plus } from 'lucide-react'
 import { cn } from '../lib/cn'
 import { Avatar } from './Avatar'
 import { useUser } from './UserProvider'
+import { useState } from 'react'
 
-interface SidebarProduct {
+interface SidebarProject {
   id: string
   name: string
   teams: { id: string; name: string; colour: string }[]
 }
 
 interface SidebarProps {
-  products: SidebarProduct[]
+  projects: SidebarProject[]
+  activeProjectName?: string
 }
 
-export function Sidebar({ products }: SidebarProps) {
+export function Sidebar({ projects, activeProjectName }: SidebarProps) {
   const pathname = usePathname()
   const { user } = useUser()
+  const [switcherOpen, setSwitcherOpen] = useState(false)
+
+  const activeProject = projects.find(
+    (p) => p.name.toLowerCase() === activeProjectName?.toLowerCase(),
+  ) ?? projects[0] ?? null
+
+  const projectPath = activeProject
+    ? `/${encodeURIComponent(activeProject.name.toLowerCase())}`
+    : null
 
   return (
     <aside
       className="flex flex-col shrink-0 bg-[var(--bg-sidebar)] border-r border-[var(--border-subtle)]"
       style={{ width: '216px' }}
     >
-      {/* Header */}
-      <div className="flex items-center gap-[10px] px-4 pt-5 pb-6">
-        <div className="w-[26px] h-[26px] bg-[var(--accent)] rounded-[var(--radius-md)] flex items-center justify-center text-white text-[13px] font-bold">
-          W
+      {/* Header with project switcher */}
+      <div className="px-3 pt-4 pb-2">
+        <div className="flex items-center gap-[10px] px-1 mb-3">
+          <div className="w-[26px] h-[26px] bg-[var(--accent)] rounded-[var(--radius-md)] flex items-center justify-center text-white text-[13px] font-bold">
+            W
+          </div>
+          <span className="text-[15px] font-bold tracking-[-0.03em]">Workhorse</span>
         </div>
-        <span className="text-[15px] font-bold tracking-[-0.03em]">Workhorse</span>
+
+        {/* Project switcher */}
+        {projects.length > 0 && (
+          <div className="relative">
+            <button
+              onClick={() => setSwitcherOpen(!switcherOpen)}
+              className="flex items-center justify-between w-full px-2 py-[7px] rounded-[var(--radius-md)] text-[13px] font-medium text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer"
+            >
+              <span className="truncate">{activeProject?.name ?? 'Select project'}</span>
+              <ChevronDown size={13} className="text-[var(--text-muted)] shrink-0" />
+            </button>
+
+            {switcherOpen && (
+              <>
+                <div className="fixed inset-0 z-30" onClick={() => setSwitcherOpen(false)} />
+                <div className="absolute left-0 right-0 top-full mt-1 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-[var(--radius-default)] shadow-[var(--shadow-md)] z-40 py-1">
+                  {projects.map((project) => (
+                    <Link
+                      key={project.id}
+                      href={`/${encodeURIComponent(project.name.toLowerCase())}`}
+                      onClick={() => setSwitcherOpen(false)}
+                      className={cn(
+                        'block px-3 py-[6px] text-[13px] transition-colors duration-100',
+                        project.id === activeProject?.id
+                          ? 'text-[var(--text-primary)] font-medium bg-[var(--bg-hover)]'
+                          : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]',
+                      )}
+                    >
+                      {project.name}
+                    </Link>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Navigation */}
       <nav className="flex-1 px-2 overflow-y-auto">
-        {products.length > 0 && (
+        {projectPath && (
           <>
-            <div className="px-2 pt-3 pb-[6px] text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-[0.06em]">
-              Products
-            </div>
-            {products.map((product) => {
-              const productPath = `/${encodeURIComponent(product.name.toLowerCase())}`
-              return (
-                <NavItem
-                  key={product.id}
-                  href={productPath}
-                  active={pathname === productPath || pathname.startsWith(`${productPath}/`)}
-                >
-                  {product.name}
-                </NavItem>
-              )
-            })}
-          </>
-        )}
+            {/* Specs link */}
+            <NavItem
+              href={`${projectPath}/specs`}
+              icon={<FileText size={14} />}
+              active={pathname.startsWith(`${projectPath}/specs`)}
+            >
+              Specs
+            </NavItem>
 
-        {products.map((product) =>
-          product.teams.length > 0 ? (
-            <div key={product.id}>
-              <div className="px-2 pt-5 pb-[6px] text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-[0.06em]">
-                Teams
-              </div>
-              {product.teams.map((team) => (
-                <NavItem
-                  key={team.id}
-                  href={`/${encodeURIComponent(product.name.toLowerCase())}?team=${team.id}`}
-                  active={false}
-                  dot={team.colour}
-                >
-                  {team.name}
-                </NavItem>
-              ))}
+            {/* Design link */}
+            <NavItem
+              href={`${projectPath}/design`}
+              icon={<Palette size={14} />}
+              active={pathname.startsWith(`${projectPath}/design`)}
+            >
+              Design
+            </NavItem>
+
+            {/* Teams section */}
+            <div className="px-2 pt-5 pb-[6px] text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-[0.06em]">
+              Teams
             </div>
-          ) : null,
+
+            {activeProject?.teams.map((team) => (
+              <NavItem
+                key={team.id}
+                href={`${projectPath}?team=${team.id}`}
+                active={pathname === projectPath && typeof window !== 'undefined'}
+                dot={team.colour}
+              >
+                {team.name}
+              </NavItem>
+            ))}
+
+            {activeProject?.teams.length === 0 && (
+              <p className="px-2 py-2 text-[11px] text-[var(--text-faint)]">
+                No teams yet
+              </p>
+            )}
+          </>
         )}
       </nav>
 

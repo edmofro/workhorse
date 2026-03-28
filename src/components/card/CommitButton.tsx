@@ -19,7 +19,7 @@ function setStoredMode(mode: LaunchMode) {
 }
 
 interface CommitButtonProps {
-  featureId: string
+  cardId: string
   hasSpecs: boolean
   specsDirty: boolean
   status: string
@@ -28,7 +28,7 @@ interface CommitButtonProps {
 }
 
 export function CommitButton({
-  featureId,
+  cardId,
   hasSpecs,
   specsDirty,
   status,
@@ -75,7 +75,7 @@ export function CommitButton({
         const res = await fetch('/api/commit', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ featureId }),
+          body: JSON.stringify({ cardId }),
         })
         if (!res.ok) {
           const text = await res.text()
@@ -91,7 +91,7 @@ export function CommitButton({
 
   async function copyPrompt(): Promise<boolean> {
     try {
-      const res = await fetch(`/api/handoff?featureId=${featureId}`)
+      const res = await fetch(`/api/handoff?cardId=${cardId}`)
       if (!res.ok) throw new Error('Failed to generate prompt')
       const { prompt } = await res.json()
       await navigator.clipboard.writeText(prompt)
@@ -136,7 +136,7 @@ export function CommitButton({
 
   return (
     <div className="flex items-center gap-[6px]">
-      {/* Commit button — always visible once there are specs, disabled when clean */}
+      {/* Commit button — always visible once there are specs */}
       <Button
         onClick={handleCommit}
         disabled={!hasSpecs || isPending || (hasCommitted && !specsDirty)}

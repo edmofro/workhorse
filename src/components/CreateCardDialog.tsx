@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react'
 import { Plus } from 'lucide-react'
 import { Button } from './Button'
-import { createFeature } from '../lib/actions/features'
+import { createCard } from '../lib/actions/cards'
 import { useRouter } from 'next/navigation'
 
 interface Team {
@@ -12,12 +12,12 @@ interface Team {
   colour: string
 }
 
-interface CreateFeatureDialogProps {
+interface CreateCardDialogProps {
   teams: Team[]
-  productName: string
+  projectName: string
 }
 
-export function CreateFeatureDialog({ teams, productName }: CreateFeatureDialogProps) {
+export function CreateCardDialog({ teams, projectName }: CreateCardDialogProps) {
   const [open, setOpen] = useState(false)
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
@@ -30,7 +30,7 @@ export function CreateFeatureDialog({ teams, productName }: CreateFeatureDialogP
     if (!title.trim() || !teamId) return
 
     startTransition(async () => {
-      const feature = await createFeature({
+      const card = await createCard({
         title: title.trim(),
         description: description.trim() || undefined,
         teamId,
@@ -39,7 +39,7 @@ export function CreateFeatureDialog({ teams, productName }: CreateFeatureDialogP
       setTitle('')
       setDescription('')
       router.push(
-        `/${encodeURIComponent(productName.toLowerCase())}/features/${feature.identifier}`,
+        `/${encodeURIComponent(projectName.toLowerCase())}/cards/${card.identifier}`,
       )
     })
   }
@@ -47,7 +47,7 @@ export function CreateFeatureDialog({ teams, productName }: CreateFeatureDialogP
   if (!open) {
     return (
       <Button onClick={() => setOpen(true)} disabled={teams.length === 0}>
-        <Plus size={12} /> New feature
+        <Plus size={12} /> New card
       </Button>
     )
   }
@@ -61,7 +61,7 @@ export function CreateFeatureDialog({ teams, productName }: CreateFeatureDialogP
       <div className="fixed inset-0 z-50 flex items-center justify-center">
         <div className="w-full max-w-[440px] bg-[var(--bg-surface)] rounded-[var(--radius-lg)] border border-[var(--border-subtle)] shadow-[var(--shadow-lg)] p-6">
           <h2 className="text-[16px] font-semibold tracking-[-0.02em] mb-4">
-            New feature
+            New card
           </h2>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
@@ -85,7 +85,7 @@ export function CreateFeatureDialog({ teams, productName }: CreateFeatureDialogP
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 rows={3}
-                placeholder="Brief description of the feature..."
+                placeholder="Brief description..."
                 className="w-full px-3 py-2 text-[14px] bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-[var(--radius-default)] outline-none transition-[border-color,box-shadow] duration-150 focus:border-[var(--accent)] focus:shadow-[var(--shadow-input-focus)] placeholder:text-[var(--text-faint)] resize-none"
               />
             </div>
@@ -114,7 +114,7 @@ export function CreateFeatureDialog({ teams, productName }: CreateFeatureDialogP
                 Cancel
               </Button>
               <Button type="submit" disabled={!title.trim() || isPending}>
-                {isPending ? 'Creating...' : 'Create feature'}
+                {isPending ? 'Creating...' : 'Create card'}
               </Button>
             </div>
           </form>

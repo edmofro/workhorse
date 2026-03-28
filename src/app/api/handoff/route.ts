@@ -3,35 +3,35 @@ import { prisma } from '../../../lib/prisma'
 import { generateHandoffPrompt } from '../../../lib/handoff/generatePrompt'
 
 export async function GET(request: NextRequest) {
-  const featureId = request.nextUrl.searchParams.get('featureId')
+  const cardId = request.nextUrl.searchParams.get('cardId')
 
-  if (!featureId) {
-    return new Response('Missing featureId', { status: 400 })
+  if (!cardId) {
+    return new Response('Missing cardId', { status: 400 })
   }
 
-  const feature = await prisma.feature.findUnique({
-    where: { id: featureId },
+  const card = await prisma.card.findUnique({
+    where: { id: cardId },
     include: {
       specs: true,
       mockups: true,
-      team: { include: { product: true } },
+      team: { include: { project: true } },
     },
   })
 
-  if (!feature) {
-    return new Response('Feature not found', { status: 404 })
+  if (!card) {
+    return new Response('Card not found', { status: 404 })
   }
 
-  const mockupPaths = feature.mockups.map(
+  const mockupPaths = card.mockups.map(
     (m) => `.workhorse/design/mockups/${m.title.toLowerCase().replace(/\s+/g, '-')}.html`,
   )
 
   const prompt = generateHandoffPrompt({
-    featureIdentifier: feature.identifier,
-    featureTitle: feature.title,
-    branchName: feature.specBranch ?? 'unknown',
-    baseBranch: feature.team.product.defaultBranch,
-    specs: feature.specs.map((s) => ({
+    cardIdentifier: card.identifier,
+    cardTitle: card.title,
+    branchName: card.specBranch ?? 'unknown',
+    baseBranch: card.team.project.defaultBranch,
+    specs: card.specs.map((s) => ({
       filePath: s.filePath,
       isNew: s.isNew,
     })),

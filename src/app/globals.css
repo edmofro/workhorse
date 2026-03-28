@@ -33,6 +33,12 @@
   --amber-alpha: rgba(180, 83, 9, 0.06);
   --blue: #2563eb;
 
+  /* Diff / tracked-changes */
+  --bg-diff-delete: rgba(239, 68, 68, 0.15);
+  --bg-diff-insert: rgba(34, 197, 94, 0.15);
+  --text-diff-delete: #b91c1c;
+  --text-diff-insert: #15803d;
+
   /* Spacing (4px base grid) */
   --space-1: 4px;
   --space-2: 8px;

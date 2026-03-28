@@ -5,17 +5,17 @@ import { buildSystemPrompt } from '../../../lib/ai/systemPrompt'
 
 export async function POST(request: NextRequest) {
   const body = await request.json()
-  const { featureId, message, userId } = body as {
-    featureId: string
+  const { cardId, message, userId } = body as {
+    cardId: string
     message: string
     userId: string
   }
 
-  // Fetch feature with context
-  const feature = await prisma.feature.findUnique({
-    where: { id: featureId },
+  // Fetch card with context
+  const card = await prisma.card.findUnique({
+    where: { id: cardId },
     include: {
-      team: { include: { product: true } },
+      team: { include: { project: true } },
       specs: true,
       specMessages: {
         orderBy: { createdAt: 'asc' },
@@ -23,14 +23,14 @@ export async function POST(request: NextRequest) {
     },
   })
 
-  if (!feature) {
-    return new Response('Feature not found', { status: 404 })
+  if (!card) {
+    return new Response('Card not found', { status: 404 })
   }
 
   // Save the user's message
   await prisma.specMessage.create({
     data: {
-      featureId,
+      cardId,
       userId,
       role: 'user',
       content: message,
@@ -38,31 +38,31 @@ export async function POST(request: NextRequest) {
   })
 
   // Update status to SPECIFYING if not already
-  if (feature.status === 'NOT_STARTED') {
-    await prisma.feature.update({
-      where: { id: featureId },
+  if (card.status === 'NOT_STARTED') {
+    await prisma.card.update({
+      where: { id: cardId },
       data: { status: 'SPECIFYING' },
     })
   }
 
   // Build conversation history — include ALL specs for multi-spec cards (WH-018)
   const existingSpecContent =
-    feature.specs.length > 0
-      ? feature.specs.map((s) => `<!-- ${s.filePath} -->\n${s.content}`).join('\n\n---\n\n')
+    card.specs.length > 0
+      ? card.specs.map((s) => `<!-- ${s.filePath} -->\n${s.content}`).join('\n\n---\n\n')
       : null
   const systemPrompt = buildSystemPrompt({
-    featureTitle: feature.title,
-    featureDescription: feature.description,
-    featureIdentifier: feature.identifier,
+    cardTitle: card.title,
+    cardDescription: card.description,
+    cardIdentifier: card.identifier,
     existingSpecContent,
-    productName: feature.team.product.name,
+    projectName: card.team.project.name,
     repoInfo: {
-      owner: feature.team.product.owner,
-      repoName: feature.team.product.repoName,
+      owner: card.team.project.owner,
+      repoName: card.team.project.repoName,
     },
   })
 
-  const messages = feature.specMessages.map((m) => ({
+  const messages = card.specMessages.map((m) => ({
     role: m.role as 'user' | 'assistant',
     content: m.content,
   }))
@@ -102,7 +102,7 @@ export async function POST(request: NextRequest) {
         // Save the assistant's full response
         await prisma.specMessage.create({
           data: {
-            featureId,
+            cardId,
             role: 'assistant',
             content: fullResponse,
           },

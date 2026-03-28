@@ -1,5 +1,5 @@
 import { parseSpec } from '../../lib/specs/format'
-import { MarkdownContent } from '../feature/MarkdownContent'
+import { MarkdownContent } from '../card/MarkdownContent'
 
 interface SpecDocumentProps {
   path: string

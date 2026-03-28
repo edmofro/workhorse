@@ -1,19 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireUser } from '../../../lib/auth/session'
-import { commitFeatureSpecs } from '../../../lib/git/commitSpecs'
+import { commitCardSpecs } from '../../../lib/git/commitSpecs'
 
 export async function POST(request: NextRequest) {
   const user = await requireUser()
 
   const body = await request.json()
-  const { featureId } = body as { featureId: string }
+  const { cardId } = body as { cardId: string }
 
-  if (!featureId) {
-    return new Response('Missing featureId', { status: 400 })
+  if (!cardId) {
+    return new Response('Missing cardId', { status: 400 })
   }
 
   try {
-    const result = await commitFeatureSpecs(user.accessToken, featureId)
+    const result = await commitCardSpecs(user.accessToken, cardId)
     return NextResponse.json(result)
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Commit failed'

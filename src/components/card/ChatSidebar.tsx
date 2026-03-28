@@ -6,7 +6,7 @@ import { ChatMessage } from './ChatMessage'
 import { ChatInput } from './ChatInput'
 
 interface ChatSidebarProps {
-  featureId: string
+  cardId: string
   userId: string
   userName: string
   messages: {
@@ -19,7 +19,7 @@ interface ChatSidebarProps {
 }
 
 export function ChatSidebar({
-  featureId,
+  cardId,
   userId,
   userName,
   messages: initialMessages,
@@ -29,7 +29,7 @@ export function ChatSidebar({
     isStreaming,
     sendMessage,
     initMessages,
-  } = useChat(featureId, userId)
+  } = useChat(cardId, userId)
   const scrollRef = useRef<HTMLDivElement>(null)
   const initialised = useRef(false)
 

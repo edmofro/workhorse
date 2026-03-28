@@ -23,6 +23,7 @@ The home view of Workhorse — a list of feature cards grouped by team, with bas
 - [ ] Each team belongs to a single product
 - [ ] Features belong to a team
 - [ ] Team is a sidebar navigation item, clicking it filters the feature list
+- [ ] Users can join any team linked to a project they have write access to, or create a new one (see WH-021)
 
 ## Products
 

@@ -5,7 +5,12 @@ card: WH-013
 status: draft
 ---
 
-Deep GitHub integration — create PRs, view diffs, run reviews (via Review Hero), manage branches. Eventually may bring some GitHub workflows into Workhorse directly. This is a future feature.
+Deep GitHub integration — authentication (SSO), create PRs, view diffs, run reviews (via Review Hero), manage branches. Eventually may bring some GitHub workflows into Workhorse directly.
+
+## Authentication
+
+- [ ] GitHub SSO is the sole authentication method (see WH-021)
+- [ ] OAuth scopes include repo access for permission checks and branch/PR operations
 
 ## Key ideas
 

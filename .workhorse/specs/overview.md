@@ -47,4 +47,4 @@ Product owners, testers, and developers — anyone who specifies what software s
 
 ## Not in v1
 
-AI implementation agents, AI test generation, feature environment hot-reload, configurable columns, auth/permissions, Linear integration, Figma integration.
+AI implementation agents, AI test generation, feature environment hot-reload, configurable columns, role-based permissions, Linear integration, Figma integration.

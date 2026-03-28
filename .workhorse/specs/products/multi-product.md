@@ -17,3 +17,4 @@ Workhorse manages specs across multiple products. Products are the user-facing c
 - [ ] One feature always targets exactly one product
 - [ ] Product management is in settings
 - [ ] Products appear in sidebar navigation, linking to spec explorer and feature cards
+- [ ] A user can only see products linked to GitHub repos they have write access to (see WH-021)

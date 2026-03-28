@@ -33,15 +33,15 @@ When specs are committed and the card is marked "Spec complete", the developer c
 
 ### UX flow
 
-- [ ] The implementation launch button only appears when the card status is `SPEC_COMPLETE`
+- [ ] The implementation launch button only appears when the card status is Spec complete
 - [ ] Button is a split button with dropdown (like GitHub's merge strategy button on PR reviews)
 - [ ] Two options in the dropdown: "Copy prompt" and "Launch Claude Code"
 - [ ] "Copy prompt" copies the implementation prompt to clipboard
 - [ ] "Launch Claude Code" copies the prompt to clipboard AND opens `claude.ai/code` in a new tab
-- [ ] The button face shows whichever option the user chose last time (persisted in localStorage)
+- [ ] The button face shows whichever option the user chose last time (remembered across sessions)
 - [ ] Default for first-time users is "Launch Claude Code"
 - [ ] A toast confirms the action: "Prompt copied" or "Prompt copied — opening Claude Code"
-- [ ] The "Commit spec" button remains available alongside the implementation button, but is disabled when there are no uncommitted spec changes (i.e. DB version matches what's on the branch)
+- [ ] The "Commit spec" button remains available alongside the implementation button, but is disabled when there are no uncommitted spec changes
 - [ ] "View PR" link also remains visible once a PR exists
 
 ### Prompt design
@@ -84,4 +84,4 @@ Read the specs and mockups, then implement all acceptance criteria.
 
 > **Toast library:** Do we have a toast/notification system yet, or do we need to add one for the "Prompt copied" feedback?
 
-> **Dirty detection:** How do we detect uncommitted spec changes? Compare DB content against last committed content (stored on commit), or query GitHub API for file content?
+> **Dirty detection:** How does the system know when there are uncommitted spec changes? Compare against the last committed version, or check the codebase directly?

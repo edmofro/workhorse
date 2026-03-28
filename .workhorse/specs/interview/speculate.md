@@ -68,12 +68,14 @@ Product owners refining feature requirements, testers bringing attention to edge
 
 ## Fresh-eyes review passes
 
-- [ ] At least one fresh-eyes pass before a spec can be marked complete
-- [ ] Each review agent receives only the draft spec and codebase access, not the conversation history
-- [ ] Review agents look for: gaps, contradictions, unstated assumptions, missing edge cases, interactions with existing functionality
-- [ ] Findings are presented to the user as specific questions or issues to address
-- [ ] The user works through each finding — accepting, rejecting, or refining
-- [ ] Multiple review passes can be triggered (each with a fresh agent)
+The fresh-eyes review is a human-triggered step within the chat flow — not a separate view or panel. The user clicks "Review with fresh eyes" in the chat, and a fresh-context AI agent reviews the specs and posts its findings as a system message in the conversation. The interview AI can then help the user work through the findings. See `workflow/chat-extraction.md` for full details.
+
+- [ ] At least one fresh-eyes pass is encouraged before the first commit (the system nudges, but does not hard-block)
+- [ ] Each review agent receives only the draft spec(s) and codebase access, not the conversation history
+- [ ] Review agents look for: gaps, contradictions, unstated assumptions, missing edge cases, interactions with existing functionality, and other product specs that might be impacted but haven't been updated by this card
+- [ ] Findings are posted into the chat as a system message, visually distinct from user and assistant messages
+- [ ] The user works through each finding with the interview AI — accepting, rejecting, or refining
+- [ ] Multiple review passes can be triggered (each with a fresh agent and fresh context)
 
 ## Spec completeness signals
 

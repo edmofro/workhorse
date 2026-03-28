@@ -41,12 +41,16 @@ function getSpecs(): SpecFile[] {
       return `<li>${text}</li>`;
     };
 
-    renderer.list = function ({ body, ordered }) {
+    renderer.list = function (token) {
+      let body = "";
+      for (const item of token.items) {
+        body += this.listitem(item);
+      }
       // If body contains criterion divs, don't wrap in ul/ol
       if (body.includes('class="criterion"')) {
         return `<div class="criteria-list">${body}</div>`;
       }
-      const tag = ordered ? "ol" : "ul";
+      const tag = token.ordered ? "ol" : "ul";
       return `<${tag}>${body}</${tag}>`;
     };
 

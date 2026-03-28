@@ -1,26 +1,126 @@
 @import "tailwindcss";
 
+/* ===========================
+   Workhorse Design System
+   =========================== */
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Backgrounds */
+  --bg-page: #f8f7f4;
+  --bg-surface: #ffffff;
+  --bg-sidebar: #f1efeb;
+  --bg-hover: #edeae5;
+  --bg-inset: #e8e5df;
+  --bg-mockup-stage: #e5e3de;
+
+  /* Text */
+  --text-primary: #1c1917;
+  --text-secondary: #57534e;
+  --text-muted: #a8a29e;
+  --text-faint: #d1cdc6;
+
+  /* Borders */
+  --border-default: #dfdcd5;
+  --border-subtle: #eae7e1;
+
+  /* Accent and semantic */
+  --accent: #c2410c;
+  --accent-hover: #b33b09;
+  --accent-alpha: rgba(194, 65, 12, 0.06);
+  --green: #16a34a;
+  --green-alpha: rgba(22, 163, 74, 0.07);
+  --amber: #b45309;
+  --amber-alpha: rgba(180, 83, 9, 0.06);
+  --blue: #2563eb;
+
+  /* Spacing (4px base grid) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 18px;
+  --space-6: 20px;
+  --space-7: 24px;
+  --space-8: 28px;
+  --space-9: 32px;
+  --space-10: 48px;
+
+  /* Border radius */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-default: 8px;
+  --radius-lg: 10px;
+  --radius-xl: 12px;
+  --radius-pill: 24px;
+  --radius-round: 50%;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 3px rgba(28, 25, 23, 0.04);
+  --shadow-md: 0 2px 8px rgba(28, 25, 23, 0.06);
+  --shadow-lg: 0 12px 40px rgba(28, 25, 23, 0.14), 0 2px 8px rgba(28, 25, 23, 0.06);
+  --shadow-input-focus: 0 0 0 3px rgba(194, 65, 12, 0.05);
 }
 
+/* Register key tokens with Tailwind v4 */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  /* Backgrounds */
+  --color-bg-page: var(--bg-page);
+  --color-bg-surface: var(--bg-surface);
+  --color-bg-sidebar: var(--bg-sidebar);
+  --color-bg-hover: var(--bg-hover);
+  --color-bg-inset: var(--bg-inset);
+  --color-bg-mockup-stage: var(--bg-mockup-stage);
+
+  /* Text */
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
+  --color-text-faint: var(--text-faint);
+
+  /* Borders */
+  --color-border-default: var(--border-default);
+  --color-border-subtle: var(--border-subtle);
+
+  /* Accent and semantic */
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-green: var(--green);
+  --color-amber: var(--amber);
+  --color-blue: var(--blue);
+
+  /* Shadows */
+  --shadow-sm: var(--shadow-sm);
+  --shadow-md: var(--shadow-md);
+  --shadow-lg: var(--shadow-lg);
+  --shadow-input-focus: var(--shadow-input-focus);
+
+  /* Radii */
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-default: var(--radius-default);
+  --radius-lg: var(--radius-lg);
+  --radius-xl: var(--radius-xl);
+  --radius-pill: var(--radius-pill);
+  --radius-round: var(--radius-round);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 5px;
 }
 
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-subtle);
+  border-radius: 3px;
+}
+
+/* Base body styles */
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--bg-page);
+  color: var(--text-primary);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }

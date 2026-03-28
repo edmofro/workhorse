@@ -9,15 +9,15 @@ Connects the AI chat interview to the rest of the system by automatically persis
 ## Mockup extraction and persistence
 
 - [ ] After each assistant message is saved, the system runs mockup detection on the response content
-- [ ] Each detected mockup block is saved as a Mockup record linked to the feature
+- [ ] Each detected mockup block is saved as a Mockup record linked to the card
 - [ ] Duplicate detection prevents re-saving the same mockup if the title and HTML match an existing record
-- [ ] The mockups panel renders persisted mockups and is accessible from the feature detail view
+- [ ] The mockups panel renders persisted mockups and is accessible from the card detail view
 - [ ] Mockups panel is visible on the Chat tab as a collapsible side panel, or on the Card tab alongside metadata
 
 ## Spec extraction and persistence
 
 - [ ] After each assistant message is saved, the system runs spec detection on the response content
-- [ ] Each detected spec block is upserted as a FeatureSpec record (matched by feature + file path)
+- [ ] Each detected spec block is upserted as a FeatureSpec record (matched by card + file path)
 - [ ] If a spec block matches an existing FeatureSpec's title/area, the content is updated rather than creating a duplicate
 - [ ] The Spec tab reflects extracted specs immediately (user can then edit them further)
 - [ ] A visual indicator in the chat message marks which spec blocks have been saved (e.g. green accent on the spec extraction block)
@@ -38,14 +38,14 @@ A fresh-context AI agent reviews the draft specs and posts its findings into the
 - [ ] All draft specs on the card
 - [ ] All mockups on the card
 - [ ] Codebase access (same level as the interview agent)
-- [ ] The full set of existing product specs from the main branch — not just the ones attached to this card
+- [ ] The full set of existing project specs from the main branch — not just the ones attached to this card
 
 ### What the review agent checks
 
 - [ ] Gaps in the draft specs: missing edge cases, error states, permissions, data implications
 - [ ] Contradictions and unstated assumptions within the draft specs
 - [ ] Interactions with existing functionality that haven't been addressed
-- [ ] **Cross-spec impact:** scans through every existing product spec to find areas that the new or changed specs would affect but that haven't been updated by this card. For example, if a new "allergies" spec changes how patient data is structured, the review should flag `patient/merge.md` if it references patient data but hasn't been included on the card. This is one of several review responsibilities — the agent should flag substantive impacts, not speculate about tangential connections
+- [ ] **Cross-spec impact:** scans through every existing project spec to find areas that the new or changed specs would affect but that haven't been updated by this card. For example, if a new "allergies" spec changes how patient data is structured, the review should flag `patient/merge.md` if it references patient data but hasn't been included on the card. This is one of several review responsibilities — the agent should flag substantive impacts, not speculate about tangential connections
 
 ### How results appear
 
@@ -59,7 +59,7 @@ A fresh-context AI agent reviews the draft specs and posts its findings into the
 
 ## Activity logging
 
-- [ ] Feature creation records a "created" activity with the creating user
+- [ ] Card creation records a "created" activity with the creating user
 - [ ] Status changes record a "status_changed" activity with old and new status
 - [ ] Spec creation and updates record "spec_updated" activities
 - [ ] Committing specs records a "committed" activity with branch and PR URL

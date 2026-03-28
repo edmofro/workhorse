@@ -19,5 +19,5 @@ Deep GitHub integration — authentication (SSO), create PRs, view diffs, run re
 - [ ] Create PRs from specs
 - [ ] View code diffs within Workhorse
 - [ ] Trigger Review Hero reviews
-- [ ] Status sync between Workhorse features and GitHub PRs
+- [ ] Status sync between Workhorse cards and GitHub PRs
 - [ ] Integrate with common-rules for consistent AI agent behaviour

@@ -5,15 +5,15 @@ card: WH-001
 status: draft
 ---
 
-An AI-powered interview system that guides users through developing comprehensive acceptance criteria for a feature. The interviewer has remote access to the target codebase to understand how changes fit together, identify edge cases, and find interactions with existing functionality.
+An AI-powered interview system that guides users through developing comprehensive acceptance criteria. The interviewer has remote access to the target codebase to understand how changes fit together, identify edge cases, and find interactions with existing functionality.
 
 ## Users
 
-Product owners refining feature requirements, testers bringing attention to edge cases and business rules, and developers working through technical acceptance criteria.
+Product owners refining requirements, testers bringing attention to edge cases and business rules, and developers working through technical acceptance criteria.
 
 ## Interview experience
 
-- [ ] AI conducts a structured conversation to elicit feature requirements
+- [ ] AI conducts a structured conversation to elicit requirements
 - [ ] Interview happens within Workhorse's web UI
 - [ ] AI asks probing questions — doesn't just accept what the user says
 - [ ] The AI has read the card description as starting context
@@ -24,7 +24,7 @@ Product owners refining feature requirements, testers bringing attention to edge
 
 ## Codebase awareness
 
-- [ ] AI has remote access to the target product's codebase during the interview (similar to review-hero's Claude-in-GHA pattern or ask-ai's Cursor agent pattern)
+- [ ] AI has remote access to the target project's codebase during the interview (similar to review-hero's Claude-in-GHA pattern or ask-ai's Cursor agent pattern)
 - [ ] Proactively identifies interactions with existing functionality when the conversation implies changes
 - [ ] Interactions surface as decision points that must be addressed in the spec
 - [ ] Understands the project's conventions (informed by CLAUDE.md, llm rules, etc.)
@@ -64,15 +64,15 @@ Product owners refining feature requirements, testers bringing attention to edge
 - [ ] Identifies data edge cases (nulls, duplicates, large volumes, special characters)
 - [ ] Considers permissions and access control implications
 - [ ] Explores what happens when upstream dependencies fail or return unexpected data
-- [ ] Asks about migration and backwards compatibility for changes to existing features
+- [ ] Asks about migration and backwards compatibility for changes to existing functionality
 
 ## Automated spec review
 
-A human-triggered automated review step within the chat flow. The user clicks "Auto-review" (available on both Chat and Spec tabs), and a fresh-context AI agent reviews the specs, mockups, and all existing product specs, then posts its findings into the conversation. The interview AI sees the findings and offers to make the suggested changes. See `workflow/chat-extraction.md` for full details.
+A human-triggered automated review step within the chat flow. The user clicks "Auto-review" (available on both Chat and Spec tabs), and a fresh-context AI agent reviews the specs, mockups, and all existing project specs, then posts its findings into the conversation. The interview AI sees the findings and offers to make the suggested changes. See `workflow/chat-extraction.md` for full details.
 
 - [ ] At least one auto-review is encouraged before the first commit (the system nudges, but does not hard-block)
 - [ ] Each review agent receives the draft specs, mockups, and codebase access — no conversation history
-- [ ] Review agents check for: gaps, contradictions, unstated assumptions, missing edge cases, interactions with existing functionality, and substantive impacts on other product specs that haven't been updated by this card
+- [ ] Review agents check for: gaps, contradictions, unstated assumptions, missing edge cases, interactions with existing functionality, and substantive impacts on other project specs that haven't been updated by this card
 - [ ] Findings land in the chat as a system message; the interview AI then offers to update the specs based on the suggestions
 - [ ] The user directs the AI on which suggestions to accept, reject, or refine — normal conversational flow
 - [ ] Multiple review passes can be triggered (each with a fresh agent and fresh context)

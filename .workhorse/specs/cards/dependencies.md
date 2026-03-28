@@ -61,4 +61,4 @@ Branch names, rebase operations, base branch selection, or any git terminology.
 - [ ] Dependent cards can be specced in parallel with their parents
 - [ ] A card's specs can only be committed if its parent cards have committed first
 - [ ] A card's specs can only be marked "spec complete" if its parents are spec complete
-- [ ] The feature list shows dependency relationships (subtle, not cluttering the card)
+- [ ] The team board shows dependency relationships (subtle, not cluttering the card)

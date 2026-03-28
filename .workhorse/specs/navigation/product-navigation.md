@@ -4,21 +4,38 @@ area: navigation
 status: draft
 ---
 
-Sidebar navigation, product onboarding, and discoverability of core views (spec explorer, design browser).
+Navigation structure: a global project switcher sets the context, and the sidebar provides access to everything within the active project.
 
-## Sidebar navigation
+## Project switcher
 
-- [ ] Each product in the sidebar expands to show sub-navigation links: Features, Specs, and Design
-- [ ] Clicking a product name navigates to its feature list
-- [ ] "Specs" links to `/:productSlug/specs` (the spec explorer)
-- [ ] "Design" links to `/:productSlug/design` (the design browser)
-- [ ] When multiple products exist, team groups are labelled with their parent product name (e.g. "Tamanu teams") to disambiguate
+- [ ] The user is always in the context of one project at a time
+- [ ] A project switcher in the sidebar header (or top-left) lets the user switch between projects they have access to
+- [ ] The switcher shows the active project's name and opens a dropdown listing all available projects
+- [ ] Switching is lightweight and fluid — not a full page reload or "entering a workspace", just swapping context
+- [ ] Keyboard shortcuts allow quick switching between recent projects (e.g. Cmd+1, Cmd+2)
+- [ ] The most recently used projects appear first in the list
 
-## Empty product onboarding
+## Sidebar structure
 
-- [ ] When a product has zero teams, the product page shows an empty state explaining that a team is needed before features can be created
-- [ ] The empty state includes a prominent "Create team" action that either opens an inline form or links to settings with the product pre-selected
-- [ ] The "New feature" button is disabled when no teams exist
+Within the active project, the sidebar shows three sections:
+
+- [ ] **Specs** — links to the spec explorer (`/:projectSlug/specs`), the navigable hierarchy of merged specs from the main branch
+- [ ] **Design** — links to the design browser (`/:projectSlug/design`), the project's design library
+- [ ] **Teams** — lists the teams the user belongs to within this project, each linking to that team's board
+
+## Teams section
+
+- [ ] Teams the user has joined are listed under the Teams heading
+- [ ] Clicking a team navigates to its board (a list of open cards grouped by status)
+- [ ] Below the user's teams, a "Join or create team" action opens a panel showing other teams in the project that the user can join, plus a "Create team" option
+- [ ] Each team is shown with its colour dot and name
+- [ ] Creating a team is inline — name and colour — and the user automatically joins the new team
+
+## Empty project onboarding
+
+- [ ] When a project has zero teams, the sidebar Teams section shows an empty state with a "Create team" action
+- [ ] The main content area explains that a team is needed before cards can be created
+- [ ] The "New card" button is disabled when no teams exist
 
 ## Product creation
 
@@ -28,4 +45,6 @@ Sidebar navigation, product onboarding, and discoverability of core views (spec 
 
 ## Open questions
 
-> **Sidebar depth:** Should the specs/design sub-links always be visible, or collapse under a disclosure triangle per product?
+> **Sidebar depth:** Should the Specs and Design links always be visible, or collapse under a disclosure triangle?
+
+> **Project switcher style:** Dropdown from sidebar header (like Slack) or a dedicated switcher row? The Slack approach is compact but the dropdown needs to feel lightweight, not like entering a separate workspace.

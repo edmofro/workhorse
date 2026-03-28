@@ -37,7 +37,7 @@ Authentication via GitHub SSO. No org hierarchy or admin roles — just individu
 
 - [ ] Adding a new project still means linking a GitHub repo URL (see WH-010)
 - [ ] Any authenticated user with write access to that repo can see and work within the project
-- [ ] If a user loses write access to a repo (e.g., removed from the GitHub org), they lose access to that project's teams and features on next permission refresh
+- [ ] If a user loses write access to a repo (e.g., removed from the GitHub org), they lose access to that project's teams and cards on next permission refresh
 - [ ] Projects with no accessible users are still visible in the system but not to anyone without access
 
 ## Unauthenticated experience
@@ -49,6 +49,6 @@ Authentication via GitHub SSO. No org hierarchy or admin roles — just individu
 ## Scope boundaries
 
 - [ ] No role-based permissions (no admin, editor, viewer distinctions)
-- [ ] No per-feature or per-card access control — if you can see the team, you can see and edit everything in it
+- [ ] No per-card access control — if you can see the team, you can see and edit everything in it
 - [ ] No invitation system — access is entirely derived from GitHub repo permissions
 - [ ] No org or workspace concept — the Workhorse instance is one flat space

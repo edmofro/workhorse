@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Workhorse — B6</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,450;14..32,500;14..32,600;14..32,700&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #f8f7f4;
+    --surface: #ffffff;
+    --sidebar-bg: #f1efeb;
+    --hover: #edeae5;
+    --inset: #e8e5df;
+    --border: #dfdcd5;
+    --border-light: #eae7e1;
+    --text: #1c1917;
+    --text-2: #57534e;
+    --text-3: #a8a29e;
+    --text-4: #d1cdc6;
+    --accent: #c2410c;
+    --green: #16a34a;
+    --green-bg: rgba(22,163,74,0.07);
+    --amber: #b45309;
+    --amber-bg: rgba(180,83,9,0.06);
+    --blue: #2563eb;
+    --r: 8px;
+    --shadow: 0 1px 3px rgba(28,25,23,0.04);
+  }
+
+  body {
+    font-family: 'Inter', -apple-system, sans-serif;
+    background: var(--bg); color: var(--text);
+    font-size: 14px; line-height: 1.5;
+    height: 100vh; display: flex; overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Sidebar */
+  .sidebar {
+    width: 216px; background: var(--sidebar-bg);
+    border-right: 1px solid var(--border-light);
+    display: flex; flex-direction: column; flex-shrink: 0;
+  }
+  .sidebar-header {
+    padding: 20px 16px 24px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .logo {
+    width: 26px; height: 26px; background: var(--accent); border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 13px; color: white;
+  }
+  .logo-text { font-weight: 700; font-size: 15px; letter-spacing: -0.03em; }
+  .sidebar-nav { padding: 0 8px; flex: 1; }
+  .nav-label {
+    padding: 20px 8px 6px; font-size: 11px; font-weight: 600;
+    color: var(--text-3); text-transform: uppercase; letter-spacing: 0.06em;
+  }
+  .nav-item {
+    display: flex; align-items: center; gap: 8px;
+    padding: 7px 8px; border-radius: 6px;
+    color: var(--text-2); cursor: pointer; font-size: 13px; font-weight: 450;
+  }
+  .nav-item:hover { background: var(--hover); }
+  .nav-item.active { background: var(--surface); color: var(--text); font-weight: 500; box-shadow: var(--shadow); }
+  .nav-dot { width: 7px; height: 7px; border-radius: 50%; }
+  .sidebar-footer {
+    padding: 14px 16px; border-top: 1px solid var(--border-light);
+    font-size: 12px; color: var(--text-2);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .avatar {
+    width: 22px; height: 22px; border-radius: 50%; background: var(--accent); color: white;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; font-weight: 600;
+  }
+
+  /* Main */
+  .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+  /* Topbar */
+  .topbar {
+    padding: 0 24px;
+    height: 52px;
+    display: flex; align-items: center;
+    border-bottom: 1px solid var(--border-light);
+    background: var(--surface); flex-shrink: 0;
+    gap: 16px;
+  }
+  .topbar h1 { font-size: 16px; font-weight: 600; letter-spacing: -0.02em; }
+  .topbar-title { font-size: 15px; font-weight: 600; letter-spacing: -0.01em; }
+  .topbar-id { font-size: 12px; color: var(--text-3); margin-left: 2px; }
+  .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+
+  /* Toggle between chat and spec in topbar */
+  .view-toggle {
+    display: flex;
+    background: var(--bg);
+    border: 1px solid var(--border-light);
+    border-radius: 8px;
+    padding: 2px;
+    gap: 1px;
+  }
+  .view-toggle-btn {
+    padding: 5px 14px; border-radius: 6px;
+    font-size: 12px; font-weight: 500; cursor: pointer;
+    border: none; font-family: inherit;
+    background: transparent; color: var(--text-3);
+    transition: all 0.1s;
+  }
+  .view-toggle-btn:hover { color: var(--text-2); }
+  .view-toggle-btn.active {
+    background: var(--surface); color: var(--text);
+    box-shadow: var(--shadow);
+  }
+
+  .btn {
+    padding: 7px 14px; border-radius: var(--r); font-size: 12px; font-weight: 500;
+    cursor: pointer; border: none; font-family: inherit;
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .btn-secondary {
+    background: var(--surface); color: var(--text-2);
+    border: 1px solid var(--border); box-shadow: var(--shadow);
+  }
+  .btn-secondary:hover { background: var(--hover); }
+  .btn-primary { background: var(--accent); color: white; }
+
+  /* ======== CARDS ======== */
+  .cards-scroll { flex: 1; overflow-y: auto; padding: 28px 32px; }
+  .group { margin-bottom: 32px; }
+  .group-header {
+    display: flex; align-items: center; gap: 8px;
+    margin-bottom: 12px; padding: 0 2px;
+  }
+  .group-dot { width: 8px; height: 8px; border-radius: 50%; }
+  .group-title { font-size: 13px; font-weight: 600; }
+  .group-count { font-size: 12px; color: var(--text-3); }
+  .card {
+    background: var(--surface); border: 1px solid var(--border-light);
+    border-radius: 10px; padding: 16px 18px; margin-bottom: 8px;
+    cursor: pointer; box-shadow: var(--shadow);
+    transition: border-color 0.1s, box-shadow 0.1s;
+  }
+  .card:hover { border-color: var(--border); box-shadow: 0 2px 8px rgba(28,25,23,0.06); }
+  .card-id { font-size: 12px; color: var(--text-3); margin-bottom: 4px; }
+  .card-title { font-size: 14px; font-weight: 500; line-height: 1.4; }
+  .card-desc { font-size: 13px; color: var(--text-3); line-height: 1.5; margin-top: 4px; }
+  .card-footer { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+  .tag { padding: 2px 8px; border-radius: 5px; font-size: 11px; font-weight: 500; }
+  .tag-core { background: var(--amber-bg); color: var(--amber); }
+  .tag-future { background: var(--inset); color: var(--text-3); }
+
+  /* ======== CHAT (full width) ======== */
+  .chat-full {
+    flex: 1; display: flex; flex-direction: column; overflow: hidden;
+    align-items: center;
+  }
+  .chat-scroll {
+    flex: 1; overflow-y: auto; width: 100%; display: flex; justify-content: center;
+  }
+  .chat-inner { width: 100%; max-width: 680px; padding: 32px 24px; }
+  .msg { margin-bottom: 28px; }
+  .msg-header { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+  .msg-avatar {
+    width: 26px; height: 26px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; font-weight: 600; flex-shrink: 0;
+  }
+  .msg-avatar.ai { background: var(--inset); color: var(--text-2); }
+  .msg-avatar.human { background: var(--accent); color: white; }
+  .msg-name { font-size: 13px; font-weight: 600; }
+  .msg-time { font-size: 11px; color: var(--text-4); }
+  .msg-body {
+    font-size: 14px; color: var(--text-2); line-height: 1.7; padding-left: 34px;
+  }
+  .msg-body strong { color: var(--text); font-weight: 600; }
+  .msg-body p { margin-bottom: 12px; }
+  .msg-body p:last-child { margin-bottom: 0; }
+  .msg-body ol { padding-left: 20px; margin-bottom: 12px; }
+  .msg-body ol li { margin-bottom: 8px; }
+  .input-area {
+    width: 100%; max-width: 680px; padding: 0 24px 28px; flex-shrink: 0;
+  }
+  .input-box {
+    display: flex; align-items: flex-end;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 6px 6px 6px 16px; box-shadow: var(--shadow);
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  .input-box:focus-within {
+    border-color: var(--accent); box-shadow: 0 0 0 3px rgba(194,65,12,0.05);
+  }
+  .input-field {
+    flex: 1; padding: 8px 0; border: none; background: none;
+    font-size: 14px; font-family: inherit; color: var(--text);
+    outline: none; resize: none; min-height: 24px; line-height: 1.5;
+  }
+  .input-field::placeholder { color: var(--text-4); }
+  .send {
+    padding: 8px 16px; background: var(--accent); color: white;
+    border: none; border-radius: 8px; font-size: 13px; font-weight: 500;
+    cursor: pointer; font-family: inherit;
+  }
+
+  /* Spec link card in chat */
+  .spec-link {
+    margin-top: 16px; padding: 14px 16px;
+    background: var(--bg); border: 1px solid var(--border-light);
+    border-radius: 10px; cursor: pointer;
+    transition: border-color 0.1s;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .spec-link:hover { border-color: var(--border); }
+  .spec-link-title { font-size: 14px; font-weight: 500; color: var(--text); margin-bottom: 2px; }
+  .spec-link-meta { font-size: 12px; color: var(--text-3); }
+  .spec-link-arrow { font-size: 12px; color: var(--accent); font-weight: 500; }
+
+  /* ======== SPEC DOCUMENT (with chat sidebar) ======== */
+  .spec-split { flex: 1; display: flex; overflow: hidden; }
+
+  .chat-sidebar {
+    width: 320px; border-right: 1px solid var(--border-light);
+    display: flex; flex-direction: column; overflow: hidden;
+    background: var(--bg); flex-shrink: 0;
+  }
+  .chat-sidebar-scroll { flex: 1; overflow-y: auto; padding: 20px 16px; }
+  .chat-sidebar .msg { margin-bottom: 20px; }
+  .chat-sidebar .msg-body { font-size: 13px; line-height: 1.6; padding-left: 30px; }
+  .chat-sidebar .msg-avatar { width: 22px; height: 22px; font-size: 9px; }
+  .chat-sidebar-input {
+    padding: 12px 16px; border-top: 1px solid var(--border-light); flex-shrink: 0;
+  }
+  .chat-sidebar-input .input-box { border-radius: 10px; padding: 4px 4px 4px 12px; }
+  .chat-sidebar-input .input-field { font-size: 13px; padding: 6px 0; }
+  .chat-sidebar-input .send { padding: 6px 12px; font-size: 12px; border-radius: 6px; }
+
+  .spec-doc-area {
+    flex: 1; overflow-y: auto; background: var(--surface);
+    display: flex; justify-content: center;
+  }
+  .spec-doc {
+    width: 100%; max-width: 720px; padding: 48px 40px 80px;
+  }
+  .spec-doc h1 {
+    font-size: 24px; font-weight: 700; letter-spacing: -0.03em;
+    margin-bottom: 8px; outline: none;
+  }
+  .spec-doc .subtitle { font-size: 14px; color: var(--text-3); margin-bottom: 32px; }
+  .spec-doc h2 {
+    font-size: 16px; font-weight: 600; letter-spacing: -0.01em;
+    margin: 28px 0 12px; padding-bottom: 6px;
+    border-bottom: 1px solid var(--border-light); outline: none;
+  }
+  .spec-doc p {
+    font-size: 14px; color: var(--text-2); line-height: 1.75;
+    margin-bottom: 12px; outline: none;
+  }
+  .spec-doc [contenteditable]:hover { background: rgba(0,0,0,0.015); border-radius: 4px; }
+  .spec-doc [contenteditable]:focus { background: rgba(0,0,0,0.02); border-radius: 4px; }
+
+  .spec-list { list-style: none; margin: 0 0 16px; padding: 0; }
+  .spec-list li {
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 6px 0; font-size: 14px; color: var(--text-2); line-height: 1.6;
+    outline: none;
+  }
+  .check {
+    width: 16px; height: 16px; border-radius: 4px;
+    flex-shrink: 0; margin-top: 3px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+  }
+  .check.empty { border: 1.5px solid var(--border); }
+  .check.done { background: var(--green); }
+  .check.done::after { content: '✓'; color: white; font-size: 10px; font-weight: 700; }
+
+  .open-question {
+    background: var(--amber-bg); border-radius: var(--r);
+    padding: 14px 16px; margin: 12px 0;
+  }
+  .open-question-label {
+    font-size: 11px; font-weight: 600; color: var(--amber);
+    text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 6px;
+  }
+  .open-question p { font-size: 13px; color: var(--text-2); line-height: 1.6; margin-bottom: 4px; }
+
+  .hidden { display: none !important; }
+
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border-light); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<div class="sidebar">
+  <div class="sidebar-header">
+    <div class="logo">W</div>
+    <div class="logo-text">Workhorse</div>
+  </div>
+  <div class="sidebar-nav">
+    <div class="nav-item active" onclick="go('cards')">
+      <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="2" y="2" width="5" height="5" rx="1"/><rect x="9" y="2" width="5" height="5" rx="1"/><rect x="2" y="9" width="5" height="5" rx="1"/><rect x="9" y="9" width="5" height="5" rx="1"/></svg>
+      Features
+    </div>
+    <div class="nav-label">Teams</div>
+    <div class="nav-item"><div class="nav-dot" style="background: var(--accent);"></div> Tamanu</div>
+    <div class="nav-item"><div class="nav-dot" style="background: var(--blue);"></div> Tupaia</div>
+  </div>
+  <div class="sidebar-footer">
+    <div class="avatar">E</div>
+    Edwin M-F
+  </div>
+</div>
+
+<div class="main">
+
+  <!-- ======== CARDS ======== -->
+  <div id="v-cards">
+    <div class="topbar">
+      <h1>Features</h1>
+      <div class="topbar-right">
+        <button class="btn btn-secondary">Filter</button>
+        <button class="btn btn-primary">New feature</button>
+      </div>
+    </div>
+    <div class="cards-scroll">
+      <div class="group">
+        <div class="group-header">
+          <div class="group-dot" style="background: var(--amber);"></div>
+          <div class="group-title">In progress</div>
+          <div class="group-count">2</div>
+        </div>
+        <div class="card" onclick="go('chat')">
+          <div class="card-id">WH-001</div>
+          <div class="card-title">AI-driven spec interview</div>
+          <div class="card-desc">AI interviewer with codebase access guides users through developing comprehensive acceptance criteria.</div>
+          <div class="card-footer"><span class="tag tag-core">core</span><div style="margin-left:auto;"><div class="avatar">E</div></div></div>
+        </div>
+        <div class="card">
+          <div class="card-id">WH-007</div>
+          <div class="card-title">Teams and feature list</div>
+          <div class="card-desc">Feature list organised by team with basic status tracking.</div>
+          <div class="card-footer"><span class="tag tag-core">core</span><div style="margin-left:auto;"><div class="avatar">E</div></div></div>
+        </div>
+      </div>
+      <div class="group">
+        <div class="group-header">
+          <div class="group-dot" style="border:2px solid var(--border); width:8px; height:8px; border-radius:50%;"></div>
+          <div class="group-title">Not started</div>
+          <div class="group-count">5</div>
+        </div>
+        <div class="card"><div class="card-id">WH-002</div><div class="card-title">Spec editor</div><div class="card-desc">Rich editor for viewing and editing specs within Workhorse.</div><div class="card-footer"><span class="tag tag-core">core</span></div></div>
+        <div class="card"><div class="card-id">WH-005</div><div class="card-title">Commit specs to codebase</div><div class="card-footer"><span class="tag tag-core">core</span></div></div>
+        <div class="card"><div class="card-id">WH-006</div><div class="card-title">Spec format and information architecture</div><div class="card-footer"><span class="tag tag-core">core</span></div></div>
+        <div class="card"><div class="card-id">WH-008</div><div class="card-title">User identity</div><div class="card-footer"><span class="tag tag-core">core</span></div></div>
+        <div class="card"><div class="card-id">WH-010</div><div class="card-title">Multi-repo support</div><div class="card-footer"><span class="tag tag-core">core</span></div></div>
+      </div>
+      <div class="group" style="opacity:0.5;">
+        <div class="group-header">
+          <div class="group-dot" style="border:2px dashed var(--border); width:8px; height:8px; border-radius:50%;"></div>
+          <div class="group-title">Future</div>
+          <div class="group-count">5</div>
+        </div>
+        <div class="card"><div class="card-id">WH-013</div><div class="card-title">GitHub integration</div><div class="card-footer"><span class="tag tag-future">future</span></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======== CHAT (full width, spec exists) ======== -->
+  <div id="v-chat" class="hidden">
+    <div class="topbar">
+      <span class="topbar-title">AI-driven spec interview</span>
+      <span class="topbar-id">WH-001</span>
+      <div class="topbar-right">
+        <div class="view-toggle">
+          <button class="view-toggle-btn active">Chat</button>
+          <button class="view-toggle-btn" onclick="go('spec')">Spec</button>
+        </div>
+        <button class="btn btn-primary">Commit spec</button>
+      </div>
+    </div>
+    <div class="chat-full">
+      <div class="chat-scroll">
+        <div class="chat-inner">
+          <div class="msg">
+            <div class="msg-header">
+              <div class="msg-avatar ai">W</div>
+              <div class="msg-name">Workhorse</div>
+              <div class="msg-time">10:42 am</div>
+            </div>
+            <div class="msg-body">
+              <p>I've reviewed the Tamanu codebase. Let's develop the acceptance criteria for <strong>AI-driven spec interview</strong>.</p>
+              <p>The monorepo has 18 packages — React and Material-UI on the frontend, Express and Sequelize on the backend. A couple of questions:</p>
+              <ol>
+                <li>Should the interview happen within Workhorse's UI, or also as a CLI tool?</li>
+                <li>When the AI identifies an interaction with existing functionality, how should that be surfaced?</li>
+              </ol>
+            </div>
+          </div>
+          <div class="msg">
+            <div class="msg-header">
+              <div class="msg-avatar human">E</div>
+              <div class="msg-name">Edwin</div>
+              <div class="msg-time">10:44 am</div>
+            </div>
+            <div class="msg-body">
+              <p>Within Workhorse's UI. Interaction detection should surface as a decision point captured in the spec — it can't be complete until those are resolved.</p>
+            </div>
+          </div>
+          <div class="msg">
+            <div class="msg-header">
+              <div class="msg-avatar ai">W</div>
+              <div class="msg-name">Workhorse</div>
+              <div class="msg-time">10:45 am</div>
+            </div>
+            <div class="msg-body">
+              <p>Good. I've drafted an initial spec based on our conversation so far.</p>
+              <div class="spec-link" onclick="go('spec')">
+                <div>
+                  <div class="spec-link-title">AI-driven spec interview — Draft spec</div>
+                  <div class="spec-link-meta">4 sections · 18 acceptance criteria · 3 open questions</div>
+                </div>
+                <div class="spec-link-arrow">Open →</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="input-area">
+        <div class="input-box">
+          <textarea class="input-field" placeholder="Continue the conversation..." rows="1"></textarea>
+          <button class="send">Send</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======== SPEC DOCUMENT (chat sidebar) ======== -->
+  <div id="v-spec" class="hidden">
+    <div class="topbar">
+      <span class="topbar-title">AI-driven spec interview</span>
+      <span class="topbar-id">WH-001</span>
+      <div class="topbar-right">
+        <div class="view-toggle">
+          <button class="view-toggle-btn" onclick="go('chat')">Chat</button>
+          <button class="view-toggle-btn active">Spec</button>
+        </div>
+        <button class="btn btn-primary">Commit spec</button>
+      </div>
+    </div>
+    <div class="spec-split">
+      <div class="chat-sidebar">
+        <div class="chat-sidebar-scroll">
+          <div class="msg">
+            <div class="msg-header">
+              <div class="msg-avatar ai">W</div>
+              <div class="msg-name">Workhorse</div>
+            </div>
+            <div class="msg-body">
+              <p>Here's your draft spec. You can edit it directly, or ask me to refine specific sections.</p>
+            </div>
+          </div>
+          <div class="msg">
+            <div class="msg-header">
+              <div class="msg-avatar human">E</div>
+              <div class="msg-name">Edwin</div>
+            </div>
+            <div class="msg-body">
+              <p>The interaction detection section needs more detail on transitive dependencies.</p>
+            </div>
+          </div>
+          <div class="msg">
+            <div class="msg-header">
+              <div class="msg-avatar ai">W</div>
+              <div class="msg-name">Workhorse</div>
+            </div>
+            <div class="msg-body">
+              <p>Updated. I've added a criterion about configurable depth for dependency traversal. Take a look at the Codebase awareness section.</p>
+            </div>
+          </div>
+        </div>
+        <div class="chat-sidebar-input">
+          <div class="input-box">
+            <textarea class="input-field" placeholder="Ask to refine..." rows="1"></textarea>
+            <button class="send">Send</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="spec-doc-area">
+        <div class="spec-doc">
+          <h1 contenteditable="true">AI-driven spec interview</h1>
+          <div class="subtitle">WH-001 · Draft · Last edited 2 minutes ago</div>
+
+          <p contenteditable="true">An AI-powered interview system that guides product owners, testers, and developers through developing comprehensive acceptance criteria for a feature. The interviewer has deep access to the target codebase to understand how changes fit together, identify edge cases, and find interactions with existing functionality.</p>
+
+          <h2 contenteditable="true">Interview experience</h2>
+          <ul class="spec-list">
+            <li><div class="check done"></div><span contenteditable="true">AI conducts a structured conversation to elicit feature requirements, probing for edge cases, missing requirements, and contradictions</span></li>
+            <li><div class="check done"></div><span contenteditable="true">Interview happens within Workhorse's web UI as the primary interface</span></li>
+            <li><div class="check done"></div><span contenteditable="true">Uses a frontier model with full read access to the target codebase</span></li>
+            <li><div class="check empty"></div><span contenteditable="true">Interview can be paused and resumed across sessions</span></li>
+            <li><div class="check empty"></div><span contenteditable="true">Multiple people can participate in the same interview</span></li>
+            <li><div class="check empty"></div><span contenteditable="true">AI signals when it believes the spec has reached sufficient detail</span></li>
+          </ul>
+
+          <h2 contenteditable="true">Codebase awareness</h2>
+          <ul class="spec-list">
+            <li><div class="check done"></div><span contenteditable="true">AI has read access to the target repository during the interview</span></li>
+            <li><div class="check done"></div><span contenteditable="true">Proactively identifies interactions with existing functionality when conversation implies changes to models, APIs, or shared logic</span></li>
+            <li><div class="check done"></div><span contenteditable="true">Interactions surface as required decision points — spec cannot be completed with unresolved interactions</span></li>
+            <li><div class="check done"></div><span contenteditable="true">Interaction alerts show affected code paths and models</span></li>
+            <li><div class="check empty"></div><span contenteditable="true">Configurable depth for dependency traversal — direct references by default, expandable to transitive dependencies</span></li>
+          </ul>
+
+          <h2 contenteditable="true">Visual aids</h2>
+          <ul class="spec-list">
+            <li><div class="check done"></div><span contenteditable="true">AI can generate quick visual mockups inline during the interview to illustrate UI concepts</span></li>
+            <li><div class="check done"></div><span contenteditable="true">Visuals are rendered as HTML/CSS inline, not full implementations</span></li>
+            <li><div class="check empty"></div><span contenteditable="true">Figma designs can be imported as reference input to the interview</span></li>
+          </ul>
+
+          <h2 contenteditable="true">Spec output</h2>
+          <ul class="spec-list">
+            <li><div class="check done"></div><span contenteditable="true">Acceptance criteria are extracted from the conversation in real time</span></li>
+            <li><div class="check done"></div><span contenteditable="true">Output spec is human-readable and directly editable</span></li>
+            <li><div class="check empty"></div><span contenteditable="true">AI can suggest revisions to previously extracted criteria based on new information</span></li>
+            <li><div class="check empty"></div><span contenteditable="true">Spec can be committed to a branch in the target repository when ready</span></li>
+          </ul>
+
+          <div class="open-question">
+            <div class="open-question-label">Open questions</div>
+            <p contenteditable="true"><strong>Interview structure:</strong> Should the interview follow a guided framework (happy path → edge cases → interactions) or be more free-form?</p>
+            <p contenteditable="true"><strong>Multi-session flow:</strong> When resuming, how much should the AI recap?</p>
+            <p contenteditable="true"><strong>Spec granularity:</strong> Currently at ticket level — may need to scale to epics or whole projects.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+function go(view) {
+  ['cards','chat','spec'].forEach(v => {
+    document.getElementById('v-'+v).classList.toggle('hidden', v !== view);
+  });
+}
+</script>
+
+</body>
+</html>

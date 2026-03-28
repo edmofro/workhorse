@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Workhorse — Design Option C: GitHub Refined</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg-primary: #0d1117;
+    --bg-secondary: #161b22;
+    --bg-tertiary: #1c2129;
+    --bg-card: #1c2129;
+    --bg-hover: #21262d;
+    --bg-active: #282e36;
+    --border: #30363d;
+    --border-subtle: #21262d;
+    --text-primary: #e6edf3;
+    --text-secondary: #8b949e;
+    --text-tertiary: #6e7681;
+    --accent: #58a6ff;
+    --accent-hover: #79c0ff;
+    --accent-muted: rgba(88, 166, 255, 0.15);
+    --green: #3fb950;
+    --green-muted: rgba(63, 185, 80, 0.15);
+    --amber: #d29922;
+    --amber-muted: rgba(210, 153, 34, 0.15);
+    --red: #f85149;
+    --purple: #bc8cff;
+    --purple-muted: rgba(188, 140, 255, 0.15);
+    --teal: #39d3c5;
+    --teal-muted: rgba(57, 211, 197, 0.15);
+    --radius: 6px;
+    --radius-lg: 8px;
+  }
+
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-size: 14px;
+    line-height: 1.5;
+    min-height: 100vh;
+  }
+
+  /* Top nav */
+  .topnav {
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .topnav-logo {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 700;
+    font-size: 15px;
+    color: var(--text-primary);
+    letter-spacing: -0.02em;
+  }
+
+  .logo-mark {
+    width: 26px;
+    height: 26px;
+    background: linear-gradient(135deg, var(--teal), var(--accent));
+    border-radius: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    font-size: 14px;
+    color: var(--bg-primary);
+  }
+
+  .topnav-tabs {
+    display: flex;
+    gap: 0;
+    height: 100%;
+    margin-left: 8px;
+  }
+
+  .topnav-tab {
+    padding: 0 12px;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+    transition: all 0.1s;
+  }
+
+  .topnav-tab:hover { color: var(--text-primary); }
+  .topnav-tab.active { color: var(--text-primary); border-bottom-color: var(--accent); }
+
+  .topnav-right {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .search-box {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 12px;
+    background: var(--bg-primary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text-tertiary);
+    font-size: 12px;
+    cursor: pointer;
+    min-width: 200px;
+  }
+
+  .search-box:hover { border-color: var(--text-tertiary); }
+
+  .user-pill {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 8px 3px 3px;
+    border-radius: 999px;
+    background: var(--bg-hover);
+    cursor: pointer;
+    font-size: 12px;
+    color: var(--text-secondary);
+  }
+
+  .user-pill-avatar {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--teal), var(--accent));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--bg-primary);
+  }
+
+  /* Page layout */
+  .page {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 24px;
+  }
+
+  .page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+  }
+
+  .page-header-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .team-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 10px;
+    background: var(--teal-muted);
+    color: var(--teal);
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  .page-title {
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border-radius: var(--radius);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    border: none;
+    font-family: inherit;
+    transition: all 0.1s;
+  }
+
+  .btn-accent { background: var(--accent); color: var(--bg-primary); }
+  .btn-accent:hover { background: var(--accent-hover); }
+  .btn-outline { background: transparent; color: var(--text-secondary); border: 1px solid var(--border); }
+  .btn-outline:hover { background: var(--bg-hover); color: var(--text-primary); }
+
+  /* Columns view */
+  .columns-view {
+    display: flex;
+    gap: 12px;
+    overflow-x: auto;
+    padding-bottom: 20px;
+  }
+
+  .column {
+    min-width: 320px;
+    max-width: 320px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100vh - 160px);
+  }
+
+  .column-header {
+    padding: 12px 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-bottom: 1px solid var(--border-subtle);
+    flex-shrink: 0;
+  }
+
+  .column-icon {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+  }
+
+  .column-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+
+  .column-count {
+    font-size: 11px;
+    color: var(--text-tertiary);
+    background: var(--bg-hover);
+    padding: 1px 6px;
+    border-radius: 999px;
+    margin-left: auto;
+  }
+
+  .column-body {
+    padding: 8px;
+    overflow-y: auto;
+    flex: 1;
+  }
+
+  .card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius);
+    padding: 12px;
+    margin-bottom: 6px;
+    cursor: pointer;
+    transition: all 0.1s;
+  }
+
+  .card:hover { border-color: var(--border); background: var(--bg-hover); }
+
+  .card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 6px;
+  }
+
+  .card-id {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text-tertiary);
+  }
+
+  .card-priority {
+    width: 14px;
+    height: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+  }
+
+  .card-title {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-primary);
+    line-height: 1.4;
+    margin-bottom: 8px;
+  }
+
+  .card-footer {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .card-tag {
+    padding: 2px 7px;
+    border-radius: var(--radius);
+    font-size: 11px;
+    font-weight: 500;
+  }
+
+  .tag-spec { background: var(--purple-muted); color: var(--purple); }
+  .tag-core { background: var(--accent-muted); color: var(--accent); }
+  .tag-future { background: var(--bg-active); color: var(--text-tertiary); }
+
+  .card-assignees {
+    margin-left: auto;
+    display: flex;
+  }
+
+  .card-avatar {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--bg-active);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    border: 2px solid var(--bg-card);
+    margin-left: -4px;
+  }
+
+  .card-avatar:first-child { margin-left: 0; }
+
+  .spec-indicator {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-bottom: 8px;
+    font-size: 11px;
+    color: var(--text-tertiary);
+  }
+
+  .spec-bar {
+    flex: 1;
+    height: 3px;
+    background: var(--bg-active);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .spec-bar-fill {
+    height: 100%;
+    border-radius: 2px;
+  }
+
+  /* Card with speculate highlight */
+  .card.speculating {
+    border-color: var(--purple);
+    box-shadow: 0 0 0 1px var(--purple), 0 0 12px rgba(188, 140, 255, 0.1);
+  }
+
+  .speculate-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    background: var(--purple-muted);
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--purple);
+    margin-bottom: 6px;
+  }
+
+  .speculate-pulse {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--purple);
+    animation: pulse 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--bg-active); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--text-tertiary); }
+</style>
+</head>
+<body>
+
+<!-- Top nav -->
+<div class="topnav">
+  <div class="topnav-logo">
+    <div class="logo-mark">W</div>
+    Workhorse
+  </div>
+  <div class="topnav-tabs">
+    <div class="topnav-tab active">Board</div>
+    <div class="topnav-tab">List</div>
+    <div class="topnav-tab">Specs</div>
+    <div class="topnav-tab">Activity</div>
+  </div>
+  <div class="topnav-right">
+    <div class="search-box">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="7" cy="7" r="5"/><path d="M11 11l3 3" stroke-linecap="round"/></svg>
+      Search features...
+    </div>
+    <div class="user-pill">
+      <div class="user-pill-avatar">E</div>
+      Edwin
+    </div>
+  </div>
+</div>
+
+<!-- Page -->
+<div class="page">
+  <div class="page-header">
+    <div class="page-header-left">
+      <div class="team-badge">
+        <div style="width: 8px; height: 8px; border-radius: 50%; background: var(--teal);"></div>
+        Tamanu
+      </div>
+      <div class="page-title">Feature Board</div>
+    </div>
+    <div style="display: flex; gap: 8px;">
+      <button class="btn btn-outline">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 4h12M4 8h8M6 12h4" stroke-linecap="round"/></svg>
+        Filter
+      </button>
+      <button class="btn btn-accent">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="white" stroke-width="2"><path d="M8 3v10M3 8h10" stroke-linecap="round"/></svg>
+        New feature
+      </button>
+    </div>
+  </div>
+
+  <div class="columns-view">
+    <!-- Not started -->
+    <div class="column">
+      <div class="column-header">
+        <div class="column-icon" style="background: var(--bg-active); border: 2px solid var(--text-tertiary);"></div>
+        <div class="column-title">Not started</div>
+        <div class="column-count">6</div>
+      </div>
+      <div class="column-body">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-id">WH-003</div>
+            <div class="card-priority">🟡</div>
+          </div>
+          <div class="card-title">Visual mockup generation during specifying</div>
+          <div class="card-footer">
+            <span class="card-tag tag-spec">specifying</span>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <div class="card-id">WH-005</div>
+            <div class="card-priority">🔴</div>
+          </div>
+          <div class="card-title">Commit specs to codebase branch</div>
+          <div class="card-footer">
+            <span class="card-tag tag-core">core</span>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <div class="card-id">WH-006</div>
+          </div>
+          <div class="card-title">Spec format & information architecture</div>
+          <div class="card-footer">
+            <span class="card-tag tag-core">core</span>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <div class="card-id">WH-008</div>
+          </div>
+          <div class="card-title">User identity (set name, no auth)</div>
+          <div class="card-footer">
+            <span class="card-tag tag-core">core</span>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <div class="card-id">WH-010</div>
+          </div>
+          <div class="card-title">Multi-repo support</div>
+          <div class="card-footer">
+            <span class="card-tag tag-core">core</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Specifying -->
+    <div class="column">
+      <div class="column-header">
+        <div class="column-icon" style="background: var(--purple); box-shadow: 0 0 6px rgba(188,140,255,0.3);"></div>
+        <div class="column-title">Specifying</div>
+        <div class="column-count">2</div>
+      </div>
+      <div class="column-body">
+        <div class="card speculating">
+          <div class="speculate-indicator">
+            <div class="speculate-pulse"></div>
+            Speculate active
+          </div>
+          <div class="card-header">
+            <div class="card-id">WH-001</div>
+            <div class="card-priority">🔴</div>
+          </div>
+          <div class="card-title">AI-driven spec interview (Speculate)</div>
+          <div class="spec-indicator">
+            <span>12/18</span>
+            <div class="spec-bar"><div class="spec-bar-fill" style="width: 65%; background: var(--purple);"></div></div>
+          </div>
+          <div class="card-footer">
+            <span class="card-tag tag-core">core</span>
+            <span class="card-tag tag-spec">specifying</span>
+            <div class="card-assignees">
+              <div class="card-avatar">E</div>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <div class="card-id">WH-002</div>
+            <div class="card-priority">🔴</div>
+          </div>
+          <div class="card-title">Spec editor with rich text & structured format</div>
+          <div class="spec-indicator">
+            <span>3/15</span>
+            <div class="spec-bar"><div class="spec-bar-fill" style="width: 20%; background: var(--purple);"></div></div>
+          </div>
+          <div class="card-footer">
+            <span class="card-tag tag-core">core</span>
+            <div class="card-assignees">
+              <div class="card-avatar">E</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Implementing -->
+    <div class="column">
+      <div class="column-header">
+        <div class="column-icon" style="background: var(--amber);"></div>
+        <div class="column-title">Implementing</div>
+        <div class="column-count">1</div>
+      </div>
+      <div class="column-body">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-id">WH-007</div>
+          </div>
+          <div class="card-title">Teams & feature list with status tracking</div>
+          <div class="card-footer">
+            <span class="card-tag tag-core">core</span>
+            <div class="card-assignees">
+              <div class="card-avatar">E</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Complete -->
+    <div class="column">
+      <div class="column-header">
+        <div class="column-icon" style="background: var(--green);"></div>
+        <div class="column-title">Complete</div>
+        <div class="column-count">0</div>
+      </div>
+      <div class="column-body" style="display: flex; align-items: center; justify-content: center; color: var(--text-tertiary); font-size: 12px; padding: 40px 20px; text-align: center;">
+        Completed features will appear here
+      </div>
+    </div>
+
+    <!-- Future -->
+    <div class="column" style="opacity: 0.6;">
+      <div class="column-header">
+        <div class="column-icon" style="background: var(--bg-active); border: 2px dashed var(--text-tertiary);"></div>
+        <div class="column-title">Future</div>
+        <div class="column-count">1</div>
+      </div>
+      <div class="column-body">
+        <div class="card">
+          <div class="card-header"><div class="card-id">WH-013</div></div>
+          <div class="card-title">GitHub integration</div>
+          <div class="card-footer"><span class="card-tag tag-future">future</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

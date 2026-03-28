@@ -1,0 +1,1074 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Workhorse — B2: Warm Refined</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,450;14..32,500;14..32,600;14..32,700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg-page: #f7f5f2;
+    --bg-surface: #ffffff;
+    --bg-surface-raised: #ffffff;
+    --bg-sidebar: #f0ede8;
+    --bg-muted: #f5f3ef;
+    --bg-hover: #f0ede8;
+    --bg-active: #e8e5df;
+    --bg-inset: #eceae5;
+    --border-default: #ddd9d2;
+    --border-subtle: #e8e5df;
+    --border-strong: #ccc8c0;
+    --text-primary: #1c1917;
+    --text-secondary: #57534e;
+    --text-tertiary: #a8a29e;
+    --text-faint: #c4bfb8;
+    --accent: #c2410c;
+    --accent-hover: #b33b09;
+    --accent-subtle: rgba(194, 65, 12, 0.07);
+    --accent-medium: rgba(194, 65, 12, 0.14);
+    --green: #16a34a;
+    --green-subtle: rgba(22, 163, 74, 0.07);
+    --green-medium: rgba(22, 163, 74, 0.14);
+    --amber: #ca8a04;
+    --amber-subtle: rgba(202, 138, 4, 0.07);
+    --amber-medium: rgba(202, 138, 4, 0.14);
+    --purple: #7c3aed;
+    --purple-subtle: rgba(124, 58, 237, 0.06);
+    --purple-medium: rgba(124, 58, 237, 0.12);
+    --purple-strong: rgba(124, 58, 237, 0.18);
+    --blue: #2563eb;
+    --blue-subtle: rgba(37, 99, 235, 0.07);
+    --r-sm: 5px;
+    --r-md: 8px;
+    --r-lg: 12px;
+    --shadow-xs: 0 1px 2px rgba(28,25,23,0.04);
+    --shadow-sm: 0 1px 3px rgba(28,25,23,0.06), 0 1px 2px rgba(28,25,23,0.04);
+    --shadow-md: 0 4px 12px rgba(28,25,23,0.08), 0 1px 3px rgba(28,25,23,0.04);
+    --shadow-lg: 0 8px 24px rgba(28,25,23,0.10), 0 2px 6px rgba(28,25,23,0.04);
+  }
+
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg-page);
+    color: var(--text-primary);
+    font-size: 13px;
+    line-height: 1.5;
+    height: 100vh;
+    display: flex;
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+    font-feature-settings: 'cv01', 'cv02', 'ss01';
+  }
+
+  /* ——— Sidebar ——— */
+  .sidebar {
+    width: 232px;
+    background: var(--bg-sidebar);
+    border-right: 1px solid var(--border-subtle);
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    user-select: none;
+  }
+
+  .sidebar-header {
+    padding: 18px 14px 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .sidebar-logo {
+    width: 28px;
+    height: 28px;
+    background: var(--accent);
+    border-radius: 7px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 14px;
+    color: white;
+    box-shadow: 0 1px 3px rgba(194,65,12,0.25), inset 0 1px 0 rgba(255,255,255,0.15);
+  }
+
+  .sidebar-title {
+    font-weight: 700;
+    font-size: 15px;
+    letter-spacing: -0.025em;
+    color: var(--text-primary);
+  }
+
+  .sidebar-search {
+    margin: 0 10px 8px;
+    padding: 6px 10px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--r-md);
+    font-size: 12px;
+    color: var(--text-tertiary);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    box-shadow: var(--shadow-xs);
+    transition: all 0.12s;
+  }
+  .sidebar-search:hover { border-color: var(--border-default); }
+  .sidebar-search kbd {
+    margin-left: auto;
+    font-family: inherit;
+    font-size: 10px;
+    padding: 1px 5px;
+    background: var(--bg-muted);
+    border: 1px solid var(--border-subtle);
+    border-radius: 4px;
+    color: var(--text-faint);
+  }
+
+  .sidebar-nav { padding: 2px 6px; flex: 1; overflow-y: auto; }
+
+  .nav-section-label {
+    padding: 14px 8px 5px;
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    border-radius: var(--r-sm);
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 450;
+    transition: all 0.1s;
+  }
+  .nav-item:hover { background: var(--bg-hover); color: var(--text-primary); }
+  .nav-item.active {
+    background: var(--bg-surface);
+    color: var(--text-primary);
+    font-weight: 500;
+    box-shadow: var(--shadow-xs);
+  }
+
+  .nav-icon { width: 15px; height: 15px; opacity: 0.5; flex-shrink: 0; }
+  .nav-item.active .nav-icon { opacity: 0.8; }
+
+  .team-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+
+  .nav-badge {
+    margin-left: auto;
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text-tertiary);
+    background: var(--bg-active);
+    padding: 0 5px;
+    border-radius: 999px;
+    min-width: 18px;
+    text-align: center;
+  }
+
+  .sidebar-footer {
+    padding: 10px 14px;
+    border-top: 1px solid var(--border-subtle);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .avatar {
+    width: 24px; height: 24px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; font-weight: 600; color: white; flex-shrink: 0;
+  }
+  .avatar.accent { background: var(--accent); }
+  .avatar.purple { background: var(--purple); }
+  .avatar.blue { background: var(--blue); }
+  .user-name { font-size: 12px; color: var(--text-secondary); font-weight: 500; }
+
+  /* ——— Main area ——— */
+  .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+  .topbar {
+    padding: 0 24px;
+    height: 52px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--border-subtle);
+    background: var(--bg-surface);
+    flex-shrink: 0;
+  }
+
+  .topbar-left { display: flex; align-items: center; gap: 12px; }
+
+  .breadcrumb { display: flex; align-items: center; gap: 6px; font-size: 13px; }
+  .breadcrumb-team {
+    display: inline-flex; align-items: center; gap: 5px;
+    color: var(--text-secondary); font-weight: 500;
+  }
+  .breadcrumb-sep { color: var(--text-faint); font-size: 11px; }
+  .breadcrumb-current { color: var(--text-primary); font-weight: 600; }
+
+  .topbar-actions { display: flex; align-items: center; gap: 6px; }
+
+  .btn {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 6px 12px; border-radius: var(--r-md);
+    font-size: 12px; font-weight: 500; cursor: pointer;
+    border: none; font-family: inherit; transition: all 0.1s;
+    white-space: nowrap;
+  }
+  .btn-primary {
+    background: var(--accent); color: white;
+    box-shadow: 0 1px 2px rgba(194,65,12,0.2), inset 0 1px 0 rgba(255,255,255,0.1);
+  }
+  .btn-primary:hover { background: var(--accent-hover); }
+  .btn-secondary {
+    background: var(--bg-surface); color: var(--text-secondary);
+    border: 1px solid var(--border-default); box-shadow: var(--shadow-xs);
+  }
+  .btn-secondary:hover { background: var(--bg-muted); color: var(--text-primary); }
+  .btn-ghost { background: transparent; color: var(--text-tertiary); }
+  .btn-ghost:hover { background: var(--bg-muted); color: var(--text-secondary); }
+  .btn-icon { padding: 6px; }
+
+  /* ——— Feature list ——— */
+  .content-area { flex: 1; display: flex; overflow: hidden; }
+
+  .feature-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px 24px 24px;
+    min-width: 0;
+  }
+
+  .list-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 0 12px;
+  }
+
+  .tab {
+    padding: 4px 10px; border-radius: var(--r-sm);
+    font-size: 12px; font-weight: 500; cursor: pointer;
+    color: var(--text-tertiary); transition: all 0.1s;
+  }
+  .tab:hover { color: var(--text-secondary); }
+  .tab.active { color: var(--text-primary); background: var(--bg-surface); box-shadow: var(--shadow-xs); }
+
+  .tab-divider {
+    width: 1px; height: 14px; background: var(--border-subtle); margin: 0 2px;
+  }
+
+  .status-group { margin-bottom: 20px; }
+
+  .status-header {
+    display: flex; align-items: center; gap: 7px;
+    padding: 0 4px 8px;
+  }
+
+  .status-icon {
+    width: 14px; height: 14px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .status-icon.todo { border: 2px solid var(--border-default); }
+  .status-icon.progress { border: 2px solid var(--amber); }
+  .status-icon.progress::after { content: ''; width: 5px; height: 5px; border-radius: 50%; background: var(--amber); }
+  .status-icon.done { background: var(--green); }
+  .status-icon.done::after { content: '✓'; color: white; font-size: 8px; font-weight: 800; }
+
+  .status-label { font-size: 12px; font-weight: 600; color: var(--text-primary); }
+  .status-count {
+    font-size: 10px; color: var(--text-tertiary); font-weight: 600;
+    background: var(--bg-inset); padding: 1px 6px; border-radius: 999px;
+  }
+
+  /* Feature row (compact) */
+  .feature-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 7px 10px; margin: 0 -4px;
+    border-radius: var(--r-md);
+    cursor: pointer; transition: all 0.08s;
+  }
+  .feature-row:hover { background: var(--bg-hover); }
+  .feature-row.selected {
+    background: var(--accent-subtle);
+    box-shadow: inset 2px 0 0 var(--accent);
+  }
+
+  .row-status {
+    width: 16px; height: 16px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .row-status.todo { border: 1.5px solid var(--border-default); }
+  .row-status.specifying { border: 1.5px solid var(--purple); }
+  .row-status.specifying::after { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--purple); }
+  .row-status.progress { border: 1.5px solid var(--amber); }
+  .row-status.progress::after { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--amber); }
+
+  .row-id {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; color: var(--text-tertiary);
+    font-weight: 500; flex-shrink: 0; width: 56px;
+  }
+
+  .row-title { flex: 1; font-size: 13px; font-weight: 450; color: var(--text-primary); min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  .row-spec-bar {
+    width: 48px; height: 3px; border-radius: 2px;
+    background: var(--bg-inset); overflow: hidden; flex-shrink: 0;
+  }
+  .row-spec-fill { height: 100%; border-radius: 2px; }
+
+  .row-tags { display: flex; gap: 4px; flex-shrink: 0; }
+  .tag {
+    padding: 1px 7px; border-radius: var(--r-sm);
+    font-size: 10px; font-weight: 600; letter-spacing: 0.01em;
+  }
+  .tag-core { background: var(--accent-subtle); color: var(--accent); }
+  .tag-spec { background: var(--purple-subtle); color: var(--purple); }
+  .tag-future { background: var(--bg-inset); color: var(--text-tertiary); }
+
+  .row-assignee {
+    width: 20px; height: 20px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 9px; font-weight: 700; color: white; flex-shrink: 0;
+  }
+
+  /* ——— Detail / Speculate panel ——— */
+  .detail-panel {
+    width: 540px;
+    background: var(--bg-surface);
+    border-left: 1px solid var(--border-subtle);
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    overflow: hidden;
+    box-shadow: -4px 0 16px rgba(28,25,23,0.04);
+  }
+
+  .panel-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border-subtle);
+    padding: 0 20px;
+    background: var(--bg-surface);
+    flex-shrink: 0;
+  }
+
+  .panel-tab {
+    padding: 12px 14px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-tertiary);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.1s;
+  }
+  .panel-tab:hover { color: var(--text-secondary); }
+  .panel-tab.active { color: var(--text-primary); border-bottom-color: var(--accent); }
+  .panel-tab.speculate-tab {
+    display: flex; align-items: center; gap: 5px;
+  }
+  .panel-tab.speculate-tab.active { border-bottom-color: var(--purple); }
+  .speculate-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--purple);
+    animation: pulse 2.5s ease-in-out infinite;
+  }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+  /* Detail tab content */
+  .panel-content { flex: 1; overflow-y: auto; display: none; }
+  .panel-content.active { display: flex; flex-direction: column; }
+
+  .detail-content { padding: 20px; flex: 1; overflow-y: auto; }
+
+  .detail-title-row {
+    display: flex; align-items: flex-start; gap: 10px; margin-bottom: 16px;
+  }
+  .detail-title {
+    font-size: 17px; font-weight: 650; letter-spacing: -0.02em;
+    color: var(--text-primary); line-height: 1.3; flex: 1;
+  }
+  .detail-id {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; color: var(--text-tertiary); font-weight: 500;
+    padding: 2px 8px; background: var(--bg-muted); border-radius: var(--r-sm);
+    flex-shrink: 0; margin-top: 3px;
+  }
+
+  .meta-grid {
+    display: grid; grid-template-columns: 90px 1fr;
+    gap: 8px 12px; margin-bottom: 20px;
+    padding-bottom: 16px; border-bottom: 1px solid var(--border-subtle);
+  }
+  .meta-label { font-size: 12px; color: var(--text-tertiary); font-weight: 500; }
+  .meta-value { font-size: 12px; color: var(--text-secondary); font-weight: 450; display: flex; align-items: center; gap: 6px; }
+
+  .meta-status-badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 600;
+  }
+
+  .detail-description {
+    font-size: 13px; color: var(--text-secondary); line-height: 1.65;
+    margin-bottom: 20px;
+  }
+
+  .criteria-section { margin-bottom: 20px; }
+  .criteria-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 10px;
+  }
+  .criteria-title { font-size: 12px; font-weight: 700; color: var(--text-primary); text-transform: uppercase; letter-spacing: 0.04em; }
+  .criteria-progress { font-size: 11px; color: var(--text-tertiary); font-weight: 500; }
+
+  .criteria-group-label {
+    font-size: 11px; font-weight: 600; color: var(--text-tertiary);
+    padding: 8px 0 4px; margin-top: 4px;
+  }
+
+  .criterion {
+    display: flex; align-items: flex-start; gap: 8px;
+    padding: 5px 0; font-size: 12.5px; color: var(--text-secondary);
+    line-height: 1.5;
+  }
+  .criterion-check {
+    width: 15px; height: 15px; border-radius: 4px;
+    border: 1.5px solid var(--border-default); flex-shrink: 0; margin-top: 2px;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.1s;
+  }
+  .criterion-check.done { background: var(--green); border-color: var(--green); }
+  .criterion-check.done::after { content: '✓'; color: white; font-size: 9px; font-weight: 800; }
+
+  .speculate-cta {
+    display: flex; align-items: center; gap: 10px;
+    padding: 14px 16px;
+    background: linear-gradient(135deg, rgba(124,58,237,0.08), rgba(124,58,237,0.04));
+    border: 1px solid rgba(124,58,237,0.15);
+    border-radius: var(--r-lg); margin-top: 16px;
+    cursor: pointer; transition: all 0.15s;
+  }
+  .speculate-cta:hover {
+    background: linear-gradient(135deg, rgba(124,58,237,0.12), rgba(124,58,237,0.06));
+    border-color: rgba(124,58,237,0.25);
+  }
+  .speculate-cta-icon {
+    width: 36px; height: 36px; border-radius: 10px;
+    background: linear-gradient(135deg, var(--purple), #9b6dff);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; color: white; flex-shrink: 0;
+    box-shadow: 0 2px 6px rgba(124,58,237,0.25);
+  }
+  .speculate-cta-text { flex: 1; }
+  .speculate-cta-title { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+  .speculate-cta-desc { font-size: 11px; color: var(--text-tertiary); margin-top: 1px; }
+  .speculate-cta-arrow { color: var(--purple); font-size: 16px; }
+
+  /* ——— Speculate tab ——— */
+  .speculate-content {
+    flex: 1; display: none; flex-direction: column; overflow: hidden;
+  }
+  .speculate-content.active { display: flex; }
+
+  .spec-split { flex: 1; display: flex; overflow: hidden; }
+
+  /* Chat side */
+  .chat-pane {
+    flex: 1; display: flex; flex-direction: column;
+    overflow: hidden; min-width: 0;
+  }
+  .chat-scroll { flex: 1; overflow-y: auto; padding: 16px 20px; }
+
+  .chat-msg { display: flex; gap: 10px; margin-bottom: 18px; }
+  .chat-msg-avatar {
+    width: 28px; height: 28px; border-radius: 50%;
+    flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 700;
+  }
+  .chat-msg-avatar.ai {
+    background: linear-gradient(135deg, var(--purple), #9b6dff);
+    color: white; font-size: 14px;
+  }
+  .chat-msg-avatar.human { background: var(--accent); color: white; }
+
+  .chat-bubble { flex: 1; min-width: 0; }
+  .chat-sender { font-size: 12px; font-weight: 600; color: var(--text-primary); margin-bottom: 2px; }
+  .chat-time { font-size: 10px; color: var(--text-faint); font-weight: 400; margin-left: 6px; }
+  .chat-text { font-size: 13px; color: var(--text-secondary); line-height: 1.65; }
+  .chat-text strong { color: var(--text-primary); font-weight: 600; }
+
+  .chat-visual {
+    margin-top: 10px;
+    background: var(--bg-muted);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--r-lg);
+    overflow: hidden;
+  }
+  .chat-visual-label {
+    padding: 6px 12px;
+    font-size: 10px; font-weight: 700; color: var(--text-tertiary);
+    text-transform: uppercase; letter-spacing: 0.06em;
+    border-bottom: 1px solid var(--border-subtle);
+    background: var(--bg-page);
+  }
+  .chat-visual-body { padding: 16px; }
+
+  .interaction-card {
+    border: 1px solid rgba(202,138,4,0.2);
+    background: rgba(202,138,4,0.04);
+    border-radius: var(--r-md);
+    padding: 12px;
+  }
+  .interaction-icon { font-size: 14px; margin-bottom: 4px; }
+  .interaction-title { font-size: 12px; font-weight: 600; color: var(--amber); margin-bottom: 4px; }
+  .interaction-desc { font-size: 11px; color: var(--text-secondary); line-height: 1.5; margin-bottom: 8px; }
+  .interaction-links { display: flex; gap: 4px; flex-wrap: wrap; }
+  .interaction-link {
+    padding: 2px 8px; border-radius: var(--r-sm); font-size: 10px; font-weight: 600;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .spec-extract {
+    margin-top: 10px;
+    background: var(--green-subtle);
+    border: 1px solid rgba(22,163,74,0.12);
+    border-radius: var(--r-md);
+    padding: 10px 12px;
+  }
+  .spec-extract-label {
+    font-size: 10px; font-weight: 700; color: var(--green);
+    text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 5px;
+    display: flex; align-items: center; gap: 4px;
+  }
+  .spec-extract-item {
+    font-size: 12px; color: var(--text-secondary); padding: 3px 0;
+    display: flex; align-items: flex-start; gap: 6px; line-height: 1.4;
+  }
+  .spec-extract-bullet { color: var(--green); flex-shrink: 0; font-weight: 700; font-size: 10px; margin-top: 2px; }
+
+  .chat-input-area {
+    border-top: 1px solid var(--border-subtle);
+    padding: 12px 16px;
+    background: var(--bg-surface);
+    flex-shrink: 0;
+  }
+  .chat-input-wrapper {
+    display: flex; align-items: flex-end; gap: 8px;
+    background: var(--bg-page);
+    border: 1px solid var(--border-default);
+    border-radius: var(--r-lg);
+    padding: 4px 4px 4px 12px;
+    transition: all 0.15s;
+  }
+  .chat-input-wrapper:focus-within {
+    border-color: var(--purple);
+    box-shadow: 0 0 0 3px rgba(124,58,237,0.08);
+  }
+  .chat-input {
+    flex: 1; padding: 6px 0; border: none; background: transparent;
+    font-size: 13px; font-family: inherit; color: var(--text-primary);
+    outline: none; resize: none; min-height: 20px; line-height: 1.5;
+  }
+  .chat-input::placeholder { color: var(--text-faint); }
+  .chat-send-btn {
+    padding: 7px 14px; background: var(--purple); color: white;
+    border: none; border-radius: var(--r-md); font-size: 12px; font-weight: 600;
+    cursor: pointer; font-family: inherit; flex-shrink: 0;
+    box-shadow: 0 1px 2px rgba(124,58,237,0.2);
+    transition: all 0.1s;
+  }
+  .chat-send-btn:hover { background: #6d28d9; }
+
+  .chat-toolbar {
+    display: flex; align-items: center; gap: 2px; margin-top: 6px;
+    padding: 0 4px;
+  }
+  .chat-tool-btn {
+    padding: 3px 7px; border-radius: var(--r-sm); border: none;
+    background: transparent; color: var(--text-faint); font-size: 11px;
+    cursor: pointer; font-family: inherit; display: flex; align-items: center; gap: 3px;
+    transition: all 0.1s;
+  }
+  .chat-tool-btn:hover { background: var(--bg-muted); color: var(--text-tertiary); }
+
+  /* ——— Spec sidebar (right of chat in speculate) ——— */
+  .spec-sidebar {
+    width: 220px;
+    border-left: 1px solid var(--border-subtle);
+    background: var(--bg-muted);
+    overflow-y: auto;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  .spec-sidebar-header {
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--border-subtle);
+    font-size: 11px; font-weight: 700; color: var(--text-tertiary);
+    text-transform: uppercase; letter-spacing: 0.06em;
+    display: flex; align-items: center; justify-content: space-between;
+    flex-shrink: 0;
+  }
+
+  .spec-sidebar-progress {
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--border-subtle);
+    flex-shrink: 0;
+  }
+  .progress-bar-bg {
+    height: 4px; background: var(--bg-active); border-radius: 2px;
+    overflow: hidden; margin-bottom: 4px;
+  }
+  .progress-bar-fill { height: 100%; border-radius: 2px; background: var(--green); }
+  .progress-text { font-size: 10px; color: var(--text-tertiary); font-weight: 500; }
+
+  .spec-sidebar-items { flex: 1; overflow-y: auto; padding: 6px; }
+
+  .spec-sidebar-group {
+    margin-bottom: 8px;
+  }
+  .spec-sidebar-group-label {
+    font-size: 10px; font-weight: 700; color: var(--text-tertiary);
+    padding: 4px 8px; text-transform: uppercase; letter-spacing: 0.04em;
+  }
+  .spec-sidebar-item {
+    display: flex; align-items: flex-start; gap: 6px;
+    padding: 4px 8px; border-radius: var(--r-sm);
+    font-size: 11px; color: var(--text-secondary); line-height: 1.4;
+    cursor: pointer; transition: all 0.08s;
+  }
+  .spec-sidebar-item:hover { background: var(--bg-hover); }
+
+  .mini-check {
+    width: 12px; height: 12px; border-radius: 3px;
+    border: 1.5px solid var(--border-default); flex-shrink: 0; margin-top: 1px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .mini-check.done { background: var(--green); border-color: var(--green); }
+  .mini-check.done::after { content: '✓'; color: white; font-size: 7px; font-weight: 800; }
+  .mini-check.new {
+    border-color: var(--green); background: var(--green-subtle);
+    animation: fadeNew 1s ease-out;
+  }
+  @keyframes fadeNew { from { box-shadow: 0 0 8px rgba(22,163,74,0.4); } to { box-shadow: none; } }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border-subtle); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--border-default); }
+</style>
+</head>
+<body>
+
+<!-- Sidebar -->
+<div class="sidebar">
+  <div class="sidebar-header">
+    <div class="sidebar-logo">W</div>
+    <div class="sidebar-title">Workhorse</div>
+  </div>
+  <div class="sidebar-search">
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="7" cy="7" r="5"/><path d="M11 11l3 3" stroke-linecap="round"/></svg>
+    Search...
+    <kbd>⌘K</kbd>
+  </div>
+  <div class="sidebar-nav">
+    <div class="nav-item active">
+      <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="2" y="2" width="5" height="5" rx="1"/><rect x="9" y="2" width="5" height="5" rx="1"/><rect x="2" y="9" width="5" height="5" rx="1"/><rect x="9" y="9" width="5" height="5" rx="1"/></svg>
+      Features
+      <div class="nav-badge">15</div>
+    </div>
+    <div class="nav-item">
+      <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M3 3h10v10H3z" rx="1.5"/><path d="M5 7h6M5 10h4" stroke-linecap="round"/></svg>
+      Specs
+    </div>
+    <div class="nav-item">
+      <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="6"/><path d="M8 5v3l2 2" stroke-linecap="round"/></svg>
+      Activity
+    </div>
+
+    <div class="nav-section-label">Teams</div>
+    <div class="nav-item">
+      <div class="team-dot" style="background: var(--accent);"></div>
+      Tamanu
+      <div class="nav-badge">8</div>
+    </div>
+    <div class="nav-item">
+      <div class="team-dot" style="background: var(--blue);"></div>
+      Tupaia
+      <div class="nav-badge">4</div>
+    </div>
+    <div class="nav-item">
+      <div class="team-dot" style="background: var(--purple);"></div>
+      Platform
+      <div class="nav-badge">3</div>
+    </div>
+
+    <div class="nav-section-label">Repos</div>
+    <div class="nav-item" style="font-size: 12px;">
+      <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 3.5A1.5 1.5 0 013.5 2h9A1.5 1.5 0 0114 3.5v9a1.5 1.5 0 01-1.5 1.5h-9A1.5 1.5 0 012 12.5v-9z"/><path d="M6 2v12"/></svg>
+      tamanu
+    </div>
+    <div class="nav-item" style="font-size: 12px;">
+      <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 3.5A1.5 1.5 0 013.5 2h9A1.5 1.5 0 0114 3.5v9a1.5 1.5 0 01-1.5 1.5h-9A1.5 1.5 0 012 12.5v-9z"/><path d="M6 2v12"/></svg>
+      tupaia
+    </div>
+  </div>
+  <div class="sidebar-footer">
+    <div class="avatar accent">E</div>
+    <div class="user-name">Edwin M-F</div>
+  </div>
+</div>
+
+<!-- Main -->
+<div class="main">
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="breadcrumb">
+        <span class="breadcrumb-team">
+          <div class="team-dot" style="background: var(--accent);"></div>
+          Tamanu
+        </span>
+        <span class="breadcrumb-sep">›</span>
+        <span class="breadcrumb-current">Features</span>
+      </div>
+    </div>
+    <div class="topbar-actions">
+      <button class="btn btn-secondary">
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 4h12M4 8h8M6 12h4" stroke-linecap="round"/></svg>
+        Filter
+      </button>
+      <button class="btn btn-primary">
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="white" stroke-width="2"><path d="M8 3v10M3 8h10" stroke-linecap="round"/></svg>
+        New feature
+      </button>
+    </div>
+  </div>
+
+  <div class="content-area">
+    <!-- Feature list -->
+    <div class="feature-list">
+      <div class="list-header">
+        <div class="tab active">All</div>
+        <div class="tab">Specifying</div>
+        <div class="tab">Implementing</div>
+        <div class="tab">Complete</div>
+        <div class="tab-divider"></div>
+        <div class="tab">My features</div>
+      </div>
+
+      <div class="status-group">
+        <div class="status-header">
+          <div class="status-icon progress"></div>
+          <div class="status-label">Specifying</div>
+          <div class="status-count">2</div>
+        </div>
+        <div class="feature-row selected">
+          <div class="row-status specifying"></div>
+          <div class="row-id">WH-001</div>
+          <div class="row-title">AI-driven spec interview (Speculate)</div>
+          <div class="row-spec-bar"><div class="row-spec-fill" style="width: 65%; background: var(--purple);"></div></div>
+          <div class="row-tags">
+            <span class="tag tag-core">core</span>
+          </div>
+          <div class="row-assignee avatar accent" style="width: 20px; height: 20px; font-size: 9px;">E</div>
+        </div>
+        <div class="feature-row">
+          <div class="row-status specifying"></div>
+          <div class="row-id">WH-006</div>
+          <div class="row-title">Spec format & information architecture</div>
+          <div class="row-spec-bar"><div class="row-spec-fill" style="width: 30%; background: var(--purple);"></div></div>
+          <div class="row-tags">
+            <span class="tag tag-core">core</span>
+          </div>
+          <div class="row-assignee avatar accent" style="width: 20px; height: 20px; font-size: 9px;">E</div>
+        </div>
+      </div>
+
+      <div class="status-group">
+        <div class="status-header">
+          <div class="status-icon progress"></div>
+          <div class="status-label">Implementing</div>
+          <div class="status-count">1</div>
+        </div>
+        <div class="feature-row">
+          <div class="row-status progress"></div>
+          <div class="row-id">WH-007</div>
+          <div class="row-title">Teams & feature list with status tracking</div>
+          <div class="row-spec-bar"><div class="row-spec-fill" style="width: 100%; background: var(--green);"></div></div>
+          <div class="row-tags"><span class="tag tag-core">core</span></div>
+          <div class="row-assignee avatar accent" style="width: 20px; height: 20px; font-size: 9px;">E</div>
+        </div>
+      </div>
+
+      <div class="status-group">
+        <div class="status-header">
+          <div class="status-icon todo"></div>
+          <div class="status-label">Not started</div>
+          <div class="status-count">7</div>
+        </div>
+        <div class="feature-row">
+          <div class="row-status todo"></div>
+          <div class="row-id">WH-002</div>
+          <div class="row-title">Spec editor with rich text & structured format</div>
+          <div class="row-spec-bar"><div class="row-spec-fill" style="width: 0%;"></div></div>
+          <div class="row-tags"><span class="tag tag-core">core</span></div>
+          <div style="width: 20px;"></div>
+        </div>
+        <div class="feature-row">
+          <div class="row-status todo"></div>
+          <div class="row-id">WH-003</div>
+          <div class="row-title">Visual mockup generation during specifying</div>
+          <div class="row-spec-bar"><div class="row-spec-fill" style="width: 0%;"></div></div>
+          <div class="row-tags"><span class="tag tag-spec">spec</span></div>
+          <div style="width: 20px;"></div>
+        </div>
+        <div class="feature-row">
+          <div class="row-status todo"></div>
+          <div class="row-id">WH-005</div>
+          <div class="row-title">Commit specs to codebase branch</div>
+          <div class="row-spec-bar"><div class="row-spec-fill" style="width: 0%;"></div></div>
+          <div class="row-tags"><span class="tag tag-core">core</span></div>
+          <div style="width: 20px;"></div>
+        </div>
+        <div class="feature-row">
+          <div class="row-status todo"></div>
+          <div class="row-id">WH-008</div>
+          <div class="row-title">User identity (set name, no auth)</div>
+          <div class="row-spec-bar"><div class="row-spec-fill" style="width: 0%;"></div></div>
+          <div class="row-tags"><span class="tag tag-core">core</span></div>
+          <div style="width: 20px;"></div>
+        </div>
+        <div class="feature-row">
+          <div class="row-status todo"></div>
+          <div class="row-id">WH-010</div>
+          <div class="row-title">Multi-repo support</div>
+          <div class="row-spec-bar"><div class="row-spec-fill" style="width: 0%;"></div></div>
+          <div class="row-tags"><span class="tag tag-core">core</span></div>
+          <div style="width: 20px;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Detail panel -->
+    <div class="detail-panel">
+      <div class="panel-tabs">
+        <div class="panel-tab active">Detail</div>
+        <div class="panel-tab speculate-tab" onclick="document.querySelectorAll('.panel-tab').forEach(t=>t.classList.remove('active'));this.classList.add('active');document.querySelector('.panel-content.detail-view').classList.remove('active');document.querySelector('.speculate-content').classList.add('active');">
+          <div class="speculate-dot"></div>
+          Speculate
+        </div>
+        <div class="panel-tab">History</div>
+      </div>
+
+      <!-- Detail view -->
+      <div class="panel-content detail-view active">
+        <div class="detail-content">
+          <div class="detail-title-row">
+            <div class="detail-title">AI-driven spec interview (Speculate)</div>
+            <div class="detail-id">WH-001</div>
+          </div>
+
+          <div class="meta-grid">
+            <div class="meta-label">Status</div>
+            <div class="meta-value">
+              <div class="meta-status-badge" style="background: var(--purple-subtle); color: var(--purple);">
+                <div style="width: 5px; height: 5px; border-radius: 50%; background: var(--purple);"></div>
+                Specifying
+              </div>
+            </div>
+            <div class="meta-label">Team</div>
+            <div class="meta-value"><div class="team-dot" style="background: var(--purple);"></div> Platform</div>
+            <div class="meta-label">Assignee</div>
+            <div class="meta-value"><div class="avatar accent" style="width: 18px; height: 18px; font-size: 8px;">E</div> Edwin M-F</div>
+            <div class="meta-label">Priority</div>
+            <div class="meta-value"><span style="color: var(--accent);">●</span> Urgent</div>
+            <div class="meta-label">Repository</div>
+            <div class="meta-value" style="font-family: 'JetBrains Mono', monospace; font-size: 11px;">beyondessential/tamanu</div>
+          </div>
+
+          <div class="detail-description">
+            An AI-powered interview system that guides product owners and testers through developing comprehensive acceptance criteria. The AI interviewer has frontier-model access to the target codebase to understand how changes fit together, identify edge cases, and find interactions with existing functionality.
+          </div>
+
+          <div class="criteria-section">
+            <div class="criteria-header">
+              <div class="criteria-title">Acceptance criteria</div>
+              <div class="criteria-progress">12 of 18</div>
+            </div>
+
+            <div class="criteria-group-label">Interview experience</div>
+            <div class="criterion"><div class="criterion-check done"></div> AI interviewer asks structured questions to elicit feature requirements</div>
+            <div class="criterion"><div class="criterion-check done"></div> Interview happens within Workhorse web UI</div>
+            <div class="criterion"><div class="criterion-check done"></div> Interviewer uses frontier model with codebase access</div>
+            <div class="criterion"><div class="criterion-check done"></div> AI probes for edge cases, missing requirements, contradictions</div>
+            <div class="criterion"><div class="criterion-check"></div> Interview can be paused, resumed across sessions</div>
+            <div class="criterion"><div class="criterion-check"></div> Multiple people can participate collaboratively</div>
+
+            <div class="criteria-group-label">Codebase awareness</div>
+            <div class="criterion"><div class="criterion-check done"></div> AI has read access to the target repository</div>
+            <div class="criterion"><div class="criterion-check done"></div> Proactively identifies interactions with existing functionality</div>
+            <div class="criterion"><div class="criterion-check"></div> Interactions surface as required decision points</div>
+            <div class="criterion"><div class="criterion-check"></div> Spec cannot be completed with unresolved interactions</div>
+          </div>
+
+          <div class="speculate-cta" onclick="document.querySelectorAll('.panel-tab').forEach(t=>t.classList.remove('active'));document.querySelectorAll('.panel-tab')[1].classList.add('active');document.querySelector('.panel-content.detail-view').classList.remove('active');document.querySelector('.speculate-content').classList.add('active');">
+            <div class="speculate-cta-icon">✦</div>
+            <div class="speculate-cta-text">
+              <div class="speculate-cta-title">Continue specifying with Speculate</div>
+              <div class="speculate-cta-desc">6 criteria remaining · Last session 2 hours ago</div>
+            </div>
+            <div class="speculate-cta-arrow">→</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Speculate view -->
+      <div class="speculate-content">
+        <div class="spec-split">
+          <div class="chat-pane">
+            <div class="chat-scroll">
+              <div class="chat-msg">
+                <div class="chat-msg-avatar ai">✦</div>
+                <div class="chat-bubble">
+                  <div class="chat-sender">Speculate <span class="chat-time">10:42 am</span></div>
+                  <div class="chat-text">
+                    I've reviewed the Tamanu codebase — React + Material-UI frontend, Express + Sequelize backend, 18 packages in the monorepo. Let's develop acceptance criteria for <strong>AI-driven spec interview</strong>.
+                    <br><br>
+                    To start: when the AI identifies an interaction with existing functionality (e.g., a new medication field affecting patient merge logic), how should this be surfaced?
+                  </div>
+                </div>
+              </div>
+
+              <div class="chat-msg">
+                <div class="chat-msg-avatar human">E</div>
+                <div class="chat-bubble">
+                  <div class="chat-sender">Edwin <span class="chat-time">10:44 am</span></div>
+                  <div class="chat-text">
+                    It should be a decision point that gets captured in the spec. Like "this feature interacts with patient merge — spec must address merge behaviour for the new field." The spec can't be complete until those are resolved.
+                  </div>
+                </div>
+              </div>
+
+              <div class="chat-msg">
+                <div class="chat-msg-avatar ai">✦</div>
+                <div class="chat-bubble">
+                  <div class="chat-sender">Speculate <span class="chat-time">10:44 am</span></div>
+                  <div class="chat-text">
+                    Good — so interaction detection is a <strong>forcing function</strong>. Here's what that might look like for the medication field case:
+
+                    <div class="chat-visual">
+                      <div class="chat-visual-label">Quick visual — Interaction alert</div>
+                      <div class="chat-visual-body">
+                        <div class="interaction-card">
+                          <div class="interaction-title">⚠ Interaction detected</div>
+                          <div class="interaction-desc">
+                            Adding field <strong>"allergies"</strong> to Patient model affects 3 existing flows:
+                          </div>
+                          <div class="interaction-links">
+                            <span class="interaction-link" style="background: var(--amber-medium); color: #92400e;">PatientMerge</span>
+                            <span class="interaction-link" style="background: var(--amber-medium); color: #92400e;">LabRequest</span>
+                            <span class="interaction-link" style="background: var(--amber-medium); color: #92400e;">Referral</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    A couple of follow-ups:
+                    <br><br>
+                    <strong>1.</strong> Should the AI search for interactions automatically, or only when the user describes a data model change?
+                    <br><br>
+                    <strong>2.</strong> How deep should interaction detection go? Just direct references to the model, or transitive dependencies too (e.g., Referral → ReferralNote → PatientHistory)?
+
+                    <div class="spec-extract">
+                      <div class="spec-extract-label">
+                        <svg width="10" height="10" viewBox="0 0 16 16" fill="var(--green)" stroke="none"><path d="M8 1l2.5 5 5.5.8-4 3.9.9 5.3L8 13.3 3.1 16l.9-5.3-4-3.9L5.5 6z"/></svg>
+                        Extracted to spec
+                      </div>
+                      <div class="spec-extract-item"><span class="spec-extract-bullet">●</span> Interactions surface as required decision points in the spec</div>
+                      <div class="spec-extract-item"><span class="spec-extract-bullet">●</span> Spec cannot be marked complete with unresolved interaction points</div>
+                      <div class="spec-extract-item"><span class="spec-extract-bullet">●</span> Interaction alerts show affected code paths and models</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="chat-input-area">
+              <div class="chat-input-wrapper">
+                <textarea class="chat-input" placeholder="Continue developing the spec..." rows="1"></textarea>
+                <button class="chat-send-btn">Send</button>
+              </div>
+              <div class="chat-toolbar">
+                <button class="chat-tool-btn">📎 Attach</button>
+                <button class="chat-tool-btn">🎨 Figma</button>
+                <button class="chat-tool-btn">📷 Screenshot</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Spec sidebar -->
+          <div class="spec-sidebar">
+            <div class="spec-sidebar-header">
+              <span>Live spec</span>
+              <button class="btn btn-ghost btn-icon" style="padding: 2px 4px; font-size: 10px;">Edit</button>
+            </div>
+            <div class="spec-sidebar-progress">
+              <div class="progress-bar-bg"><div class="progress-bar-fill" style="width: 67%;"></div></div>
+              <div class="progress-text">12 of 18 criteria</div>
+            </div>
+            <div class="spec-sidebar-items">
+              <div class="spec-sidebar-group">
+                <div class="spec-sidebar-group-label">Interview experience</div>
+                <div class="spec-sidebar-item"><div class="mini-check done"></div> Structured questions to elicit requirements</div>
+                <div class="spec-sidebar-item"><div class="mini-check done"></div> Within Workhorse web UI</div>
+                <div class="spec-sidebar-item"><div class="mini-check done"></div> Frontier model with codebase access</div>
+                <div class="spec-sidebar-item"><div class="mini-check done"></div> Probes for edge cases & contradictions</div>
+                <div class="spec-sidebar-item"><div class="mini-check"></div> Pause & resume across sessions</div>
+                <div class="spec-sidebar-item"><div class="mini-check"></div> Collaborative multi-user participation</div>
+              </div>
+              <div class="spec-sidebar-group">
+                <div class="spec-sidebar-group-label">Codebase awareness</div>
+                <div class="spec-sidebar-item"><div class="mini-check done"></div> Read access to target repo</div>
+                <div class="spec-sidebar-item"><div class="mini-check done"></div> Detect interactions with existing code</div>
+                <div class="spec-sidebar-item"><div class="mini-check new"></div> Interactions as required decision points</div>
+                <div class="spec-sidebar-item"><div class="mini-check new"></div> Can't complete with unresolved interactions</div>
+                <div class="spec-sidebar-item"><div class="mini-check new"></div> Show affected code paths & models</div>
+              </div>
+              <div class="spec-sidebar-group">
+                <div class="spec-sidebar-group-label">Visual aids</div>
+                <div class="spec-sidebar-item"><div class="mini-check done"></div> Inline mockups during interview</div>
+                <div class="spec-sidebar-item"><div class="mini-check done"></div> HTML/CSS rendered visuals</div>
+                <div class="spec-sidebar-item"><div class="mini-check"></div> Figma import as reference</div>
+              </div>
+              <div class="spec-sidebar-group">
+                <div class="spec-sidebar-group-label">Spec extraction</div>
+                <div class="spec-sidebar-item"><div class="mini-check done"></div> Real-time criteria extraction</div>
+                <div class="spec-sidebar-item"><div class="mini-check done"></div> Criteria appear alongside chat</div>
+                <div class="spec-sidebar-item"><div class="mini-check"></div> Human can edit extracted specs</div>
+                <div class="spec-sidebar-item"><div class="mini-check"></div> AI suggests revisions to prior criteria</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

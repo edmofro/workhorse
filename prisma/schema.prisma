@@ -1,0 +1,130 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model User {
+  id          String   @id @default(cuid())
+  displayName String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  features          Feature[]
+  specMessages      SpecMessage[]
+  featureActivities FeatureActivity[]
+}
+
+model Product {
+  id            String   @id @default(cuid())
+  name          String   // e.g., "Tamanu", "Tupaia"
+  githubUrl     String   @unique
+  owner         String   // GitHub org/user
+  repoName      String   // GitHub repo name
+  defaultBranch String   @default("main")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  teams Team[]
+}
+
+model Team {
+  id        String   @id @default(cuid())
+  name      String
+  colour    String   @default("#c2410c")
+  productId String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  product  Product   @relation(fields: [productId], references: [id])
+  features Feature[]
+}
+
+model Feature {
+  id          String   @id @default(cuid())
+  identifier  String   @unique // e.g., "WH-001"
+  title       String
+  description String?
+  status      String   @default("NOT_STARTED") // NOT_STARTED, SPECIFYING, SPEC_COMPLETE
+  priority    String   @default("MEDIUM") // URGENT, HIGH, MEDIUM, LOW
+  teamId      String
+  assigneeId  String?
+  tags        String   @default("[]") // JSON array of strings
+  specBranch  String?  // Git branch (internal, not surfaced to user)
+  prNumber    Int?     // GitHub PR number
+  prUrl       String?  // GitHub PR URL (shown next to commit button)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  team         Team        @relation(fields: [teamId], references: [id])
+  assignee     User?       @relation(fields: [assigneeId], references: [id])
+  specMessages SpecMessage[]
+  activities   FeatureActivity[]
+  specs        FeatureSpec[]
+  mockups      Mockup[]
+  dependsOn    FeatureDependency[] @relation("dependent")
+  dependedOnBy FeatureDependency[] @relation("parent")
+}
+
+model FeatureSpec {
+  id        String   @id @default(cuid())
+  featureId String
+  filePath  String   // e.g., ".workhorse/specs/patient/allergies.md"
+  isNew     Boolean  @default(true) // new spec vs editing existing
+  content   String   // current content (auto-saved to DB)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  feature Feature @relation(fields: [featureId], references: [id], onDelete: Cascade)
+
+  @@unique([featureId, filePath])
+}
+
+model Mockup {
+  id        String   @id @default(cuid())
+  featureId String
+  title     String
+  html      String   // the HTML/CSS content
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  feature Feature @relation(fields: [featureId], references: [id], onDelete: Cascade)
+}
+
+model FeatureDependency {
+  dependentId String
+  parentId    String
+
+  dependent Feature @relation("dependent", fields: [dependentId], references: [id])
+  parent    Feature @relation("parent", fields: [parentId], references: [id])
+
+  @@id([dependentId, parentId])
+}
+
+model SpecMessage {
+  id        String   @id @default(cuid())
+  featureId String
+  userId    String?
+  role      String   // "user", "assistant", "system"
+  content   String
+  metadata  String?  // JSON for mockup references, extracted specs, etc.
+  createdAt DateTime @default(now())
+
+  feature Feature @relation(fields: [featureId], references: [id], onDelete: Cascade)
+  user    User?   @relation(fields: [userId], references: [id])
+}
+
+model FeatureActivity {
+  id        String   @id @default(cuid())
+  featureId String
+  userId    String?
+  action    String   // "created", "status_changed", "spec_updated", "committed", etc.
+  details   String?  // JSON with action-specific data
+  createdAt DateTime @default(now())
+
+  feature Feature @relation(fields: [featureId], references: [id], onDelete: Cascade)
+  user    User?   @relation(fields: [userId], references: [id])
+}

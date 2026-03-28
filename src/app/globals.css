@@ -124,3 +124,84 @@ body {
   color: var(--text-primary);
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
+
+/* Prose styles for chat markdown */
+.prose-workhorse strong { color: var(--text-primary); font-weight: 600; }
+.prose-workhorse p { margin-bottom: 12px; }
+.prose-workhorse p:last-child { margin-bottom: 0; }
+.prose-workhorse ol { padding-left: 20px; margin-bottom: 12px; }
+.prose-workhorse ol li { margin-bottom: 8px; }
+.prose-workhorse ul { padding-left: 20px; margin-bottom: 12px; }
+.prose-workhorse ul li { margin-bottom: 6px; }
+.prose-workhorse h1 { font-size: 16px; font-weight: 600; letter-spacing: -0.02em; margin: 20px 0 8px; }
+.prose-workhorse h2 { font-size: 15px; font-weight: 600; letter-spacing: -0.01em; margin: 16px 0 8px; }
+.prose-workhorse h3 { font-size: 14px; font-weight: 600; margin: 12px 0 6px; }
+.prose-workhorse code {
+  font-size: 12px; background: var(--bg-inset); padding: 1px 5px;
+  border-radius: 3px; font-family: ui-monospace, 'SF Mono', 'Cascadia Code', monospace;
+}
+.prose-workhorse pre.code-block {
+  background: var(--bg-inset); padding: 14px 16px; border-radius: var(--radius-default);
+  margin: 12px 0; overflow-x: auto; font-size: 13px;
+  font-family: ui-monospace, monospace; line-height: 1.6; color: var(--text-secondary);
+}
+.prose-workhorse pre.code-block code {
+  background: none; padding: 0; font-size: inherit;
+}
+
+/* Spec extract block in chat */
+.spec-extract-block {
+  padding: 14px 16px;
+  background: var(--green-alpha);
+  border-radius: var(--radius-default);
+  margin: 12px 0;
+}
+.spec-extract-label {
+  font-size: 11px; font-weight: 600; color: var(--green);
+  text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 8px;
+}
+.spec-criterion {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 4px 0; font-size: 13px; color: var(--text-secondary); line-height: 1.6;
+}
+.spec-check {
+  width: 16px; height: 16px; border-radius: var(--radius-sm);
+  flex-shrink: 0; margin-top: 2px;
+  display: flex; align-items: center; justify-content: center;
+  border: 1.5px solid var(--border-default);
+}
+.spec-check.done {
+  background: var(--green); border-color: var(--green);
+  color: white; font-size: 10px; font-weight: 700;
+}
+.spec-question {
+  font-size: 13px; color: var(--amber); padding: 4px 0;
+  font-style: italic;
+}
+
+/* Mockup preview block in chat */
+.mockup-block {
+  margin: 12px 0; border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg); overflow: hidden;
+}
+.mockup-label {
+  font-size: 11px; font-weight: 600; color: var(--text-muted);
+  text-transform: uppercase; letter-spacing: 0.04em;
+  padding: 8px 12px; background: var(--bg-page);
+  border-bottom: 1px solid var(--border-subtle);
+}
+.mockup-preview {
+  background: white; padding: 16px; max-height: 300px; overflow: auto;
+}
+
+/* Open question block in spec document */
+.open-question-block {
+  background: var(--amber-alpha);
+  border-radius: var(--radius-default);
+  padding: 14px 16px;
+  margin: 12px 0;
+}
+.open-question-label {
+  font-size: 11px; font-weight: 600; color: var(--amber);
+  text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 6px;
+}

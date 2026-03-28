@@ -3,17 +3,17 @@
 ## Progress
 
 - [x] **Phase 0: Foundation** — Design system, core components, Prisma client
-- [ ] **Phase 1: User Identity & App Shell** — WH-008, WH-010, WH-007 partial
-- [ ] **Phase 2: Feature Cards & Home View** — WH-007, WH-016
-- [ ] **Phase 3: AI Chat Interview** — WH-001 core
-- [ ] **Phase 4: Spec Editor & Format** — WH-002, WH-006, WH-018
-- [ ] **Phase 5: Visual Mockups** — WH-003
-- [ ] **Phase 6: Fresh-Eyes Review & Completeness** — WH-001 advanced
-- [ ] **Phase 7: Commit Specs & Handoff** — WH-005
-- [ ] **Phase 8: Card Dependencies** — WH-019
-- [ ] **Phase 9: Product Spec Explorer** — WH-017
-- [ ] **Phase 10: Design Library** — WH-020 partial
-- [ ] **Phase 11: Polish & GitHub Integration** — WH-013 partial
+- [x] **Phase 1: User Identity & App Shell** — WH-008, WH-010, WH-007 partial
+- [x] **Phase 2: Feature Cards & Home View** — WH-007, WH-016
+- [x] **Phase 3: AI Chat Interview** — WH-001 core
+- [x] **Phase 4: Spec Editor & Format** — WH-002, WH-006, WH-018
+- [x] **Phase 5: Visual Mockups** — WH-003
+- [x] **Phase 6: Fresh-Eyes Review & Completeness** — WH-001 advanced
+- [x] **Phase 7: Commit Specs & Handoff** — WH-005
+- [x] **Phase 8: Card Dependencies** — WH-019
+- [x] **Phase 9: Product Spec Explorer** — WH-017
+- [x] **Phase 10: Design Library** — WH-020 partial
+- [x] **Phase 11: Polish & GitHub Integration** — WH-013 partial
 
 ## Spec dependency map
 

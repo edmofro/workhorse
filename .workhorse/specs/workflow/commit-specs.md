@@ -13,7 +13,8 @@ For developers picking up the work, Workhorse generates an implementation prompt
 
 - [ ] User clicks "Commit" on the card
 - [ ] All spec documents on the card are saved to the product's codebase
-- [ ] Subsequent spec edits are saved automatically (no re-commit needed, or a simple "Update" button)
+- [ ] After initial commit, the "Commit spec" button remains but is disabled until there are new local changes to push
+- [ ] When specs are edited after an initial commit, the button re-enables so the user can push updates
 - [ ] A PR is visible on GitHub for reviewers, but the user doesn't need to think about it
 - [ ] Committed specs do not include mockup HTML
 - [ ] If the card depends on another card (see WH-019), commits are ordered correctly
@@ -26,14 +27,61 @@ For developers picking up the work, Workhorse generates an implementation prompt
 - [ ] A link to view the PR on GitHub is shown next to the Commit button once a PR exists
 - [ ] Dependent cards branch off parent card branches; rebasing is automatic
 
-## Implementation handoff
+## Launch Claude Code session
 
-- [ ] User marks a feature as "Spec complete"
-- [ ] This generates a downloadable implementation prompt (.md file)
-- [ ] The prompt includes: checkout command for the branch, instruction to diff specs against main to see what's new and changed, summary of which specs are new vs modified, any mockup HTML generated during the interview, relevant codebase context and conventions
-- [ ] The prompt focuses the implementing AI on the delta, not the entire spec
-- [ ] If too large for clipboard, it's a downloadable file
+When specs are committed and the card is marked "Spec complete", the developer can start implementing. Rather than downloading a large handoff file, Workhorse generates a short clipboard prompt and optionally opens Claude Code.
+
+### UX flow
+
+- [ ] The implementation launch button only appears when the card status is `SPEC_COMPLETE`
+- [ ] Button is a split button with dropdown (like GitHub's merge strategy button on PR reviews)
+- [ ] Two options in the dropdown: "Copy prompt" and "Launch Claude Code"
+- [ ] "Copy prompt" copies the implementation prompt to clipboard
+- [ ] "Launch Claude Code" copies the prompt to clipboard AND opens `claude.ai/code` in a new tab
+- [ ] The button face shows whichever option the user chose last time (persisted in localStorage)
+- [ ] Default for first-time users is "Launch Claude Code"
+- [ ] A toast confirms the action: "Prompt copied" or "Prompt copied — opening Claude Code"
+- [ ] The "Commit spec" button remains available alongside the implementation button, but is disabled when there are no uncommitted spec changes (i.e. DB version matches what's on the branch)
+- [ ] "View PR" link also remains visible once a PR exists
+
+### Prompt design
+
+The prompt is short and self-contained — it tells the AI where to look, not what the specs say. The AI reads the specs and mockups from the codebase itself.
+
+- [ ] Prompt fits comfortably in clipboard (target: under 500 characters for typical features)
+- [ ] Includes: git fetch/checkout commands for the spec branch
+- [ ] Includes: which spec files are new vs updated, as file paths only
+- [ ] Includes: `git diff` command between base branch and spec branch to see the delta
+- [ ] References mockup file paths under `.workhorse/design/mockups/` rather than inlining HTML
+- [ ] Does not include spec content, chat history, or mockup HTML
+- [ ] Ends with a clear instruction: read the specs, review the diff, then implement
+
+### Example prompt
+
+```
+git fetch origin spec/wh-042-patient-merge
+git checkout spec/wh-042-patient-merge
+
+New specs:
+- .workhorse/specs/patient/merge-patients.md
+- .workhorse/specs/patient/merge-conflicts.md
+
+Updated specs:
+- .workhorse/specs/patient/patient-search.md
+
+Mockups:
+- .workhorse/design/mockups/patient-merge.html
+
+Review the diff to see what changed:
+git diff main...spec/wh-042-patient-merge -- .workhorse/
+
+Read the specs and mockups, then implement all acceptance criteria.
+```
 
 ## Open questions
 
 > **Draft PRs:** Should the PR be created as draft initially?
+
+> **Toast library:** Do we have a toast/notification system yet, or do we need to add one for the "Prompt copied" feedback?
+
+> **Dirty detection:** How do we detect uncommitted spec changes? Compare DB content against last committed content (stored on commit), or query GitHub API for file content?

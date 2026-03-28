@@ -41,7 +41,8 @@ interface CardTabProps {
 const STATUS_OPTIONS = [
   { value: 'NOT_STARTED', label: 'Not started' },
   { value: 'SPECIFYING', label: 'Specifying' },
-  { value: 'SPEC_COMPLETE', label: 'Spec complete' },
+  { value: 'IMPLEMENTING', label: 'Implementing' },
+  { value: 'COMPLETE', label: 'Complete' },
 ]
 
 const PRIORITY_OPTIONS = [

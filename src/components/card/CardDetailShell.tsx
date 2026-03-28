@@ -3,7 +3,8 @@
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { Topbar, TopbarCardTitle, TopbarRight } from '../Topbar'
-import { CommitButton } from './CommitButton'
+import { CollaborateButton } from './CollaborateButton'
+import { MarkReadyButton } from './MarkReadyButton'
 import { cn } from '../../lib/cn'
 
 interface CardDetailShellProps {
@@ -12,9 +13,9 @@ interface CardDetailShellProps {
     identifier: string
     title: string
     status: string
-    prUrl?: string | null
-    hasSpecs: boolean
-    specsDirty: boolean
+    cardBranch: string | null
+    touchedFiles: string[]
+    defaultBranch: string
   }
   projectSlug: string
   children: React.ReactNode
@@ -67,12 +68,17 @@ export function CardDetailShell({
               )
             })}
           </div>
-          <CommitButton
+          <MarkReadyButton
             cardId={card.id}
-            hasSpecs={card.hasSpecs}
-            specsDirty={card.specsDirty}
             status={card.status}
-            existingPrUrl={card.prUrl}
+          />
+          <CollaborateButton
+            cardId={card.id}
+            cardIdentifier={card.identifier}
+            cardBranch={card.cardBranch}
+            status={card.status}
+            touchedFiles={card.touchedFiles}
+            defaultBranch={card.defaultBranch}
           />
         </TopbarRight>
       </Topbar>

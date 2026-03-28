@@ -15,8 +15,6 @@ export async function GET(request: NextRequest) {
   const card = await prisma.card.findUnique({
     where: { id: cardId },
     include: {
-      specs: true,
-      mockups: true,
       team: { include: { project: true } },
     },
   })
@@ -25,20 +23,15 @@ export async function GET(request: NextRequest) {
     return new Response('Card not found', { status: 404 })
   }
 
-  const mockupPaths = card.mockups.map(
-    (m) => `.workhorse/design/mockups/${m.title.toLowerCase().replace(/\s+/g, '-')}.html`,
-  )
+  const touchedFiles: string[] = JSON.parse(card.touchedFiles)
 
   const prompt = generateHandoffPrompt({
     cardIdentifier: card.identifier,
     cardTitle: card.title,
-    branchName: card.specBranch ?? 'unknown',
+    branchName: card.cardBranch ?? 'unknown',
     baseBranch: card.team.project.defaultBranch,
-    specs: card.specs.map((s) => ({
-      filePath: s.filePath,
-      isNew: s.isNew,
-    })),
-    mockupPaths,
+    touchedFiles,
+    status: card.status,
   })
 
   return NextResponse.json({ prompt })

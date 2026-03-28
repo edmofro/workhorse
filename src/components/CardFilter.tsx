@@ -100,7 +100,8 @@ export function CardFilter({ teams, users, basePath }: CardFilterProps) {
                 <option value="">All</option>
                 <option value="NOT_STARTED">Not started</option>
                 <option value="SPECIFYING">Specifying</option>
-                <option value="SPEC_COMPLETE">Spec complete</option>
+                <option value="IMPLEMENTING">Implementing</option>
+                <option value="COMPLETE">Complete</option>
               </select>
             </div>
 

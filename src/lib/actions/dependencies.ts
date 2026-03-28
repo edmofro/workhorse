@@ -86,34 +86,34 @@ export async function searchCards(query: string, excludeId?: string) {
   })
 }
 
-export async function checkParentsCommitted(cardId: string): Promise<{ canCommit: boolean; uncommittedParents: string[] }> {
+export async function checkParentsBranched(cardId: string): Promise<{ canProceed: boolean; unbranched: string[] }> {
   const dependencies = await prisma.cardDependency.findMany({
     where: { dependentId: cardId },
     include: { parent: true },
   })
 
-  const uncommittedParents = dependencies
-    .filter((d) => !d.parent.specBranch)
+  const unbranched = dependencies
+    .filter((d) => !d.parent.cardBranch)
     .map((d) => d.parent.identifier)
 
   return {
-    canCommit: uncommittedParents.length === 0,
-    uncommittedParents,
+    canProceed: unbranched.length === 0,
+    unbranched,
   }
 }
 
-export async function checkParentsSpecComplete(cardId: string): Promise<{ canComplete: boolean; incompleteParents: string[] }> {
+export async function checkParentsImplementing(cardId: string): Promise<{ canProceed: boolean; incompleteParents: string[] }> {
   const dependencies = await prisma.cardDependency.findMany({
     where: { dependentId: cardId },
     include: { parent: true },
   })
 
   const incompleteParents = dependencies
-    .filter((d) => d.parent.status !== 'SPEC_COMPLETE')
+    .filter((d) => !['IMPLEMENTING', 'COMPLETE'].includes(d.parent.status))
     .map((d) => d.parent.identifier)
 
   return {
-    canComplete: incompleteParents.length === 0,
+    canProceed: incompleteParents.length === 0,
     incompleteParents,
   }
 }

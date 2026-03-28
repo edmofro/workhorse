@@ -26,16 +26,16 @@ Product owners, testers, and developers — anyone who specifies what software s
 - [ ] AI drafts spec documents — may create new specs and identify existing specs that need updating. Automatic or user-triggered
 - [ ] User edits specs directly on the Spec tab — shows all specs this card touches. Chat continues alongside
 - [ ] Fresh-eyes review — independent agents review the draft spec without conversation context, surfacing gaps, contradictions, and missed edge cases. Multiple passes available
-- [ ] User commits specs — saves all spec changes to the product's codebase. Workhorse handles branches and PRs invisibly
-- [ ] User iterates — further edits are saved automatically
-- [ ] User marks spec complete — a meaningful quality bar, not just a button click. The AI pushes back if areas remain uncovered. Generates a downloadable implementation prompt (.md) that tells the dev's AI to diff specs against main to see what to implement
+- [ ] Changes auto-commit — every agent turn and user edit (on leaving edit mode) is committed to the card's branch with an AI-generated descriptive message. No manual "Commit" step
+- [ ] User iterates — further edits are saved automatically on each edit cycle
+- [ ] User marks spec ready — a meaningful quality bar, not just a button click. The AI pushes back if areas remain uncovered. Transitions the card from SPECIFYING → IMPLEMENTING. Generates a downloadable implementation prompt (.md) that tells the dev's AI to diff specs against main to see what to implement
 - [ ] Developer implements — downloads prompt, checks out branch, works locally with their AI tool
 - [ ] Spec merges to main — appears in the product's spec explorer as part of the knowledge base
 
 ## Key decisions
 
 - **Products not repos.** Users think in products. Repos are infrastructure.
-- **Deployment:** Hosted SaaS. Start with Railway or Vercel. No vendor lock-in.
+- **Deployment:** Hosted SaaS on Railway. Single service with persistent disk for git worktrees and agent sessions. PostgreSQL on Railway for the database.
 - **AI codebase access:** Remote Claude agents (review-hero / ask-ai pattern). No pre-indexing.
 - **Multiplayer:** Spec document is collaborative. Chat is one user + AI per session.
 - **Three tabs per feature:** Card, Chat, Spec. Mockups live in chat and a persistent mockups panel, not a separate tab.

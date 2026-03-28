@@ -51,7 +51,7 @@ The Spec tab's sidebar has two layers. The top section shows this card's specs (
 - [ ] An "Edit" action on each spec (or simply starting to type in the editor) attaches the spec to the card and enters edit mode
 - [ ] Attaching a spec to the card does not navigate away from the project tree — the user stays in browsing context and can continue exploring other specs
 - [ ] The newly attached spec also appears in the card specs section at the top
-- [ ] A "This card only" filter chip (or toggle) collapses the project tree back to show just the card's working set
+- [ ] A "Changed" filter chip collapses the project tree back to show just the card's working set
 
 ### Smooth transitions
 

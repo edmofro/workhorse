@@ -5,27 +5,45 @@ card: WH-005
 status: draft
 ---
 
-When specs are ready (or at any point during development), the user hits "Commit". Workhorse handles everything — creating branches, PRs, naming them according to the project's conventions, and pushing updates. The user never sees branch names or git operations. A card may create new specs and modify existing ones — all committed together.
+Specs are auto-committed to the card's git branch on every change. The user never sees branch names, SHAs, or git operations. A card may create new specs and modify existing ones — all committed to the same branch.
 
 For developers picking up the work, Workhorse generates an implementation prompt that handles the checkout and tells their AI what changed.
 
-## Committing (user's perspective)
+## Auto-commit (user's perspective)
 
-- [ ] User clicks "Commit" on the card
-- [ ] All spec documents on the card are saved to the project's codebase
-- [ ] After initial commit, the "Commit spec" button remains but is disabled until there are new local changes to push
-- [ ] When specs are edited after an initial commit, the button re-enables so the user can push updates
-- [ ] A PR is visible on GitHub for reviewers, but the user doesn't need to think about it
+- [ ] Every agent turn auto-commits changed files to the card's branch with an AI-generated descriptive message
+- [ ] Every user edit auto-commits when the user leaves edit mode (clicks "Done editing" or navigates away)
+- [ ] The UI prompts for a brief change description (pre-filled by AI). User can accept, edit, or skip
 - [ ] Committed specs do not include mockup HTML
 - [ ] If the card depends on another card (see WH-019), commits are ordered correctly
 
+## Per-file version history
+
+Each file has a navigable edit history powered by descriptive commit messages:
+
+- [ ] "History" affordance per file in the spec tab
+- [ ] Shows: relative timestamp, author (user name or "Interviewer"), change description
+- [ ] Click a version to see the file at that point
+- [ ] Diff between any two versions
+- [ ] Powered by `git log -- {filepath}` under the hood
+
+## Marking specs ready
+
+Since work is always committed, "mark ready" is a quality gate, not a save action:
+
+- [ ] "Mark ready" transitions the card from `SPECIFYING` → `IMPLEMENTING`
+- [ ] This is a status transition, not a git operation — specs are already on the branch
+- [ ] No PR is created at this point. The implementation phase creates PRs when the developer is ready
+- [ ] The AI pushes back if areas remain uncovered — this is a quality bar, not just a button click
+- [ ] Presented as a secondary action (status dropdown or subtle button), not a prominent CTA — the normal flow is iterating until the spec is solid
+- [ ] Backward transition allowed: `IMPLEMENTING` → `SPECIFYING` if specs need rework
+
 ## Under the hood (invisible to user)
 
-- [ ] Workhorse creates a branch following the project's conventions (from CLAUDE.md, llm rules)
-- [ ] A PR is created with a title following the project's conventions
-- [ ] Subsequent edits push new commits to the same branch/PR
-- [ ] A link to view the PR on GitHub is shown next to the Commit button once a PR exists
+- [ ] Workhorse creates a branch following the project's conventions on first spec activity (from CLAUDE.md, llm rules)
+- [ ] Subsequent changes push new commits to the same branch automatically
 - [ ] Dependent cards branch off parent card branches; rebasing is automatic
+- [ ] Branch is the source of truth; worktree on disk is a recreatable cache (see agent-sdk-interview spec for recovery details)
 
 ## Collaborate with agent button
 
@@ -33,4 +51,8 @@ See the agent SDK interview spec (`.workhorse/specs/interview/agent-sdk-intervie
 
 ## Open questions
 
-> **Draft PRs:** Should the PR be created as draft initially?
+> **Draft PRs:** Should the implementation phase create PRs as drafts initially?
+
+> **Change description UX:** When a user leaves edit mode, the AI pre-fills a change description. What's the right UX — inline input, modal, or toast with edit option? Should "skip" mean a generic message or no description?
+
+> **Commit granularity for agents:** Should the agent commit after every tool call (Write/Edit), or batch all changes at the end of a turn? Per-tool-call gives finer history but more noise. End-of-turn is simpler but loses intermediate states.

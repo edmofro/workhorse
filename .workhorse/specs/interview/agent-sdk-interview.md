@@ -24,7 +24,24 @@ User ↔ Workhorse UI ↔ /api/interview ↔ Claude Agent SDK session
                     DB stores: session ID, card linkage, file locks
 ```
 
-The Agent SDK session runs against a git worktree of the target repo. The agent reads the codebase freely and writes spec/mockup files directly. Workhorse streams the agent's output to the UI and manages the approval/commit gate.
+The Agent SDK session runs against a git worktree of the target repo. The agent reads the codebase freely and writes spec/mockup files directly. Workhorse streams the agent's output to the UI.
+
+### Deployment
+
+Everything runs on Railway — a single deployment target with persistent disk for git clones, worktrees, and Agent SDK sessions. No split between web tier and worker tier for v1; the Next.js app and agent sessions run on the same box. Railway provides persistent disk and long-lived processes, which is what we need for stateful git operations.
+
+The database is PostgreSQL on Railway (already configured in the Prisma schema). Railway's managed Postgres gives us backups, connection pooling, and persistence without managing infrastructure.
+
+If agent sessions become a performance bottleneck (CPU/memory contention with web requests), the architecture supports splitting into a web service + worker service on Railway later. But start simple: one service, one disk.
+
+### Source of truth: git branches, not worktrees
+
+The git branch is the source of truth for all spec and mockup content. Worktrees are caches — disposable and recreatable from the branch at any time. Every change is auto-committed and pushed to the branch immediately (see "Auto-commit model" below). This means:
+
+- A server redeploy or crash loses at most one agent turn (~30-60s of work)
+- Worktrees can be recreated on startup from the branch
+- No "uncommitted work" concept — everything is always saved to git
+- `git log -- {filepath}` gives per-file version history for free
 
 ## Target repo access via git worktrees
 
@@ -194,15 +211,71 @@ A `FileLock` record tracks who is editing each file:
 - [ ] Stale lock cleanup: on-access check against `expiresAt`, plus periodic sweep
 - [ ] Lock status visible in the spec tab file list (unlocked / locked by {name} / locked by AI)
 
-## Commit flow
+## Auto-commit model
 
-The commit flow changes from "push DB content via GitHub API" to "git operations in the worktree."
+Every change to spec and mockup files is committed and pushed to the card's branch automatically. The branch is always up to date — there is no "uncommitted work."
 
-- [ ] User clicks "Commit" → Workhorse runs `git add` for chosen files, `git commit`, `git push` in the worktree
-- [ ] Push uses the acting user's OAuth token for attribution
-- [ ] The agent could also be instructed to commit as part of the conversation ("commit and push the specs")
-- [ ] "View PR" link appears once a PR exists (unchanged)
-- [ ] Selective commit: user chooses which files to include (not all-or-nothing)
+### Agent turns
+
+- [ ] At the end of each agent turn, auto-commit all changed files and push to the branch
+- [ ] The agent generates a descriptive commit message summarising what it did (e.g. "initial draft with 5 acceptance criteria for allergies", "added edge case for expired allergies")
+- [ ] If the server dies mid-turn, at most one turn's work is lost. The agent session can be restarted and asked to redo its last step
+- [ ] Commit is attributed to the card's assignee (or the user who started the interview), with a trailer indicating the AI authored the content
+
+### User edits
+
+- [ ] When a user finishes editing a spec file (leaves edit mode / clicks "Done editing"), auto-commit and push
+- [ ] The UI prompts for a brief description of the change, pre-filled by the AI (e.g. "added edge case for expired allergies"). User can accept, edit, or skip
+- [ ] No commit on every keystroke — only when the user transitions from edit mode to view mode
+- [ ] This avoids excessive version noise while still capturing every meaningful save point
+
+### Commit messages
+
+Commit messages are AI-generated and descriptive, not mechanical. They describe **what changed and why**, because these messages power the per-file version history UI:
+
+```
+allergies.md history:
+  3 min ago    Felix — added edge case for expired allergies
+  12 min ago   Interviewer — initial draft with 5 criteria
+  15 min ago   Interviewer — created file
+```
+
+The version history displays the commit message as the description, the author, and the relative timestamp. Users never see SHAs or branch names — just a clean edit history per file.
+
+### What "Commit" becomes
+
+There is no longer a prominent "Commit" button in the current sense (save work to git). Work is always saved. Instead:
+
+- [ ] A "Mark ready" action in the card status area transitions the card from `SPECIFYING` → `IMPLEMENTING`
+- [ ] This is a status transition, not a git operation — specs are already committed
+- [ ] No PR is created at this point. The implementation phase handles PRs when the developer is ready
+- [ ] The AI pushes back if areas remain uncovered (existing behaviour from the "marks spec complete" flow)
+- [ ] The action is not a prominent CTA — it's a status dropdown or a secondary action, since the normal flow is to keep iterating until the spec is solid
+
+### Per-file version history
+
+Since every change is committed with a descriptive message, `git log -- {filepath}` gives a full edit history per file:
+
+- [ ] Spec tab shows a "History" affordance per file
+- [ ] Each version shows: relative timestamp, author (user name or "Interviewer"), and the commit message as a description
+- [ ] Clicking a version shows the file content at that point (`git show {sha}:{path}`)
+- [ ] Diff between versions available via `git diff {sha1} {sha2} -- {path}`
+
+## Worktree recovery
+
+If the server restarts (redeploy, crash, Railway restart), worktrees are recreated from branches:
+
+- [ ] On startup, query the DB for all cards with status `SPECIFYING` or `IMPLEMENTING`
+- [ ] For each, check if the expected worktree exists on disk
+- [ ] If missing, recreate: `git fetch` the card's branch, then `git worktree add` from it
+- [ ] Agent SDK sessions are lost on crash (they're in-memory/on-disk), but the conversation can be restarted — the agent re-reads the spec files from the branch and picks up where it left off
+- [ ] The only loss window: changes made after the last auto-commit but before the crash. For agent turns, at most one turn (~30-60s). For user edits, zero (user must leave edit mode to trigger commit, at which point changes are saved)
+
+### Stale worktree cleanup
+
+- [ ] Cron job removes worktrees with no activity for 24 hours (existing requirement)
+- [ ] Worktrees for cards in `COMPLETE` status can be removed immediately
+- [ ] Recovery re-creates them on demand if needed
 
 ## Naming cleanup
 
@@ -323,9 +396,9 @@ Read the specs and mockups, then implement all acceptance criteria.
 
 ### Button placement
 
-- [ ] Appears in the topbar right section alongside the Commit button
-- [ ] In `SPECIFYING` mode: Commit button + Collaborate button both visible
-- [ ] In `IMPLEMENTING` mode: Commit button (for any spec tweaks) + Collaborate button both visible
+- [ ] Appears in the topbar right section
+- [ ] In `SPECIFYING` mode: Collaborate button visible (no Commit button — auto-commits handle saving)
+- [ ] In `IMPLEMENTING` mode: Collaborate button visible
 - [ ] Button label adapts: could show "Collaborate on specs" vs "Implement" — or just always show "Launch Claude Code" / "Copy prompt" since the prompt itself carries the context
 
 ## External agent collaboration
@@ -357,3 +430,7 @@ The worktree-on-disk architecture means that any agent with access to the same w
 > **Branch strategy for dependencies:** If card WH-043 depends on WH-042, should WH-043's worktree branch from WH-042's branch? This would let the agent see WH-042's spec changes. Adds complexity to branch management.
 
 > **Offline/degraded mode:** If the bare clone fetch fails (network issues), should we proceed with a stale worktree? Probably yes — stale code is better than no code.
+
+> **External agent auto-commit sync:** When an external Claude Code session pushes commits to the card's branch, Workhorse needs to detect these on focus/return. Should we poll the branch, use a webhook, or just `git pull` when the user returns to the card?
+
+> **Railway scaling:** A single Railway service handles both web requests and agent sessions. At what concurrency level does this become a problem? Should we have a concrete plan for splitting into web + worker services, or just monitor and react?

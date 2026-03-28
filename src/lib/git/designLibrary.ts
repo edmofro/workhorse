@@ -12,14 +12,15 @@ export interface DesignFile {
 }
 
 export async function fetchDesignLibrary(
+  token: string,
   owner: string,
   repo: string,
   branch: string,
 ): Promise<DesignFile[]> {
-  const ref = await getRef(owner, repo, branch)
+  const ref = await getRef(token, owner, repo, branch)
   if (!ref) return []
 
-  const treeData = await getTree(owner, repo, ref.object.sha, true)
+  const treeData = await getTree(token, owner, repo, ref.object.sha, true)
   if (!treeData?.tree) return []
 
   const designFiles = treeData.tree.filter(
@@ -30,7 +31,7 @@ export async function fetchDesignLibrary(
   const files: DesignFile[] = []
 
   for (const item of designFiles) {
-    const content = await getFileContent(owner, repo, item.path, branch)
+    const content = await getFileContent(token, owner, repo, item.path, branch)
     if (!content?.decodedContent) continue
 
     const relativePath = item.path.replace('.workhorse/design/', '')

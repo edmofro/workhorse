@@ -21,6 +21,7 @@ Authentication via GitHub SSO. No org hierarchy or admin roles — just individu
 - [ ] No organisation or admin concepts — Workhorse is flat, just users and teams
 - [ ] A user's accessible projects (products) are derived from the GitHub repos they have **write access** to
 - [ ] Workhorse queries the GitHub API for the user's repo permissions on sign-in and periodically refreshes them
+- [ ] The user's OAuth token is used for all GitHub API operations (reading specs, creating branches, committing, opening PRs) — no server-side PAT is needed
 - [ ] Users can only see and interact with teams linked to projects they have write access to
 
 ## Joining and creating teams

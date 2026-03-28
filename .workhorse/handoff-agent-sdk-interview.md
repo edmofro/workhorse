@@ -7,13 +7,13 @@ git fetch origin main
 git checkout -b implement/agent-sdk-interview origin/main
 ```
 
-To see what changed in the specs:
+To see what changed in the specs (base commit is `428572c` — "Extract auto-review into its own spec"):
 
 ```bash
 git diff 428572c..main -- .workhorse/specs/
 ```
 
-To see just the new spec (the bulk of the work):
+To read the new spec (the bulk of the work):
 
 ```bash
 cat .workhorse/specs/interview/agent-sdk-interview.md

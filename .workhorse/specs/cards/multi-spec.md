@@ -19,11 +19,11 @@ The AI identifies which specs are needed based on the conversation and its codeb
 
 ## Spec tab
 
-- [ ] Shows a list of spec documents this card is working on
-- [ ] Each spec is tagged: "new" or "editing existing"
+- [ ] The sidebar shows this card's specs at the top (the working set), with the full project spec tree available below via search or disclosure (see `workflow/quality-gates.md` for full UX)
+- [ ] Each card spec is tagged: "new" or "editing existing"
 - [ ] Clicking a spec opens it in the editor
 - [ ] For edits to existing specs, the current version from main is the starting point
-- [ ] User can browse the project's full spec tree and add existing specs to the card
+- [ ] Browsing the project tree and clicking "Edit" on any spec attaches it to the card and opens it for editing
 - [ ] User can create additional new specs and choose their area/filename
 
 ## During the interview

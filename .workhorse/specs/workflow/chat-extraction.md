@@ -4,7 +4,7 @@ area: workflow
 status: draft
 ---
 
-Connects the AI chat interview to the rest of the system by automatically persisting mockups and specs extracted from chat responses, and surfaces the review panel and activity log.
+Connects the AI chat interview to the rest of the system by automatically persisting mockups and specs extracted from chat responses, integrating the fresh-eyes review into the chat flow, and populating the activity log.
 
 ## Mockup extraction and persistence
 
@@ -22,13 +22,19 @@ Connects the AI chat interview to the rest of the system by automatically persis
 - [ ] The Spec tab reflects extracted specs immediately (user can then edit them further)
 - [ ] A visual indicator in the chat message marks which spec blocks have been saved (e.g. green accent on the spec extraction block)
 
-## Fresh-eyes review panel
+## Fresh-eyes review as a chat action
 
-- [ ] The ReviewPanel component is rendered in the feature detail view, accessible from the Spec tab
-- [ ] Position: below the spec editor or as a collapsible panel alongside it
-- [ ] The "Run review" button is disabled until at least one spec exists (current behaviour of the component)
-- [ ] Review results appear inline and are persisted as system messages with metadata
-- [ ] Multiple review passes are allowed — each run creates a fresh review
+The fresh-eyes review is not a separate panel — it's a step in the chat flow. A fresh-context AI agent reviews the draft specs (without access to conversation history) and posts its findings directly into the chat as a system message. Think of it as inviting a colleague to glance over your work.
+
+- [ ] A "Review with fresh eyes" button is available in the chat UI (e.g. as an action in the chat input area or a button above the conversation)
+- [ ] The button is disabled until at least one spec exists on the card
+- [ ] Clicking it spins up a fresh AI context that receives only the draft spec(s) and codebase access — no conversation history
+- [ ] The review agent checks for: gaps, contradictions, unstated assumptions, missing edge cases, interactions with existing functionality, and also reviews all other product specs to find places that might be impacted but haven't been updated by this card
+- [ ] Findings are posted into the chat as a system message (visually distinct from user and assistant messages)
+- [ ] After the findings appear, the normal interview AI can see them and help the user work through each one
+- [ ] Multiple review passes can be triggered — each creates a fresh context
+- [ ] The system encourages at least one fresh-eyes pass before the first commit (e.g. a prompt or nudge when the user clicks Commit without having run a review)
+- [ ] Review results are persisted as SpecMessage records with role "system" and metadata indicating it was a fresh-eyes review
 
 ## Activity logging
 

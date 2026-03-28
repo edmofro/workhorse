@@ -5,13 +5,7 @@ card: WH-001
 status: draft
 ---
 
-Replaces the current custom Claude API chat with the Claude Agent SDK, giving the AI interviewer full codebase access, automatic context window management, and the ability to write spec and mockup files directly to disk. Workhorse becomes an orchestration and approval UI rather than a chat engine.
-
-## Why
-
-The current interview system wraps the Anthropic Messages API with no tools, no codebase access, and naive full-history context management. Specs are embedded in chat messages as fenced code blocks and must be extracted. The AI can't read the target codebase at all, despite the system prompt telling it to "reference specific parts of the codebase when relevant."
-
-The Claude Agent SDK gives us all of this for free: file tools (Read, Glob, Grep, Write, Edit), context window compaction, session persistence, and the full agentic loop. We should use it instead of reinventing it poorly.
+The AI interviewer runs on the Claude Agent SDK, giving it full codebase access, automatic context window management, and the ability to write spec and mockup files directly to disk. Workhorse is an orchestration and approval UI — the Agent SDK handles the agentic loop, file tools (Read, Glob, Grep, Write, Edit), context window compaction, and session persistence.
 
 ## Architecture overview
 
@@ -97,7 +91,7 @@ Each product in Workhorse maps to a GitHub repo. The target repo must be availab
 
 ### Interview instructions (appended to claude_code preset)
 
-The append content replaces the current `systemPrompt.ts`. It tells the agent:
+The appended instructions tell the agent:
 
 - Its role (spec interviewer for a specific card)
 - Where to write specs (`.workhorse/specs/{area}/{slug}.md`) and mockups (`.workhorse/design/mockups/{card-id}/{slug}.html`)
@@ -110,24 +104,23 @@ The append content replaces the current `systemPrompt.ts`. It tells the agent:
 
 ### Context window management
 
-- [ ] The Agent SDK handles context window compaction automatically — no custom truncation or summarisation needed
+- [ ] The Agent SDK handles context window compaction automatically
 - [ ] Long interviews that exceed the context window are compacted by the SDK, preserving the most relevant context
-- [ ] This replaces the current naive full-history approach that would simply fail on long conversations
 
 ### Session persistence and resumption
 
 - [ ] Agent SDK sessions persist to disk automatically (in `~/.claude/projects/`)
-- [ ] Store `session_id` on the Feature record (replaces `SpecMessage` table)
+- [ ] `session_id` stored on the Feature record
 - [ ] Resume sessions with `resume: sessionId` on subsequent turns
-- [ ] Session transcript retrievable via `getSessionMessages()` if needed for audit/display
-- [ ] No need to store individual messages in Workhorse's database
+- [ ] Session transcript retrievable via `getSessionMessages()` for audit/display
+- [ ] Individual messages are not stored in Workhorse's database — the SDK is the source of truth for conversation history
 
 ### Fresh-eyes review
 
-- [ ] Remains a separate agent call with no conversation history (deliberately fresh context)
+- [ ] A separate agent call with no conversation history (deliberately fresh context)
 - [ ] Uses `persistSession: false` — ephemeral, no resumption needed
 - [ ] Read-only tools only: `Read`, `Glob`, `Grep`
-- [ ] Reviews spec files on disk in the worktree, not content extracted from chat
+- [ ] Reviews spec files on disk in the worktree
 
 ## Streaming and UI
 
@@ -146,23 +139,20 @@ Trade-off: streaming UX (seeing text arrive in real-time, seeing tool calls happ
 
 ### API route
 
-- [ ] `POST /api/interview` replaces `/api/chat`
-- [ ] Streams Agent SDK events to the client via Server-Sent Events (SSE)
+- [ ] `POST /api/interview` streams Agent SDK events to the client via Server-Sent Events (SSE)
 - [ ] Captures `session_id` on init, stores on Feature record
-- [ ] Frontend `useInterview` hook (replaces `useChat`) consumes SSE and updates UI state
+- [ ] Frontend `useInterview` hook consumes SSE and updates UI state
 
 ## Spec and mockup files
 
 ### Specs written directly to disk
 
-The agent writes spec files in the standard format to `.workhorse/specs/` within the worktree. No extraction from chat messages. The spec tab reads files from the worktree via `fs.readFile()`.
+The agent writes spec files in the standard format to `.workhorse/specs/` within the worktree. The spec tab reads files from the worktree via `fs.readFile()`.
 
 - [ ] Agent creates new spec files at paths it determines based on codebase structure
 - [ ] Agent edits existing spec files in place when refining criteria
 - [ ] Spec tab lists files from `git diff --name-only main` filtered to `.workhorse/specs/`
 - [ ] New vs existing detection: file doesn't exist on `main` branch = new
-- [ ] Dirty detection: `git status` or `git diff` in the worktree
-- [ ] Current content: read from disk. Committed content: `git show HEAD:{path}`
 
 ### Mockups written directly to disk
 
@@ -172,23 +162,18 @@ The agent writes mockup HTML files to `.workhorse/design/mockups/{card-id}/` wit
 - [ ] Mockup files include an HTML comment header referencing their spec: `<!-- spec: patient/allergies.md -->`
 - [ ] Mockup viewer reads files from disk (same as spec tab)
 - [ ] Agent can revise mockups when asked — just edits the file
-- [ ] On commit, mockups are committed alongside specs
+- [ ] Mockups are auto-committed alongside specs
 
-### No more FeatureSpec model
+### Data model
 
-The `FeatureSpec` table is no longer needed. The worktree + git branch is the source of truth:
+The git branch is the source of truth for spec and mockup content. No database tables for file content or chat messages:
 
-- `filePath` → `git diff --name-only main` on the card's branch
-- `isNew` → file doesn't exist on `main`
-- `content` → `fs.readFile()` in the worktree
-- `committedContent` → `git show HEAD:{path}`
-- Dirty detection → `git diff`
+- **File paths touched by a card:** `git diff --name-only main` on the card's branch
+- **New vs existing:** file doesn't exist on `main`
+- **Current content:** `fs.readFile()` in the worktree
+- **Conversation history:** Agent SDK session storage on disk, resumable by `session_id`. Display in UI via `getSessionMessages()`
 
-If a lightweight cache of touched files is needed (e.g. for listing cards that touch a given spec), add a `touchedFiles` JSON field on Feature, updated on each worktree change.
-
-### No more SpecMessage model
-
-The `SpecMessage` table is no longer needed. Conversation history lives in the Agent SDK's session storage on disk, resumable by session ID. If conversation display is needed in the UI, use `getSessionMessages()` from the SDK.
+If a lightweight cache of touched files is needed (e.g. for listing cards that touch a given spec), the `Feature.touchedFiles` JSON field stores file paths, updated on each auto-commit.
 
 ## File locking
 
@@ -242,15 +227,15 @@ allergies.md history:
 
 The version history displays the commit message as the description, the author, and the relative timestamp. Users never see SHAs or branch names — just a clean edit history per file.
 
-### What "Commit" becomes
+### Marking specs ready
 
-There is no longer a prominent "Commit" button in the current sense (save work to git). Work is always saved. Instead:
+Work is always saved to git — there is no manual save/commit action. The "Mark ready" action is a quality gate:
 
-- [ ] A "Mark ready" action in the card status area transitions the card from `SPECIFYING` → `IMPLEMENTING`
-- [ ] This is a status transition, not a git operation — specs are already committed
-- [ ] No PR is created at this point. The implementation phase handles PRs when the developer is ready
-- [ ] The AI pushes back if areas remain uncovered (existing behaviour from the "marks spec complete" flow)
-- [ ] The action is not a prominent CTA — it's a status dropdown or a secondary action, since the normal flow is to keep iterating until the spec is solid
+- [ ] "Mark ready" transitions the card from `SPECIFYING` → `IMPLEMENTING`
+- [ ] This is a status transition, not a git operation — specs are already on the branch
+- [ ] No PR is created at this point. The implementation phase creates PRs when the developer is ready
+- [ ] The AI pushes back if areas remain uncovered
+- [ ] Presented as a secondary action (status dropdown or subtle button), not a prominent CTA — the normal flow is iterating until the spec is solid
 
 ### Per-file version history
 
@@ -277,59 +262,40 @@ If the server restarts (redeploy, crash, Railway restart), worktrees are recreat
 - [ ] Worktrees for cards in `COMPLETE` status can be removed immediately
 - [ ] Recovery re-creates them on demand if needed
 
-## Naming cleanup
+## Naming conventions
 
-Several names in the current codebase use "spec" where "card" is more accurate. Rename as part of this work:
+"Spec" refers to the spec document itself. "Card" refers to the unit of work (feature card). "Interview" refers to the AI chat session.
 
-### Renames
+### Feature model fields
 
-- `Feature.specBranch` → `Feature.cardBranch`
-- `Feature.status: 'SPEC_COMPLETE'` → `'IMPLEMENTING'`
-- `/api/chat` route → `/api/interview`
-- `useChat` hook → `useInterview`
-- `ChatView` component → `InterviewView` (or keep as-is — "chat" is also reasonable)
-- `.spec-extract-block`, `.spec-extract-label` CSS classes → remove (extraction no longer happens)
-
-### Drops
-
-- `SpecMessage` model → replaced by Agent SDK sessions
-- `FeatureSpec` model → replaced by worktree filesystem
-- `src/lib/actions/messages.ts` → no longer needed
-- `src/lib/ai/systemPrompt.ts` → replaced by interview instructions appended to SDK preset
-- Spec extraction logic in `MarkdownContent.tsx` → no longer needed
-
-### Keeps (correct usage)
-
-- `SpecEditor`, `SpecTab`, `SpecListSidebar`, `SpecDocument`, `SpecExplorer`, `SpecTree` — these refer to the spec document, which is correct
-- `src/lib/specs/`, `src/lib/git/commitSpecs.ts`, `src/lib/git/specTree.ts` — utilities for spec files, correct
-- `Feature.status: 'SPECIFYING'` — the card is specifying, accurate
-- `spec_updated` activity type — a spec was updated, correct
-
-### New additions
-
-- `Feature.agentSessionId` — stores the Agent SDK session ID for resumption
+- `Feature.cardBranch` — the git branch for this card's work
+- `Feature.agentSessionId` — the Agent SDK session ID for resumption
 - `Feature.touchedFiles` (optional) — JSON array of file paths this card has modified
-- `FileLock` model — file-level edit locking
+
+### Routes and hooks
+
+- `/api/interview` — the interview SSE endpoint
+- `useInterview` — frontend hook for the interview chat
+- `InterviewView` — the chat tab component
+
+### Components that reference "spec" (correct — they deal with spec documents)
+
+- `SpecEditor`, `SpecTab`, `SpecListSidebar`, `SpecDocument`, `SpecExplorer`, `SpecTree`
+- `src/lib/specs/`, `src/lib/git/commitSpecs.ts`, `src/lib/git/specTree.ts`
+- `spec_updated` activity type
 
 ## Card statuses
 
-The card status model extends to cover implementation, not just specifying:
-
 - `NOT_STARTED` — card created, no spec activity yet
 - `SPECIFYING` — interview or manual spec editing in progress
-- `IMPLEMENTING` — specs committed, implementation in progress
+- `IMPLEMENTING` — specs are ready, implementation in progress
 - `COMPLETE` — implementation done (PR merged, or manually marked)
 
-The existing `SPEC_COMPLETE` status is replaced by `IMPLEMENTING`, which better reflects what happens next: the card moves from specifying into implementation. "Spec complete" was a milestone, not a status — the real status is that implementation has begun.
-
-- [ ] Rename `SPEC_COMPLETE` to `IMPLEMENTING` throughout the codebase
-- [ ] Add `COMPLETE` status for fully finished cards
-- [ ] Status transitions: `NOT_STARTED` → `SPECIFYING` → `IMPLEMENTING` → `COMPLETE`
-- [ ] Backward transition allowed (e.g. `IMPLEMENTING` → `SPECIFYING` if specs need rework)
+Transitions: `NOT_STARTED` → `SPECIFYING` → `IMPLEMENTING` → `COMPLETE`. Backward transitions are allowed (e.g. `IMPLEMENTING` → `SPECIFYING` if specs need rework).
 
 ## Collaborate with agent button
 
-A split dropdown button appears in both `SPECIFYING` and `IMPLEMENTING` modes, adapting its prompt to the current phase. This is the same split button pattern already used for implementation handoff (like GitHub's merge strategy button on PR reviews), extended to cover spec collaboration too.
+A split dropdown button appears in both `SPECIFYING` and `IMPLEMENTING` modes, adapting its prompt to the current phase. Uses the split button pattern (like GitHub's merge strategy button on PR reviews).
 
 ### UX
 
@@ -397,8 +363,7 @@ Read the specs and mockups, then implement all acceptance criteria.
 ### Button placement
 
 - [ ] Appears in the topbar right section
-- [ ] In `SPECIFYING` mode: Collaborate button visible (no Commit button — auto-commits handle saving)
-- [ ] In `IMPLEMENTING` mode: Collaborate button visible
+- [ ] Visible in both `SPECIFYING` and `IMPLEMENTING` modes
 - [ ] Button label adapts: could show "Collaborate on specs" vs "Implement" — or just always show "Launch Claude Code" / "Copy prompt" since the prompt itself carries the context
 
 ## External agent collaboration

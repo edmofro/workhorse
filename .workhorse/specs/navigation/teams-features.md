@@ -1,16 +1,13 @@
-# WH-007: Teams and feature list
-
-**Status:** In progress
-**Priority:** High
-**Team:** Platform
-
-## Summary
+---
+title: Teams and feature list
+area: navigation
+card: WH-007
+status: draft
+---
 
 The home view of Workhorse — a list of feature cards grouped by team, with basic status tracking. Each team belongs to a single product.
 
-## Acceptance criteria
-
-### Feature list
+## Feature list
 
 - [ ] Features displayed as cards, grouped by status
 - [ ] Each card shows: ID, title, description snippet, tags, assignee
@@ -20,14 +17,14 @@ The home view of Workhorse — a list of feature cards grouped by team, with bas
 - [ ] Features can be filtered by status, team, and assignee
 - [ ] Database-backed
 
-### Teams
+## Teams
 
 - [ ] Teams are configurable (name, colour)
 - [ ] Each team belongs to a single product
 - [ ] Features belong to a team
 - [ ] Team is a sidebar navigation item, clicking it filters the feature list
 
-### Products
+## Products
 
 - [ ] Products are the user-facing concept (e.g., "Tamanu", "Tupaia") — each maps to a GitHub repo under the hood
 - [ ] Products appear in the sidebar navigation

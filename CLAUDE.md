@@ -20,9 +20,9 @@ src/app/          — Next.js app router pages and API routes
 src/components/   — React components
 src/lib/          — Shared utilities, database client, AI client
 prisma/           — Database schema and migrations
-specs/            — Feature specifications (the product backlog)
-docs/             — Documentation including DESIGN-GUIDE.md
-design-mockups/   — HTML mockups for design iteration
+.workhorse/
+  specs/        — Feature specifications (the product backlog)
+  design/         — Design system docs and mockups
 ```
 
 ## Key concepts
@@ -34,13 +34,13 @@ design-mockups/   — HTML mockups for design iteration
 
 ## Design
 
-Follow `docs/DESIGN-GUIDE.md` strictly. Dark mode default. Professional, refined aesthetic inspired by Linear and GitHub. Uses Inter font, 4px spacing grid, subtle hover states.
+Follow `.workhorse/design/design-system.md` strictly. Professional, refined aesthetic inspired by Linear and GitHub. Uses Inter font, 4px spacing grid, subtle hover states.
 
 ## Conventions
 
 - Australian/NZ English spelling (colour, organisation, finalise)
 - Feature IDs: WH-XXX format
-- Specs live in `specs/` directory in this repo
+- Specs live in `.workhorse/specs/` directory in this repo
 - Component files use PascalCase: `FeatureList.tsx`
 - Utility files use camelCase: `prismaClient.ts`
 

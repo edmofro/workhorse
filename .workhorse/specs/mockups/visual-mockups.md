@@ -1,14 +1,11 @@
-# WH-003: Visual mockups
+---
+title: Visual mockups
+area: mockups
+card: WH-003
+status: draft
+---
 
-**Status:** Not started
-**Priority:** Medium
-**Team:** Platform
-
-## Summary
-
-The AI generates HTML/CSS mockups during the chat conversation. They appear in the chat where they were created, and are also listed in a persistent mockups panel so they're always accessible regardless of scroll position. Clicking a mockup opens a full-screen viewer.
-
-There may be many mockups over the course of specifying a feature: a date picker detail, a full page layout, a merge conflict dialog, etc.
+The AI generates HTML/CSS mockups during the chat conversation. They appear in the chat where they were created, and are also listed in a persistent mockups panel so they're always accessible regardless of scroll position. Clicking a mockup opens a full-screen viewer. There may be many mockups over the course of specifying a feature: a date picker detail, a full page layout, a merge conflict dialog, etc.
 
 ## Context
 
@@ -16,19 +13,15 @@ There may be many mockups over the course of specifying a feature: a date picker
 
 ## How mockups are introduced
 
-- The AI proactively generates one when it would help illustrate a concept
-- The AI asks "would a mockup help here?" when discussing UI-heavy features
-- The user requests one in the chat ("can you mock that up?")
+The AI proactively generates one when it would help illustrate a concept, asks "would a mockup help here?" when discussing UI-heavy features, or the user requests one in the chat.
 
-## Acceptance criteria
-
-### In the chat
+## In the chat
 
 - [ ] Mockups appear as compact preview cards in the conversation where they were generated
 - [ ] Each mockup has a title describing what it shows (e.g., "Patient allergies — list view")
 - [ ] Multiple mockups accumulate over the course of a conversation
 
-### Mockups panel
+## Mockups panel
 
 - [ ] A persistent mockups panel lists all mockups for this card (similar to Claude's artifacts panel)
 - [ ] The panel is accessible at any time, regardless of scroll position in the chat
@@ -36,7 +29,7 @@ There may be many mockups over the course of specifying a feature: a date picker
 - [ ] Clicking an entry opens the full-screen mockup viewer
 - [ ] The panel is also visible in the narrowed chat sidebar during spec editing
 
-### Full-screen viewer
+## Full-screen viewer
 
 - [ ] Clicking a mockup (from chat or mockups panel) opens a full-screen view
 - [ ] Mockup gets maximum screen real estate
@@ -44,26 +37,23 @@ There may be many mockups over the course of specifying a feature: a date picker
 - [ ] Floating chat (bottom-centre) for discussing the mockup
 - [ ] Device toggle (desktop/tablet/mobile)
 - [ ] Inspector-style component selection for commenting on specific elements
-- [ ] Inspector-style live CSS editing: select an element, tweak properties, see changes in real time (same as design library explorer)
+- [ ] Inspector-style live CSS editing: select an element, tweak properties, see changes in real time
 
-### Mockups are HTML/CSS
+## Mockup format
 
 - [ ] Rendered inline, not images
-- [ ] The AI generates them the same way a developer would mock up a UI
+- [ ] The AI generates them the same way a developer would mock up a UI (HTML/CSS)
 
-### Mockup lifecycle
-
-#### WIP state
+## WIP state
 
 - [ ] WIP mockups are stored in the database only — not yet committed to the codebase
 - [ ] The user iterates on mockups through the chat conversation
 
-#### Committing mockups
+## Committing mockups
 
 - [ ] Mockups can be marked for commit alongside the card's specs
 - [ ] Each committed mockup is linked to a specific spec it represents
 - [ ] Committed mockups are placed in `.workhorse/design/mockups/<card-id>/`
-- [ ] Committed mockups are organised by card number (e.g., `mockups/WH-042/allergy-list.html`)
 - [ ] Each mockup includes an HTML comment header referencing the spec(s) it represents:
 
 ```html
@@ -74,17 +64,12 @@ There may be many mockups over the course of specifying a feature: a date picker
 -->
 ```
 
-#### Reference direction
+## Reference direction
 
 - [ ] Specs do NOT reference mockups — mockups may be temporary and deleted after implementation
 - [ ] Mockups reference specs via their HTML comment header, so the AI can search for relevant mockups when implementing a given spec
 
-#### After implementation
-
-- [ ] Mockups may be deleted after implementation to keep the design directory clean
-- [ ] This is at the team's discretion — some may be worth keeping as documentation
-
-### As implementation context
+## As implementation context
 
 - [ ] Mockup HTML is included in the downloadable implementation prompt
 - [ ] AI agents search for relevant mockups by spec path when implementing

@@ -8,14 +8,19 @@ datasource db {
 }
 
 model User {
-  id          String   @id @default(cuid())
-  displayName String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id             String   @id @default(cuid())
+  githubId       Int      @unique
+  githubUsername  String
+  displayName    String
+  avatarUrl      String?
+  accessToken    String   // GitHub OAuth access token (for API calls on behalf of user)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   features          Feature[]
   specMessages      SpecMessage[]
   featureActivities FeatureActivity[]
+  teamMemberships   TeamMember[]
 }
 
 model Product {
@@ -41,6 +46,18 @@ model Team {
 
   product  Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
   features Feature[]
+  members  TeamMember[]
+}
+
+model TeamMember {
+  userId    String
+  teamId    String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@id([userId, teamId])
 }
 
 model Feature {

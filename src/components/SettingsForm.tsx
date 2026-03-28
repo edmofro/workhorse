@@ -2,16 +2,18 @@
 
 import { useState, useTransition, useRef, useCallback } from 'react'
 import { Button } from './Button'
+import { Avatar } from './Avatar'
 import { useUser } from './UserProvider'
 import { updateUser } from '../lib/actions/user'
 import { createProduct, updateProduct, deleteProduct } from '../lib/actions/products'
-import { createTeam, updateTeam, deleteTeam } from '../lib/actions/teams'
-import { Trash2, Plus } from 'lucide-react'
+import { createTeam, updateTeam, deleteTeam, joinTeam, leaveTeam } from '../lib/actions/teams'
+import { Trash2, Plus, UserPlus, UserMinus } from 'lucide-react'
 
 interface TeamData {
   id: string
   name: string
   colour: string
+  isMember: boolean
 }
 
 interface ProductData {
@@ -26,7 +28,6 @@ interface ProductData {
 
 interface SettingsFormProps {
   products: ProductData[]
-  user: { id: string; displayName: string } | null
 }
 
 export function SettingsForm({ products: initialProducts }: SettingsFormProps) {
@@ -40,7 +41,7 @@ export function SettingsForm({ products: initialProducts }: SettingsFormProps) {
     if (!displayName.trim() || displayName === user.displayName) return
     startTransition(async () => {
       const updated = await updateUser(user.id, displayName.trim())
-      setUser({ id: updated.id, displayName: updated.displayName })
+      setUser({ ...user, displayName: updated.displayName })
     })
   }
 
@@ -100,7 +101,7 @@ export function SettingsForm({ products: initialProducts }: SettingsFormProps) {
       setProducts((prev) =>
         prev.map((p) =>
           p.id === productId
-            ? { ...p, teams: [...p.teams, team] }
+            ? { ...p, teams: [...p.teams, { ...team, isMember: false }] }
             : p,
         ),
       )
@@ -148,12 +149,55 @@ export function SettingsForm({ products: initialProducts }: SettingsFormProps) {
     })
   }
 
+  function handleJoinTeam(teamId: string, productId: string) {
+    startTransition(async () => {
+      await joinTeam(user.id, teamId)
+      setProducts((prev) =>
+        prev.map((p) =>
+          p.id === productId
+            ? {
+                ...p,
+                teams: p.teams.map((t) =>
+                  t.id === teamId ? { ...t, isMember: true } : t,
+                ),
+              }
+            : p,
+        ),
+      )
+    })
+  }
+
+  function handleLeaveTeam(teamId: string, productId: string) {
+    startTransition(async () => {
+      await leaveTeam(user.id, teamId)
+      setProducts((prev) =>
+        prev.map((p) =>
+          p.id === productId
+            ? {
+                ...p,
+                teams: p.teams.map((t) =>
+                  t.id === teamId ? { ...t, isMember: false } : t,
+                ),
+              }
+            : p,
+        ),
+      )
+    })
+  }
+
   return (
     <div className="space-y-10">
       {/* User identity */}
       <section>
         <SectionLabel>User identity</SectionLabel>
-        <div className="flex gap-2 items-end mt-3">
+        <div className="flex items-center gap-3 mt-3 mb-4">
+          <Avatar variant="human" initial={user.displayName} avatarUrl={user.avatarUrl} size="chat" />
+          <div>
+            <div className="text-[14px] font-medium">{user.displayName}</div>
+            <div className="text-[12px] text-[var(--text-muted)]">@{user.githubUsername}</div>
+          </div>
+        </div>
+        <div className="flex gap-2 items-end">
           <div className="flex-1">
             <label className="block text-[13px] text-[var(--text-secondary)] mb-1">
               Display name
@@ -280,6 +324,25 @@ export function SettingsForm({ products: initialProducts }: SettingsFormProps) {
                         }
                         className="flex-1 px-3 py-[5px] text-[13px] bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-[var(--radius-default)] outline-none focus:border-[var(--accent)] focus:shadow-[var(--shadow-input-focus)] transition-[border-color,box-shadow] duration-150"
                       />
+                      {team.isMember ? (
+                        <button
+                          onClick={() => handleLeaveTeam(team.id, product.id)}
+                          disabled={isPending}
+                          className="inline-flex items-center gap-1 text-[11px] font-medium text-[var(--text-muted)] hover:text-[var(--accent)] cursor-pointer transition-colors duration-100 px-2 py-1"
+                          title="Leave team"
+                        >
+                          <UserMinus size={12} /> Leave
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => handleJoinTeam(team.id, product.id)}
+                          disabled={isPending}
+                          className="inline-flex items-center gap-1 text-[11px] font-medium text-[var(--accent)] hover:text-[var(--accent-hover)] cursor-pointer transition-colors duration-100 px-2 py-1"
+                          title="Join team"
+                        >
+                          <UserPlus size={12} /> Join
+                        </button>
+                      )}
                       <button
                         onClick={() => handleDeleteTeam(team.id, product.id)}
                         className="text-[var(--text-muted)] hover:text-[var(--accent)] transition-colors duration-100 p-1 cursor-pointer"

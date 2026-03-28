@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Settings } from 'lucide-react'
+import { Settings, LogOut } from 'lucide-react'
 import { cn } from '../lib/cn'
 import { Avatar } from './Avatar'
 import { useUser } from './UserProvider'
@@ -79,7 +79,7 @@ export function Sidebar({ products }: SidebarProps) {
 
       {/* Footer */}
       <div className="flex items-center gap-2 px-4 py-[14px] border-t border-[var(--border-subtle)]">
-        <Avatar variant="human" initial={user.displayName} size="sm" />
+        <Avatar variant="human" initial={user.displayName} avatarUrl={user.avatarUrl} size="sm" />
         <span className="text-xs text-[var(--text-secondary)] truncate flex-1">
           {user.displayName}
         </span>
@@ -89,6 +89,15 @@ export function Sidebar({ products }: SidebarProps) {
         >
           <Settings size={14} />
         </Link>
+        <form action="/api/auth/sign-out" method="POST">
+          <button
+            type="submit"
+            className="text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors duration-100 cursor-pointer"
+            title="Sign out"
+          >
+            <LogOut size={14} />
+          </button>
+        </form>
       </div>
     </aside>
   )

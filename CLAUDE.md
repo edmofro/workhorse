@@ -44,6 +44,10 @@ Follow `.workhorse/design/design-system.md` strictly. Professional, refined aest
 - Component files use PascalCase: `FeatureList.tsx`
 - Utility files use camelCase: `prismaClient.ts`
 
+## Pull requests
+
+When creating a pull request, always use the template in `.github/pull_request_template.md` as the PR body. Fill in the Summary and Test plan sections, and keep the Review Hero checkboxes.
+
 ## Commands
 
 ```bash

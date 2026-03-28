@@ -30,10 +30,10 @@ Since every change has a descriptive commit message, each file has a navigable e
 
 ## Marking specs ready
 
-The old "Commit" button is replaced by a status transition. Since work is always committed, "mark ready" is a quality gate, not a save action:
+Since work is always committed, "mark ready" is a quality gate, not a save action:
 
 - [ ] "Mark ready" transitions the card from `SPECIFYING` → `IMPLEMENTING`
-- [ ] This is a status change, not a git operation — specs are already on the branch
+- [ ] This is a status transition, not a git operation — specs are already on the branch
 - [ ] No PR is created at this point. The implementation phase creates PRs when the developer is ready
 - [ ] The AI pushes back if areas remain uncovered — this is a quality bar, not just a button click
 - [ ] Presented as a secondary action (status dropdown or subtle button), not a prominent CTA — the normal flow is iterating until the spec is solid
@@ -48,9 +48,7 @@ The old "Commit" button is replaced by a status transition. Since work is always
 
 ## Collaborate with agent button
 
-Moved to the agent SDK interview spec (`.workhorse/specs/interview/agent-sdk-interview.md`). The split dropdown button now appears in both `SPECIFYING` and `IMPLEMENTING` modes, generating a phase-appropriate prompt. See that spec for full details on UX, prompt design, and examples.
-
-The key change from the original design: the button is no longer implementation-only. It appears during specifying too, enabling external Claude Code sessions to collaborate on spec development. The prompt adapts to the card's current status.
+See the agent SDK interview spec (`.workhorse/specs/interview/agent-sdk-interview.md`) for full details. The split dropdown button appears in both `SPECIFYING` and `IMPLEMENTING` modes, generating a phase-appropriate prompt for external Claude Code sessions.
 
 ## Open questions
 

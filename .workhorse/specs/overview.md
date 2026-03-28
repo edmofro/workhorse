@@ -3,7 +3,7 @@ title: Workhorse v1 overview
 status: draft
 ---
 
-Workhorse is a spec-driven development workbench with three major areas: tickets (feature cards, AI-assisted spec interviews, committing specs to the codebase), a spec explorer (navigable hierarchy of merged specs per product from main branch), and a design library (living design system per product in `.workhorse/design/`).
+Workhorse is a spec-driven development workbench with three major areas: tickets (feature cards, AI-assisted spec interviews, specs auto-committed to the codebase), a spec explorer (navigable hierarchy of merged specs per product from main branch), and a design library (living design system per product in `.workhorse/design/`).
 
 ## Who it's for
 
@@ -40,7 +40,7 @@ Product owners, testers, and developers — anyone who specifies what software s
 - **Multiplayer:** Spec document is collaborative. Chat is one user + AI per session.
 - **Three tabs per feature:** Card, Chat, Spec. Mockups live in chat and a persistent mockups panel, not a separate tab.
 - **Spec format:** Markdown with YAML frontmatter, committed to `.workhorse/specs/` directory organised by area.
-- **Multi-spec cards:** A card can create new specs and edit existing ones. Git mechanics are invisible.
+- **Multi-spec cards:** A card can create new specs and edit existing ones. Git mechanics are invisible — changes auto-commit to the card's branch.
 - **Card dependencies:** Cards can depend on other cards. Workhorse handles branch ordering and rebasing under the hood — users just see "depends on."
 - **Spec explorer:** Reads the spec tree from main. Each spec links back to its card. Shows pending changes from open cards.
 - **Design library:** Per-product `.workhorse/design/` directory with root-level design system docs, `components/`, `views/`, and `mockups/`. AI references it for mockup consistency.

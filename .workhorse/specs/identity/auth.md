@@ -23,14 +23,13 @@ Authentication via GitHub SSO. No org hierarchy or admin roles — just individu
 - [ ] Workhorse queries the GitHub API for the user's repo permissions on sign-in and periodically refreshes them
 - [ ] Users can only see and interact with teams linked to projects they have write access to
 
-## Joining and creating teams
+## Team membership rules
 
-- [ ] When a user navigates to a project they have access to, they can see its existing teams
-- [ ] A user can **join** any team linked to a project they have write access to — no invitation or approval required
-- [ ] A user can **create a new team** within any project they have write access to
-- [ ] Creating a team means giving it a name and colour; it is automatically linked to that project
+- [ ] A user can join any team linked to a project they have write access to — no invitation or approval required
+- [ ] A user can create a new team within any project they have write access to
 - [ ] Users can leave a team at any time
 - [ ] A user can be a member of multiple teams (even across different projects)
+- [ ] Team management UX (joining, leaving, creating) is described in `navigation/product-navigation.md`
 
 ## Projects and GitHub repos
 

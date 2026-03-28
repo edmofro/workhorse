@@ -88,13 +88,13 @@ export function CardTab({ feature, users, teams }: CardTabProps) {
           className="w-full text-[14px] text-[var(--text-secondary)] leading-[1.75] bg-transparent border-none outline-none resize-none mb-8 placeholder:text-[var(--text-faint)]"
         />
 
-        {/* Metadata */}
-        <div className="border-t border-[var(--border-subtle)] pt-6 space-y-4">
+        {/* Metadata — compact rows */}
+        <div className="border-t border-[var(--border-subtle)] pt-5 space-y-3">
           <MetadataRow label="Status">
             <select
               value={feature.status}
               onChange={(e) => handleUpdate({ status: e.target.value })}
-              className="text-[13px] bg-transparent border border-[var(--border-default)] rounded-[var(--radius-default)] px-2 py-1 outline-none focus:border-[var(--accent)] transition-[border-color] duration-150"
+              className="text-[13px] bg-transparent border-none outline-none cursor-pointer text-[var(--text-secondary)] appearance-none pr-4"
             >
               {STATUS_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
@@ -108,7 +108,7 @@ export function CardTab({ feature, users, teams }: CardTabProps) {
             <select
               value={feature.priority}
               onChange={(e) => handleUpdate({ priority: e.target.value })}
-              className="text-[13px] bg-transparent border border-[var(--border-default)] rounded-[var(--radius-default)] px-2 py-1 outline-none focus:border-[var(--accent)] transition-[border-color] duration-150"
+              className="text-[13px] bg-transparent border-none outline-none cursor-pointer text-[var(--text-secondary)] appearance-none pr-4"
             >
               {PRIORITY_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
@@ -122,7 +122,7 @@ export function CardTab({ feature, users, teams }: CardTabProps) {
             <select
               value={feature.team.id}
               onChange={(e) => handleUpdate({ teamId: e.target.value })}
-              className="text-[13px] bg-transparent border border-[var(--border-default)] rounded-[var(--radius-default)] px-2 py-1 outline-none focus:border-[var(--accent)] transition-[border-color] duration-150"
+              className="text-[13px] bg-transparent border-none outline-none cursor-pointer text-[var(--text-secondary)] appearance-none pr-4"
             >
               {teams.map((team) => (
                 <option key={team.id} value={team.id}>
@@ -140,7 +140,7 @@ export function CardTab({ feature, users, teams }: CardTabProps) {
                   assigneeId: e.target.value || null,
                 })
               }
-              className="text-[13px] bg-transparent border border-[var(--border-default)] rounded-[var(--radius-default)] px-2 py-1 outline-none focus:border-[var(--accent)] transition-[border-color] duration-150"
+              className="text-[13px] bg-transparent border-none outline-none cursor-pointer text-[var(--text-secondary)] appearance-none pr-4"
             >
               <option value="">Unassigned</option>
               {users.map((user) => (
@@ -153,7 +153,7 @@ export function CardTab({ feature, users, teams }: CardTabProps) {
 
           {feature.dependsOn.length > 0 && (
             <MetadataRow label="Depends on">
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-[6px]">
                 {feature.dependsOn.map((dep) => (
                   <span
                     key={dep.identifier}
@@ -222,8 +222,8 @@ function MetadataRow({
   children: React.ReactNode
 }) {
   return (
-    <div className="flex items-center gap-4">
-      <span className="w-[100px] shrink-0 text-[12px] text-[var(--text-muted)]">
+    <div className="flex items-center">
+      <span className="w-[88px] shrink-0 text-[12px] text-[var(--text-muted)]">
         {label}
       </span>
       {children}

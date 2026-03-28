@@ -44,7 +44,7 @@ export function ChatInput({
 
   if (compact) {
     return (
-      <div className="p-3 border-t border-[var(--border-subtle)] shrink-0">
+      <div className="border-t border-[var(--border-subtle)] shrink-0" style={{ padding: '12px 16px' }}>
         <div className="flex items-end bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-[var(--radius-lg)] shadow-[var(--shadow-sm)] transition-[border-color,box-shadow] duration-150 focus-within:border-[var(--accent)] focus-within:shadow-[var(--shadow-input-focus)]"
           style={{ padding: '4px 4px 4px 12px' }}
         >

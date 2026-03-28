@@ -87,7 +87,7 @@ export function SpecExplorer({
       {/* Tree sidebar */}
       <aside
         className="flex flex-col border-r border-[var(--border-subtle)] bg-[var(--bg-page)] shrink-0 overflow-hidden"
-        style={{ width: '240px' }}
+        style={{ width: '260px' }}
       >
         <div className="p-3">
           <input

@@ -31,11 +31,11 @@ export function TopbarFeatureTitle({
   identifier: string
 }) {
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center">
       <span className="text-[15px] font-semibold tracking-[-0.01em] leading-[1.3]">
         {title}
       </span>
-      <span className="text-xs text-[var(--text-muted)] font-mono font-medium">
+      <span className="text-xs text-[var(--text-muted)] font-mono font-medium ml-[6px]">
         {identifier}
       </span>
     </div>

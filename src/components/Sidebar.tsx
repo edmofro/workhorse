@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutGrid, Settings, FileText, Palette } from 'lucide-react'
+import { Settings } from 'lucide-react'
 import { cn } from '../lib/cn'
 import { Avatar } from './Avatar'
 import { useUser } from './UserProvider'
@@ -36,44 +36,21 @@ export function Sidebar({ products }: SidebarProps) {
 
       {/* Navigation */}
       <nav className="flex-1 px-2 overflow-y-auto">
-        <NavItem
-          href="/"
-          icon={<LayoutGrid size={15} />}
-          active={pathname === '/'}
-        >
-          Features
-        </NavItem>
-
         {products.length > 0 && (
           <>
-            <div className="px-2 pt-5 pb-[6px] text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-[0.06em]">
+            <div className="px-2 pt-3 pb-[6px] text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-[0.06em]">
               Products
             </div>
             {products.map((product) => {
               const productPath = `/${encodeURIComponent(product.name.toLowerCase())}`
               return (
-                <div key={product.id}>
-                  <NavItem
-                    href={productPath}
-                    active={pathname === productPath || pathname.startsWith(`${productPath}/features`)}
-                  >
-                    {product.name}
-                  </NavItem>
-                  <NavItem
-                    href={`${productPath}/specs`}
-                    icon={<FileText size={13} />}
-                    active={pathname === `${productPath}/specs`}
-                  >
-                    Specs
-                  </NavItem>
-                  <NavItem
-                    href={`${productPath}/design`}
-                    icon={<Palette size={13} />}
-                    active={pathname === `${productPath}/design`}
-                  >
-                    Design
-                  </NavItem>
-                </div>
+                <NavItem
+                  key={product.id}
+                  href={productPath}
+                  active={pathname === productPath || pathname.startsWith(`${productPath}/`)}
+                >
+                  {product.name}
+                </NavItem>
               )
             })}
           </>

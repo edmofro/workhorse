@@ -45,13 +45,16 @@ export async function POST(request: NextRequest) {
     })
   }
 
-  // Build conversation history
-  const existingSpec = feature.specs.length > 0 ? feature.specs[0].content : null
+  // Build conversation history — include ALL specs for multi-spec cards (WH-018)
+  const existingSpecContent =
+    feature.specs.length > 0
+      ? feature.specs.map((s) => `<!-- ${s.filePath} -->\n${s.content}`).join('\n\n---\n\n')
+      : null
   const systemPrompt = buildSystemPrompt({
     featureTitle: feature.title,
     featureDescription: feature.description,
     featureIdentifier: feature.identifier,
-    existingSpecContent: existingSpec,
+    existingSpecContent,
     productName: feature.team.product.name,
     repoInfo: {
       owner: feature.team.product.owner,

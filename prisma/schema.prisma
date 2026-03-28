@@ -39,7 +39,7 @@ model Team {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  product  Product   @relation(fields: [productId], references: [id])
+  product  Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
   features Feature[]
 }
 
@@ -59,8 +59,8 @@ model Feature {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  team         Team        @relation(fields: [teamId], references: [id])
-  assignee     User?       @relation(fields: [assigneeId], references: [id])
+  team         Team        @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  assignee     User?       @relation(fields: [assigneeId], references: [id], onDelete: SetNull)
   specMessages SpecMessage[]
   activities   FeatureActivity[]
   specs        FeatureSpec[]
@@ -98,8 +98,8 @@ model FeatureDependency {
   dependentId String
   parentId    String
 
-  dependent Feature @relation("dependent", fields: [dependentId], references: [id])
-  parent    Feature @relation("parent", fields: [parentId], references: [id])
+  dependent Feature @relation("dependent", fields: [dependentId], references: [id], onDelete: Cascade)
+  parent    Feature @relation("parent", fields: [parentId], references: [id], onDelete: Cascade)
 
   @@id([dependentId, parentId])
 }
@@ -114,7 +114,7 @@ model SpecMessage {
   createdAt DateTime @default(now())
 
   feature Feature @relation(fields: [featureId], references: [id], onDelete: Cascade)
-  user    User?   @relation(fields: [userId], references: [id])
+  user    User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
 }
 
 model FeatureActivity {
@@ -126,5 +126,5 @@ model FeatureActivity {
   createdAt DateTime @default(now())
 
   feature Feature @relation(fields: [featureId], references: [id], onDelete: Cascade)
-  user    User?   @relation(fields: [userId], references: [id])
+  user    User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
 }

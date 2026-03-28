@@ -20,7 +20,16 @@ export function MarkdownContent({ content }: MarkdownContentProps) {
 function renderMarkdown(md: string): string {
   if (!md) return ''
 
+  // Placeholder approach: extract special blocks from raw markdown into safe HTML,
+  // then escape remaining text, then re-insert the placeholders.
   let html = md
+
+  const placeholders: string[] = []
+  function placeholder(content: string): string {
+    const idx = placeholders.length
+    placeholders.push(content)
+    return `\x00PH${idx}\x00`
+  }
 
   // Extract and render spec blocks
   html = html.replace(
@@ -47,22 +56,22 @@ function renderMarkdown(md: string): string {
           const question = line.match(/^>\s*Open question:\s*(.+)/i)
 
           if (checked) {
-            return `<div class="spec-criterion done"><span class="spec-check done">✓</span><span>${checked[1]}</span></div>`
+            return `<div class="spec-criterion done"><span class="spec-check done">✓</span><span>${escapeHtml(checked[1])}</span></div>`
           }
           if (unchecked) {
-            return `<div class="spec-criterion"><span class="spec-check"></span><span>${unchecked[1]}</span></div>`
+            return `<div class="spec-criterion"><span class="spec-check"></span><span>${escapeHtml(unchecked[1])}</span></div>`
           }
           if (question) {
-            return `<div class="spec-question">${question[1]}</div>`
+            return `<div class="spec-question">${escapeHtml(question[1])}</div>`
           }
           if (line.trim()) {
-            return `<p>${line.trim()}</p>`
+            return `<p>${escapeHtml(line.trim())}</p>`
           }
           return ''
         })
         .join('')
 
-      return `<div class="spec-extract-block"><div class="spec-extract-label">Spec: ${escapeHtml(title)}</div>${criteriaHtml}</div>`
+      return placeholder(`<div class="spec-extract-block"><div class="spec-extract-label">Spec: ${escapeHtml(title)}</div>${criteriaHtml}</div>`)
     },
   )
 
@@ -81,22 +90,31 @@ function renderMarkdown(md: string): string {
         if (lines[0] === '---') lines.shift()
       }
 
-      return `<div class="mockup-block"><div class="mockup-label">${escapeHtml(title)}</div><div class="mockup-preview">${lines.join('\n')}</div></div>`
+      // Mockup HTML is intentionally rendered raw (it IS HTML content)
+      return placeholder(`<div class="mockup-block"><div class="mockup-label">${escapeHtml(title)}</div><div class="mockup-preview">${lines.join('\n')}</div></div>`)
     },
   )
 
-  // Basic markdown rendering
+  // Extract fenced code blocks BEFORE inline code (prevents inline code regex eating fence content)
+  html = html.replace(
+    /```(\w*)\n([\s\S]*?)```/g,
+    (_match, _lang: string, code: string) =>
+      placeholder(`<pre class="code-block"><code>${escapeHtml(code)}</code></pre>`),
+  )
+
+  // Now escape remaining raw text
+  html = escapeHtml(html)
+
+  // Restore placeholders (they were escaped, so fix them)
+  html = html.replace(/\x00PH(\d+)\x00/g, (_match, idx: string) => placeholders[parseInt(idx, 10)])
+
+  // Basic markdown rendering (now operating on escaped text)
   // Bold
   html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
   // Italic
   html = html.replace(/\*(.+?)\*/g, '<em>$1</em>')
   // Inline code
   html = html.replace(/`([^`]+)`/g, '<code>$1</code>')
-  // Code blocks
-  html = html.replace(
-    /```(\w*)\n([\s\S]*?)```/g,
-    '<pre class="code-block"><code>$2</code></pre>',
-  )
   // Headers
   html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>')
   html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>')

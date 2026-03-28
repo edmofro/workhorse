@@ -55,11 +55,15 @@ export async function commitFeatureSpecs(featureId: string): Promise<CommitResul
   // Create spec branch
   const branchName = feature.specBranch ?? branchNameFromCard(feature.identifier, feature.title)
 
-  // Try to create branch (may already exist)
+  // Try to create branch (may already exist if this is a subsequent commit)
   try {
     await createBranch(owner, repoName, branchName, baseSha)
-  } catch {
-    // Branch might already exist, that's fine
+  } catch (err) {
+    // Only tolerate "already exists" errors; re-throw anything else
+    const message = err instanceof Error ? err.message : String(err)
+    if (!message.includes('Reference already exists') && !message.includes('already exists')) {
+      throw err
+    }
   }
 
   // Commit each spec file

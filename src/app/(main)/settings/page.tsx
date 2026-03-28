@@ -1,13 +1,20 @@
+import { redirect } from 'next/navigation'
+import { getCurrentUser } from '../../../lib/auth/session'
 import { getProducts } from '../../../lib/actions/products'
-import { getCurrentUser } from '../../../lib/actions/user'
+import { getUserTeamIds } from '../../../lib/actions/teams'
 import { Topbar, TopbarTitle } from '../../../components/Topbar'
 import { SettingsForm } from '../../../components/SettingsForm'
 
 export default async function SettingsPage() {
-  const [products, user] = await Promise.all([
+  const user = await getCurrentUser()
+  if (!user) redirect('/sign-in')
+
+  const [products, memberTeamIds] = await Promise.all([
     getProducts(),
-    getCurrentUser(),
+    getUserTeamIds(user.id),
   ])
+
+  const memberSet = new Set(memberTeamIds)
 
   return (
     <>
@@ -28,9 +35,9 @@ export default async function SettingsPage() {
                 id: t.id,
                 name: t.name,
                 colour: t.colour,
+                isMember: memberSet.has(t.id),
               })),
             }))}
-            user={user ? { id: user.id, displayName: user.displayName } : null}
           />
         </div>
       </div>

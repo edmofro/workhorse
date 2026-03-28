@@ -70,4 +70,4 @@ A fresh-context AI agent reviews the draft specs and posts its findings into the
 
 > **Mockup panel placement:** Should mockups appear on the Chat tab, the Card tab, or both? The spec (WH-003) suggests a persistent mockups panel that's always accessible.
 
-> **Spec extraction timing:** Should spec extraction happen on every assistant message, or only when the AI explicitly outputs a spec block? Current detection logic only fires on explicit ` ```spec ` blocks, which seems correct.
+> **Spec extraction timing:** Should spec extraction happen on every assistant message, or only when the AI explicitly outputs a spec block?

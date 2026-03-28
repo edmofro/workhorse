@@ -1,71 +1,57 @@
 /**
- * Generate implementation handoff prompt
+ * Generate a lightweight implementation prompt for clipboard.
+ * Points the AI at file paths and a diff command — doesn't inline content.
  */
 
 interface HandoffContext {
   featureIdentifier: string
   featureTitle: string
   branchName: string
-  specs: { filePath: string; content: string; isNew: boolean }[]
-  mockups: { title: string; html: string }[]
-  productName: string
-  repoOwner: string
-  repoName: string
+  baseBranch: string
+  specs: { filePath: string; isNew: boolean }[]
+  mockupPaths: string[]
 }
 
 export function generateHandoffPrompt(ctx: HandoffContext): string {
-  const parts: string[] = []
+  const lines: string[] = []
 
-  parts.push(`# Implementation handoff: ${ctx.featureIdentifier} — ${ctx.featureTitle}
+  lines.push(`git fetch origin ${ctx.branchName}`)
+  lines.push(`git checkout ${ctx.branchName}`)
+  lines.push('')
 
-## Getting started
+  const newSpecs = ctx.specs.filter((s) => s.isNew)
+  const updatedSpecs = ctx.specs.filter((s) => !s.isNew)
 
-\`\`\`bash
-git fetch origin ${ctx.branchName}
-git checkout ${ctx.branchName}
-\`\`\`
-
-## Product
-
-${ctx.productName} (${ctx.repoOwner}/${ctx.repoName})
-
-## Specs
-
-The following spec files have been committed to the branch:
-`)
-
-  for (const spec of ctx.specs) {
-    parts.push(`### ${spec.isNew ? 'New' : 'Updated'}: \`${spec.filePath}\`
-
-\`\`\`markdown
-${spec.content}
-\`\`\`
-`)
-  }
-
-  if (ctx.mockups.length > 0) {
-    parts.push(`## Visual mockups
-
-The following mockups were generated during the spec interview:
-`)
-
-    for (const mockup of ctx.mockups) {
-      parts.push(`### ${mockup.title}
-
-\`\`\`html
-${mockup.html}
-\`\`\`
-`)
+  if (newSpecs.length > 0) {
+    lines.push('New specs:')
+    for (const s of newSpecs) {
+      lines.push(`- ${s.filePath}`)
     }
+    lines.push('')
   }
 
-  parts.push(`## Implementation notes
+  if (updatedSpecs.length > 0) {
+    lines.push('Updated specs:')
+    for (const s of updatedSpecs) {
+      lines.push(`- ${s.filePath}`)
+    }
+    lines.push('')
+  }
 
-- Review all spec files before beginning implementation
-- Each checkbox in the spec represents a testable acceptance criterion
-- Open questions (blockquotes) should be resolved before implementing that area
-- If you find gaps in the spec, raise them before implementing workarounds
-`)
+  if (ctx.mockupPaths.length > 0) {
+    lines.push('Mockups:')
+    for (const p of ctx.mockupPaths) {
+      lines.push(`- ${p}`)
+    }
+    lines.push('')
+  }
 
-  return parts.join('\n')
+  lines.push('Review the diff to see what changed:')
+  lines.push(
+    `git diff ${ctx.baseBranch}...${ctx.branchName} -- .workhorse/`,
+  )
+  lines.push('')
+  lines.push('Read the specs and mockups, then implement all acceptance criteria.')
+
+  return lines.join('\n')
 }

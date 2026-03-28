@@ -83,6 +83,12 @@ export async function commitFeatureSpecs(featureId: string): Promise<CommitResul
       branchName,
       existing?.sha,
     )
+
+    // Track committed content for dirty detection
+    await prisma.featureSpec.update({
+      where: { id: spec.id },
+      data: { committedContent: spec.content },
+    })
   }
 
   // Create PR if none exists

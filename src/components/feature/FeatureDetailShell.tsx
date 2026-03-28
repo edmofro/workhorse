@@ -3,7 +3,7 @@
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { Topbar, TopbarFeatureTitle, TopbarRight } from '../Topbar'
-import { Button } from '../Button'
+import { CommitButton } from './CommitButton'
 import { cn } from '../../lib/cn'
 
 interface FeatureDetailShellProps {
@@ -12,6 +12,10 @@ interface FeatureDetailShellProps {
     identifier: string
     title: string
     status: string
+    prUrl?: string | null
+    specBranch?: string | null
+    hasSpecs: boolean
+    specsDirty: boolean
   }
   productSlug: string
   children: React.ReactNode
@@ -64,9 +68,14 @@ export function FeatureDetailShell({
               )
             })}
           </div>
-          {feature.status === 'SPEC_COMPLETE' && (
-            <Button>Commit spec</Button>
-          )}
+          <CommitButton
+            featureId={feature.id}
+            hasSpecs={feature.hasSpecs}
+            specsDirty={feature.specsDirty}
+            status={feature.status}
+            existingPrUrl={feature.prUrl}
+            existingBranch={feature.specBranch}
+          />
         </TopbarRight>
       </Topbar>
       {children}

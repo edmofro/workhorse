@@ -15,10 +15,16 @@ export default async function FeatureLayout({ params, children }: Props) {
     include: {
       team: { include: { product: true } },
       assignee: true,
+      specs: { select: { content: true, committedContent: true } },
     },
   })
 
   if (!feature) notFound()
+
+  const hasSpecs = feature.specs.length > 0
+  const specsDirty = feature.specs.some(
+    (s) => s.committedContent === null || s.content !== s.committedContent,
+  )
 
   return (
     <FeatureDetailShell
@@ -27,6 +33,10 @@ export default async function FeatureLayout({ params, children }: Props) {
         identifier: feature.identifier,
         title: feature.title,
         status: feature.status,
+        prUrl: feature.prUrl,
+        specBranch: feature.specBranch,
+        hasSpecs,
+        specsDirty,
       }}
       productSlug={productSlug}
     >

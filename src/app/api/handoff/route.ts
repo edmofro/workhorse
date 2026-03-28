@@ -22,28 +22,21 @@ export async function GET(request: NextRequest) {
     return new Response('Feature not found', { status: 404 })
   }
 
+  const mockupPaths = feature.mockups.map(
+    (m) => `.workhorse/design/mockups/${m.title.toLowerCase().replace(/\s+/g, '-')}.html`,
+  )
+
   const prompt = generateHandoffPrompt({
     featureIdentifier: feature.identifier,
     featureTitle: feature.title,
     branchName: feature.specBranch ?? 'unknown',
+    baseBranch: feature.team.product.defaultBranch,
     specs: feature.specs.map((s) => ({
       filePath: s.filePath,
-      content: s.content,
       isNew: s.isNew,
     })),
-    mockups: feature.mockups.map((m) => ({
-      title: m.title,
-      html: m.html,
-    })),
-    productName: feature.team.product.name,
-    repoOwner: feature.team.product.owner,
-    repoName: feature.team.product.repoName,
+    mockupPaths,
   })
 
-  return new NextResponse(prompt, {
-    headers: {
-      'Content-Type': 'text/markdown; charset=utf-8',
-      'Content-Disposition': `attachment; filename="${feature.identifier}-handoff.md"`,
-    },
-  })
+  return NextResponse.json({ prompt })
 }

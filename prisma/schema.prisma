@@ -71,12 +71,13 @@ model Feature {
 
 model FeatureSpec {
   id        String   @id @default(cuid())
-  featureId String
-  filePath  String   // e.g., ".workhorse/specs/patient/allergies.md"
-  isNew     Boolean  @default(true) // new spec vs editing existing
-  content   String   // current content (auto-saved to DB)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  featureId        String
+  filePath         String   // e.g., ".workhorse/specs/patient/allergies.md"
+  isNew            Boolean  @default(true) // new spec vs editing existing
+  content          String   // current content (auto-saved to DB)
+  committedContent String?  // content as of last commit (null = never committed)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
   feature Feature @relation(fields: [featureId], references: [id], onDelete: Cascade)
 

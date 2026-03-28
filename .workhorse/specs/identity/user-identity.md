@@ -1,14 +1,13 @@
-# WH-008: User identity
-
-**Status:** Not started
-**Priority:** Medium
-**Team:** Platform
-
-## Summary
+---
+title: User identity
+area: identity
+card: WH-008
+status: draft
+---
 
 Users set their name so changes can be attributed to them. No authentication or permissions system initially.
 
-## Acceptance criteria
+## Identity
 
 - [ ] First-time users are prompted to set their display name
 - [ ] Name is stored in the database and associated with all their actions

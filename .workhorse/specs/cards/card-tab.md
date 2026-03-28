@@ -1,18 +1,15 @@
-# WH-016: Feature card (Card tab)
-
-**Status:** Not started
-**Priority:** High
-**Team:** Platform
-
-## Summary
+---
+title: Feature card (Card tab)
+area: cards
+card: WH-016
+status: draft
+---
 
 Each feature has a Card tab that serves as the "normal ticket view" — title, description, metadata, and a comments section. This is the anchor for the feature, where the initial context lives before specifying begins.
 
-## Context
-
 Initially, users will copy-paste feature descriptions from Linear. Over time, Workhorse may become the primary place to write feature descriptions directly.
 
-## Acceptance criteria
+## Card tab
 
 - [ ] Card tab shows: title, description, status, team, assignee, priority
 - [ ] Description is a rich text field (or markdown) that the user edits directly

@@ -1,14 +1,13 @@
-# WH-010: Multi-product support
-
-**Status:** Not started
-**Priority:** High
-**Team:** Platform
-
-## Summary
+---
+title: Multi-product support
+area: products
+card: WH-010
+status: draft
+---
 
 Workhorse manages specs across multiple products. Products are the user-facing concept (Tamanu, Tupaia) — each product maps to a GitHub repository under the hood.
 
-## Acceptance criteria
+## Multi-product
 
 - [ ] Products can be added by giving them a name and linking a GitHub repository URL
 - [ ] Each team belongs to a single product

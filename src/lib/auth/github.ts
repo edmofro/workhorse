@@ -25,6 +25,11 @@ export function getGitHubAuthorizeUrl(state: string): string {
 }
 
 export async function exchangeCodeForToken(code: string): Promise<string> {
+  const clientId = process.env.GITHUB_CLIENT_ID
+  if (!clientId) throw new Error('GITHUB_CLIENT_ID not set')
+  const clientSecret = process.env.GITHUB_CLIENT_SECRET
+  if (!clientSecret) throw new Error('GITHUB_CLIENT_SECRET not set')
+
   const res = await fetch('https://github.com/login/oauth/access_token', {
     method: 'POST',
     headers: {
@@ -32,8 +37,8 @@ export async function exchangeCodeForToken(code: string): Promise<string> {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      client_id: process.env.GITHUB_CLIENT_ID,
-      client_secret: process.env.GITHUB_CLIENT_SECRET,
+      client_id: clientId,
+      client_secret: clientSecret,
       code,
     }),
   })

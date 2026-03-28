@@ -66,15 +66,15 @@ Product owners refining feature requirements, testers bringing attention to edge
 - [ ] Explores what happens when upstream dependencies fail or return unexpected data
 - [ ] Asks about migration and backwards compatibility for changes to existing features
 
-## Fresh-eyes review passes
+## Automated spec review
 
-The fresh-eyes review is a human-triggered step within the chat flow — not a separate view or panel. The user clicks "Review with fresh eyes" in the chat, and a fresh-context AI agent reviews the specs and posts its findings as a system message in the conversation. The interview AI can then help the user work through the findings. See `workflow/chat-extraction.md` for full details.
+A human-triggered automated review step within the chat flow. The user clicks "Auto-review" (available on both Chat and Spec tabs), and a fresh-context AI agent reviews the specs, mockups, and all existing product specs, then posts its findings into the conversation. The interview AI sees the findings and offers to make the suggested changes. See `workflow/chat-extraction.md` for full details.
 
-- [ ] At least one fresh-eyes pass is encouraged before the first commit (the system nudges, but does not hard-block)
-- [ ] Each review agent receives only the draft spec(s) and codebase access, not the conversation history
-- [ ] Review agents look for: gaps, contradictions, unstated assumptions, missing edge cases, interactions with existing functionality, and other product specs that might be impacted but haven't been updated by this card
-- [ ] Findings are posted into the chat as a system message, visually distinct from user and assistant messages
-- [ ] The user works through each finding with the interview AI — accepting, rejecting, or refining
+- [ ] At least one auto-review is encouraged before the first commit (the system nudges, but does not hard-block)
+- [ ] Each review agent receives the draft specs, mockups, and codebase access — no conversation history
+- [ ] Review agents check for: gaps, contradictions, unstated assumptions, missing edge cases, interactions with existing functionality, and substantive impacts on other product specs that haven't been updated by this card
+- [ ] Findings land in the chat as a system message; the interview AI then offers to update the specs based on the suggestions
+- [ ] The user directs the AI on which suggestions to accept, reject, or refine — normal conversational flow
 - [ ] Multiple review passes can be triggered (each with a fresh agent and fresh context)
 
 ## Spec completeness signals

@@ -24,6 +24,7 @@ export default async function CardPage({ params }: Props) {
       comments: {
         orderBy: { createdAt: 'asc' },
         include: { user: true },
+        take: 50,
       },
     },
   })

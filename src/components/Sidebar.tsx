@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useSearchParams } from 'next/navigation'
 import { Settings, LogOut, FileText, Palette, ChevronDown } from 'lucide-react'
 import { cn } from '../lib/cn'
 import { Avatar } from './Avatar'
@@ -16,17 +16,20 @@ interface SidebarProject {
 
 interface SidebarProps {
   projects: SidebarProject[]
-  activeProjectName?: string
 }
 
-export function Sidebar({ projects, activeProjectName }: SidebarProps) {
+export function Sidebar({ projects }: SidebarProps) {
   const pathname = usePathname()
+  const searchParams = useSearchParams()
   const { user } = useUser()
   const [switcherOpen, setSwitcherOpen] = useState(false)
 
+  // Derive active project from URL path
+  const firstSegment = decodeURIComponent(pathname.split('/')[1] ?? '')
   const activeProject = projects.find(
-    (p) => p.name.toLowerCase() === activeProjectName?.toLowerCase(),
+    (p) => p.name.toLowerCase() === firstSegment.toLowerCase(),
   ) ?? projects[0] ?? null
+  const activeTeamId = searchParams.get('team')
 
   const projectPath = activeProject
     ? `/${encodeURIComponent(activeProject.name.toLowerCase())}`
@@ -114,7 +117,7 @@ export function Sidebar({ projects, activeProjectName }: SidebarProps) {
               <NavItem
                 key={team.id}
                 href={`${projectPath}?team=${team.id}`}
-                active={pathname === projectPath && typeof window !== 'undefined'}
+                active={pathname === projectPath && activeTeamId === team.id}
                 dot={team.colour}
               >
                 {team.name}

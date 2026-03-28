@@ -5,14 +5,14 @@ import { requireUser } from '../../../lib/auth/session'
 import { buildSystemPrompt } from '../../../lib/ai/systemPrompt'
 
 export async function POST(request: NextRequest) {
-  await requireUser()
+  const user = await requireUser()
 
   const body = await request.json()
-  const { cardId, message, userId } = body as {
+  const { cardId, message } = body as {
     cardId: string
     message: string
-    userId: string
   }
+  const userId = user.id
 
   // Fetch card with context
   const card = await prisma.card.findUnique({

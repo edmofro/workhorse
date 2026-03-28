@@ -14,14 +14,8 @@ export default async function ProjectPage({ params, searchParams }: Props) {
   const { projectSlug } = await params
   const { team: teamFilter, status: statusFilter, assignee: assigneeFilter } = await searchParams
 
-  const allProjects = await prisma.project.findMany()
-  const matchedProject = allProjects.find(
-    (p) => p.name.toLowerCase() === projectSlug.toLowerCase(),
-  )
-  if (!matchedProject) notFound()
-
-  const project = await prisma.project.findUnique({
-    where: { id: matchedProject.id },
+  const projects = await prisma.project.findMany({
+    where: { name: { equals: decodeURIComponent(projectSlug), mode: 'insensitive' } },
     include: {
       teams: {
         include: {
@@ -32,7 +26,9 @@ export default async function ProjectPage({ params, searchParams }: Props) {
         },
       },
     },
+    take: 1,
   })
+  const project = projects[0]
   if (!project) notFound()
 
   const allCards = project.teams.flatMap((t) => t.cards)
@@ -51,6 +47,7 @@ export default async function ProjectPage({ params, searchParams }: Props) {
         <TopbarTitle>Board</TopbarTitle>
         <TopbarRight>
           <CardFilter
+            teams={project.teams.map((t) => ({ id: t.id, name: t.name, colour: t.colour }))}
             users={users.map((u) => ({ id: u.id, displayName: u.displayName }))}
             basePath={projectPath}
           />

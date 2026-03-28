@@ -5,7 +5,7 @@ import { SpecEditor } from './SpecEditor'
 import { ChatSidebar } from './ChatSidebar'
 import { SpecListSidebar } from './SpecListSidebar'
 import { buildDefaultSpec } from '../../lib/specs/format'
-import { createSpec } from '../../lib/actions/specs'
+import { createSpec, createSpecWithBaseline } from '../../lib/actions/specs'
 import { useUser } from '../UserProvider'
 
 interface SpecData {
@@ -65,11 +65,12 @@ export function SpecTab({ card, specs: initialSpecs, projectSpecs, messages }: S
   }, [card])
 
   const handleAttachProjectSpec = useCallback(async (filePath: string, content: string) => {
-    const spec = await createSpec({
+    const spec = await createSpecWithBaseline({
       cardId: card.id,
       filePath,
       isNew: false,
       content,
+      baselineContent: content,
     })
 
     setSpecs((prev) => [...prev, spec])

@@ -21,15 +21,16 @@ src/components/   — React components
 src/lib/          — Shared utilities, database client, AI client
 prisma/           — Database schema and migrations
 .workhorse/
-  specs/        — Feature specifications (the product backlog)
+  specs/        — Spec documents (the product backlog)
   design/         — Design system docs and mockups
 ```
 
 ## Key concepts
 
-- **Feature:** A unit of work (like a Linear ticket) with acceptance criteria
+- **Card:** A unit of work (like a Linear ticket) with acceptance criteria
+- **Project:** A repo-backed workspace (e.g., Tamanu, Tupaia)
 - **Spec interview:** AI-powered interview mode for developing acceptance criteria
-- **Spec:** The acceptance criteria and requirements for a feature
+- **Spec:** The acceptance criteria and requirements for a card
 - **Team:** A group working on a repo (e.g., Tamanu team, Tupaia team)
 
 ## Design
@@ -39,9 +40,9 @@ Follow `.workhorse/design/design-system.md` strictly. Professional, refined aest
 ## Conventions
 
 - Australian/NZ English spelling (colour, organisation, finalise)
-- Feature IDs: WH-XXX format
+- Card IDs: WH-XXX format
 - Specs live in `.workhorse/specs/` directory in this repo
-- Component files use PascalCase: `FeatureList.tsx`
+- Component files use PascalCase: `CardList.tsx`
 - Utility files use camelCase: `prismaClient.ts`
 
 ## Pull requests

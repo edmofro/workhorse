@@ -10,20 +10,28 @@ interface User {
   displayName: string
 }
 
+interface Team {
+  id: string
+  name: string
+  colour: string
+}
+
 interface CardFilterProps {
+  teams: Team[]
   users: User[]
   basePath: string
 }
 
-export function CardFilter({ users, basePath }: CardFilterProps) {
+export function CardFilter({ teams, users, basePath }: CardFilterProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [showFilters, setShowFilters] = useState(false)
 
+  const currentTeam = searchParams.get('team')
   const currentStatus = searchParams.get('status')
   const currentAssignee = searchParams.get('assignee')
 
-  const hasFilters = currentStatus || currentAssignee
+  const hasFilters = currentTeam || currentStatus || currentAssignee
 
   function applyFilter(key: string, value: string | null) {
     const params = new URLSearchParams(searchParams.toString())
@@ -58,6 +66,27 @@ export function CardFilter({ users, basePath }: CardFilterProps) {
         <>
           <div className="fixed inset-0 z-30" onClick={() => setShowFilters(false)} />
           <div className="absolute right-0 top-full mt-2 w-[240px] bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-[var(--radius-default)] shadow-[var(--shadow-md)] z-40 p-3 space-y-3">
+            {/* Team */}
+            {teams.length > 1 && (
+              <div>
+                <label className="block text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-[0.06em] mb-1">
+                  Team
+                </label>
+                <select
+                  value={currentTeam ?? ''}
+                  onChange={(e) => applyFilter('team', e.target.value || null)}
+                  className="w-full px-2 py-1 text-[12px] bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-[var(--radius-default)] outline-none"
+                >
+                  <option value="">All teams</option>
+                  {teams.map((team) => (
+                    <option key={team.id} value={team.id}>
+                      {team.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
             {/* Status */}
             <div>
               <label className="block text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-[0.06em] mb-1">

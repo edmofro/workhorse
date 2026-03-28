@@ -55,6 +55,8 @@ export function CardTab({ card, users, teams }: CardTabProps) {
   const { user } = useUser()
   const [title, setTitle] = useState(card.title)
   const [description, setDescription] = useState(card.description ?? '')
+  const [status, setStatus] = useState(card.status)
+  const [priority, setPriority] = useState(card.priority)
   const [newTag, setNewTag] = useState('')
   const [newComment, setNewComment] = useState('')
   const [, startTransition] = useTransition()
@@ -109,7 +111,7 @@ export function CardTab({ card, users, teams }: CardTabProps) {
     const content = newComment.trim()
     if (!content) return
     startTransition(async () => {
-      await addComment(card.id, user.id, content)
+      await addComment(card.id, content)
     })
     setNewComment('')
   }
@@ -147,8 +149,11 @@ export function CardTab({ card, users, teams }: CardTabProps) {
         <div className="border-t border-[var(--border-subtle)] pt-5 space-y-3">
           <MetadataRow label="Status">
             <select
-              value={card.status}
-              onChange={(e) => handleUpdate({ status: e.target.value })}
+              value={status}
+              onChange={(e) => {
+                setStatus(e.target.value)
+                handleUpdate({ status: e.target.value })
+              }}
               className="text-[13px] bg-transparent border-none outline-none cursor-pointer text-[var(--text-secondary)] appearance-none pr-4"
             >
               {STATUS_OPTIONS.map((opt) => (
@@ -161,8 +166,11 @@ export function CardTab({ card, users, teams }: CardTabProps) {
 
           <MetadataRow label="Priority">
             <select
-              value={card.priority}
-              onChange={(e) => handleUpdate({ priority: e.target.value })}
+              value={priority}
+              onChange={(e) => {
+                setPriority(e.target.value)
+                handleUpdate({ priority: e.target.value })
+              }}
               className="text-[13px] bg-transparent border-none outline-none cursor-pointer text-[var(--text-secondary)] appearance-none pr-4"
             >
               {PRIORITY_OPTIONS.map((opt) => (

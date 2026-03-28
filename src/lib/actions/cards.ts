@@ -2,6 +2,7 @@
 
 import { prisma } from '../prisma'
 import { revalidatePath } from 'next/cache'
+import { requireUser } from '../auth/session'
 
 export async function getCards(teamIds: string[]) {
   return prisma.card.findMany({
@@ -37,6 +38,8 @@ export async function createCard(data: {
   priority?: string
   tags?: string[]
 }) {
+  await requireUser()
+
   // Generate next identifier
   const lastCard = await prisma.card.findFirst({
     orderBy: { identifier: 'desc' },
@@ -78,6 +81,8 @@ export async function updateCard(
     tags?: string[]
   },
 ) {
+  await requireUser()
+
   const updateData: Record<string, unknown> = { ...data }
   if (data.tags) {
     updateData.tags = JSON.stringify(data.tags)
@@ -93,6 +98,7 @@ export async function updateCard(
 }
 
 export async function deleteCard(id: string) {
+  await requireUser()
   await prisma.card.delete({ where: { id } })
   revalidatePath('/')
 }
@@ -114,9 +120,10 @@ export async function getProjectCards(projectId: string) {
   })
 }
 
-export async function addComment(cardId: string, userId: string, content: string) {
+export async function addComment(cardId: string, content: string) {
+  const user = await requireUser()
   const comment = await prisma.cardComment.create({
-    data: { cardId, userId, content },
+    data: { cardId, userId: user.id, content },
     include: { user: true },
   })
 

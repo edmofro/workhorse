@@ -12,7 +12,7 @@ export default async function DesignPage({ params }: Props) {
 
   const allProjects = await prisma.project.findMany()
   const project = allProjects.find(
-    (p) => p.name.toLowerCase() === decodeURIComponent(projectSlug).toLowerCase(),
+    (p) => p.name.toLowerCase() === projectSlug.toLowerCase(),
   )
   if (!project) notFound()
 

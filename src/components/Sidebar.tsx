@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Settings, LogOut, FileText, Palette, Users, ChevronDown, Plus } from 'lucide-react'
+import { Settings, LogOut, FileText, Palette, ChevronDown } from 'lucide-react'
 import { cn } from '../lib/cn'
 import { Avatar } from './Avatar'
 import { useUser } from './UserProvider'

@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '../../../lib/prisma'
+import { requireUser } from '../../../lib/auth/session'
 import { generateHandoffPrompt } from '../../../lib/handoff/generatePrompt'
 
 export async function GET(request: NextRequest) {
+  await requireUser()
+
   const cardId = request.nextUrl.searchParams.get('cardId')
 
   if (!cardId) {

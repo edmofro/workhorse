@@ -13,7 +13,6 @@ interface CardDetailShellProps {
     title: string
     status: string
     prUrl?: string | null
-    specBranch?: string | null
     hasSpecs: boolean
     specsDirty: boolean
   }
@@ -74,7 +73,6 @@ export function CardDetailShell({
             specsDirty={card.specsDirty}
             status={card.status}
             existingPrUrl={card.prUrl}
-            existingBranch={card.specBranch}
           />
         </TopbarRight>
       </Topbar>

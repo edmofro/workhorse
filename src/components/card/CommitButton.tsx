@@ -24,7 +24,6 @@ interface CommitButtonProps {
   specsDirty: boolean
   status: string
   existingPrUrl?: string | null
-  existingBranch?: string | null
 }
 
 export function CommitButton({

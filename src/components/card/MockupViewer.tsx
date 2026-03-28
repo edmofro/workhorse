@@ -13,7 +13,6 @@ interface MockupViewerProps {
     html: string
   }
   onClose: () => void
-  featureId?: string
 }
 
 const DEVICES = [

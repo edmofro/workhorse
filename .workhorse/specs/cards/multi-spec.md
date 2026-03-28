@@ -19,7 +19,7 @@ The AI identifies which specs are needed based on the conversation and its codeb
 
 ## Spec tab
 
-- [ ] The sidebar shows this card's specs at the top (the working set), with the full project spec tree available below via search or disclosure (see `workflow/quality-gates.md` for full UX)
+- [ ] The sidebar shows this card's specs at the top (the working set), with the full project spec tree available below via search or disclosure (see `editor/spec-editor.md` for full UX)
 - [ ] Each card spec is tagged: "new" or "editing existing"
 - [ ] Clicking a spec opens it in the editor
 - [ ] For edits to existing specs, the current version from main is the starting point

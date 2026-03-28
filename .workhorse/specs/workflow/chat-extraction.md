@@ -46,6 +46,7 @@ A fresh-context AI agent reviews the draft specs and posts its findings into the
 - [ ] Contradictions and unstated assumptions within the draft specs
 - [ ] Interactions with existing functionality that haven't been addressed
 - [ ] **Cross-spec impact:** scans through every existing project spec to find areas that the new or changed specs would affect but that haven't been updated by this card. For example, if a new "allergies" spec changes how patient data is structured, the review should flag `patient/merge.md` if it references patient data but hasn't been included on the card. This is one of several review responsibilities — the agent should flag substantive impacts, not speculate about tangential connections
+- [ ] **Information architecture:** checks that each spec's sections belong to its title and area, flags misplaced content (e.g. UI layout details in an auth spec, tag management in a quality gates spec), and identifies duplicated information that should be consolidated with cross-references
 
 ### How results appear
 

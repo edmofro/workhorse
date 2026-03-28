@@ -21,7 +21,7 @@ export interface CommitResult {
   prUrl: string
 }
 
-export async function commitFeatureSpecs(featureId: string): Promise<CommitResult> {
+export async function commitFeatureSpecs(token: string, featureId: string): Promise<CommitResult> {
   const feature = await prisma.feature.findUnique({
     where: { id: featureId },
     include: {
@@ -48,7 +48,7 @@ export async function commitFeatureSpecs(featureId: string): Promise<CommitResul
   }
 
   // Get base branch SHA
-  const baseRef = await getRef(owner, repoName, baseBranch)
+  const baseRef = await getRef(token, owner, repoName, baseBranch)
   if (!baseRef) throw new Error(`Base branch "${baseBranch}" not found`)
   const baseSha = baseRef.object.sha
 
@@ -57,7 +57,7 @@ export async function commitFeatureSpecs(featureId: string): Promise<CommitResul
 
   // Try to create branch (may already exist if this is a subsequent commit)
   try {
-    await createBranch(owner, repoName, branchName, baseSha)
+    await createBranch(token, owner, repoName, branchName, baseSha)
   } catch (err) {
     // Only tolerate "already exists" errors; re-throw anything else
     const message = err instanceof Error ? err.message : String(err)
@@ -69,12 +69,13 @@ export async function commitFeatureSpecs(featureId: string): Promise<CommitResul
   // Commit each spec file
   for (const spec of feature.specs) {
     // Check if file already exists on branch
-    const existing = await getFileContent(owner, repoName, spec.filePath, branchName)
+    const existing = await getFileContent(token, owner, repoName, spec.filePath, branchName)
     const commitMsg = spec.isNew
       ? `Add spec: ${spec.filePath}`
       : `Update spec: ${spec.filePath}`
 
     await createOrUpdateFile(
+      token,
       owner,
       repoName,
       spec.filePath,
@@ -101,6 +102,7 @@ export async function commitFeatureSpecs(featureId: string): Promise<CommitResul
     ).join('\n')
 
     const pr = await createPullRequest(
+      token,
       owner,
       repoName,
       `[${feature.identifier}] ${feature.title} — Spec`,

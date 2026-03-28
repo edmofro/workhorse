@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { requireUser } from '../../../lib/auth/session'
 import { fetchDesignLibrary } from '../../../lib/git/designLibrary'
 
 export async function GET(request: NextRequest) {
+  const user = await requireUser()
+
   const owner = request.nextUrl.searchParams.get('owner')
   const repo = request.nextUrl.searchParams.get('repo')
   const branch = request.nextUrl.searchParams.get('branch') ?? 'main'
@@ -11,7 +14,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const files = await fetchDesignLibrary(owner, repo, branch)
+    const files = await fetchDesignLibrary(user.accessToken, owner, repo, branch)
     return NextResponse.json(files)
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Failed to fetch design library'

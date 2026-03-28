@@ -131,6 +131,7 @@ export function SpecTab({ card, specs: initialSpecs, projectSpecs, messages }: S
             key={activeSpec.id}
             spec={activeSpec}
             onContentChange={handleSpecUpdate}
+            baselineContent={activeSpec.baselineContent}
           />
         ) : (
           <div className="text-center py-16 text-[var(--text-muted)] text-[13px]">

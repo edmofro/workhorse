@@ -34,7 +34,6 @@ export default async function CardLayout({ params, children }: Props) {
         title: card.title,
         status: card.status,
         prUrl: card.prUrl,
-        specBranch: card.specBranch,
         hasSpecs,
         specsDirty,
       }}

@@ -89,13 +89,13 @@ export function CardTab({ card, users, teams }: CardTabProps) {
     const tag = newTag.trim()
     if (!tag || tags.includes(tag)) return
     const updatedTags = [...tags, tag]
-    handleUpdate({ tags: JSON.stringify(updatedTags) })
+    handleUpdate({ tags: updatedTags })
     setNewTag('')
   }
 
   function handleRemoveTag(tagToRemove: string) {
     const updatedTags = tags.filter((t) => t !== tagToRemove)
-    handleUpdate({ tags: JSON.stringify(updatedTags) })
+    handleUpdate({ tags: updatedTags })
   }
 
   function handleTagKeyDown(e: React.KeyboardEvent) {

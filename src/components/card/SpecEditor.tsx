@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useCallback, useEffect, useMemo } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import { updateSpecContent } from '../../lib/actions/specs'
 import { parseSpec, serializeSpec, type SpecFrontmatter } from '../../lib/specs/format'
 import { Eye } from 'lucide-react'

@@ -1,9 +1,12 @@
 import { NextRequest } from 'next/server'
 import { anthropic } from '../../../lib/anthropic'
 import { prisma } from '../../../lib/prisma'
+import { requireUser } from '../../../lib/auth/session'
 import { buildAutoReviewPrompt } from '../../../lib/ai/freshEyesReview'
 
 export async function POST(request: NextRequest) {
+  await requireUser()
+
   const body = await request.json()
   const { cardId } = body as { cardId: string }
 

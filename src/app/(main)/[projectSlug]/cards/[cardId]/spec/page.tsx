@@ -3,11 +3,11 @@ import { prisma } from '../../../../../../lib/prisma'
 import { SpecTab } from '../../../../../../components/card/SpecTab'
 
 interface Props {
-  params: Promise<{ cardId: string; projectSlug: string }>
+  params: Promise<{ cardId: string }>
 }
 
 export default async function SpecPage({ params }: Props) {
-  const { cardId, projectSlug } = await params
+  const { cardId } = await params
 
   const card = await prisma.card.findUnique({
     where: { identifier: cardId },

@@ -68,7 +68,7 @@ Product owners refining requirements, testers bringing attention to edge cases a
 
 ## Automated spec review
 
-The user can trigger an auto-review at any point — a fresh-context AI agent reviews the specs, mockups, and all existing project specs, then posts findings into the chat for the interview AI to help work through. See `workflow/chat-extraction.md` for full details.
+The user can trigger an auto-review at any point — a fresh-context AI agent reviews the specs, mockups, and all existing project specs, then posts findings into the chat for the interview AI to help work through. See `workflow/auto-review.md` for full details.
 
 ## Spec completeness signals
 

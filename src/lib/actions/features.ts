@@ -80,8 +80,6 @@ export async function updateFeature(
   const updateData: Record<string, unknown> = { ...data }
   if (data.tags) {
     updateData.tags = JSON.stringify(data.tags)
-    delete updateData.tags
-    updateData.tags = JSON.stringify(data.tags)
   }
 
   const feature = await prisma.feature.update({

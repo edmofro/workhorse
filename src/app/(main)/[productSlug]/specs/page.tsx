@@ -10,20 +10,12 @@ interface Props {
 export default async function ProductSpecsPage({ params }: Props) {
   const { productSlug } = await params
 
-  const product = await prisma.product.findFirst({
-    where: { name: { equals: decodeURIComponent(productSlug) } },
-  })
-
-  if (!product) {
-    // Try case-insensitive
-    const allProducts = await prisma.product.findMany()
-    const match = allProducts.find(
-      (p) => p.name.toLowerCase() === decodeURIComponent(productSlug).toLowerCase(),
-    )
-    if (!match) notFound()
-
-    return renderPage(match)
-  }
+  // Case-insensitive product lookup (consistent with other product pages)
+  const allProducts = await prisma.product.findMany()
+  const product = allProducts.find(
+    (p) => p.name.toLowerCase() === decodeURIComponent(productSlug).toLowerCase(),
+  )
+  if (!product) notFound()
 
   return renderPage(product)
 }

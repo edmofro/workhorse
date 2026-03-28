@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useTransition, useRef, useCallback } from 'react'
 import { Button } from './Button'
 import { useUser } from './UserProvider'
 import { updateUser } from '../lib/actions/user'
@@ -34,6 +34,7 @@ export function SettingsForm({ products: initialProducts }: SettingsFormProps) {
   const [displayName, setDisplayName] = useState(user.displayName)
   const [products, setProducts] = useState(initialProducts)
   const [isPending, startTransition] = useTransition()
+  const productSaveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
 
   function handleUpdateName() {
     if (!displayName.trim() || displayName === user.displayName) return
@@ -58,13 +59,28 @@ export function SettingsForm({ products: initialProducts }: SettingsFormProps) {
     })
   }
 
+  const debouncedUpdateProduct = useCallback(
+    (id: string, data: Partial<ProductData>) => {
+      if (productSaveTimers.current[id]) {
+        clearTimeout(productSaveTimers.current[id])
+      }
+      productSaveTimers.current[id] = setTimeout(() => {
+        startTransition(async () => {
+          await updateProduct(id, data)
+        })
+        delete productSaveTimers.current[id]
+      }, 500)
+    },
+    [startTransition],
+  )
+
   function handleUpdateProduct(id: string, data: Partial<ProductData>) {
-    startTransition(async () => {
-      await updateProduct(id, data)
-      setProducts((prev) =>
-        prev.map((p) => (p.id === id ? { ...p, ...data } : p)),
-      )
-    })
+    // Update local state immediately for responsiveness
+    setProducts((prev) =>
+      prev.map((p) => (p.id === id ? { ...p, ...data } : p)),
+    )
+    // Debounce the server action
+    debouncedUpdateProduct(id, data)
   }
 
   function handleDeleteProduct(id: string) {
@@ -91,22 +107,32 @@ export function SettingsForm({ products: initialProducts }: SettingsFormProps) {
     })
   }
 
+  const teamSaveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
+
   function handleUpdateTeam(teamId: string, productId: string, data: Partial<TeamData>) {
-    startTransition(async () => {
-      await updateTeam(teamId, data)
-      setProducts((prev) =>
-        prev.map((p) =>
-          p.id === productId
-            ? {
-                ...p,
-                teams: p.teams.map((t) =>
-                  t.id === teamId ? { ...t, ...data } : t,
-                ),
-              }
-            : p,
-        ),
-      )
-    })
+    // Update local state immediately
+    setProducts((prev) =>
+      prev.map((p) =>
+        p.id === productId
+          ? {
+              ...p,
+              teams: p.teams.map((t) =>
+                t.id === teamId ? { ...t, ...data } : t,
+              ),
+            }
+          : p,
+      ),
+    )
+    // Debounce server action
+    if (teamSaveTimers.current[teamId]) {
+      clearTimeout(teamSaveTimers.current[teamId])
+    }
+    teamSaveTimers.current[teamId] = setTimeout(() => {
+      startTransition(async () => {
+        await updateTeam(teamId, data)
+      })
+      delete teamSaveTimers.current[teamId]
+    }, 500)
   }
 
   function handleDeleteTeam(teamId: string, productId: string) {

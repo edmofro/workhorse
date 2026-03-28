@@ -5,14 +5,14 @@ card: WH-005
 status: draft
 ---
 
-When specs are ready (or at any point during development), the user hits "Commit". Workhorse handles everything — creating branches, PRs, naming them according to the product's conventions, and pushing updates. The user never sees branch names or git operations. A card may create new specs and modify existing ones — all committed together.
+When specs are ready (or at any point during development), the user hits "Commit". Workhorse handles everything — creating branches, PRs, naming them according to the project's conventions, and pushing updates. The user never sees branch names or git operations. A card may create new specs and modify existing ones — all committed together.
 
 For developers picking up the work, Workhorse generates an implementation prompt that handles the checkout and tells their AI what changed.
 
 ## Committing (user's perspective)
 
 - [ ] User clicks "Commit" on the card
-- [ ] All spec documents on the card are saved to the product's codebase
+- [ ] All spec documents on the card are saved to the project's codebase
 - [ ] After initial commit, the "Commit spec" button remains but is disabled until there are new local changes to push
 - [ ] When specs are edited after an initial commit, the button re-enables so the user can push updates
 - [ ] A PR is visible on GitHub for reviewers, but the user doesn't need to think about it
@@ -21,8 +21,8 @@ For developers picking up the work, Workhorse generates an implementation prompt
 
 ## Under the hood (invisible to user)
 
-- [ ] Workhorse creates a branch following the product's conventions (from CLAUDE.md, llm rules)
-- [ ] A PR is created with a title following the product's conventions
+- [ ] Workhorse creates a branch following the project's conventions (from CLAUDE.md, llm rules)
+- [ ] A PR is created with a title following the project's conventions
 - [ ] Subsequent edits push new commits to the same branch/PR
 - [ ] A link to view the PR on GitHub is shown next to the Commit button once a PR exists
 - [ ] Dependent cards branch off parent card branches; rebasing is automatic
@@ -48,7 +48,7 @@ When specs are committed and the card is marked "Spec complete", the developer c
 
 The prompt is short and self-contained — it tells the AI where to look, not what the specs say. The AI reads the specs and mockups from the codebase itself.
 
-- [ ] Prompt fits comfortably in clipboard (target: under 500 characters for typical features)
+- [ ] Prompt fits comfortably in clipboard (target: under 500 characters for typical cards)
 - [ ] Includes: git fetch/checkout commands for the spec branch
 - [ ] Includes: which spec files are new vs updated, as file paths only
 - [ ] Includes: `git diff` command between base branch and spec branch to see the delta

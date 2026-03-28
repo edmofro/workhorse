@@ -5,7 +5,7 @@ card: WH-003
 status: draft
 ---
 
-The AI generates HTML/CSS mockups during the chat conversation. They appear in the chat where they were created, and are also listed in a persistent mockups panel so they're always accessible regardless of scroll position. Clicking a mockup opens a full-screen viewer. There may be many mockups over the course of specifying a feature: a date picker detail, a full page layout, a merge conflict dialog, etc.
+The AI generates HTML/CSS mockups during the chat conversation. They appear in the chat where they were created, and are also listed in a persistent mockups panel so they're always accessible regardless of scroll position. Clicking a mockup opens a full-screen viewer. There may be many mockups over the course of specifying a card: a date picker detail, a full page layout, a merge conflict dialog, etc.
 
 ## Context
 

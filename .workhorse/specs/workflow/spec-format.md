@@ -5,7 +5,7 @@ card: WH-006
 status: draft
 ---
 
-Defines the format specs are written in, how they're structured in the codebase, and how they map to the navigable hierarchy in Workhorse. The format must serve product owners (who author and review), developers and AI agents (who implement from them), and the spec explorer (which builds a navigable knowledge base from them).
+Defines the format specs are written in, how they're structured in the codebase, and how they map to the navigable hierarchy in Workhorse. The format serves product owners (who author and review), developers and AI agents (who implement from them), and the spec explorer (which builds a navigable knowledge base from them).
 
 ## The problem
 
@@ -47,7 +47,7 @@ card: WH-042
 status: complete
 ---
 
-Summary paragraph describing what this feature does.
+Summary paragraph describing what this area covers.
 
 ## Section heading
 
@@ -61,9 +61,9 @@ Summary paragraph describing what this feature does.
 
 ### Frontmatter fields
 
-- `title` — human-readable feature name
+- `title` — human-readable name
 - `area` — which area this belongs to (matches directory)
-- `card` — Workhorse card ID that created/owns this spec (links back to chat, comments, mockups)
+- `card` — Workhorse card ID that created or owns this spec (links back to chat, comments, mockups)
 - `status` — `draft`, `complete`, `superseded`
 
 ### Content conventions
@@ -103,7 +103,7 @@ Summary paragraph describing what this feature does.
 
 ## Open questions
 
-> **Tracey integration:** Should we support Tracey-style IDs as an optional layer that Workhorse manages? This would enable code-to-spec traceability without burdening the author. Probably a future feature.
+> **Tracey integration:** Should we support Tracey-style IDs as an optional layer that Workhorse manages? This would enable code-to-spec traceability without burdening the author. Probably a future addition.
 
 > **Versioning:** Rely on git history (simpler) or explicit version numbers in frontmatter?
 

@@ -13,7 +13,8 @@ For developers picking up the work, Workhorse generates an implementation prompt
 
 - [ ] User clicks "Commit" on the card
 - [ ] All spec documents on the card are saved to the product's codebase
-- [ ] Subsequent spec edits are saved automatically (no re-commit needed, or a simple "Update" button)
+- [ ] After initial commit, the "Commit spec" button remains but is disabled until there are new local changes to push
+- [ ] When specs are edited after an initial commit, the button re-enables so the user can push updates
 - [ ] A PR is visible on GitHub for reviewers, but the user doesn't need to think about it
 - [ ] Committed specs do not include mockup HTML
 - [ ] If the card depends on another card (see WH-019), commits are ordered correctly
@@ -28,14 +29,20 @@ For developers picking up the work, Workhorse generates an implementation prompt
 
 ## Launch Claude Code session
 
-When specs are committed, the developer needs to start implementing. Rather than downloading a large handoff file, Workhorse generates a short clipboard prompt and opens Claude Code in one click.
+When specs are committed and the card is marked "Spec complete", the developer can start implementing. Rather than downloading a large handoff file, Workhorse generates a short clipboard prompt and optionally opens Claude Code.
 
 ### UX flow
 
-- [ ] After commit, "Commit spec" button is replaced by "View PR" link and a "Launch Claude Code" button
-- [ ] Clicking "Launch Claude Code" copies a short prompt to clipboard and opens `claude.ai/code` in a new tab
-- [ ] A toast confirms: "Prompt copied — paste it in Claude Code"
-- [ ] The download button is removed (replaced by the launch button)
+- [ ] The implementation launch button only appears when the card status is `SPEC_COMPLETE`
+- [ ] Button is a split button with dropdown (like GitHub's merge strategy button on PR reviews)
+- [ ] Two options in the dropdown: "Copy prompt" and "Launch Claude Code"
+- [ ] "Copy prompt" copies the implementation prompt to clipboard
+- [ ] "Launch Claude Code" copies the prompt to clipboard AND opens `claude.ai/code` in a new tab
+- [ ] The button face shows whichever option the user chose last time (persisted in localStorage)
+- [ ] Default for first-time users is "Launch Claude Code"
+- [ ] A toast confirms the action: "Prompt copied" or "Prompt copied — opening Claude Code"
+- [ ] The "Commit spec" button remains available alongside the implementation button, but is disabled when there are no uncommitted spec changes (i.e. DB version matches what's on the branch)
+- [ ] "View PR" link also remains visible once a PR exists
 
 ### Prompt design
 
@@ -76,3 +83,5 @@ Read the specs and mockups, then implement all acceptance criteria.
 > **Draft PRs:** Should the PR be created as draft initially?
 
 > **Toast library:** Do we have a toast/notification system yet, or do we need to add one for the "Prompt copied" feedback?
+
+> **Dirty detection:** How do we detect uncommitted spec changes? Compare DB content against last committed content (stored on commit), or query GitHub API for file content?

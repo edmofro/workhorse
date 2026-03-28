@@ -28,7 +28,7 @@ Each spec in the browser links back to the Workhorse card that created it, provi
 ### Spec hierarchy in the codebase
 
 - [ ] Specs are committed as markdown files in a structured directory within the repo
-- [ ] The directory structure defines the hierarchy (e.g., `specs/patient/allergies.md`, `specs/sync/facility-sync.md`)
+- [ ] The directory structure defines the hierarchy (e.g., `.workhorse/specs/patient/allergies.md`, `.workhorse/specs/sync/facility-sync.md`)
 - [ ] Workhorse reads the spec tree from the repo's main branch to build the browser
 - [ ] When new specs are merged to main, the browser updates
 

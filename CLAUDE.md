@@ -30,11 +30,11 @@ design-mockups/   — HTML mockups for design iteration
 - **Feature:** A unit of work (like a Linear ticket) with acceptance criteria
 - **Spec interview:** AI-powered interview mode for developing acceptance criteria
 - **Spec:** The acceptance criteria and requirements for a feature
-- **Team:** A group working on a repo (e.g., Tamanu team, Tupaia team)
+- **Team:** A group working on a product (e.g., Tamanu team, Tupaia team)
 
 ## Design
 
-Follow `docs/DESIGN-GUIDE.md` strictly. Dark mode default. Professional, refined aesthetic inspired by Linear and GitHub. Uses Inter font, 4px spacing grid, subtle hover states.
+Follow `docs/DESIGN-GUIDE.md` strictly. Light mode with warm neutral palette. Professional, refined aesthetic inspired by Linear and GitHub. Uses Inter font, 4px spacing grid, subtle hover states.
 
 ## Conventions
 

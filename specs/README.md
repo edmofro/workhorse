@@ -12,13 +12,11 @@ Structured specifications for the Workhorse project — a spec-driven developmen
 - [WH-006: Spec format and information architecture](./WH-006-spec-format.md) — How specs are structured
 - [WH-007: Teams and feature list](./WH-007-teams-features.md) — Home view, cards, teams, statuses
 - [WH-008: User identity](./WH-008-user-identity.md) — Name-based identity, no auth
-- [WH-010: Multi-product support](./WH-010-multi-repo.md) — Products as user-facing concept, repos as infrastructure
+- [WH-010: Multi-product support](./WH-010-multi-product.md) — Products as user-facing concept, repos as infrastructure
 - [WH-016: Feature card (Card tab)](./WH-016-feature-card.md) — Description, metadata, comments
 - [WH-017: Product spec explorer](./WH-017-product-spec-browser.md) — Navigable hierarchy of merged specs per product
 - [WH-018: Multi-spec cards](./WH-018-multi-spec-cards.md) — Cards that create new specs and edit existing ones
 - [WH-019: Card dependencies](./WH-019-card-dependencies.md) — "Depends on" relationships, git mechanics invisible
 - [WH-020: Design library](./WH-020-design-library.md) — Per-product design system, components, views, and mockups in `.workhorse/design/`
+- [WH-003: Visual mockup generation](./WH-003-visual-mockups.md) — AI-generated HTML/CSS mockups during interview
 - [WH-013: GitHub integration](./WH-013-github-integration.md) — PRs, diffs, reviews
-
-## Near-term
-- [WH-003: Visual mockup generation](./WH-003-visual-mockups.md)

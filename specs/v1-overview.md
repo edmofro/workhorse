@@ -32,8 +32,8 @@ Product owners, testers, and developers — anyone who specifies what software s
 8. **Commit specs** — saves all spec changes to the product's codebase. Workhorse handles branches and PRs invisibly.
 9. **Iterate** — further edits are saved automatically
 10. **Mark spec complete** — a meaningful quality bar, not just a button click. The AI pushes back if areas remain uncovered. Generates a downloadable implementation prompt (.md) that tells the dev's AI to diff specs against main to see what to implement
-10. **Developer implements** — downloads prompt, checks out branch, works locally with their AI tool
-11. **Spec merges to main** — appears in the product's spec explorer as part of the knowledge base
+11. **Developer implements** — downloads prompt, checks out branch, works locally with their AI tool
+12. **Spec merges to main** — appears in the product's spec explorer as part of the knowledge base
 
 ## Key decisions
 

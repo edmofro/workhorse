@@ -211,6 +211,7 @@ Several names in the current codebase use "spec" where "card" is more accurate. 
 ### Renames
 
 - `Feature.specBranch` → `Feature.cardBranch`
+- `Feature.status: 'SPEC_COMPLETE'` → `'IMPLEMENTING'`
 - `/api/chat` route → `/api/interview`
 - `useChat` hook → `useInterview`
 - `ChatView` component → `InterviewView` (or keep as-is — "chat" is also reasonable)
@@ -228,7 +229,7 @@ Several names in the current codebase use "spec" where "card" is more accurate. 
 
 - `SpecEditor`, `SpecTab`, `SpecListSidebar`, `SpecDocument`, `SpecExplorer`, `SpecTree` — these refer to the spec document, which is correct
 - `src/lib/specs/`, `src/lib/git/commitSpecs.ts`, `src/lib/git/specTree.ts` — utilities for spec files, correct
-- `Feature.status: 'SPECIFYING'` / `'SPEC_COMPLETE'` — the card is specifying / the spec is complete, both accurate
+- `Feature.status: 'SPECIFYING'` — the card is specifying, accurate
 - `spec_updated` activity type — a spec was updated, correct
 
 ### New additions
@@ -237,22 +238,113 @@ Several names in the current codebase use "spec" where "card" is more accurate. 
 - `Feature.touchedFiles` (optional) — JSON array of file paths this card has modified
 - `FileLock` model — file-level edit locking
 
+## Card statuses
+
+The card status model extends to cover implementation, not just specifying:
+
+- `NOT_STARTED` — card created, no spec activity yet
+- `SPECIFYING` — interview or manual spec editing in progress
+- `IMPLEMENTING` — specs committed, implementation in progress
+- `COMPLETE` — implementation done (PR merged, or manually marked)
+
+The existing `SPEC_COMPLETE` status is replaced by `IMPLEMENTING`, which better reflects what happens next: the card moves from specifying into implementation. "Spec complete" was a milestone, not a status — the real status is that implementation has begun.
+
+- [ ] Rename `SPEC_COMPLETE` to `IMPLEMENTING` throughout the codebase
+- [ ] Add `COMPLETE` status for fully finished cards
+- [ ] Status transitions: `NOT_STARTED` → `SPECIFYING` → `IMPLEMENTING` → `COMPLETE`
+- [ ] Backward transition allowed (e.g. `IMPLEMENTING` → `SPECIFYING` if specs need rework)
+
+## Collaborate with agent button
+
+A split dropdown button appears in both `SPECIFYING` and `IMPLEMENTING` modes, adapting its prompt to the current phase. This is the same split button pattern already used for implementation handoff (like GitHub's merge strategy button on PR reviews), extended to cover spec collaboration too.
+
+### UX
+
+- [ ] Split button with dropdown: primary action on the face, chevron opens dropdown with both options
+- [ ] Two options: "Copy prompt" and "Launch Claude Code"
+- [ ] "Copy prompt" copies the phase-appropriate prompt to clipboard
+- [ ] "Launch Claude Code" copies prompt to clipboard AND opens `claude.ai/code` in a new tab
+- [ ] Button face shows whichever option the user chose last time (persisted in localStorage)
+- [ ] Default for first-time users: "Launch Claude Code"
+- [ ] Toast confirms: "Prompt copied" or "Prompt copied — opening Claude Code"
+
+### Specifying mode prompt
+
+When the card status is `SPECIFYING`, the prompt tells the agent to collaborate on specs:
+
+```
+git fetch origin workhorse/wh-042-spec
+git checkout workhorse/wh-042-spec
+
+Specs in progress:
+- .workhorse/specs/patient/merge-patients.md (new)
+- .workhorse/specs/patient/patient-search.md (updated)
+
+Mockups:
+- .workhorse/design/mockups/wh-042/merge-flow.html
+
+Review the current specs and the codebase, then help develop
+the acceptance criteria. Edit the spec files directly.
+```
+
+- [ ] Prompt includes git fetch/checkout for the card branch
+- [ ] Lists spec files this card touches, with new/updated labels
+- [ ] Lists mockup file paths
+- [ ] Instructs the agent to read specs and codebase, then edit spec files directly
+- [ ] Under 500 characters for typical features
+
+### Implementing mode prompt
+
+When the card status is `IMPLEMENTING`, the prompt tells the agent to implement:
+
+```
+git fetch origin workhorse/wh-042-spec
+git checkout workhorse/wh-042-spec
+
+New specs:
+- .workhorse/specs/patient/merge-patients.md
+- .workhorse/specs/patient/merge-conflicts.md
+
+Updated specs:
+- .workhorse/specs/patient/patient-search.md
+
+Mockups:
+- .workhorse/design/mockups/wh-042/merge-flow.html
+
+Review the diff to see what changed:
+git diff main...workhorse/wh-042-spec -- .workhorse/
+
+Read the specs and mockups, then implement all acceptance criteria.
+```
+
+- [ ] Same structure as the specifying prompt but with implementation instruction
+- [ ] Includes git diff command to see the spec delta from main
+- [ ] Under 500 characters for typical features
+
+### Button placement
+
+- [ ] Appears in the topbar right section alongside the Commit button
+- [ ] In `SPECIFYING` mode: Commit button + Collaborate button both visible
+- [ ] In `IMPLEMENTING` mode: Commit button (for any spec tweaks) + Collaborate button both visible
+- [ ] Button label adapts: could show "Collaborate on specs" vs "Implement" — or just always show "Launch Claude Code" / "Copy prompt" since the prompt itself carries the context
+
 ## External agent collaboration
 
-The worktree-on-disk architecture means that any agent with access to the same worktree can participate in spec development — not just the built-in interviewer.
+The worktree-on-disk architecture means that any agent with access to the same worktree can participate — not just the built-in interviewer. The collaborate button described above is the primary entry point, but the architecture is open by design.
 
-### Spec work from outside Workhorse
+### How it works
 
-- [ ] A "Launch Claude Code" button (similar to the existing implementation handoff) can open a Claude Code session pointed at the card's worktree
-- [ ] The external agent reads/writes the same spec files the interviewer does
+- [ ] The external Claude Code session operates on the same branch as the card
+- [ ] It reads/writes the same spec and mockup files the built-in interviewer does
 - [ ] On return to Workhorse, the UI reflects any changes (it reads from disk)
-- [ ] File locking still applies — the external session should acquire locks or operate in a separate worktree
+- [ ] File locking applies — the external session should acquire locks, or if that's impractical, Workhorse detects changed files on focus and refreshes
 
 ### Implementation from within Workhorse
 
 - [ ] The same Agent SDK infrastructure can run an implementation agent, not just an interviewer
 - [ ] The agent reads specs from `.workhorse/specs/`, diffs against main, and implements
-- [ ] This is a future capability (not v1) but the architecture supports it with no changes — just a different system prompt appended to the same SDK setup
+- [ ] This is a future capability but the architecture supports it with no changes — just a different system prompt appended to the same SDK setup
+- [ ] When ready, could replace the "Launch Claude Code" external flow with an in-app implementation experience
 
 ## Open questions
 

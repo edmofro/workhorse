@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import type { AttachmentData } from '../attachments'
 
 export interface InterviewMessage {
@@ -31,10 +31,33 @@ export function useInterview(cardId: string) {
   const [activeToolCalls, setActiveToolCalls] = useState<ToolCallInfo[]>([])
   const [fileWrites, setFileWrites] = useState<FileWriteNotification[]>([])
   const [committedFiles, setCommittedFiles] = useState<string[]>([])
+  const historyCardIdRef = useRef<string | null>(null)
   const abortRef = useRef<AbortController | null>(null)
 
+  // Load chat history from Agent SDK session on mount or when cardId changes
+  useEffect(() => {
+    if (historyCardIdRef.current === cardId) return
+    historyCardIdRef.current = cardId
+
+    async function loadHistory() {
+      try {
+        const res = await fetch(`/api/chat-history?cardId=${cardId}`)
+        if (res.ok) {
+          const data = await res.json()
+          if (data.messages && data.messages.length > 0) {
+            setMessages(data.messages)
+          }
+        }
+      } catch {
+        // Ignore — history retrieval is best-effort
+      }
+    }
+
+    loadHistory()
+  }, [cardId])
+
   const sendMessage = useCallback(
-    async (content: string, userName: string, attachments?: AttachmentData[]) => {
+    async (content: string, userName: string, attachments?: AttachmentData[], mode?: string) => {
       if ((!content.trim() && (!attachments || attachments.length === 0)) || isStreamingRef.current) return
 
       // Add user message
@@ -65,7 +88,7 @@ export function useInterview(cardId: string) {
         const res = await fetch('/api/interview', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ cardId, message: content, attachmentIds }),
+          body: JSON.stringify({ cardId, message: content, attachmentIds, mode }),
           signal: abortRef.current.signal,
         })
 

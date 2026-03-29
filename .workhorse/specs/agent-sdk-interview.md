@@ -147,11 +147,11 @@ Trade-off: streaming UX (seeing text arrive in real-time, seeing tool calls happ
 
 ### Specs written directly to disk
 
-The agent writes spec files in the standard format to `.workhorse/specs/` within the worktree. The spec tab reads files from the worktree via `fs.readFile()`.
+The agent writes spec files in the standard format to `.workhorse/specs/` within the worktree. The right panel and spec view read files from the worktree via `fs.readFile()`.
 
 - [ ] Agent creates new spec files at paths it determines based on codebase structure
 - [ ] Agent edits existing spec files in place when refining criteria
-- [ ] Spec tab lists files from `git diff --name-only main` filtered to `.workhorse/specs/`
+- [ ] Right panel lists files from `git diff --name-only main` filtered to `.workhorse/specs/`
 - [ ] New vs existing detection: file doesn't exist on `main` branch = new
 
 ### Mockups written directly to disk
@@ -160,7 +160,7 @@ The agent writes mockup HTML files to `.workhorse/design/mockups/{card-id}/` wit
 
 - [ ] Each mockup is a standalone HTML file with inline CSS
 - [ ] Mockup files include an HTML comment header referencing their spec: `<!-- spec: patient/allergies.md -->`
-- [ ] Mockup viewer reads files from disk (same as spec tab)
+- [ ] Mockup viewer reads files from disk (same as spec view)
 - [ ] Agent can revise mockups when asked — just edits the file
 - [ ] Mockups are auto-committed alongside specs
 
@@ -194,7 +194,7 @@ A `FileLock` record tracks who is editing each file:
 - [ ] Agent needs to write a file → acquire lock. If locked by a user, the agent describes its intended changes in chat instead of writing the file
 - [ ] Lock released when: user clicks "Done editing", user navigates away, agent turn completes, or lock expires
 - [ ] Stale lock cleanup: on-access check against `expiresAt`, plus periodic sweep
-- [ ] Lock status visible in the spec tab file list (unlocked / locked by {name} / locked by AI)
+- [ ] Lock status visible in the right panel file list (unlocked / locked by {name} / locked by AI)
 
 ## Auto-commit model
 
@@ -241,7 +241,7 @@ Work is always saved to git — there is no manual save/commit action. The "Mark
 
 Since every change is committed with a descriptive message, `git log -- {filepath}` gives a full edit history per file:
 
-- [ ] Spec tab shows a "History" affordance per file
+- [ ] Spec view shows a "History" affordance per file
 - [ ] Each version shows: relative timestamp, author (user name or "Interviewer"), and the commit message as a description
 - [ ] Clicking a version shows the file content at that point (`git show {sha}:{path}`)
 - [ ] Diff between versions available via `git diff {sha1} {sha2} -- {path}`
@@ -276,11 +276,12 @@ If the server restarts (redeploy, crash, Railway restart), worktrees are recreat
 
 - `/api/interview` — the interview SSE endpoint
 - `useInterview` — frontend hook for the interview chat
-- `InterviewView` — the chat tab component
+- `CardWorkspace` — the main card workspace orchestrator
+- `FloatingChat` — the ever-present chat component (overlay, fullscreen, docked modes)
 
 ### Components that reference "spec" (correct — they deal with spec documents)
 
-- `SpecEditor`, `SpecTab`, `SpecListSidebar`, `SpecDocument`, `SpecExplorer`, `SpecTree`
+- `SpecEditor`, `SpecDocument`, `SpecExplorer`, `SpecTree`, `RightPanel`
 - `src/lib/specs/`, `src/lib/git/commitSpecs.ts`, `src/lib/git/specTree.ts`
 - `spec_updated` activity type
 

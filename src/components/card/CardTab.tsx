@@ -155,14 +155,18 @@ export function CardTab({ card, users, teams }: CardTabProps) {
     const uploaded = commentAttachments.getUploadedAttachments()
     if (!content && uploaded.length === 0) return
     startTransition(async () => {
-      await addComment(
-        card.id,
-        content,
-        uploaded.map((a) => a.id),
-      )
+      try {
+        await addComment(
+          card.id,
+          content,
+          uploaded.map((a) => a.id),
+        )
+        setNewComment('')
+        commentAttachments.clear()
+      } catch (error) {
+        console.error('Failed to add comment:', error)
+      }
     })
-    setNewComment('')
-    commentAttachments.clear()
   }
 
   function handleCommentKeyDown(e: React.KeyboardEvent) {
@@ -312,7 +316,7 @@ export function CardTab({ card, users, teams }: CardTabProps) {
             {tags.map((tag) => (
               <span
                 key={tag}
-                className="inline-flex items-center gap-1 px-2 py-[3px] text-[12px] bg-[var(--bg-inset)] rounded-[var(--radius-default)] text-[var(--text-secondary)]"
+                className="inline-flex items-center gap-1 px-2 py-[2px] text-[11px] font-medium bg-[var(--bg-inset)] rounded-[5px] text-[var(--text-secondary)]"
               >
                 {tag}
                 <button
@@ -330,16 +334,15 @@ export function CardTab({ card, users, teams }: CardTabProps) {
                 onChange={(e) => setNewTag(e.target.value)}
                 onKeyDown={handleTagKeyDown}
                 placeholder="Add tag..."
-                className="px-2 py-[3px] text-[12px] bg-transparent border border-[var(--border-subtle)] rounded-[var(--radius-default)] outline-none focus:border-[var(--accent)] transition-[border-color] duration-150 w-[100px] placeholder:text-[var(--text-faint)]"
+                className="px-2 py-[2px] text-[11px] font-medium bg-transparent border border-[var(--border-subtle)] rounded-[5px] outline-none focus:border-[var(--accent)] transition-[border-color] duration-100 w-[100px] placeholder:text-[var(--text-faint)]"
               />
-              {newTag.trim() && (
-                <button
-                  onClick={handleAddTag}
-                  className="text-[var(--accent)] hover:text-[var(--accent-hover)] cursor-pointer"
-                >
-                  <Plus size={12} />
-                </button>
-              )}
+              <button
+                onClick={handleAddTag}
+                className="text-[var(--accent)] hover:text-[var(--accent-hover)] cursor-pointer disabled:opacity-0"
+                disabled={!newTag.trim()}
+              >
+                <Plus size={12} />
+              </button>
             </div>
           </div>
         </div>

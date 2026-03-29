@@ -85,7 +85,7 @@ export function CreateCardDialog({ teams, projectName }: CreateCardDialogProps) 
       setPrompt('')
       attachments.clear()
       router.push(
-        `/${encodeURIComponent(projectName.toLowerCase())}/cards/${card.identifier}/chat`,
+        `/${encodeURIComponent(projectName.toLowerCase())}/cards/${card.identifier}`,
       )
     })
   }
@@ -121,7 +121,7 @@ export function CreateCardDialog({ teams, projectName }: CreateCardDialogProps) 
   return (
     <>
       <div
-        className="fixed inset-0 z-40"
+        className="fixed inset-0 z-40 bg-[rgba(28,25,23,0.40)]"
         onClick={() => !busy && setOpen(false)}
       />
       <div className="fixed inset-0 z-50 flex items-center justify-center">

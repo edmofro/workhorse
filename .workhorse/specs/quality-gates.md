@@ -10,7 +10,7 @@ Ordering and quality constraints in the commit and completion workflows.
 
 - [ ] Committing specs pushes the current spec content to the project's codebase — it does not change the card's status
 - [ ] A card can be committed multiple times while in any status (iterative workflow)
-- [ ] Status progression is an explicit user action via the status field on the Card tab
+- [ ] Status progression is an explicit user action via the status field on the card view
 - [ ] The three statuses (Not started, Specifying, Spec complete) behave like column states — the user moves the card forward when they judge it ready
 - [ ] The AI completeness assessment and auto-review inform the user's decision but do not gate the status change itself
 

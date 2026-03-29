@@ -31,7 +31,7 @@ export default async function SignInPage({ searchParams }: Props) {
         </p>
 
         {error && (
-          <div className="mb-4 p-3 text-[13px] text-red-600 bg-red-50 border border-red-200 rounded-[var(--radius-default)]">
+          <div className="mb-4 p-3 text-[13px] text-[var(--accent)] bg-[var(--accent-alpha)] border border-[var(--border-default)] rounded-[var(--radius-default)]">
             {error === 'invalid_state'
               ? 'Sign-in session expired. Please try again.'
               : 'Authentication failed. Please try again.'}

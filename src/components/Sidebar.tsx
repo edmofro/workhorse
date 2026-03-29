@@ -221,7 +221,7 @@ function NavItem({
       {icon}
       {dot && (
         <span
-          className="w-[7px] h-[7px] rounded-full shrink-0"
+          className="w-[8px] h-[8px] rounded-full shrink-0"
           style={{ background: dot }}
         />
       )}

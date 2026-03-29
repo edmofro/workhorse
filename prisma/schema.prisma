@@ -65,6 +65,13 @@ model Card {
   prNumber        Int?     // GitHub PR number
   prUrl           String?  // GitHub PR URL
   lastActivityAt  DateTime @default(now()) // For stale worktree cleanup
+
+  // Quality step tracking
+  interviewCompleted    Boolean  @default(false) // Substantive interview (not just one-shot draft)
+  specReviewCompleted   Boolean  @default(false) // Fresh-eyes review agent has run
+  designAuditCompleted  Boolean  @default(false) // Design audit agent has run (implementation phase)
+  securityAuditCompleted Boolean @default(false) // Security audit agent has run (implementation phase)
+  codeReviewCompleted   Boolean  @default(false) // Code review agent has run (implementation phase)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 

@@ -159,7 +159,7 @@ body {
 }
 .prose-workhorse table.md-table th {
   font-weight: 600; color: var(--text-primary); padding: 8px 12px;
-  border-bottom: 2px solid var(--border-default); text-align: left;
+  border-bottom: 1px solid var(--border-default); text-align: left;
 }
 .prose-workhorse table.md-table td {
   padding: 6px 12px; border-bottom: 1px solid var(--border-subtle);

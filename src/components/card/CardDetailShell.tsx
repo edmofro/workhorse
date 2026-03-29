@@ -4,7 +4,6 @@ import { usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { Topbar, TopbarCardTitle, TopbarRight } from '../Topbar'
 import { CollaborateButton } from './CollaborateButton'
-import { MarkReadyButton } from './MarkReadyButton'
 import { cn } from '../../lib/cn'
 
 interface CardDetailShellProps {
@@ -68,10 +67,6 @@ export function CardDetailShell({
               )
             })}
           </div>
-          <MarkReadyButton
-            cardId={card.id}
-            status={card.status}
-          />
           <CollaborateButton
             cardId={card.id}
             cardIdentifier={card.identifier}

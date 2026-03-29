@@ -27,15 +27,12 @@ Each file has a navigable edit history powered by descriptive commit messages:
 - [ ] Diff between any two versions
 - [ ] Powered by `git log -- {filepath}` under the hood
 
-## Marking specs ready
+## Status transitions
 
-Since work is always committed, "mark ready" is a quality gate, not a save action:
+Status changes (including `SPECIFYING` → `IMPLEMENTING`) are handled via the status dropdown on the Card tab — no dedicated button. This avoids conditionally-rendered topbar buttons that flash in and shift the layout.
 
-- [ ] "Mark ready" transitions the card from `SPECIFYING` → `IMPLEMENTING`
-- [ ] This is a status transition, not a git operation — specs are already on the branch
+- [ ] Status dropdown on the Card tab handles all transitions including `SPECIFYING` → `IMPLEMENTING`
 - [ ] No PR is created at this point. The implementation phase creates PRs when the developer is ready
-- [ ] The AI pushes back if areas remain uncovered — this is a quality bar, not just a button click
-- [ ] Presented as a secondary action (status dropdown or subtle button), not a prominent CTA — the normal flow is iterating until the spec is solid
 - [ ] Backward transition allowed: `IMPLEMENTING` → `SPECIFYING` if specs need rework
 
 ## Under the hood (invisible to user)

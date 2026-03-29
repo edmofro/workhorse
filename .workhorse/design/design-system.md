@@ -350,6 +350,10 @@ These aren't just a checklist — they reflect the philosophy above. When review
 - Dense information layouts — if it feels busy, step back and ask what can be removed entirely, not just made smaller
 - Multiple controls that do the same action
 
+### Layout stability
+- Never conditionally render topbar buttons based on transient state (e.g. showing a button only in one status). Buttons that appear and disappear shift neighbouring elements and flash distractingly during loading. If an action is just a status change, use the existing status dropdown instead of adding a dedicated button
+- Fixed chrome (topbar, sidebar, navigation tabs) must have a stable layout regardless of data state. Content that varies by status belongs in the content area, not in persistent navigation controls
+
 ### Visual discipline
 - Purple or gradient accents — not in the palette
 - Sparkle, wand, or magic icons anywhere — AI is normal, not magical

@@ -203,8 +203,9 @@ export function useAgentSession(cardId: string) {
       }
     }
 
-    // Handle complete assistant messages — update content but keep the
-    // stable ID so subsequent events in later turns can still find it.
+    // Handle complete assistant messages — confirms streamed content or
+    // appends text from a new turn. Keep the stable ID so subsequent
+    // events in later turns can still find the message.
     if (event.type === 'assistant') {
       const msg = event.message as Record<string, unknown> | undefined
       if (msg?.content && Array.isArray(msg.content)) {
@@ -214,12 +215,26 @@ export function useAgentSession(cardId: string) {
           .join('')
 
         if (textParts) {
-          setContent(textParts)
-          setMessages((prev) =>
-            prev.map((m) =>
-              m.id === assistantId ? { ...m, content: textParts } : m,
-            ),
-          )
+          if (currentContent && !currentContent.endsWith(textParts)) {
+            // New text from a later turn — append to what we already have
+            const newContent = currentContent + '\n\n' + textParts
+            setContent(newContent)
+            setMessages((prev) =>
+              prev.map((m) =>
+                m.id === assistantId ? { ...m, content: newContent } : m,
+              ),
+            )
+          } else if (!currentContent) {
+            // First text, not yet streamed via deltas
+            setContent(textParts)
+            setMessages((prev) =>
+              prev.map((m) =>
+                m.id === assistantId ? { ...m, content: textParts } : m,
+              ),
+            )
+          }
+          // If currentContent already ends with textParts, it was streamed
+          // via deltas — no update needed, just confirming what's there.
         }
       }
     }

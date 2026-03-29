@@ -16,6 +16,7 @@ export default async function CardPage({ params }: Props) {
       assignee: true,
       dependsOn: { include: { parent: true } },
       dependedOnBy: { include: { dependent: true } },
+      attachments: { where: { commentId: null }, orderBy: { createdAt: 'asc' } },
       activities: {
         orderBy: { createdAt: 'desc' },
         take: 20,
@@ -23,7 +24,7 @@ export default async function CardPage({ params }: Props) {
       },
       comments: {
         orderBy: { createdAt: 'asc' },
-        include: { user: true },
+        include: { user: true, attachments: true },
         take: 50,
       },
     },
@@ -55,6 +56,12 @@ export default async function CardPage({ params }: Props) {
           identifier: d.parent.identifier,
           title: d.parent.title,
         })),
+        attachments: card.attachments.map((a) => ({
+          id: a.id,
+          fileName: a.fileName,
+          mimeType: a.mimeType,
+          fileSize: a.fileSize,
+        })),
         activities: card.activities.map((a) => ({
           id: a.id,
           action: a.action,
@@ -67,6 +74,12 @@ export default async function CardPage({ params }: Props) {
           content: c.content,
           createdAt: c.createdAt.toISOString(),
           user: { id: c.user.id, displayName: c.user.displayName, avatarUrl: c.user.avatarUrl },
+          attachments: c.attachments.map((a) => ({
+            id: a.id,
+            fileName: a.fileName,
+            mimeType: a.mimeType,
+            fileSize: a.fileSize,
+          })),
         })),
       }}
       users={users.map((u) => ({ id: u.id, displayName: u.displayName }))}

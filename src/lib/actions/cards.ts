@@ -22,7 +22,11 @@ export async function getCard(identifier: string) {
       team: { include: { project: true } },
       assignee: true,
       mockups: true,
-      comments: { include: { user: true }, orderBy: { createdAt: 'asc' } },
+      comments: {
+        include: { user: true, attachments: true },
+        orderBy: { createdAt: 'asc' },
+      },
+      attachments: { where: { commentId: null }, orderBy: { createdAt: 'asc' } },
       dependsOn: { include: { parent: true } },
       dependedOnBy: { include: { dependent: true } },
     },
@@ -181,12 +185,24 @@ export async function updateCardTitleFromSpec(
   return updated
 }
 
-export async function addComment(cardId: string, content: string) {
+export async function addComment(
+  cardId: string,
+  content: string,
+  attachmentIds?: string[],
+) {
   const user = await requireUser()
   const comment = await prisma.cardComment.create({
     data: { cardId, userId: user.id, content },
-    include: { user: true },
+    include: { user: true, attachments: true },
   })
+
+  // Associate any uploaded attachments with this comment
+  if (attachmentIds && attachmentIds.length > 0) {
+    await prisma.attachment.updateMany({
+      where: { id: { in: attachmentIds } },
+      data: { commentId: comment.id, cardId },
+    })
+  }
 
   revalidatePath('/')
   return comment

@@ -72,6 +72,7 @@ model Card {
   activities   CardActivity[]
   mockups      Mockup[]
   comments     CardComment[]
+  attachments  Attachment[]
   fileLocks    FileLock[]
   dependsOn    CardDependency[] @relation("dependent")
   dependedOnBy CardDependency[] @relation("parent")
@@ -133,6 +134,21 @@ model CardComment {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  card Card @relation(fields: [cardId], references: [id], onDelete: Cascade)
-  user User @relation(fields: [userId], references: [id])
+  card        Card         @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  user        User         @relation(fields: [userId], references: [id])
+  attachments Attachment[]
+}
+
+model Attachment {
+  id          String   @id @default(cuid())
+  cardId      String?
+  commentId   String?
+  fileName    String
+  mimeType    String
+  fileSize    Int
+  storagePath String
+  createdAt   DateTime @default(now())
+
+  card    Card?        @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  comment CardComment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
 }

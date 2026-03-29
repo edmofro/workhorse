@@ -2,9 +2,21 @@
 
 import { useState, useTransition } from 'react'
 import { updateCard, addComment } from '../../lib/actions/cards'
+import { associateAttachmentsWithCard } from '../../lib/actions/attachments'
 import { Avatar } from '../Avatar'
 import { useUser } from '../UserProvider'
+import { useAttachments } from '../../lib/hooks/useAttachments'
+import { AttachmentButton } from './AttachmentButton'
+import { AttachmentPreview } from './AttachmentPreview'
 import { X, Plus } from 'lucide-react'
+import type { AttachmentData } from '../../lib/attachments'
+
+interface CardAttachment {
+  id: string
+  fileName: string
+  mimeType: string
+  fileSize: number
+}
 
 interface CardData {
   id: string
@@ -17,11 +29,13 @@ interface CardData {
   team: { id: string; name: string; colour: string }
   assignee: { id: string; displayName: string } | null
   dependsOn: { identifier: string; title: string }[]
+  attachments: CardAttachment[]
   comments: {
     id: string
     content: string
     createdAt: string
     user: { displayName: string; avatarUrl?: string | null }
+    attachments: CardAttachment[]
   }[]
   activities: {
     id: string
@@ -52,6 +66,16 @@ const PRIORITY_OPTIONS = [
   { value: 'LOW', label: 'Low' },
 ]
 
+function toAttachmentData(att: CardAttachment): AttachmentData {
+  return {
+    id: att.id,
+    fileName: att.fileName,
+    mimeType: att.mimeType,
+    fileSize: att.fileSize,
+    url: `/api/attachments/${att.id}`,
+  }
+}
+
 export function CardTab({ card, users, teams }: CardTabProps) {
   const { user } = useUser()
   const [title, setTitle] = useState(card.title)
@@ -61,6 +85,11 @@ export function CardTab({ card, users, teams }: CardTabProps) {
   const [newTag, setNewTag] = useState('')
   const [newComment, setNewComment] = useState('')
   const [, startTransition] = useTransition()
+
+  // Attachments for description
+  const descAttachments = useAttachments(card.id)
+  // Attachments for new comment
+  const commentAttachments = useAttachments(card.id)
 
   const tags: string[] = (() => {
     try {
@@ -85,6 +114,18 @@ export function CardTab({ card, users, teams }: CardTabProps) {
   function handleDescriptionBlur() {
     if (description !== (card.description ?? '')) {
       handleUpdate({ description: description || null })
+
+      // Associate any pending description attachments with the card
+      const uploaded = descAttachments.getUploadedAttachments()
+      if (uploaded.length > 0) {
+        startTransition(async () => {
+          await associateAttachmentsWithCard(
+            card.id,
+            uploaded.map((a) => a.id),
+          )
+        })
+        descAttachments.clear()
+      }
     }
   }
 
@@ -110,11 +151,17 @@ export function CardTab({ card, users, teams }: CardTabProps) {
 
   function handleAddComment() {
     const content = newComment.trim()
-    if (!content) return
+    const uploaded = commentAttachments.getUploadedAttachments()
+    if (!content && uploaded.length === 0) return
     startTransition(async () => {
-      await addComment(card.id, content)
+      await addComment(
+        card.id,
+        content,
+        uploaded.map((a) => a.id),
+      )
     })
     setNewComment('')
+    commentAttachments.clear()
   }
 
   function handleCommentKeyDown(e: React.KeyboardEvent) {
@@ -143,8 +190,29 @@ export function CardTab({ card, users, teams }: CardTabProps) {
           onBlur={handleDescriptionBlur}
           placeholder="Add a description..."
           rows={3}
-          className="w-full text-[14px] text-[var(--text-secondary)] leading-[1.75] bg-transparent border-none outline-none resize-none mb-8 placeholder:text-[var(--text-faint)]"
+          className="w-full text-[14px] text-[var(--text-secondary)] leading-[1.75] bg-transparent border-none outline-none resize-none mb-2 placeholder:text-[var(--text-faint)]"
         />
+
+        {/* Description attachments */}
+        <div className="mb-8">
+          {card.attachments.length > 0 && (
+            <div className="mb-2">
+              <AttachmentPreview saved={card.attachments.map(toAttachmentData)} />
+            </div>
+          )}
+          {descAttachments.hasAttachments && (
+            <div className="mb-2">
+              <AttachmentPreview
+                pending={descAttachments.pending}
+                onRemovePending={descAttachments.removeAttachment}
+              />
+            </div>
+          )}
+          <AttachmentButton
+            onFiles={descAttachments.addFiles}
+            compact
+          />
+        </div>
 
         {/* Metadata — compact rows */}
         <div className="border-t border-[var(--border-subtle)] pt-5 space-y-3">
@@ -308,6 +376,14 @@ export function CardTab({ card, users, teams }: CardTabProps) {
                     <p className="text-[13px] text-[var(--text-secondary)] leading-[1.6]">
                       {comment.content}
                     </p>
+                    {comment.attachments.length > 0 && (
+                      <div className="mt-2">
+                        <AttachmentPreview
+                          saved={comment.attachments.map(toAttachmentData)}
+                          compact
+                        />
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}
@@ -330,16 +406,30 @@ export function CardTab({ card, users, teams }: CardTabProps) {
                 rows={2}
                 className="w-full px-3 py-2 text-[13px] bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-[var(--radius-default)] outline-none transition-[border-color,box-shadow] duration-150 focus:border-[var(--accent)] focus:shadow-[var(--shadow-input-focus)] placeholder:text-[var(--text-faint)] resize-none"
               />
-              {newComment.trim() && (
-                <div className="flex justify-end mt-2">
+              {commentAttachments.hasAttachments && (
+                <div className="mt-2">
+                  <AttachmentPreview
+                    pending={commentAttachments.pending}
+                    onRemovePending={commentAttachments.removeAttachment}
+                    compact
+                  />
+                </div>
+              )}
+              <div className="flex items-center justify-between mt-2">
+                <AttachmentButton
+                  onFiles={commentAttachments.addFiles}
+                  compact
+                />
+                {(newComment.trim() || commentAttachments.hasAttachments) && (
                   <button
                     onClick={handleAddComment}
-                    className="px-3 py-[5px] text-[12px] font-medium bg-[var(--accent)] text-white rounded-[var(--radius-default)] hover:bg-[var(--accent-hover)] transition-colors duration-100 cursor-pointer"
+                    disabled={commentAttachments.isUploading}
+                    className="px-3 py-[5px] text-[12px] font-medium bg-[var(--accent)] text-white rounded-[var(--radius-default)] hover:bg-[var(--accent-hover)] transition-colors duration-100 cursor-pointer disabled:opacity-40"
                   >
                     Comment
                   </button>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           </div>
         </div>

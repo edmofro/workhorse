@@ -1,5 +1,8 @@
 import { NextRequest } from 'next/server'
 import { query } from '@anthropic-ai/claude-agent-sdk'
+import type { SDKUserMessage } from '@anthropic-ai/claude-agent-sdk'
+import { readFile, mkdir, copyFile } from 'fs/promises'
+import path from 'path'
 import { prisma } from '../../../lib/prisma'
 import { requireUser, requireCardAccess } from '../../../lib/auth/session'
 import { buildInterviewInstructions } from '../../../lib/ai/interviewPrompt'
@@ -17,9 +20,10 @@ export async function POST(request: NextRequest) {
   const user = await requireUser()
 
   const body = await request.json()
-  const { cardId, message } = body as {
+  const { cardId, message, attachmentIds } = body as {
     cardId: string
     message: string
+    attachmentIds?: string[]
   }
 
   if (!cardId || !message) {
@@ -61,6 +65,35 @@ export async function POST(request: NextRequest) {
     })
   }
 
+  // Load attachments and copy images to worktree
+  const attachments = attachmentIds?.length
+    ? await prisma.attachment.findMany({ where: { id: { in: attachmentIds } } })
+    : []
+
+  // Copy image attachments to worktree for persistence
+  if (attachments.length > 0) {
+    const attachDir = path.join(wtPath, '.workhorse', 'attachments', card.identifier.toLowerCase())
+    await mkdir(attachDir, { recursive: true })
+    for (const att of attachments) {
+      try {
+        await copyFile(att.storagePath, path.join(attachDir, att.fileName))
+      } catch {
+        // File may already exist or source missing — continue
+      }
+    }
+  }
+
+  // Also load card-level attachments (from description) for context
+  const cardAttachments = await prisma.attachment.findMany({
+    where: { cardId, commentId: null },
+  })
+
+  // Build attachment file list for the prompt context
+  const allAttachmentFiles = [
+    ...cardAttachments.map((a) => a.fileName),
+    ...attachments.filter((a) => !cardAttachments.find((ca) => ca.id === a.id)).map((a) => a.fileName),
+  ]
+
   // Build interview instructions
   const interviewInstructions = buildInterviewInstructions({
     cardTitle: card.title,
@@ -69,7 +102,53 @@ export async function POST(request: NextRequest) {
     projectName: project.name,
     repoOwner: owner,
     repoName,
+    attachmentFiles: allAttachmentFiles.length > 0 ? allAttachmentFiles : undefined,
   })
+
+  // Build multimodal prompt if there are image attachments
+  const imageAttachments = attachments.filter((a) => a.mimeType.startsWith('image/'))
+
+  let promptInput: string | AsyncIterable<SDKUserMessage>
+
+  if (imageAttachments.length > 0) {
+    // Build multimodal content blocks
+    const contentBlocks: Array<Record<string, unknown>> = []
+
+    for (const att of imageAttachments) {
+      try {
+        const data = await readFile(att.storagePath)
+        contentBlocks.push({
+          type: 'image',
+          source: {
+            type: 'base64',
+            media_type: att.mimeType,
+            data: data.toString('base64'),
+          },
+        })
+      } catch {
+        // Skip unreadable files
+      }
+    }
+
+    if (message.trim()) {
+      contentBlocks.push({ type: 'text', text: message })
+    }
+
+    async function* generatePrompt(): AsyncGenerator<SDKUserMessage> {
+      yield {
+        type: 'user',
+        message: {
+          role: 'user',
+          content: contentBlocks as Parameters<typeof query>[0]['prompt'] extends string ? never : Array<{ type: string }>,
+        },
+        parent_tool_use_id: null,
+      } as SDKUserMessage
+    }
+
+    promptInput = generatePrompt()
+  } else {
+    promptInput = message
+  }
 
   // Configure Agent SDK query
   const options: Parameters<typeof query>[0]['options'] = {
@@ -96,7 +175,7 @@ export async function POST(request: NextRequest) {
   const stream = new ReadableStream({
     async start(controller) {
       try {
-        const agentQuery = query({ prompt: message, options })
+        const agentQuery = query({ prompt: promptInput, options })
 
         for await (const event of agentQuery) {
           // Capture session ID from first message
@@ -122,7 +201,7 @@ export async function POST(request: NextRequest) {
             owner,
             repoName,
             card.identifier,
-            'Update specs from interview', // Will be overridden by AI-generated message below
+            'Update specs from interview',
             user.displayName,
             `${user.githubUsername}@users.noreply.github.com`,
             user.accessToken,

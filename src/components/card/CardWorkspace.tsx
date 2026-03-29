@@ -64,16 +64,15 @@ export function CardWorkspace({
 
   // Spec files state
   const [files, setFiles] = useState(initialFiles)
-  const [isEditing, setIsEditing] = useState(false)
+  const [isEditing, _setIsEditing] = useState(false)
   const isEditingRef = useRef(false)
+  const setIsEditing = useCallback((v: boolean) => {
+    isEditingRef.current = v
+    _setIsEditing(v)
+  }, [])
   const [showNewSpecDialog, setShowNewSpecDialog] = useState(false)
   const [isEnsuring, setIsEnsuring] = useState(false)
   const chatScrollRef = useRef<HTMLDivElement>(null)
-
-  // Keep ref in sync with state
-  useEffect(() => {
-    isEditingRef.current = isEditing
-  }, [isEditing])
 
   // Agent session state
   const {

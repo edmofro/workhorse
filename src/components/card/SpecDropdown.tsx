@@ -2,17 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { FileText, Search } from 'lucide-react'
-import { cn } from '../../lib/cn'
-
-interface SpecFileItem {
-  filePath: string
-  isNew: boolean
-}
-
-interface ProjectSpecItem {
-  filePath: string
-  content: string
-}
+import type { SpecFileItem, ProjectSpecItem } from './types'
 
 interface SpecDropdownProps {
   specs: SpecFileItem[]
@@ -122,7 +112,7 @@ export function SpecDropdown({
         {filteredSpecs.length > 0 && (
           <div className="px-1 pb-1">
             <div className="px-2 pt-2 pb-1">
-              <span className="text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-[0.06em]">
+              <span className="text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-[0.06em]">
                 This card
               </span>
             </div>
@@ -149,7 +139,7 @@ export function SpecDropdown({
         {filteredProjectSpecs.length > 0 && (
           <div className="px-1 pb-1">
             <div className="px-2 pt-1 pb-1 border-t border-[var(--border-subtle)]">
-              <span className="text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-[0.06em]">
+              <span className="text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-[0.06em]">
                 All project specs
               </span>
             </div>

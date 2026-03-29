@@ -4,16 +4,7 @@ import { useState, useCallback } from 'react'
 import { ChevronLeft, ChevronRight, ChevronDown, Maximize2, Minimize2, X, Pencil } from 'lucide-react'
 import { SpecDropdown } from './SpecDropdown'
 import { FileHistory } from './FileHistory'
-
-interface SpecFileItem {
-  filePath: string
-  isNew: boolean
-}
-
-interface ProjectSpecItem {
-  filePath: string
-  content: string
-}
+import type { SpecFileItem, ProjectSpecItem } from './types'
 
 interface SpecHeaderBarProps {
   filePath: string

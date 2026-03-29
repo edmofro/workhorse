@@ -2,15 +2,7 @@
 
 import { FileText, Image as ImageIcon, Plus } from 'lucide-react'
 import { cn } from '../../lib/cn'
-
-interface SpecFileItem {
-  filePath: string
-  isNew: boolean
-}
-
-interface MockupFileItem {
-  filePath: string
-}
+import type { SpecFileItem, MockupFileItem } from './types'
 
 interface SpecsPanelProps {
   specs: SpecFileItem[]
@@ -36,7 +28,7 @@ export function SpecsPanel({
       style={{ width: '160px' }}
     >
       <div className="flex items-center justify-between px-3 pt-3 pb-1">
-        <span className="text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-[0.06em]">
+        <span className="text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-[0.06em]">
           Specs
         </span>
         <button
@@ -79,7 +71,7 @@ export function SpecsPanel({
       {mockups.length > 0 && (
         <>
           <div className="flex items-center px-3 pt-3 pb-1">
-            <span className="text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-[0.06em]">
+            <span className="text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-[0.06em]">
               Mockups
             </span>
           </div>

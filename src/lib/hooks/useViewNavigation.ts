@@ -184,15 +184,17 @@ export function useViewNavigation({
     })
   }, [view, onDoneEditing])
 
-  // Exit focus -> back to artifact
-  const exitFocus = useCallback(() => {
-    const filePath = view.type === 'focus' ? view.filePath : null
-    if (!filePath) return
+  // Exit focus -> back to artifact (releases lock if editing)
+  const exitFocus = useCallback(async () => {
+    if (view.type !== 'focus') return
+    if (view.editing) {
+      await onReleaseLock(view.filePath)
+    }
     dispatchView({
       type: 'navigate',
-      to: { type: 'artifact', filePath },
+      to: { type: 'artifact', filePath: view.filePath },
     })
-  }, [view])
+  }, [view, onReleaseLock])
 
   // Save prompt: save and flip
   const saveAndFlip = useCallback(async () => {

@@ -99,15 +99,20 @@ A persistent panel on the right side of the content area, consistent across all 
 
 ### Contents
 
-- [ ] **Card specs** section: files changed on this card's branch within `.workhorse/specs/`, with new/updated labels derived from whether the file exists on main
+The panel has three sections: specs and mockups for this card (the user's work), then a project explorer below a separator (browsing what else exists).
+
+- [ ] **Specs** section: files changed on this card's branch within `.workhorse/specs/`, with new/updated labels derived from whether the file exists on main
 - [ ] **New spec** button (+ icon) to create a new spec file (opens the NewSpecDialog)
-- [ ] **Search bar**: filters both card specs and project specs by filename
-- [ ] **Project specs** section (collapsible, collapsed by default): all specs in the project's main branch, excluding those already changed by this card. Searching auto-expands this section
 - [ ] Clicking a card spec opens it in the spec view for editing
-- [ ] Clicking a project spec opens it in the spec view for reading; editing it auto-commits to the card's branch, which makes it appear in the card specs section
 - [ ] **Mockups** section: mockup files changed on this card's branch within `.workhorse/design/mockups/`
 - [ ] Clicking a mockup opens the mockup view
-- [ ] Items appear in real time as the AI creates or updates files during the interview
+- [ ] Items in both sections appear in real time as the AI creates or updates files during the interview
+
+Below a visual separator:
+
+- [ ] **Search bar**: filters both card specs/mockups above and project specs below by filename
+- [ ] **Project specs** section (collapsible, collapsed by default): all specs in the project's main branch, excluding those already changed by this card. Searching auto-expands this section
+- [ ] Clicking a project spec opens it in the spec view for reading; editing it auto-commits to the card's branch, which makes it appear in the specs section above
 
 ## Action pills
 

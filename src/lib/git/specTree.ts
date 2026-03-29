@@ -1,12 +1,10 @@
 /**
  * Read spec tree from the local bare clone via git commands.
- * Falls back to GitHub API if the bare clone doesn't exist yet.
  */
 
 import { execFile } from 'child_process'
 import { promisify } from 'util'
-import * as fs from 'fs/promises'
-import { bareClonePath } from './worktree'
+import { ensureBareClone } from './worktree'
 import { buildSpecTree, type SpecTreeNode } from '../specs/specTree'
 
 const execFileAsync = promisify(execFile)
@@ -20,16 +18,14 @@ export interface RepoSpecFile {
  * Fetch all .workhorse/specs/ files from a repository's local bare clone.
  */
 export async function fetchRepoSpecTree(
-  _token: string,
+  token: string,
   owner: string,
   repo: string,
   branch: string,
 ): Promise<{ tree: SpecTreeNode[]; files: RepoSpecFile[] }> {
-  const barePath = bareClonePath(owner, repo)
-
-  // Check bare clone exists
+  let barePath: string
   try {
-    await fs.access(barePath)
+    barePath = await ensureBareClone(owner, repo, token)
   } catch {
     return { tree: [], files: [] }
   }

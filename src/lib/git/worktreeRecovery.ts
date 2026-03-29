@@ -5,8 +5,7 @@
 
 import { prisma } from '../prisma'
 import {
-  createBareClone,
-  fetchBareClone,
+  ensureBareClone,
   createWorktree,
   worktreeExists,
   removeWorktree,
@@ -42,8 +41,7 @@ export async function recoverWorktrees(): Promise<void> {
           console.warn(`Skipping recovery for card ${card.identifier}: GITHUB_SERVICE_TOKEN not set`)
           continue
         }
-        await createBareClone(owner, repoName, serviceToken)
-        await fetchBareClone(owner, repoName, serviceToken)
+        await ensureBareClone(owner, repoName, serviceToken)
 
         await createWorktree(
           owner,

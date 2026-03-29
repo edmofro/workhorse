@@ -77,8 +77,54 @@ async function git(
 }
 
 /**
+ * Throttle state for ensureBareClone — avoids fetching on every request.
+ * Key: "owner/repo", Value: timestamp of last successful fetch.
+ */
+const lastFetchTime = new Map<string, number>()
+const FETCH_INTERVAL_MS = 30_000
+
+/**
+ * Ensure the bare clone exists and is reasonably up to date.
+ *
+ * This is the single entry point that all bare-clone readers should call.
+ * It creates the clone on first use and fetches periodically (every 30s)
+ * to keep refs current without hammering GitHub on every page load.
+ */
+export async function ensureBareClone(
+  owner: string,
+  repo: string,
+  token: string,
+): Promise<string> {
+  const barePath = bareClonePath(owner, repo)
+  const repoKey = `${owner}/${repo}`
+  let clonedJustNow = false
+
+  // Create if missing
+  try {
+    await fs.access(barePath)
+  } catch {
+    await createBareClone(owner, repo, token)
+    clonedJustNow = true
+    lastFetchTime.set(repoKey, Date.now())
+  }
+
+  // Fetch if stale (skip if we just cloned — mirror clone already has everything)
+  const lastFetch = lastFetchTime.get(repoKey) ?? 0
+  if (!clonedJustNow && Date.now() - lastFetch > FETCH_INTERVAL_MS) {
+    try {
+      await fetchBareClone(owner, repo, token)
+    } catch {
+      // Stale data is better than no data
+    }
+    lastFetchTime.set(repoKey, Date.now())
+  }
+
+  return barePath
+}
+
+/**
  * Create a bare mirror clone of a repo.
- * Called on product registration.
+ * Prefer ensureBareClone() which handles creation + refresh in one call.
  */
 export async function createBareClone(
   owner: string,

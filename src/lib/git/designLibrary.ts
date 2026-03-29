@@ -4,8 +4,7 @@
 
 import { execFile } from 'child_process'
 import { promisify } from 'util'
-import * as fs from 'fs/promises'
-import { bareClonePath } from './worktree'
+import { ensureBareClone } from './worktree'
 
 const execFileAsync = promisify(execFile)
 
@@ -17,16 +16,14 @@ export interface DesignFile {
 }
 
 export async function fetchDesignLibrary(
-  _token: string,
+  token: string,
   owner: string,
   repo: string,
   branch: string,
 ): Promise<DesignFile[]> {
-  const barePath = bareClonePath(owner, repo)
-
-  // Check bare clone exists
+  let barePath: string
   try {
-    await fs.access(barePath)
+    barePath = await ensureBareClone(owner, repo, token)
   } catch {
     return []
   }

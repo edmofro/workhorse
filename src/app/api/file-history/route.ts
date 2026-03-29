@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireUser } from '../../../lib/auth/session'
-import { prisma } from '../../../lib/prisma'
+import { requireUser, requireCardAccess } from '../../../lib/auth/session'
 import { getFileHistory, getFileAtCommit, getFileDiff } from '../../../lib/git/worktree'
 
 /**
  * Per-file version history powered by git log.
  */
 export async function GET(request: NextRequest) {
-  await requireUser()
+  const user = await requireUser()
 
   const cardId = request.nextUrl.searchParams.get('cardId')
   const filePath = request.nextUrl.searchParams.get('filePath')
@@ -19,12 +18,7 @@ export async function GET(request: NextRequest) {
     return new Response('Missing cardId', { status: 400 })
   }
 
-  const card = await prisma.card.findUnique({
-    where: { id: cardId },
-    include: {
-      team: { include: { project: true } },
-    },
-  })
+  const card = await requireCardAccess(user.id, cardId)
 
   if (!card) {
     return new Response('Card not found', { status: 404 })

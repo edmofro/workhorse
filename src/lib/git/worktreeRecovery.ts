@@ -36,11 +36,14 @@ export async function recoverWorktrees(): Promise<void> {
       if (!exists && card.cardBranch) {
         console.log(`Recovering worktree for card ${card.identifier}...`)
 
-        // Ensure bare clone exists
-        // Use a service token or skip if no token available
-        // In production, this would use a service-level token
-        await createBareClone(owner, repoName, process.env.GITHUB_SERVICE_TOKEN ?? '')
-        await fetchBareClone(owner, repoName, process.env.GITHUB_SERVICE_TOKEN ?? '')
+        // Ensure bare clone exists — requires a service token
+        const serviceToken = process.env.GITHUB_SERVICE_TOKEN
+        if (!serviceToken) {
+          console.warn(`Skipping recovery for card ${card.identifier}: GITHUB_SERVICE_TOKEN not set`)
+          continue
+        }
+        await createBareClone(owner, repoName, serviceToken)
+        await fetchBareClone(owner, repoName, serviceToken)
 
         await createWorktree(
           owner,

@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server'
 import { query } from '@anthropic-ai/claude-agent-sdk'
 import { prisma } from '../../../lib/prisma'
-import { requireUser } from '../../../lib/auth/session'
+import { requireUser, requireCardAccess } from '../../../lib/auth/session'
 import { buildInterviewInstructions } from '../../../lib/ai/interviewPrompt'
 import {
   createBareClone,
@@ -12,6 +12,7 @@ import {
 } from '../../../lib/git/worktree'
 import { branchNameFromCard } from '../../../lib/git/branchNaming'
 import { releaseAllLocks } from '../../../lib/fileLock'
+import { safeParseTouchedFiles } from '../../../lib/safeParseTouchedFiles'
 
 export async function POST(request: NextRequest) {
   const user = await requireUser()
@@ -22,13 +23,12 @@ export async function POST(request: NextRequest) {
     message: string
   }
 
-  // Fetch card with context
-  const card = await prisma.card.findUnique({
-    where: { id: cardId },
-    include: {
-      team: { include: { project: true } },
-    },
-  })
+  if (!cardId || !message) {
+    return new Response('Missing cardId or message', { status: 400 })
+  }
+
+  // Fetch card with context and verify team membership
+  const card = await requireCardAccess(user.id, cardId)
 
   if (!card) {
     return new Response('Card not found', { status: 404 })
@@ -132,7 +132,8 @@ export async function POST(request: NextRequest) {
 
           if (changedFiles.length > 0) {
             // Update touched files on card
-            const existingFiles: string[] = JSON.parse(card.touchedFiles)
+            const freshCard = await prisma.card.findUnique({ where: { id: cardId } })
+            const existingFiles = safeParseTouchedFiles(freshCard?.touchedFiles ?? '[]')
             const allFiles = [...new Set([...existingFiles, ...changedFiles])]
             await prisma.card.update({
               where: { id: cardId },

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireUser } from '../../../lib/auth/session'
+import { requireUser, requireCardAccess } from '../../../lib/auth/session'
 import { prisma } from '../../../lib/prisma'
 
 /**
@@ -16,9 +16,7 @@ export async function POST(request: NextRequest) {
     return new Response('Missing cardId', { status: 400 })
   }
 
-  const card = await prisma.card.findUnique({
-    where: { id: cardId },
-  })
+  const card = await requireCardAccess(user.id, cardId)
 
   if (!card) {
     return new Response('Card not found', { status: 404 })

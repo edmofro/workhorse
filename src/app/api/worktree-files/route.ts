@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireUser } from '../../../lib/auth/session'
-import { prisma } from '../../../lib/prisma'
+import { requireUser, requireCardAccess } from '../../../lib/auth/session'
 import {
   getChangedFiles,
   readWorktreeFile,
@@ -13,7 +12,7 @@ import {
  * PUT: Write a file.
  */
 export async function GET(request: NextRequest) {
-  await requireUser()
+  const user = await requireUser()
 
   const cardId = request.nextUrl.searchParams.get('cardId')
   const filePath = request.nextUrl.searchParams.get('filePath')
@@ -22,12 +21,7 @@ export async function GET(request: NextRequest) {
     return new Response('Missing cardId', { status: 400 })
   }
 
-  const card = await prisma.card.findUnique({
-    where: { id: cardId },
-    include: {
-      team: { include: { project: true } },
-    },
-  })
+  const card = await requireCardAccess(user.id, cardId)
 
   if (!card) {
     return new Response('Card not found', { status: 404 })
@@ -50,7 +44,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function PUT(request: NextRequest) {
-  await requireUser()
+  const user = await requireUser()
 
   const body = await request.json()
   const { cardId, filePath, content } = body as {
@@ -63,12 +57,7 @@ export async function PUT(request: NextRequest) {
     return new Response('Missing cardId, filePath, or content', { status: 400 })
   }
 
-  const card = await prisma.card.findUnique({
-    where: { id: cardId },
-    include: {
-      team: { include: { project: true } },
-    },
-  })
+  const card = await requireCardAccess(user.id, cardId)
 
   if (!card) {
     return new Response('Card not found', { status: 404 })

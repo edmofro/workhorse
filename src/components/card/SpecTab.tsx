@@ -29,8 +29,11 @@ export function SpecTab({ card, initialFiles }: SpecTabProps) {
   const activeFile = files.find((f) => f.filePath === activeFilePath) ?? null
 
   // Refresh files from worktree periodically (detect external changes)
+  // Skip refresh while user is actively editing to avoid overwriting their work
   useEffect(() => {
     const interval = setInterval(async () => {
+      if (isEditing) return
+      if (document.hidden) return // Skip while tab is in background
       try {
         const res = await fetch(`/api/worktree-files?cardId=${card.id}`)
         if (res.ok) {

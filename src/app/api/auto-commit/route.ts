@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireUser } from '../../../lib/auth/session'
+import { requireUser, requireCardAccess } from '../../../lib/auth/session'
 import { prisma } from '../../../lib/prisma'
 import { autoCommit } from '../../../lib/git/worktree'
+import { safeParseTouchedFiles } from '../../../lib/safeParseTouchedFiles'
 
 /**
  * Auto-commit changed files in a card's worktree.
@@ -20,12 +21,7 @@ export async function POST(request: NextRequest) {
     return new Response('Missing cardId', { status: 400 })
   }
 
-  const card = await prisma.card.findUnique({
-    where: { id: cardId },
-    include: {
-      team: { include: { project: true } },
-    },
-  })
+  const card = await requireCardAccess(user.id, cardId)
 
   if (!card) {
     return new Response('Card not found', { status: 404 })
@@ -47,7 +43,7 @@ export async function POST(request: NextRequest) {
 
     if (changedFiles.length > 0) {
       // Update touched files on card
-      const existingFiles: string[] = JSON.parse(card.touchedFiles)
+      const existingFiles = safeParseTouchedFiles(card.touchedFiles)
       const allFiles = [...new Set([...existingFiles, ...changedFiles])]
       await prisma.card.update({
         where: { id: cardId },

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireUser } from '../../../lib/auth/session'
+import { requireUser, requireCardAccess } from '../../../lib/auth/session'
 import {
   acquireFileLock,
   releaseFileLock,
@@ -14,13 +14,18 @@ import {
  * DELETE: Release a lock.
  */
 export async function GET(request: NextRequest) {
-  await requireUser()
+  const user = await requireUser()
 
   const cardId = request.nextUrl.searchParams.get('cardId')
   const filePath = request.nextUrl.searchParams.get('filePath')
 
   if (!cardId) {
     return new Response('Missing cardId', { status: 400 })
+  }
+
+  const card = await requireCardAccess(user.id, cardId)
+  if (!card) {
+    return new Response('Card not found', { status: 404 })
   }
 
   if (filePath) {
@@ -45,6 +50,11 @@ export async function POST(request: NextRequest) {
     return new Response('Missing cardId or filePath', { status: 400 })
   }
 
+  const card = await requireCardAccess(user.id, cardId)
+  if (!card) {
+    return new Response('Card not found', { status: 404 })
+  }
+
   const result = await acquireFileLock(cardId, filePath, user.id, user.id)
 
   if (!result.acquired) {
@@ -65,6 +75,11 @@ export async function DELETE(request: NextRequest) {
 
   if (!cardId || !filePath) {
     return new Response('Missing cardId or filePath', { status: 400 })
+  }
+
+  const card = await requireCardAccess(user.id, cardId)
+  if (!card) {
+    return new Response('Card not found', { status: 404 })
   }
 
   await releaseFileLock(cardId, filePath, user.id)

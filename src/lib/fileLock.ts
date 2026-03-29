@@ -28,52 +28,62 @@ export async function acquireFileLock(
   const durationMs = isAI ? AI_LOCK_DURATION_MS : HUMAN_LOCK_DURATION_MS
   const expiresAt = new Date(Date.now() + durationMs)
 
-  // Check for existing lock
-  const existing = await prisma.fileLock.findUnique({
-    where: { cardId_filePath: { cardId, filePath } },
-    include: { user: true },
-  })
+  // Use a transaction to avoid TOCTOU race between check and create
+  return prisma.$transaction(async (tx) => {
+    // Check for existing lock
+    const existing = await tx.fileLock.findUnique({
+      where: { cardId_filePath: { cardId, filePath } },
+      include: { user: true },
+    })
 
-  if (existing) {
-    // Check if expired
-    if (existing.expiresAt > new Date()) {
-      // Lock is still active and held by someone else
-      if (existing.lockedBy !== lockedBy) {
-        return {
-          acquired: false,
-          holder: {
-            lockedBy: existing.lockedBy,
-            userId: existing.userId,
-            isAI: existing.lockedBy === 'ai-interviewer',
-            displayName: existing.lockedBy === 'ai-interviewer'
-              ? 'Interviewer'
-              : existing.user?.displayName ?? 'Unknown',
-          },
+    if (existing) {
+      // Check if expired
+      if (existing.expiresAt > new Date()) {
+        // Lock is still active and held by someone else
+        if (existing.lockedBy !== lockedBy) {
+          return {
+            acquired: false as const,
+            holder: {
+              lockedBy: existing.lockedBy,
+              userId: existing.userId,
+              isAI: existing.lockedBy === 'ai-interviewer',
+              displayName: existing.lockedBy === 'ai-interviewer'
+                ? 'Interviewer'
+                : existing.user?.displayName ?? 'Unknown',
+            },
+          }
         }
+        // Same holder — extend the lock
+        await tx.fileLock.update({
+          where: { id: existing.id },
+          data: { expiresAt },
+        })
+        return { acquired: true as const }
       }
-      // Same holder — extend the lock
-      await prisma.fileLock.update({
-        where: { id: existing.id },
-        data: { expiresAt },
-      })
-      return { acquired: true }
+      // Lock is expired — delete and re-acquire
+      await tx.fileLock.delete({ where: { id: existing.id } })
     }
-    // Lock is expired — delete and re-acquire
-    await prisma.fileLock.delete({ where: { id: existing.id } })
-  }
 
-  // Create new lock
-  await prisma.fileLock.create({
-    data: {
-      cardId,
-      filePath,
-      lockedBy,
-      userId,
-      expiresAt,
-    },
+    // Create new lock — catch unique constraint violation from concurrent requests
+    try {
+      await tx.fileLock.create({
+        data: {
+          cardId,
+          filePath,
+          lockedBy,
+          userId,
+          expiresAt,
+        },
+      })
+      return { acquired: true as const }
+    } catch (err) {
+      // Unique constraint violation means another request won the race
+      if (err instanceof Error && err.message.includes('Unique constraint')) {
+        return { acquired: false as const }
+      }
+      throw err
+    }
   })
-
-  return { acquired: true }
 }
 
 /**

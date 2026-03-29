@@ -36,9 +36,8 @@ COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 COPY --from=builder /app/src/generated ./src/generated
 
-# Data volume for bare clones and worktrees
+# /data/repos is provided by a Railway volume at runtime
 RUN mkdir -p /data/repos && chown nextjs:nodejs /data/repos
-VOLUME /data/repos
 
 USER nextjs
 EXPOSE 3000

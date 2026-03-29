@@ -1,11 +1,13 @@
 'use client'
 
 import { useState, useCallback, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { SpecEditor } from './SpecEditor'
 import { SpecListSidebar } from './SpecListSidebar'
 import { FileHistory } from './FileHistory'
 import { NewSpecDialog } from './NewSpecDialog'
-import { buildDefaultSpec, generateSpecPath } from '../../lib/specs/format'
+import { buildDefaultSpec, generateSpecPath, parseSpec } from '../../lib/specs/format'
+import { updateCardTitleFromSpec } from '../../lib/actions/cards'
 
 interface SpecFileData {
   filePath: string
@@ -35,6 +37,7 @@ export function SpecTab({ card, initialFiles, projectSpecs = [] }: SpecTabProps)
   const [isEditing, setIsEditing] = useState(false)
   const [showNewSpecDialog, setShowNewSpecDialog] = useState(false)
   const [isEnsuring, setIsEnsuring] = useState(false)
+  const router = useRouter()
 
   const activeFile = files.find((f) => f.filePath === activeFilePath) ?? null
 
@@ -129,8 +132,20 @@ export function SpecTab({ card, initialFiles, projectSpecs = [] }: SpecTabProps)
           commitMessage: 'Update spec',
         }),
       })
+
+      // If the card still has the placeholder title, update it from the spec
+      if (card.title === 'Untitled spec') {
+        const file = files.find((f) => f.filePath === filePath)
+        if (file) {
+          const parsed = parseSpec(file.content)
+          if (parsed.frontmatter.title && parsed.frontmatter.title !== 'Untitled') {
+            await updateCardTitleFromSpec(card.id, parsed.frontmatter.title)
+            router.refresh()
+          }
+        }
+      }
     },
-    [card.id],
+    [card.id, card.title, files, router],
   )
 
   const handleStartEditing = useCallback(

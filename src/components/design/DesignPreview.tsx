@@ -1,6 +1,7 @@
 'use client'
 
-import { MarkdownContent } from '../card/MarkdownContent'
+import { DesignMarkdownEditor } from './DesignMarkdownEditor'
+import { DesignHtmlEditor } from './DesignHtmlEditor'
 
 interface DesignFile {
   path: string
@@ -11,11 +12,19 @@ interface DesignFile {
 
 interface DesignPreviewProps {
   file: DesignFile
+  owner: string
+  repo: string
+  branch: string
+  onFileUpdated: (path: string, newContent: string) => void
 }
 
-export function DesignPreview({ file }: DesignPreviewProps) {
+export function DesignPreview({ file, owner, repo, branch, onFileUpdated }: DesignPreviewProps) {
   const isHtml = file.name.endsWith('.html')
   const isMarkdown = file.name.endsWith('.md')
+
+  function handleSaved(newContent: string) {
+    onFileUpdated(file.path, newContent)
+  }
 
   return (
     <div className="w-full" style={{ maxWidth: '720px', padding: '48px 40px 80px' }}>
@@ -29,19 +38,24 @@ export function DesignPreview({ file }: DesignPreviewProps) {
       </div>
 
       {isHtml ? (
-        <div className="border border-[var(--border-subtle)] rounded-[var(--radius-lg)] overflow-hidden">
-          <iframe
-            srcDoc={file.content}
-            className="w-full border-none"
-            style={{ minHeight: '500px' }}
-            sandbox="allow-scripts"
-            title={file.name}
-          />
-        </div>
+        <DesignHtmlEditor
+          content={file.content}
+          fileName={file.name}
+          filePath={file.path}
+          owner={owner}
+          repo={repo}
+          branch={branch}
+          onSaved={handleSaved}
+        />
       ) : isMarkdown ? (
-        <div className="text-[14px] text-[var(--text-secondary)] leading-[1.75]">
-          <MarkdownContent content={file.content} />
-        </div>
+        <DesignMarkdownEditor
+          content={file.content}
+          filePath={file.path}
+          owner={owner}
+          repo={repo}
+          branch={branch}
+          onSaved={handleSaved}
+        />
       ) : (
         <pre className="text-[13px] text-[var(--text-secondary)] bg-[var(--bg-inset)] rounded-[var(--radius-default)] p-4 overflow-x-auto leading-[1.6] font-mono">
           {file.content}

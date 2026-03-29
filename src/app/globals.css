@@ -154,6 +154,20 @@ body {
 .prose-workhorse pre.code-block code {
   background: none; padding: 0; font-size: inherit;
 }
+.prose-workhorse table.md-table {
+  width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 13px;
+}
+.prose-workhorse table.md-table th {
+  font-weight: 600; color: var(--text-primary); padding: 8px 12px;
+  border-bottom: 2px solid var(--border-default); text-align: left;
+}
+.prose-workhorse table.md-table td {
+  padding: 6px 12px; border-bottom: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+}
+.prose-workhorse table.md-table tbody tr:last-child td {
+  border-bottom: none;
+}
 
 /* Spec extract block in chat */
 .spec-extract-block {

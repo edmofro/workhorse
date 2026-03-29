@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { Plus } from 'lucide-react'
+import { Plus, Loader2 } from 'lucide-react'
 import { Button } from './Button'
 import { createCard } from '../lib/actions/cards'
 import { useRouter } from 'next/navigation'
@@ -19,29 +19,63 @@ interface CreateCardDialogProps {
 
 export function CreateCardDialog({ teams, projectName }: CreateCardDialogProps) {
   const [open, setOpen] = useState(false)
-  const [title, setTitle] = useState('')
-  const [description, setDescription] = useState('')
+  const [prompt, setPrompt] = useState('')
   const [teamId, setTeamId] = useState(teams[0]?.id ?? '')
   const [isPending, startTransition] = useTransition()
+  const [isGenerating, setIsGenerating] = useState(false)
   const router = useRouter()
+
+  const busy = isPending || isGenerating
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!title.trim() || !teamId) return
+    if (!prompt.trim() || !teamId || busy) return
 
     startTransition(async () => {
+      setIsGenerating(true)
+
+      let title: string
+      let description: string
+
+      try {
+        const res = await fetch('/api/generate-card', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt: prompt.trim() }),
+        })
+        const data = await res.json()
+        title = data.title
+        description = data.description ?? ''
+      } catch {
+        // Fallback: use raw prompt
+        title =
+          prompt.trim().length > 60
+            ? prompt.trim().slice(0, 57) + '...'
+            : prompt.trim()
+        description = prompt.trim()
+      }
+
+      setIsGenerating(false)
+
       const card = await createCard({
-        title: title.trim(),
-        description: description.trim() || undefined,
+        title,
+        description: description || undefined,
         teamId,
       })
+
       setOpen(false)
-      setTitle('')
-      setDescription('')
+      setPrompt('')
       router.push(
-        `/${encodeURIComponent(projectName.toLowerCase())}/cards/${card.identifier}`,
+        `/${encodeURIComponent(projectName.toLowerCase())}/cards/${card.identifier}/chat`,
       )
     })
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      handleSubmit(e as unknown as React.FormEvent)
+    }
   }
 
   if (!open) {
@@ -56,37 +90,24 @@ export function CreateCardDialog({ teams, projectName }: CreateCardDialogProps) 
     <>
       <div
         className="fixed inset-0 z-40"
-        onClick={() => setOpen(false)}
+        onClick={() => !busy && setOpen(false)}
       />
       <div className="fixed inset-0 z-50 flex items-center justify-center">
-        <div className="w-full max-w-[440px] bg-[var(--bg-surface)] rounded-[var(--radius-lg)] border border-[var(--border-subtle)] shadow-[var(--shadow-lg)] p-6">
+        <div className="w-full max-w-[480px] bg-[var(--bg-surface)] rounded-[var(--radius-lg)] border border-[var(--border-subtle)] shadow-[var(--shadow-lg)] p-6">
           <h2 className="text-[16px] font-semibold tracking-[-0.02em] mb-4">
             New card
           </h2>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-[12px] text-[var(--text-muted)] mb-1">
-                Title
-              </label>
-              <input
-                type="text"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                autoFocus
-                placeholder="e.g. Patient allergy tracking"
-                className="w-full px-3 py-2 text-[14px] bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-[var(--radius-default)] outline-none transition-[border-color,box-shadow] duration-150 focus:border-[var(--accent)] focus:shadow-[var(--shadow-input-focus)] placeholder:text-[var(--text-faint)]"
-              />
-            </div>
-            <div>
-              <label className="block text-[12px] text-[var(--text-muted)] mb-1">
-                Description
-              </label>
               <textarea
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                rows={3}
-                placeholder="Brief description..."
-                className="w-full px-3 py-2 text-[14px] bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-[var(--radius-default)] outline-none transition-[border-color,box-shadow] duration-150 focus:border-[var(--accent)] focus:shadow-[var(--shadow-input-focus)] placeholder:text-[var(--text-faint)] resize-none"
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+                onKeyDown={handleKeyDown}
+                autoFocus
+                rows={4}
+                placeholder="Describe what you're wanting to achieve..."
+                disabled={busy}
+                className="w-full px-3 py-2 text-[14px] bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-[var(--radius-default)] outline-none transition-[border-color,box-shadow] duration-150 focus:border-[var(--accent)] focus:shadow-[var(--shadow-input-focus)] placeholder:text-[var(--text-faint)] resize-none disabled:opacity-60"
               />
             </div>
             <div>
@@ -96,7 +117,8 @@ export function CreateCardDialog({ teams, projectName }: CreateCardDialogProps) 
               <select
                 value={teamId}
                 onChange={(e) => setTeamId(e.target.value)}
-                className="w-full px-3 py-2 text-[14px] bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-[var(--radius-default)] outline-none focus:border-[var(--accent)] focus:shadow-[var(--shadow-input-focus)] transition-[border-color,box-shadow] duration-150"
+                disabled={busy}
+                className="w-full px-3 py-2 text-[14px] bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-[var(--radius-default)] outline-none focus:border-[var(--accent)] focus:shadow-[var(--shadow-input-focus)] transition-[border-color,box-shadow] duration-150 disabled:opacity-60"
               >
                 {teams.map((team) => (
                   <option key={team.id} value={team.id}>
@@ -110,11 +132,19 @@ export function CreateCardDialog({ teams, projectName }: CreateCardDialogProps) 
                 type="button"
                 variant="secondary"
                 onClick={() => setOpen(false)}
+                disabled={busy}
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={!title.trim() || isPending}>
-                {isPending ? 'Creating...' : 'Create card'}
+              <Button type="submit" disabled={!prompt.trim() || busy}>
+                {busy ? (
+                  <span className="flex items-center gap-1.5">
+                    <Loader2 size={12} className="animate-spin" />
+                    Creating...
+                  </span>
+                ) : (
+                  'Create card'
+                )}
               </Button>
             </div>
           </form>

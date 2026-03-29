@@ -1,7 +1,6 @@
 import { redirect } from 'next/navigation'
 import { getCurrentUser } from '../../../lib/auth/session'
 import { getProjects } from '../../../lib/actions/projects'
-import { getUserTeamIds } from '../../../lib/actions/teams'
 import { Topbar, TopbarTitle } from '../../../components/Topbar'
 import { SettingsForm } from '../../../components/SettingsForm'
 
@@ -9,12 +8,7 @@ export default async function SettingsPage() {
   const user = await getCurrentUser()
   if (!user) redirect('/sign-in')
 
-  const [projects, memberTeamIds] = await Promise.all([
-    getProjects(),
-    getUserTeamIds(user.id),
-  ])
-
-  const memberSet = new Set(memberTeamIds)
+  const projects = await getProjects()
 
   return (
     <>
@@ -35,7 +29,6 @@ export default async function SettingsPage() {
                 id: t.id,
                 name: t.name,
                 colour: t.colour,
-                isMember: memberSet.has(t.id),
               })),
             }))}
           />

@@ -19,7 +19,6 @@ model User {
 
   cards             Card[]
   cardActivities    CardActivity[]
-  teamMemberships   TeamMember[]
   comments          CardComment[]
   fileLocks         FileLock[]
 }
@@ -47,18 +46,6 @@ model Team {
 
   project  Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
   cards    Card[]
-  members  TeamMember[]
-}
-
-model TeamMember {
-  userId    String
-  teamId    String
-  createdAt DateTime @default(now())
-
-  user User @relation(fields: [userId], references: [id])
-  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
-
-  @@id([userId, teamId])
 }
 
 model Card {

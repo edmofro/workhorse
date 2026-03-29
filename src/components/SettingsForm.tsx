@@ -6,15 +6,14 @@ import { Avatar } from './Avatar'
 import { useUser } from './UserProvider'
 import { updateUser } from '../lib/actions/user'
 import { createProject, updateProject, deleteProject } from '../lib/actions/projects'
-import { createTeam, updateTeam, deleteTeam, joinTeam, leaveTeam } from '../lib/actions/teams'
-import { Trash2, Plus, UserPlus, UserMinus } from 'lucide-react'
+import { createTeam, updateTeam, deleteTeam } from '../lib/actions/teams'
+import { Trash2, Plus } from 'lucide-react'
 import { RepoPickerDialog } from './RepoPickerDialog'
 
 interface TeamData {
   id: string
   name: string
   colour: string
-  isMember: boolean
 }
 
 interface ProjectData {
@@ -111,7 +110,7 @@ export function SettingsForm({ projects: initialProjects }: SettingsFormProps) {
       setProjects((prev) =>
         prev.map((p) =>
           p.id === projectId
-            ? { ...p, teams: [...p.teams, { ...team, isMember: false }] }
+            ? { ...p, teams: [...p.teams, { ...team }] }
             : p,
         ),
       )
@@ -153,42 +152,6 @@ export function SettingsForm({ projects: initialProjects }: SettingsFormProps) {
         prev.map((p) =>
           p.id === projectId
             ? { ...p, teams: p.teams.filter((t) => t.id !== teamId) }
-            : p,
-        ),
-      )
-    })
-  }
-
-  function handleJoinTeam(teamId: string, projectId: string) {
-    startTransition(async () => {
-      await joinTeam(user.id, teamId)
-      setProjects((prev) =>
-        prev.map((p) =>
-          p.id === projectId
-            ? {
-                ...p,
-                teams: p.teams.map((t) =>
-                  t.id === teamId ? { ...t, isMember: true } : t,
-                ),
-              }
-            : p,
-        ),
-      )
-    })
-  }
-
-  function handleLeaveTeam(teamId: string, projectId: string) {
-    startTransition(async () => {
-      await leaveTeam(user.id, teamId)
-      setProjects((prev) =>
-        prev.map((p) =>
-          p.id === projectId
-            ? {
-                ...p,
-                teams: p.teams.map((t) =>
-                  t.id === teamId ? { ...t, isMember: false } : t,
-                ),
-              }
             : p,
         ),
       )
@@ -316,25 +279,6 @@ export function SettingsForm({ projects: initialProjects }: SettingsFormProps) {
                         }
                         className="flex-1 px-3 py-[5px] text-[13px] bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-[var(--radius-default)] outline-none focus:border-[var(--accent)] focus:shadow-[var(--shadow-input-focus)] transition-[border-color,box-shadow] duration-150"
                       />
-                      {team.isMember ? (
-                        <button
-                          onClick={() => handleLeaveTeam(team.id, project.id)}
-                          disabled={isPending}
-                          className="inline-flex items-center gap-1 text-[11px] font-medium text-[var(--text-muted)] hover:text-[var(--accent)] cursor-pointer transition-colors duration-100 px-2 py-1"
-                          title="Leave team"
-                        >
-                          <UserMinus size={12} /> Leave
-                        </button>
-                      ) : (
-                        <button
-                          onClick={() => handleJoinTeam(team.id, project.id)}
-                          disabled={isPending}
-                          className="inline-flex items-center gap-1 text-[11px] font-medium text-[var(--accent)] hover:text-[var(--accent-hover)] cursor-pointer transition-colors duration-100 px-2 py-1"
-                          title="Join team"
-                        >
-                          <UserPlus size={12} /> Join
-                        </button>
-                      )}
                       <button
                         onClick={() => handleDeleteTeam(team.id, project.id)}
                         className="text-[var(--text-muted)] hover:text-[var(--accent)] transition-colors duration-100 p-1 cursor-pointer"

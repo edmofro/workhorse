@@ -105,13 +105,13 @@ function AttachmentThumb({
             className="w-full h-full object-cover"
           />
           {uploading && (
-            <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
+            <div className="absolute inset-0 bg-[rgba(28,25,23,0.3)] flex items-center justify-center">
               <Loader2 size={16} className="text-white animate-spin" />
             </div>
           )}
           {error && (
-            <div className="absolute inset-0 bg-red-500/20 flex items-center justify-center">
-              <span className="text-[9px] text-red-600 font-medium">Error</span>
+            <div className="absolute inset-0 bg-[rgba(194,65,12,0.1)] flex items-center justify-center">
+              <span className="text-[11px] text-[var(--accent)] font-medium">Error</span>
             </div>
           )}
         </div>
@@ -147,7 +147,7 @@ export function MessageAttachments({ attachments }: { attachments: AttachmentDat
           mimeType={att.mimeType}
           fileSize={att.fileSize}
           url={att.url}
-          size={120}
+          size={64}
         />
       ))}
     </div>

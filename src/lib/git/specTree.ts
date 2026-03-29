@@ -6,10 +6,14 @@
 import { execFile } from 'child_process'
 import { promisify } from 'util'
 import * as fs from 'fs/promises'
-import { bareClonePath } from './worktree'
+import { bareClonePath, createBareClone, fetchBareClone } from './worktree'
 import { buildSpecTree, type SpecTreeNode } from '../specs/specTree'
 
 const execFileAsync = promisify(execFile)
+
+/** Throttle fetches to at most once per 30 seconds per repo */
+const lastFetchTime = new Map<string, number>()
+const FETCH_INTERVAL_MS = 30_000
 
 export interface RepoSpecFile {
   path: string
@@ -20,18 +24,38 @@ export interface RepoSpecFile {
  * Fetch all .workhorse/specs/ files from a repository's local bare clone.
  */
 export async function fetchRepoSpecTree(
-  _token: string,
+  token: string,
   owner: string,
   repo: string,
   branch: string,
 ): Promise<{ tree: SpecTreeNode[]; files: RepoSpecFile[] }> {
   const barePath = bareClonePath(owner, repo)
 
-  // Check bare clone exists
+  const repoKey = `${owner}/${repo}`
+  let clonedJustNow = false
+
+  // Ensure bare clone exists; create if missing
   try {
     await fs.access(barePath)
   } catch {
-    return { tree: [], files: [] }
+    try {
+      await createBareClone(owner, repo, token)
+      clonedJustNow = true
+      lastFetchTime.set(repoKey, Date.now())
+    } catch {
+      return { tree: [], files: [] }
+    }
+  }
+
+  // Fetch latest refs, throttled to avoid hammering on every page load
+  const lastFetch = lastFetchTime.get(repoKey) ?? 0
+  if (!clonedJustNow && Date.now() - lastFetch > FETCH_INTERVAL_MS) {
+    try {
+      await fetchBareClone(owner, repo, token)
+      lastFetchTime.set(repoKey, Date.now())
+    } catch {
+      // Continue with potentially stale data rather than failing
+    }
   }
 
   // List all .md files under .workhorse/specs/ on this branch

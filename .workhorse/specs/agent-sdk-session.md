@@ -153,11 +153,29 @@ The mode parameter flows from the action pill UI → `useAgentSession` hook → 
 - [ ] File write/edit events highlighted as notifications (e.g. "Updated specs/patient/allergies.md")
 - [ ] Soft-lock on the spec editor during active turns ("Agent is working...")
 
-### What the user does NOT see
+### Thinking events
 
-Extended thinking is incompatible with streaming in the Agent SDK. With streaming enabled, the agent's internal reasoning is not visible. Tool results (file contents, search results) are not streamed inline — they appear in the next complete message.
+The Claude API streams thinking blocks (`thinking_delta` events) alongside text output. These show the model's internal reasoning — planning, weighing options, working through problems. Workhorse surfaces them in the chat UI using the standard Claude Code conventions:
 
-Trade-off: streaming UX (seeing text arrive in real-time, seeing tool calls happen) is more valuable than seeing thinking steps. Users who want full detail can review the session transcript after the fact.
+- [ ] Thinking blocks appear inline in the conversation, before the assistant's text response
+- [ ] Each thinking block is displayed as a collapsible section with a "Thinking..." header
+- [ ] While streaming, the thinking section is expanded and shows the thinking text accumulating in real time
+- [ ] Once the thinking block is complete and the assistant's text response begins streaming, the thinking section automatically collapses
+- [ ] Collapsed thinking sections show a summary line: "Thinking" with a chevron to expand
+- [ ] Thinking text is rendered in a muted, secondary style (smaller font, `var(--text-muted)` colour) to visually distinguish it from the assistant's actual response
+- [ ] Thinking text is plain text, not markdown-rendered — it is internal reasoning, not authored content
+- [ ] Multiple thinking blocks in a single turn are each displayed as separate collapsible sections
+- [ ] If a turn has no thinking blocks (e.g. the model responds immediately), no thinking section appears
+
+### Agent turn limits and error handling
+
+The Agent SDK returns a `result` event at the end of each query, which may indicate the agent was cut short (e.g. hit the maximum turn limit). These events are surfaced to the user as assistant messages rather than silently swallowed.
+
+- [ ] When a `result` event has `subtype: "error_max_turns"`, the UI appends an assistant message explaining that the interviewer ran out of steps and inviting the user to send another message to continue
+- [ ] The message is written in the interviewer's voice (e.g. "I ran out of steps before finishing — send another message and I'll pick up where I left off"), not as a raw technical error
+- [ ] Other error subtypes in `result` events are similarly surfaced as friendly assistant messages
+- [ ] A `result` event with no error subtype is not shown to the user — it is the normal completion signal
+- [ ] The `maxTurns` configuration is set high enough that the agent can complete a typical interview turn without hitting the limit (at least 10 turns rather than the current 3)
 
 ### API route
 

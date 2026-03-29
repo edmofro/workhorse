@@ -2,6 +2,8 @@
  * Interview-specific instructions appended to the claude_code system prompt preset.
  */
 
+import { buildWorkhorseContext, buildModeInstructions, type InterviewMode } from './workhorseContext'
+
 interface InterviewContext {
   cardTitle: string
   cardDescription: string | null
@@ -10,86 +12,44 @@ interface InterviewContext {
   repoOwner: string
   repoName: string
   attachmentFiles?: string[]
+  mode?: InterviewMode
 }
 
 export function buildInterviewInstructions(ctx: InterviewContext): string {
-  let instructions = `## Your role
+  const parts: string[] = []
 
-You are a spec interviewer for a software card in the Workhorse spec-driven development workbench. Your job is to guide the user through developing comprehensive, testable acceptance criteria.
+  // Rich Workhorse domain context — so the agent never needs to "explore"
+  parts.push(buildWorkhorseContext())
 
-## The card you are specifying
+  // Card-specific context
+  parts.push(`## The card you are working on
 
 **Title:** ${ctx.cardTitle}
 **ID:** ${ctx.cardIdentifier}
 ${ctx.cardDescription ? `**Description:** ${ctx.cardDescription}` : ''}
 **Project:** ${ctx.projectName}
-**Repository:** ${ctx.repoOwner}/${ctx.repoName}
+**Repository:** ${ctx.repoOwner}/${ctx.repoName}`)
 
-## Where to write files
+  // File path guidance
+  parts.push(`## Where to write files for this card
 
 - **Specs:** \`.workhorse/specs/{area}/{slug}.md\` — choose the area based on the codebase structure
-- **Mockups:** \`.workhorse/design/mockups/${ctx.cardIdentifier.toLowerCase()}/{slug}.html\` — standalone HTML with inline CSS
+- **Mockups:** \`.workhorse/design/mockups/${ctx.cardIdentifier.toLowerCase()}/{slug}.html\` — standalone HTML with inline CSS`)
 
-## Spec file format
+  // Mode-specific instructions
+  parts.push(buildModeInstructions(ctx.mode, ctx.cardTitle, ctx.cardDescription))
 
-\`\`\`markdown
----
-title: Section Title
-area: patient
-card: ${ctx.cardIdentifier}
-status: draft
----
+  // Working with files
+  parts.push(`## Working with files
 
-Content here.
-
-## Section heading
-
-- [ ] Acceptance criterion one
-- [ ] Acceptance criterion two
-
-> Open question: Unresolved question here
-\`\`\`
-
-## Mockup format
-
-Each mockup is a standalone HTML file with inline CSS. Include an HTML comment header:
-
-\`\`\`html
-<!-- spec: {area}/{slug}.md -->
-<!DOCTYPE html>
-<html>...</html>
-\`\`\`
-
-## Interview methodology
-
-1. **Understand the goal** — Start by understanding what the card is trying to achieve at a high level
-2. **Probe for details** — Happy path first, then edge cases, error handling, and interactions with existing functionality
-3. **Surface decisions** — When you identify ambiguity, surface it as a decision point the user needs to resolve
-4. **Track open questions** — Maintain a list of unresolved questions that need answers before the spec is complete
-5. **Extract acceptance criteria** — As the conversation progresses, extract concrete, testable acceptance criteria
-6. **Signal completeness** — When you believe the spec has sufficient detail, say so. But don't rush — thorough specs prevent rework
-
-## Conversation style
-
-- Be concise and professional. No fluff.
-- Ask focused questions — one or two at a time, not long lists.
-- Use the card description as your starting context.
-- Reference specific parts of the codebase when relevant — you have full read access.
-- When the user provides information, acknowledge it briefly and move to the next question.
-- Use Australian/NZ English spelling (colour, organisation, finalise).
-
-## Working with files
-
-- Read existing specs and codebase proactively to inform your questions
+- Read existing specs and codebase proactively to inform your work
 - Edit spec files in place when refining criteria — do not reproduce them in chat
 - Create new spec files at paths you determine based on codebase structure
 - When you write or edit a spec file, mention it briefly in your response (e.g. "Updated the allergies spec with the edge case")
-- Do NOT reproduce full file contents in your messages — just describe what you changed`
+- Do NOT reproduce full file contents in your messages — just describe what you changed`)
 
   if (ctx.attachmentFiles && ctx.attachmentFiles.length > 0) {
-    instructions += `
-
-## Attachments
+    parts.push(`## Attachments
 
 The user has attached files to this card. They are stored in the worktree at:
 \`.workhorse/attachments/${ctx.cardIdentifier.toLowerCase()}/\`
@@ -99,8 +59,8 @@ ${ctx.attachmentFiles.map((f) => `- ${f}`).join('\n')}
 
 You can read these files using the Read tool. Image files (screenshots, mockups, diagrams) will be rendered visually. Use these attachments as context when developing specs — they may show existing UI, desired designs, error states, or other reference material.
 
-When the user sends images inline with their messages, examine them carefully and incorporate any relevant details into the acceptance criteria.`
+When the user sends images inline with their messages, examine them carefully and incorporate any relevant details into the acceptance criteria.`)
   }
 
-  return instructions
+  return parts.join('\n\n')
 }

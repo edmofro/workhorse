@@ -8,6 +8,7 @@ import path from 'path'
 import { prisma } from '../../../lib/prisma'
 import { requireUser, requireCardAccess } from '../../../lib/auth/session'
 import { buildInterviewInstructions } from '../../../lib/ai/interviewPrompt'
+import type { InterviewMode } from '../../../lib/ai/workhorseContext'
 import {
   ensureBareClone,
   createWorktree,
@@ -22,10 +23,11 @@ export async function POST(request: NextRequest) {
   const user = await requireUser()
 
   const body = await request.json()
-  const { cardId, message, attachmentIds } = body as {
+  const { cardId, message, attachmentIds, mode } = body as {
     cardId: string
     message: string
     attachmentIds?: string[]
+    mode?: string
   }
 
   if (!cardId || !message) {
@@ -101,7 +103,7 @@ export async function POST(request: NextRequest) {
   // Build deduplicated attachment file list for the prompt context
   const allAttachmentFiles = [...new Set(allAttachments.map((a) => a.fileName))]
 
-  // Build interview instructions
+  // Build interview instructions with mode-specific context
   const interviewInstructions = buildInterviewInstructions({
     cardTitle: card.title,
     cardDescription: card.description,
@@ -110,6 +112,7 @@ export async function POST(request: NextRequest) {
     repoOwner: owner,
     repoName,
     attachmentFiles: allAttachmentFiles.length > 0 ? allAttachmentFiles : undefined,
+    mode: mode as InterviewMode | undefined,
   })
 
   // Build multimodal prompt if there are raster image attachments (exclude SVG — not a valid

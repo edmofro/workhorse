@@ -4,7 +4,7 @@
 
 import { execFile } from 'child_process'
 import { promisify } from 'util'
-import { ensureBareClone } from './worktree'
+import { ensureBareClone, getLocalGitDir } from './worktree'
 
 const execFileAsync = promisify(execFile)
 
@@ -15,29 +15,23 @@ export interface DesignFile {
   content: string
 }
 
-export async function fetchDesignLibrary(
-  token: string,
-  owner: string,
-  repo: string,
-  branch: string,
+/**
+ * Read design files from a git directory (local repo or bare clone) for a given ref.
+ */
+async function readDesignFromGitDir(
+  gitDir: string,
+  ref: string,
 ): Promise<DesignFile[]> {
-  let barePath: string
-  try {
-    barePath = await ensureBareClone(owner, repo, token)
-  } catch {
-    return []
-  }
-
-  // List all files under .workhorse/design/ on this branch
   let lsOutput: string
   try {
     const { stdout } = await execFileAsync(
       'git',
-      ['ls-tree', '-r', '--name-only', `refs/heads/${branch}`, '--', '.workhorse/design/'],
-      { cwd: barePath },
+      ['ls-tree', '-r', '--name-only', ref, '--', '.workhorse/design/'],
+      { cwd: gitDir },
     )
     lsOutput = stdout.trim()
-  } catch {
+  } catch (err) {
+    console.error(`[design] ls-tree failed for ${gitDir} ref=${ref}:`, err)
     return []
   }
 
@@ -45,14 +39,13 @@ export async function fetchDesignLibrary(
 
   const allPaths = lsOutput.split('\n').filter(Boolean)
 
-  // Read content for each file using git show (local, instant)
   const files: DesignFile[] = []
   for (const filePath of allPaths) {
     try {
       const { stdout } = await execFileAsync(
         'git',
-        ['show', `refs/heads/${branch}:${filePath}`],
-        { cwd: barePath },
+        ['show', `${ref}:${filePath}`],
+        { cwd: gitDir },
       )
 
       const relativePath = filePath.replace('.workhorse/design/', '')
@@ -74,4 +67,42 @@ export async function fetchDesignLibrary(
   }
 
   return files
+}
+
+/**
+ * Fetch design library files from a repository.
+ * Prefers the local git repo if it matches, otherwise uses a bare clone.
+ */
+export async function fetchDesignLibrary(
+  token: string,
+  owner: string,
+  repo: string,
+  branch: string,
+): Promise<DesignFile[]> {
+  // Try local repo first (avoids needing a bare clone for the app's own repo)
+  const localDir = await getLocalGitDir(owner, repo)
+  if (localDir) {
+    // Try the requested branch first
+    const result = await readDesignFromGitDir(localDir, `refs/heads/${branch}`)
+    if (result.length > 0) {
+      return result
+    }
+    // Fall back to HEAD (design files may be on the currently checked-out branch)
+    const headResult = await readDesignFromGitDir(localDir, 'HEAD')
+    if (headResult.length > 0) {
+      return headResult
+    }
+    console.warn(`[design] Local repo matched but no design files found on branch ${branch} or HEAD`)
+  }
+
+  // Fall back to bare clone
+  let barePath: string
+  try {
+    barePath = await ensureBareClone(owner, repo, token)
+  } catch (err) {
+    console.error(`[design] Failed to ensure bare clone for ${owner}/${repo}:`, err)
+    return []
+  }
+
+  return readDesignFromGitDir(barePath, `refs/heads/${branch}`)
 }

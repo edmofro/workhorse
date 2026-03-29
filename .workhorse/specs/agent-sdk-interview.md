@@ -316,8 +316,8 @@ git fetch origin workhorse/wh-042-spec
 git checkout workhorse/wh-042-spec
 
 Specs in progress:
-- .workhorse/specs/patient/merge-patients.md (new)
-- .workhorse/specs/patient/patient-search.md (updated)
+- .workhorse/specs/merge-patients.md (new)
+- .workhorse/specs/patient-search.md (updated)
 
 Mockups:
 - .workhorse/design/mockups/wh-042/merge-flow.html
@@ -341,11 +341,11 @@ git fetch origin workhorse/wh-042-spec
 git checkout workhorse/wh-042-spec
 
 New specs:
-- .workhorse/specs/patient/merge-patients.md
-- .workhorse/specs/patient/merge-conflicts.md
+- .workhorse/specs/merge-patients.md
+- .workhorse/specs/merge-conflicts.md
 
 Updated specs:
-- .workhorse/specs/patient/patient-search.md
+- .workhorse/specs/patient-search.md
 
 Mockups:
 - .workhorse/design/mockups/wh-042/merge-flow.html

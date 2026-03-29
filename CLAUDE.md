@@ -21,7 +21,7 @@ src/components/   — React components
 src/lib/          — Shared utilities, database client, AI client
 prisma/           — Database schema and migrations
 .workhorse/
-  specs/        — Spec documents (the product backlog)
+  specs/          — Spec documents (flat, one file per spec)
   design/         — Design system docs and mockups
 ```
 

@@ -193,7 +193,7 @@ Summary paragraph describing what this feature does.
 > **Question label:** The question text here.
 ```
 
-See [`.workhorse/specs/workflow/spec-format.md`](.workhorse/specs/workflow/spec-format.md) for the full specification.
+See [`.workhorse/specs/spec-format.md`](.workhorse/specs/spec-format.md) for the full specification.
 
 ## Commands
 

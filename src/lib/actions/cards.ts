@@ -193,19 +193,24 @@ export async function addComment(
   const user = await requireUser()
   const comment = await prisma.cardComment.create({
     data: { cardId, userId: user.id, content },
-    include: { user: true, attachments: true },
   })
 
   // Associate any uploaded attachments with this comment
   if (attachmentIds && attachmentIds.length > 0) {
     await prisma.attachment.updateMany({
-      where: { id: { in: attachmentIds } },
+      where: { id: { in: attachmentIds }, uploadedById: user.id },
       data: { commentId: comment.id, cardId },
     })
   }
 
+  // Re-query to include attachments in the return value
+  const result = await prisma.cardComment.findUniqueOrThrow({
+    where: { id: comment.id },
+    include: { user: true, attachments: true },
+  })
+
   revalidatePath('/')
-  return comment
+  return result
 }
 
 export async function getCardActivities(cardId: string) {

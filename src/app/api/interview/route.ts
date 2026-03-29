@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server'
 import { query } from '@anthropic-ai/claude-agent-sdk'
 import type { SDKUserMessage } from '@anthropic-ai/claude-agent-sdk'
+import type { ImageBlockParam, TextBlockParam } from '@anthropic-ai/sdk/resources/messages/messages'
 import { readFile, mkdir, copyFile } from 'fs/promises'
 import path from 'path'
 import { prisma } from '../../../lib/prisma'
@@ -65,16 +66,27 @@ export async function POST(request: NextRequest) {
     })
   }
 
-  // Load attachments and copy images to worktree
-  const attachments = attachmentIds?.length
-    ? await prisma.attachment.findMany({ where: { id: { in: attachmentIds } } })
+  // Load all relevant attachments in a single query:
+  // - message-level attachments (by ID)
+  // - card-level attachments (description, no comment)
+  const allAttachments = await prisma.attachment.findMany({
+    where: {
+      OR: [
+        ...(attachmentIds?.length ? [{ id: { in: attachmentIds } }] : []),
+        { cardId, commentId: null },
+      ],
+    },
+  })
+
+  const messageAttachments = attachmentIds?.length
+    ? allAttachments.filter((a) => attachmentIds.includes(a.id))
     : []
 
   // Copy image attachments to worktree for persistence
-  if (attachments.length > 0) {
+  if (allAttachments.length > 0) {
     const attachDir = path.join(wtPath, '.workhorse', 'attachments', card.identifier.toLowerCase())
     await mkdir(attachDir, { recursive: true })
-    for (const att of attachments) {
+    for (const att of allAttachments) {
       try {
         await copyFile(att.storagePath, path.join(attachDir, att.fileName))
       } catch {
@@ -83,16 +95,8 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  // Also load card-level attachments (from description) for context
-  const cardAttachments = await prisma.attachment.findMany({
-    where: { cardId, commentId: null },
-  })
-
-  // Build attachment file list for the prompt context
-  const allAttachmentFiles = [
-    ...cardAttachments.map((a) => a.fileName),
-    ...attachments.filter((a) => !cardAttachments.find((ca) => ca.id === a.id)).map((a) => a.fileName),
-  ]
+  // Build deduplicated attachment file list for the prompt context
+  const allAttachmentFiles = [...new Set(allAttachments.map((a) => a.fileName))]
 
   // Build interview instructions
   const interviewInstructions = buildInterviewInstructions({
@@ -106,41 +110,40 @@ export async function POST(request: NextRequest) {
   })
 
   // Build multimodal prompt if there are image attachments
-  const imageAttachments = attachments.filter((a) => a.mimeType.startsWith('image/'))
+  const imageAttachments = messageAttachments.filter((a) => a.mimeType.startsWith('image/'))
 
   let promptInput: string | AsyncIterable<SDKUserMessage>
 
   if (imageAttachments.length > 0) {
-    // Build multimodal content blocks
-    const contentBlocks: Array<Record<string, unknown>> = []
+    // Build properly typed content blocks
+    const contentBlocks: Array<ImageBlockParam | TextBlockParam> = []
 
     for (const att of imageAttachments) {
       try {
         const data = await readFile(att.storagePath)
-        contentBlocks.push({
+        const imageBlock: ImageBlockParam = {
           type: 'image',
           source: {
             type: 'base64',
-            media_type: att.mimeType,
+            media_type: att.mimeType as 'image/png' | 'image/jpeg' | 'image/gif' | 'image/webp',
             data: data.toString('base64'),
           },
-        })
+        }
+        contentBlocks.push(imageBlock)
       } catch {
         // Skip unreadable files
       }
     }
 
     if (message.trim()) {
-      contentBlocks.push({ type: 'text', text: message })
+      const textBlock: TextBlockParam = { type: 'text', text: message }
+      contentBlocks.push(textBlock)
     }
 
     async function* generatePrompt(): AsyncGenerator<SDKUserMessage> {
       yield {
         type: 'user',
-        message: {
-          role: 'user',
-          content: contentBlocks as Parameters<typeof query>[0]['prompt'] extends string ? never : Array<{ type: string }>,
-        },
+        message: { role: 'user', content: contentBlocks },
         parent_tool_use_id: null,
       } as SDKUserMessage
     }

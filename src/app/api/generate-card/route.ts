@@ -21,10 +21,10 @@ export async function POST(request: NextRequest) {
     // Build content blocks
     const content: Anthropic.ContentBlockParam[] = []
 
-    // Add image attachments if any
+    // Add image attachments if any (cap at 5 to limit payload size)
     if (attachmentIds && attachmentIds.length > 0) {
       const attachments = await prisma.attachment.findMany({
-        where: { id: { in: attachmentIds } },
+        where: { id: { in: attachmentIds.slice(0, 5) } },
       })
 
       for (const att of attachments) {

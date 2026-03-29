@@ -21,6 +21,7 @@ model User {
   cardActivities    CardActivity[]
   comments          CardComment[]
   fileLocks         FileLock[]
+  attachments       Attachment[]
 }
 
 model Project {
@@ -140,15 +141,17 @@ model CardComment {
 }
 
 model Attachment {
-  id          String   @id @default(cuid())
-  cardId      String?
-  commentId   String?
-  fileName    String
-  mimeType    String
-  fileSize    Int
-  storagePath String
-  createdAt   DateTime @default(now())
+  id           String   @id @default(cuid())
+  cardId       String?
+  commentId    String?
+  uploadedById String
+  fileName     String
+  mimeType     String
+  fileSize     Int
+  storagePath  String
+  createdAt    DateTime @default(now())
 
-  card    Card?        @relation(fields: [cardId], references: [id], onDelete: Cascade)
-  comment CardComment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  card       Card?        @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  comment    CardComment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  uploadedBy User         @relation(fields: [uploadedById], references: [id])
 }

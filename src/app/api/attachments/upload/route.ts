@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { writeFile, mkdir } from 'fs/promises'
+import { writeFile, mkdir, unlink } from 'fs/promises'
+import crypto from 'crypto'
 import path from 'path'
 import { prisma } from '../../../../lib/prisma'
 import { requireUser } from '../../../../lib/auth/session'
@@ -16,8 +17,43 @@ const ALLOWED_TYPES = new Set([
 
 const ATTACHMENTS_DIR = process.env.ATTACHMENTS_DIR ?? '/data/attachments'
 
+/** Magic byte signatures for allowed file types */
+const MAGIC_BYTES: Array<{ mime: string; bytes: number[]; offset?: number }> = [
+  { mime: 'image/png', bytes: [0x89, 0x50, 0x4e, 0x47] },
+  { mime: 'image/jpeg', bytes: [0xff, 0xd8, 0xff] },
+  { mime: 'image/gif', bytes: [0x47, 0x49, 0x46, 0x38] },
+  { mime: 'image/webp', bytes: [0x52, 0x49, 0x46, 0x46], offset: 0 }, // RIFF....WEBP
+  { mime: 'application/pdf', bytes: [0x25, 0x50, 0x44, 0x46] }, // %PDF
+]
+
+function detectMimeType(buffer: Buffer): string | null {
+  for (const sig of MAGIC_BYTES) {
+    const offset = sig.offset ?? 0
+    if (buffer.length < offset + sig.bytes.length) continue
+    const match = sig.bytes.every((b, i) => buffer[offset + i] === b)
+    if (match) {
+      // WebP needs additional check for WEBP at offset 8
+      if (sig.mime === 'image/webp') {
+        if (buffer.length >= 12 && buffer.toString('ascii', 8, 12) === 'WEBP') {
+          return 'image/webp'
+        }
+        continue
+      }
+      return sig.mime
+    }
+  }
+
+  // SVG: check if starts with XML declaration or SVG tag
+  const head = buffer.subarray(0, 256).toString('utf8').trim()
+  if (head.startsWith('<?xml') || head.startsWith('<svg')) {
+    return 'image/svg+xml'
+  }
+
+  return null
+}
+
 export async function POST(request: NextRequest) {
-  await requireUser()
+  const user = await requireUser()
 
   const formData = await request.formData()
   const file = formData.get('file') as File | null
@@ -38,29 +74,66 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  // Create attachment record
-  const attachment = await prisma.attachment.create({
-    data: {
-      cardId: cardId || null,
-      fileName: file.name,
-      mimeType: file.type,
-      fileSize: file.size,
-      storagePath: '', // Set after we know the ID
-    },
-  })
+  // If a cardId is provided, verify the user has access to the card
+  if (cardId) {
+    const card = await prisma.card.findUnique({ where: { id: cardId } })
+    if (!card) {
+      return NextResponse.json({ error: 'Card not found' }, { status: 404 })
+    }
+  }
 
-  // Save file to disk
-  const dir = path.join(ATTACHMENTS_DIR, attachment.id)
-  await mkdir(dir, { recursive: true })
-  const filePath = path.join(dir, file.name)
   const buffer = Buffer.from(await file.arrayBuffer())
-  await writeFile(filePath, buffer)
 
-  // Update storage path
-  await prisma.attachment.update({
-    where: { id: attachment.id },
-    data: { storagePath: filePath },
-  })
+  // Validate actual file content matches claimed MIME type
+  const detectedMime = detectMimeType(buffer)
+  if (detectedMime && detectedMime !== file.type) {
+    return NextResponse.json(
+      { error: 'File content does not match declared type' },
+      { status: 400 },
+    )
+  }
+
+  // Sanitise filename: strip directory components and dangerous characters
+  const safeName = path.basename(file.name).replace(/[^\w.\-]/g, '_')
+
+  // Generate ID upfront so we can compute the storage path before creating the record
+  const id = crypto.randomUUID()
+  const dir = path.join(ATTACHMENTS_DIR, id)
+  const filePath = path.join(dir, safeName)
+
+  // Write file to disk first — only create DB record on success
+  try {
+    await mkdir(dir, { recursive: true })
+    await writeFile(filePath, buffer)
+  } catch {
+    return NextResponse.json(
+      { error: 'Failed to store file' },
+      { status: 500 },
+    )
+  }
+
+  // Create DB record with storage path already set
+  let attachment
+  try {
+    attachment = await prisma.attachment.create({
+      data: {
+        id,
+        cardId: cardId || null,
+        fileName: safeName,
+        mimeType: file.type,
+        fileSize: file.size,
+        storagePath: filePath,
+        uploadedById: user.id,
+      },
+    })
+  } catch {
+    // Clean up the file if DB creation fails
+    await unlink(filePath).catch(() => {})
+    return NextResponse.json(
+      { error: 'Failed to create attachment record' },
+      { status: 500 },
+    )
+  }
 
   return NextResponse.json({
     id: attachment.id,

@@ -37,31 +37,33 @@ export function useAttachments(cardId?: string) {
 
       setPending((prev) => [...prev, ...newPending])
 
-      // Upload each file
-      for (const item of newPending) {
-        try {
-          const data = await uploadAttachment(item.file, cardId)
-          setPending((prev) =>
-            prev.map((p) =>
-              p.id === item.id
-                ? { ...p, uploaded: data, uploading: false, id: data.id }
-                : p,
-            ),
-          )
-        } catch (err) {
-          setPending((prev) =>
-            prev.map((p) =>
-              p.id === item.id
-                ? {
-                    ...p,
-                    uploading: false,
-                    error: err instanceof Error ? err.message : 'Upload failed',
-                  }
-                : p,
-            ),
-          )
-        }
-      }
+      // Upload all files concurrently
+      await Promise.allSettled(
+        newPending.map(async (item) => {
+          try {
+            const data = await uploadAttachment(item.file, cardId)
+            setPending((prev) =>
+              prev.map((p) =>
+                p.id === item.id
+                  ? { ...p, uploaded: data, uploading: false, id: data.id }
+                  : p,
+              ),
+            )
+          } catch (err) {
+            setPending((prev) =>
+              prev.map((p) =>
+                p.id === item.id
+                  ? {
+                      ...p,
+                      uploading: false,
+                      error: err instanceof Error ? err.message : 'Upload failed',
+                    }
+                  : p,
+              ),
+            )
+          }
+        }),
+      )
     },
     [cardId],
   )

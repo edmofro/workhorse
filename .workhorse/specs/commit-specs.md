@@ -47,7 +47,7 @@ Since work is always committed, "mark ready" is a quality gate, not a save actio
 
 ## Collaborate with agent button
 
-See the agent SDK interview spec (`.workhorse/specs/interview/agent-sdk-interview.md`) for full details. The split dropdown button appears in both `SPECIFYING` and `IMPLEMENTING` modes, generating a phase-appropriate prompt for external Claude Code sessions.
+See the agent SDK interview spec (`.workhorse/specs/agent-sdk-interview.md`) for full details. The split dropdown button appears in both `SPECIFYING` and `IMPLEMENTING` modes, generating a phase-appropriate prompt for external Claude Code sessions.
 
 ## Open questions
 

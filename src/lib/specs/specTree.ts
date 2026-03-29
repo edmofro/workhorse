@@ -56,12 +56,11 @@ function sortTree(nodes: SpecTreeNode[]) {
 
 /**
  * Extract area from a spec file path
- * e.g., ".workhorse/specs/patient/allergies.md" → "patient"
+ *
+ * With the flat spec structure, all specs live directly in .workhorse/specs/,
+ * so this always returns 'general'.
+ * e.g., ".workhorse/specs/allergies.md" → "general"
  */
 export function extractArea(filePath: string): string {
-  const parts = filePath.replace(/^\.workhorse\/specs\//, '').split('/')
-  if (parts.length > 1) {
-    return parts.slice(0, -1).join('/')
-  }
   return 'general'
 }

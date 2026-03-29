@@ -2,10 +2,9 @@
 title: Workhorse design system
 status: complete
 ---
-
 # Workhorse Design System
 
-Workhorse is a spec-driven development workbench. The interface should feel like a sharp, quiet tool — professional and polished with a touch of warmth and character, in the lineage of Linear, GitHub, and Raycast.
+Workhorse is a spec-driven development workbench.sdfd The interface should feel like a sharp, quiet tool — professional and polished with a touch of warmth and character, in the lineage of Linear, GitHub, and Raycast.
 
 ## Design philosophy
 

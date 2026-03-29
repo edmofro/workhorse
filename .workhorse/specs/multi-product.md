@@ -28,7 +28,6 @@ Workhorse manages specs across multiple projects. Projects are the user-facing c
 - [ ] Selecting a repository auto-populates the project name (from the repository name), GitHub URL, owner, repo name, and default branch
 - [ ] The project name defaults to the repository name but is editable after creation
 - [ ] The default branch is read from the repository's settings on GitHub (not hardcoded to "main")
-- [ ] Users can still edit the GitHub URL and default branch on an existing project if needed
 
 ## Open questions
 

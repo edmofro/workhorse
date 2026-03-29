@@ -8,6 +8,7 @@ import { updateUser } from '../lib/actions/user'
 import { createProject, updateProject, deleteProject } from '../lib/actions/projects'
 import { createTeam, updateTeam, deleteTeam, joinTeam, leaveTeam } from '../lib/actions/teams'
 import { Trash2, Plus, UserPlus, UserMinus } from 'lucide-react'
+import { RepoPickerDialog } from './RepoPickerDialog'
 
 interface TeamData {
   id: string
@@ -35,6 +36,7 @@ export function SettingsForm({ projects: initialProjects }: SettingsFormProps) {
   const [displayName, setDisplayName] = useState(user.displayName)
   const [projects, setProjects] = useState(initialProjects)
   const [isPending, startTransition] = useTransition()
+  const [showRepoPicker, setShowRepoPicker] = useState(false)
   const projectSaveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
 
   function handleUpdateName() {
@@ -45,13 +47,20 @@ export function SettingsForm({ projects: initialProjects }: SettingsFormProps) {
     })
   }
 
-  function handleAddProject() {
+  function handleAddProjectFromRepo(repo: {
+    name: string
+    owner: string
+    htmlUrl: string
+    defaultBranch: string
+  }) {
+    setShowRepoPicker(false)
     startTransition(async () => {
       const project = await createProject({
-        name: 'New Project',
-        githubUrl: 'https://github.com/org/repo',
-        owner: 'org',
-        repoName: 'repo',
+        name: repo.name,
+        githubUrl: repo.htmlUrl,
+        owner: repo.owner,
+        repoName: repo.name,
+        defaultBranch: repo.defaultBranch,
       })
       setProjects((prev) => [
         ...prev,
@@ -223,7 +232,7 @@ export function SettingsForm({ projects: initialProjects }: SettingsFormProps) {
       <section>
         <div className="flex items-center justify-between mb-3">
           <SectionLabel>Projects</SectionLabel>
-          <Button variant="secondary" size="sm" onClick={handleAddProject} disabled={isPending}>
+          <Button variant="secondary" size="sm" onClick={() => setShowRepoPicker(true)} disabled={isPending}>
             <Plus size={12} /> Add project
           </Button>
         </div>
@@ -252,33 +261,15 @@ export function SettingsForm({ projects: initialProjects }: SettingsFormProps) {
                       className="flex-1 px-3 py-[6px] text-[13px] bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-[var(--radius-default)] outline-none focus:border-[var(--accent)] focus:shadow-[var(--shadow-input-focus)] transition-[border-color,box-shadow] duration-150"
                     />
                   </FieldRow>
-                  <FieldRow label="GitHub URL">
-                    <input
-                      type="text"
-                      value={project.githubUrl}
-                      onChange={(e) => {
-                        const url = e.target.value
-                        const match = url.match(/github\.com\/([^/]+)\/([^/]+)/)
-                        handleUpdateProject(project.id, {
-                          githubUrl: url,
-                          owner: match?.[1] ?? project.owner,
-                          repoName: match?.[2] ?? project.repoName,
-                        })
-                      }}
-                      className="flex-1 px-3 py-[6px] text-[13px] bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-[var(--radius-default)] outline-none focus:border-[var(--accent)] focus:shadow-[var(--shadow-input-focus)] transition-[border-color,box-shadow] duration-150"
-                    />
+                  <FieldRow label="Repository">
+                    <span className="text-[13px] text-[var(--text-secondary)]">
+                      {project.owner}/{project.repoName}
+                    </span>
                   </FieldRow>
                   <FieldRow label="Default branch">
-                    <input
-                      type="text"
-                      value={project.defaultBranch}
-                      onChange={(e) =>
-                        handleUpdateProject(project.id, {
-                          defaultBranch: e.target.value,
-                        })
-                      }
-                      className="w-[120px] px-3 py-[6px] text-[13px] bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-[var(--radius-default)] outline-none focus:border-[var(--accent)] focus:shadow-[var(--shadow-input-focus)] transition-[border-color,box-shadow] duration-150"
-                    />
+                    <span className="text-[13px] text-[var(--text-secondary)]">
+                      {project.defaultBranch}
+                    </span>
                   </FieldRow>
                 </div>
                 <button
@@ -356,6 +347,14 @@ export function SettingsForm({ projects: initialProjects }: SettingsFormProps) {
             </div>
           ))}
         </div>
+
+        {showRepoPicker && (
+          <RepoPickerDialog
+            existingRepoUrls={new Set(projects.map((p) => p.githubUrl))}
+            onSelect={handleAddProjectFromRepo}
+            onClose={() => setShowRepoPicker(false)}
+          />
+        )}
       </section>
     </div>
   )

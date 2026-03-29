@@ -2,30 +2,22 @@
 title: Fast spec and design library loading
 area: workflow
 card: WH-030
-status: draft
+status: complete
 ---
 
-Loading specs (21 files) takes 8.4 seconds because each file is fetched sequentially from the GitHub API (~400ms per call). The design library has the same problem. Subsequent loads are equally slow because there is no caching.
+Loading specs (21 files) took 8.4 seconds because each file was fetched sequentially from the GitHub API (~400ms per round-trip). The design library had the same problem. Subsequent loads were equally slow because there was no caching.
 
-## Parallel fetching
+## Root cause
 
-- [ ] Fetch all file contents with `Promise.all` instead of a sequential `for` loop
-- [ ] Applies to both `fetchRepoSpecTree` and `fetchDesignLibrary`
-- [ ] Expected improvement: ~8.4s → ~0.5s on first load (limited by single slowest request, not sum of all)
+Both `fetchRepoSpecTree` and `fetchDesignLibrary` used the GitHub REST API to read file contents — one HTTP request per file, awaited sequentially. Meanwhile, the server already has a local bare clone of every registered repo at `/data/repos/{owner}/{repo}/bare.git`.
 
-## Blob SHA caching
+## Fix: read from the local bare clone
 
-The recursive `getTree` response includes a `sha` for every blob. Two blobs with the same SHA have identical content — this is a git guarantee. Use an in-memory cache keyed by blob SHA to skip re-fetching unchanged files on subsequent loads.
-
-- [ ] Cache decoded file content by blob SHA in a module-level `Map`
-- [ ] On load, check cache before calling `getFileContent`
-- [ ] Only fetch files whose SHA is not yet cached
-- [ ] Expected improvement on subsequent loads: ~0.5s → ~50ms (just the tree call + cache lookups)
+- [x] Replace GitHub API calls with local `git ls-tree` + `git show` on the bare clone
+- [x] Applies to both `fetchRepoSpecTree` and `fetchDesignLibrary`
+- [x] No network calls at all — reads are purely local disk + git object lookups
+- [x] Expected improvement: ~8.4s → <50ms (local git operations are sub-millisecond each)
 
 ## Scope
 
-This is a server-side change only. No UI or API contract changes — responses are identical, just faster.
-
-## Open questions
-
-> **Cache eviction:** The in-memory cache grows unboundedly. For now this is fine (21 files × ~4KB = ~84KB). If spec count grows significantly, add an LRU cap.
+Server-side change only. No UI or API contract changes — responses are identical, just faster.

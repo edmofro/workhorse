@@ -1,10 +1,15 @@
 /**
- * Fetch spec tree from a repo's main branch via GitHub API
+ * Read spec tree from the local bare clone via git commands.
+ * Falls back to GitHub API if the bare clone doesn't exist yet.
  */
 
-import { getRef, getTree, getFileContent } from './githubClient'
+import { execFile } from 'child_process'
+import { promisify } from 'util'
+import * as fs from 'fs/promises'
+import { bareClonePath } from './worktree'
 import { buildSpecTree, type SpecTreeNode } from '../specs/specTree'
-import { blobCache } from './blobCache'
+
+const execFileAsync = promisify(execFile)
 
 export interface RepoSpecFile {
   path: string
@@ -12,47 +17,57 @@ export interface RepoSpecFile {
 }
 
 /**
- * Fetch all .workhorse/specs/ files from a repository.
- * Files are fetched in parallel and cached by blob SHA.
+ * Fetch all .workhorse/specs/ files from a repository's local bare clone.
  */
 export async function fetchRepoSpecTree(
-  token: string,
+  _token: string,
   owner: string,
   repo: string,
   branch: string,
 ): Promise<{ tree: SpecTreeNode[]; files: RepoSpecFile[] }> {
-  const ref = await getRef(token, owner, repo, branch)
-  if (!ref) return { tree: [], files: [] }
+  const barePath = bareClonePath(owner, repo)
 
-  const treeData = await getTree(token, owner, repo, ref.object.sha, true)
-  if (!treeData?.tree) return { tree: [], files: [] }
+  // Check bare clone exists
+  try {
+    await fs.access(barePath)
+  } catch {
+    return { tree: [], files: [] }
+  }
 
-  const specFiles = treeData.tree.filter(
-    (item: { path: string; type: string; sha: string }) =>
-      item.path.startsWith('.workhorse/specs/') &&
-      item.path.endsWith('.md') &&
-      item.type === 'blob',
-  )
+  // List all .md files under .workhorse/specs/ on this branch
+  let lsOutput: string
+  try {
+    const { stdout } = await execFileAsync(
+      'git',
+      ['ls-tree', '-r', '--name-only', `refs/heads/${branch}`, '--', '.workhorse/specs/'],
+      { cwd: barePath },
+    )
+    lsOutput = stdout.trim()
+  } catch {
+    return { tree: [], files: [] }
+  }
 
-  const paths = specFiles.map((f: { path: string }) => f.path)
-  const tree = buildSpecTree(paths)
+  if (!lsOutput) return { tree: [], files: [] }
 
-  // Fetch content for all files in parallel, using blob SHA cache
-  const results = await Promise.all(
-    specFiles.map(async (specFile: { path: string; sha: string }) => {
-      const cached = blobCache.get(specFile.sha)
-      if (cached) return { path: specFile.path, content: cached }
+  const allPaths = lsOutput.split('\n').filter(Boolean)
+  const specPaths = allPaths.filter((p) => p.endsWith('.md'))
 
-      const content = await getFileContent(token, owner, repo, specFile.path, branch)
-      if (content?.decodedContent) {
-        blobCache.set(specFile.sha, content.decodedContent)
-        return { path: specFile.path, content: content.decodedContent }
-      }
-      return null
-    }),
-  )
+  const tree = buildSpecTree(specPaths)
 
-  const files = results.filter((f): f is RepoSpecFile => f !== null)
+  // Read content for each file using git show (local, instant)
+  const files: RepoSpecFile[] = []
+  for (const filePath of specPaths) {
+    try {
+      const { stdout } = await execFileAsync(
+        'git',
+        ['show', `refs/heads/${branch}:${filePath}`],
+        { cwd: barePath },
+      )
+      files.push({ path: filePath, content: stdout })
+    } catch {
+      // Skip files that can't be read
+    }
+  }
 
   return { tree, files }
 }

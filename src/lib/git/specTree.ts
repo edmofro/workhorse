@@ -1,9 +1,13 @@
 /**
- * Fetch spec tree from a repo's branch via GitHub API.
+ * Read spec tree from the local bare clone via git commands.
  */
 
-import { getRef, getTree, getFileContent } from './githubClient'
+import { execFile } from 'child_process'
+import { promisify } from 'util'
+import { ensureBareClone } from './worktree'
 import { buildSpecTree, type SpecTreeNode } from '../specs/specTree'
+
+const execFileAsync = promisify(execFile)
 
 export interface RepoSpecFile {
   path: string
@@ -11,7 +15,7 @@ export interface RepoSpecFile {
 }
 
 /**
- * Fetch all .workhorse/specs/ files from a repository via GitHub API.
+ * Fetch all .workhorse/specs/ files from a repository's local bare clone.
  */
 export async function fetchRepoSpecTree(
   token: string,
@@ -19,39 +23,52 @@ export async function fetchRepoSpecTree(
   repo: string,
   branch: string,
 ): Promise<{ tree: SpecTreeNode[]; files: RepoSpecFile[] }> {
-  const ref = await getRef(token, owner, repo, branch)
-  if (!ref) {
-    console.error(`[specs] Could not resolve ref for ${owner}/${repo} branch=${branch}`)
+  let barePath: string
+  try {
+    barePath = await ensureBareClone(owner, repo, token)
+  } catch (err) {
+    console.error(`[specs] Failed to ensure bare clone for ${owner}/${repo}:`, err)
     return { tree: [], files: [] }
   }
 
-  const treeData = await getTree(token, owner, repo, ref.object.sha, true)
-  if (!treeData?.tree) {
-    console.error(`[specs] Could not fetch tree for ${owner}/${repo}`)
+  // List all .md files under .workhorse/specs/ on this branch
+  let lsOutput: string
+  try {
+    const { stdout } = await execFileAsync(
+      'git',
+      ['ls-tree', '-r', '--name-only', `refs/heads/${branch}`, '--', '.workhorse/specs/'],
+      { cwd: barePath },
+    )
+    lsOutput = stdout.trim()
+  } catch (err) {
+    console.error(`[specs] ls-tree failed in ${barePath} for refs/heads/${branch}:`, err)
     return { tree: [], files: [] }
   }
 
-  const specFiles = treeData.tree.filter(
-    (item: { path: string; type: string }) =>
-      item.path.startsWith('.workhorse/specs/') &&
-      item.path.endsWith('.md') &&
-      item.type === 'blob',
-  )
+  if (!lsOutput) {
+    console.warn(`[specs] No spec files found in ${owner}/${repo} on branch ${branch}`)
+    return { tree: [], files: [] }
+  }
 
-  const paths = specFiles.map((f: { path: string }) => f.path)
-  const tree = buildSpecTree(paths)
+  const allPaths = lsOutput.split('\n').filter(Boolean)
+  const specPaths = allPaths.filter((p) => p.endsWith('.md'))
 
-  // Fetch content for all files in parallel
-  const results = await Promise.all(
-    specFiles.map(async (specFile: { path: string }) => {
-      const content = await getFileContent(token, owner, repo, specFile.path, branch)
-      if (content?.decodedContent) {
-        return { path: specFile.path, content: content.decodedContent }
-      }
-      return null
-    }),
-  )
+  const tree = buildSpecTree(specPaths)
 
-  const files = results.filter((f): f is RepoSpecFile => f !== null)
+  // Read content for each file using git show (local, instant)
+  const files: RepoSpecFile[] = []
+  for (const filePath of specPaths) {
+    try {
+      const { stdout } = await execFileAsync(
+        'git',
+        ['show', `refs/heads/${branch}:${filePath}`],
+        { cwd: barePath },
+      )
+      files.push({ path: filePath, content: stdout })
+    } catch {
+      // Skip files that can't be read
+    }
+  }
+
   return { tree, files }
 }

@@ -16,7 +16,7 @@ Workhorse manages specs across multiple projects. Projects are the user-facing c
 - [ ] One card always targets exactly one project
 - [ ] Project management is in settings
 - [ ] The user is always in the context of one project, selected via the project switcher in the sidebar
-- [ ] A user can only see projects linked to GitHub repos they have write access to (see `identity/auth.md`)
+- [ ] A user can only see projects linked to GitHub repos they have write access to (see `auth.md`)
 
 ## Adding projects from GitHub
 

@@ -60,7 +60,7 @@ export function SpecsPanel({
       style={{ width: '180px' }}
     >
       <div className="flex items-center justify-between px-3 pt-3 pb-1">
-        <span className="text-[12px] font-semibold text-[var(--text-muted)] uppercase tracking-[0.06em]">
+        <span className="text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-[0.06em]">
           Specs
         </span>
         <div className="flex items-center gap-1">

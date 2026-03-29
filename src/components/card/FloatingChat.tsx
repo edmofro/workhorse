@@ -69,8 +69,8 @@ export function FloatingChat({
 
   return (
     <div
-      className="absolute bottom-4 left-4 right-4 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-[var(--radius-xl)] shadow-[var(--shadow-lg)] flex flex-col overflow-hidden z-10"
-      style={{ height: `${height}px`, maxHeight: '60vh' }}
+      className="absolute bottom-4 left-1/2 -translate-x-1/2 w-[calc(100%-32px)] bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-[var(--radius-xl)] shadow-[var(--shadow-lg)] flex flex-col overflow-hidden z-10"
+      style={{ height: `${height}px`, maxHeight: '60vh', maxWidth: '640px' }}
     >
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-2 border-b border-[var(--border-subtle)] shrink-0">

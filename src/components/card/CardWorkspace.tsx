@@ -67,7 +67,7 @@ export function CardWorkspace({
   const { user } = useUser()
   const router = useRouter()
   const [view, setView] = useState<ViewState>({ type: 'card' })
-  const [previousView, setPreviousView] = useState<ViewState>({ type: 'card' })
+  const [, setViewHistory] = useState<ViewState[]>([])
 
   // Spec files state
   const [files, setFiles] = useState(initialFiles)
@@ -86,8 +86,10 @@ export function CardWorkspace({
   // Attachments for chat
   const chatAttachments = useAttachments(card.id)
 
-  // Refresh files from worktree periodically
+  // Refresh files from worktree periodically (only in views that show files)
   useEffect(() => {
+    if (view.type === 'mockup' || view.type === 'chat') return
+
     const interval = setInterval(async () => {
       if (isEditing) return
       if (document.hidden) return
@@ -121,7 +123,7 @@ export function CardWorkspace({
     }, 10000)
 
     return () => clearInterval(interval)
-  }, [card.id, isEditing])
+  }, [card.id, isEditing, view.type])
 
   // Track file writes from the interview — add them to the files list
   useEffect(() => {
@@ -149,17 +151,25 @@ export function CardWorkspace({
       .map((m) => ({ filePath: m.filePath })),
   ]
 
-  // View navigation
+  // View navigation with history stack
   const navigateTo = useCallback((next: ViewState) => {
     setView((current) => {
-      setPreviousView(current)
+      setViewHistory((prev) => [...prev, current])
       return next
     })
   }, [])
 
   const goBack = useCallback(() => {
-    setView(previousView)
-  }, [previousView])
+    setViewHistory((prev) => {
+      if (prev.length === 0) {
+        setView({ type: 'card' })
+        return prev
+      }
+      const last = prev[prev.length - 1]
+      setView(last)
+      return prev.slice(0, -1)
+    })
+  }, [])
 
   // Send message with mode support
   const handleSendMessage = useCallback(
@@ -187,11 +197,14 @@ export function CardWorkspace({
   const ensureWorktree = useCallback(async () => {
     setIsEnsuring(true)
     try {
-      await fetch('/api/ensure-worktree', {
+      const res = await fetch('/api/ensure-worktree', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ cardId: card.id }),
       })
+      if (!res.ok) {
+        throw new Error(`Failed to ensure worktree: ${res.status}`)
+      }
     } finally {
       setIsEnsuring(false)
     }

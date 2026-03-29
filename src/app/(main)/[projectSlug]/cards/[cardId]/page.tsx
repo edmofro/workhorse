@@ -37,18 +37,22 @@ export default async function CardPage({ params }: Props) {
 
   if (!card) notFound()
 
-  const users = await prisma.user.findMany({ orderBy: { displayName: 'asc' } })
-  const teams = await prisma.team.findMany({
-    where: { projectId: card.team.projectId },
-    orderBy: { name: 'asc' },
-  })
-
   const { owner, repoName, defaultBranch } = card.team.project
+
+  // Parallelise independent fetches
+  const [users, teams, hasWorktree, currentUser] = await Promise.all([
+    prisma.user.findMany({ orderBy: { displayName: 'asc' } }),
+    prisma.team.findMany({
+      where: { projectId: card.team.projectId },
+      orderBy: { name: 'asc' },
+    }),
+    worktreeExists(owner, repoName, card.identifier),
+    getCurrentUser(),
+  ])
 
   // Load spec files from worktree if it exists
   let initialFiles: { filePath: string; isNew: boolean; content: string }[] = []
 
-  const hasWorktree = await worktreeExists(owner, repoName, card.identifier)
   if (hasWorktree) {
     const changedFiles = await getChangedFiles(
       owner, repoName, card.identifier, defaultBranch,
@@ -71,7 +75,6 @@ export default async function CardPage({ params }: Props) {
 
   // Load project specs
   let projectSpecs: { filePath: string; content: string }[] = []
-  const currentUser = await getCurrentUser()
   if (currentUser) {
     try {
       const specTree = await fetchRepoSpecTree(

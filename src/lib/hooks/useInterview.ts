@@ -32,12 +32,14 @@ export function useInterview(cardId: string) {
   const [fileWrites, setFileWrites] = useState<FileWriteNotification[]>([])
   const [committedFiles, setCommittedFiles] = useState<string[]>([])
   const [historyLoaded, setHistoryLoaded] = useState(false)
+  const historyCardIdRef = useRef<string | null>(null)
   const abortRef = useRef<AbortController | null>(null)
 
-  // Load chat history from Agent SDK session on mount
+  // Load chat history from Agent SDK session on mount or when cardId changes
   useEffect(() => {
-    if (historyLoaded) return
-    setHistoryLoaded(true)
+    if (historyLoaded && historyCardIdRef.current === cardId) return
+    historyCardIdRef.current = cardId
+    setHistoryLoaded(false)
 
     async function loadHistory() {
       try {
@@ -50,6 +52,8 @@ export function useInterview(cardId: string) {
         }
       } catch {
         // Ignore — history retrieval is best-effort
+      } finally {
+        setHistoryLoaded(true)
       }
     }
 

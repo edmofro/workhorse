@@ -27,7 +27,7 @@ export function ActionPills({ pills, onSelect, disabled }: ActionPillsProps) {
           onClick={() => onSelect(pill)}
           disabled={disabled}
           className={cn(
-            'px-3 py-[6px] rounded-full text-[12px] font-medium',
+            'px-3 py-[6px] rounded-[var(--radius-pill)] text-[12px] font-medium',
             'bg-[var(--bg-page)] border border-[var(--border-subtle)]',
             'text-[var(--text-secondary)] hover:text-[var(--text-primary)]',
             'hover:border-[var(--border-default)] hover:bg-[var(--bg-hover)]',

@@ -113,8 +113,8 @@ export async function ensureBareClone(
   if (!clonedJustNow && Date.now() - lastFetch > FETCH_INTERVAL_MS) {
     try {
       await fetchBareClone(owner, repo, token)
-    } catch {
-      // Stale data is better than no data
+    } catch (err) {
+      console.warn(`[git] Fetch failed for ${repoKey} (stale data used):`, err)
     }
     lastFetchTime.set(repoKey, Date.now())
   }
@@ -161,13 +161,12 @@ export async function fetchBareClone(
   token: string,
 ): Promise<void> {
   const barePath = bareClonePath(owner, repo)
-  // Use GIT_CONFIG env vars to inject auth without persisting token in config
+  // Update the remote URL with the current token so fetch uses valid auth
+  // (the mirror clone may have been created with an older/different token)
+  const authedUrl = `https://x-access-token:${token}@github.com/${owner}/${repo}.git`
+  await git(['remote', 'set-url', 'origin', authedUrl], barePath)
   await git(['fetch', '--prune', 'origin'], barePath, {
-    GIT_ASKPASS: '/bin/echo',
     GIT_TERMINAL_PROMPT: '0',
-    GIT_CONFIG_VALUE_0: `https://x-access-token:${token}@github.com`,
-    GIT_CONFIG_KEY_0: `url.https://x-access-token:${token}@github.com.insteadOf`,
-    GIT_CONFIG_COUNT: '1',
   })
 }
 

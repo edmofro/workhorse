@@ -24,7 +24,8 @@ export async function fetchDesignLibrary(
   let barePath: string
   try {
     barePath = await ensureBareClone(owner, repo, token)
-  } catch {
+  } catch (err) {
+    console.error(`[design] Failed to ensure bare clone for ${owner}/${repo}:`, err)
     return []
   }
 
@@ -37,11 +38,15 @@ export async function fetchDesignLibrary(
       { cwd: barePath },
     )
     lsOutput = stdout.trim()
-  } catch {
+  } catch (err) {
+    console.error(`[design] ls-tree failed in ${barePath} for refs/heads/${branch}:`, err)
     return []
   }
 
-  if (!lsOutput) return []
+  if (!lsOutput) {
+    console.warn(`[design] No design files found in ${owner}/${repo} on branch ${branch}`)
+    return []
+  }
 
   const allPaths = lsOutput.split('\n').filter(Boolean)
 

@@ -26,7 +26,8 @@ export async function fetchRepoSpecTree(
   let barePath: string
   try {
     barePath = await ensureBareClone(owner, repo, token)
-  } catch {
+  } catch (err) {
+    console.error(`[specs] Failed to ensure bare clone for ${owner}/${repo}:`, err)
     return { tree: [], files: [] }
   }
 
@@ -39,11 +40,15 @@ export async function fetchRepoSpecTree(
       { cwd: barePath },
     )
     lsOutput = stdout.trim()
-  } catch {
+  } catch (err) {
+    console.error(`[specs] ls-tree failed in ${barePath} for refs/heads/${branch}:`, err)
     return { tree: [], files: [] }
   }
 
-  if (!lsOutput) return { tree: [], files: [] }
+  if (!lsOutput) {
+    console.warn(`[specs] No spec files found in ${owner}/${repo} on branch ${branch}`)
+    return { tree: [], files: [] }
+  }
 
   const allPaths = lsOutput.split('\n').filter(Boolean)
   const specPaths = allPaths.filter((p) => p.endsWith('.md'))

@@ -469,7 +469,7 @@ export function CardWorkspace({
     <div className="flex-1 flex flex-col overflow-hidden">
       {/* Session header bar in chat zone */}
       {view.type === 'chat' && chatSessionTitle && (
-        <div className="shrink-0 px-4 py-2 border-b border-[var(--border-subtle)] flex items-center gap-2">
+        <div className="shrink-0 px-4 py-3 border-b border-[var(--border-subtle)] flex items-center gap-2">
           <MessageCircle size={13} className="text-[var(--text-muted)]" />
           <span className="text-[13px] font-medium text-[var(--text-secondary)] truncate">
             {chatSessionTitle}
@@ -515,7 +515,7 @@ export function CardWorkspace({
                       {fw.filePath.split('/').pop()}
                     </code>
                   </span>
-                  <span className="ml-auto text-[10px] text-[var(--accent)] font-medium">
+                  <span className="ml-auto text-[11px] text-[var(--accent)] font-medium">
                     Open →
                   </span>
                 </button>
@@ -623,13 +623,10 @@ export function CardWorkspace({
                         className="flex items-center gap-2 w-full px-3 py-2 rounded-[var(--radius-default)] text-left text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer"
                       >
                         <MessageCircle size={13} className="shrink-0 text-[var(--text-muted)]" />
-                        <span className="text-[13px] font-medium truncate">
+                        <span className="text-[13px] font-medium truncate flex-1">
                           {session.title ?? 'New conversation'}
                         </span>
                         <span className="text-[11px] text-[var(--text-muted)] shrink-0">
-                          {session.messageCount} msgs
-                        </span>
-                        <span className="text-[11px] text-[var(--text-faint)] shrink-0">
                           {formatRelativeTime(session.lastMessageAt)}
                         </span>
                       </button>

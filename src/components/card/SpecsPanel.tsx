@@ -57,27 +57,27 @@ export function SpecsPanel({
   return (
     <aside
       className="shrink-0 border-l border-[var(--border-subtle)] bg-[var(--bg-page)] flex flex-col overflow-y-auto"
-      style={{ width: '160px' }}
+      style={{ width: '180px' }}
     >
       <div className="flex items-center justify-between px-3 pt-3 pb-1">
-        <span className="text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-[0.06em]">
+        <span className="text-[12px] font-semibold text-[var(--text-muted)] uppercase tracking-[0.06em]">
           Specs
         </span>
         <div className="flex items-center gap-1">
           <button
             onClick={onCreateSpec}
-            className="p-1 text-[var(--text-muted)] hover:text-[var(--accent)] transition-colors duration-100 cursor-pointer"
+            className="p-1.5 text-[var(--text-muted)] hover:text-[var(--accent)] transition-colors duration-100 cursor-pointer"
             title="New spec"
           >
-            <Plus size={11} />
+            <Plus size={14} />
           </button>
           {onToggle && (
             <button
               onClick={onToggle}
-              className="p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors duration-100 cursor-pointer"
+              className="p-1.5 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors duration-100 cursor-pointer"
               title="Collapse specs panel"
             >
-              <PanelRightClose size={11} />
+              <PanelRightClose size={14} />
             </button>
           )}
         </div>

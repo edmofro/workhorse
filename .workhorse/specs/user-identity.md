@@ -13,4 +13,4 @@ Users are identified by their GitHub account (see WH-021). Display name and avat
 - [ ] Name is stored in the database and associated with all their actions
 - [ ] Name persists across sessions (linked to GitHub account)
 - [ ] Users can change their display name in settings (avatar always synced from GitHub)
-- [ ] All spec edits, interview messages, and card changes are attributed to the user
+- [ ] All spec edits, chat messages, and card changes are attributed to the user

@@ -22,7 +22,7 @@ Product owners, testers, and developers — anyone who specifies what software s
 
 - [ ] User creates a card on a team's board — copy-paste from Linear initially, write directly in Workhorse later
 - [ ] User describes the work on the card view — title, description, metadata, comments
-- [ ] User starts a conversation via floating chat or action pill — AI interviewer with remote access to the target codebase
+- [ ] User starts a conversation via floating chat or action pill — AI agent with remote access to the target codebase
 - [ ] Back-and-forth interview — the AI probes for edge cases, identifies interactions, generates mockups when helpful. Supports BA work: flow diagrams, business rule identification, process mapping
 - [ ] AI drafts spec documents — may create new specs and identify existing specs that need updating. Automatic or user-triggered
 - [ ] User edits specs by clicking them in the right panel — opens spec view with floating chat at the bottom. Chat continues alongside

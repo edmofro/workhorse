@@ -29,7 +29,7 @@ Branch names, rebase operations, base branch selection, or any git terminology.
 
 - [ ] User can set "depends on" from one card to another
 - [ ] Dependencies can be set during card creation or later
-- [ ] The AI can suggest dependencies during the interview when it identifies interactions
+- [ ] The AI can suggest dependencies during the session when it identifies interactions
 - [ ] A card can depend on multiple cards
 - [ ] Circular dependencies are prevented
 
@@ -37,7 +37,7 @@ Branch names, rebase operations, base branch selection, or any git terminology.
 
 - [ ] A dependent card can see the specs from its parent cards (not just what's on main)
 - [ ] When editing specs on card B that depends on A, the editor shows A's uncommitted spec changes as context
-- [ ] The AI interviewer has access to parent card specs, not just what's on main
+- [ ] The AI agent has access to parent card specs, not just what's on main
 
 ## Under the hood
 

@@ -9,7 +9,7 @@ A navigable hierarchy of specs organised by project. Projects are the user-facin
 
 The spec explorer shows the living body of specs that have been merged to main. It's the "what does this project do?" reference, built up naturally as specs are committed and merged.
 
-As specs accumulate, they form a knowledge base for each project. Product owners, testers, and developers need to browse this — to understand how things work, check for interactions, and avoid contradictions. This is also the reference the AI interviewer draws on when identifying interactions during specifying. Each spec in the browser links back to the Workhorse card that created it, providing access to the full chat history, comments, and mockups that led to the spec.
+As specs accumulate, they form a knowledge base for each project. Product owners, testers, and developers need to browse this — to understand how things work, check for interactions, and avoid contradictions. This is also the reference the AI agent draws on when identifying interactions during specifying. Each spec in the browser links back to the Workhorse card that created it, providing access to the full chat history, comments, and mockups that led to the spec.
 
 ## Projects
 

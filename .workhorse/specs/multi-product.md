@@ -11,7 +11,7 @@ Workhorse manages specs across multiple projects. Projects are the user-facing c
 
 - [ ] Each team belongs to a single project
 - [ ] A card's project is determined by its team
-- [ ] The AI interviewer loads context from the team's project codebase
+- [ ] The AI agent loads context from the team's project codebase
 - [ ] Specs are committed to the team's project codebase
 - [ ] One card always targets exactly one project
 - [ ] Project management is in settings

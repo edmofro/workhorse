@@ -7,20 +7,20 @@ status: draft
 
 ## Description
 
-Add the ability to attach files (particularly photos and screenshots) across all input surfaces in Workhorse. Attachments should be available as context to all AI agents — the spec interview agent, the handoff/implementation agent, and the generate-card agent.
+Add the ability to attach files (particularly photos and screenshots) across all input surfaces in Workhorse. Attachments should be available as context to all AI agents — the spec agent, the handoff/implementation agent, and the generate-card agent.
 
 ## Surfaces
 
 1. **Card creation dialog** — Attach files alongside the prompt when creating a new card
 2. **Card description** — Attach files to the card description (CardTab)
 3. **Card comments** — Attach files to comments (CardTab)
-4. **Interview chat** — Attach files to messages sent to the spec interview agent (ChatInput)
+4. **Chat** — Attach files to messages sent to the agent session (ChatInput)
 
 ## Storage
 
 - **Database:** `Attachment` model tracks metadata (filename, MIME type, size, storage path, associations)
 - **Disk:** Files stored at `/data/attachments/{attachmentId}/{filename}` on persistent disk
-- **Worktree:** Image attachments are also copied into `.workhorse/attachments/{card-id}/` in the card's git worktree, making them available to both the interview agent and the implementation agent via handoff
+- **Worktree:** Image attachments are also copied into `.workhorse/attachments/{card-id}/` in the card's git worktree, making them available to both the agent session and the implementation agent via handoff
 
 ## Data model
 
@@ -46,10 +46,10 @@ Attachment
 
 ## AI agent integration
 
-### Spec interview agent
+### Agent session
 
-- When a chat message includes image attachments, the interview API constructs multimodal content blocks (base64 image + text) and passes them via `AsyncIterable<SDKUserMessage>` to the Agent SDK `query()` function.
-- Card description attachments are mentioned in the interview prompt context so the agent is aware of them and can read them from the worktree.
+- When a chat message includes image attachments, the agent session API constructs multimodal content blocks (base64 image + text) and passes them via `AsyncIterable<SDKUserMessage>` to the Agent SDK `query()` function.
+- Card description attachments are mentioned in the session prompt context so the agent is aware of them and can read them from the worktree.
 
 ### Handoff / implementation agent
 
@@ -79,11 +79,11 @@ Image attachments in messages are rendered inline as thumbnails that can be clic
 - [ ] Users can attach files (images, screenshots) when creating a card
 - [ ] Users can attach files to the card description
 - [ ] Users can attach files to card comments
-- [ ] Users can attach files to interview chat messages
+- [ ] Users can attach files to chat messages
 - [ ] Image attachments display as thumbnails in all surfaces
 - [ ] Clicking a thumbnail opens the full-size image
-- [ ] The spec interview agent receives image attachments as multimodal content blocks
-- [ ] Card description attachments are copied to the worktree and available to the interview agent
+- [ ] The agent session receives image attachments as multimodal content blocks
+- [ ] Card description attachments are copied to the worktree and available to the agent
 - [ ] The handoff prompt references attachment files in the worktree
 - [ ] The generate-card API receives image attachments when creating a card with attached files
 - [ ] File size is limited to 10 MB per file

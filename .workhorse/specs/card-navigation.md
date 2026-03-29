@@ -210,4 +210,4 @@ Track which quality steps have been completed for each card, surfaced as soft ga
 
 - **URL routing vs client state:** Client-side state. View state (card/chat/spec/mockup) is managed via React state in `CardWorkspace`, not URL segments. Simpler implementation, no deep-linking needed since users always enter via the card view.
 - **Floating chat height in card view:** Overlay, not push. The floating chat sits on top of card content. Card content remains fully scrollable underneath.
-- **Pill system prompt injection:** Option (a) — the frontend sends a `mode` parameter alongside the message, and the interview API maps mode to a system prompt fragment server-side. Keeps prompt logic server-side.
+- **Pill system prompt injection:** Option (a) — the frontend sends a `mode` parameter alongside the message, and the agent session API maps mode to a system prompt fragment server-side. Keeps prompt logic server-side.

@@ -4,7 +4,7 @@ area: workflow
 status: draft
 ---
 
-A fresh-context AI agent reviews the draft specs and posts its findings into the chat. The user doesn't leave the conversation — the review results land as a message, the interview AI sees them, and they work through the suggestions together.
+A fresh-context AI agent reviews the draft specs and posts its findings into the chat. The user doesn't leave the conversation — the review results land as a message, the session agent sees them, and they work through the suggestions together.
 
 ## Triggering a review
 
@@ -17,7 +17,7 @@ A fresh-context AI agent reviews the draft specs and posts its findings into the
 
 - [ ] All draft specs on the card
 - [ ] All mockups on the card
-- [ ] Codebase access (same level as the interview agent)
+- [ ] Codebase access (same level as the session agent)
 - [ ] The full set of existing project specs from the main branch — not just the ones attached to this card
 
 ## What the review agent checks
@@ -32,8 +32,8 @@ A fresh-context AI agent reviews the draft specs and posts its findings into the
 
 - [ ] Findings are posted into the chat as a system message (visually distinct from user and assistant messages)
 - [ ] The message includes specific, actionable suggestions — not just "you might want to think about X"
-- [ ] After the findings appear, the interview AI can see them and offers to work through them: "Would you like me to update the spec to address these?" or similar
-- [ ] The user can then instruct the AI on which suggestions to accept, reject, or refine — same conversational flow as the rest of the interview
+- [ ] After the findings appear, the session agent can see them and offers to work through them: "Would you like me to update the spec to address these?" or similar
+- [ ] The user can then instruct the AI on which suggestions to accept, reject, or refine — same conversational flow as the rest of the session
 - [ ] Multiple review passes can be triggered — each creates a fresh context
 - [ ] The system encourages at least one review before the first commit (e.g. a nudge when the user clicks Commit without having run a review)
 - [ ] Review results are persisted as chat messages with role "system" and metadata indicating it was an auto-review

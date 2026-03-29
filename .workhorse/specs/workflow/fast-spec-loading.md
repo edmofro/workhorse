@@ -19,11 +19,11 @@ Both `fetchRepoSpecTree` and `fetchDesignLibrary` used the GitHub REST API to re
 
 ## Bare clone lifecycle
 
-The bare clone may not exist on first visit (it was previously only created when starting an interview). All bare clone readers now go through `ensureBareClone()` in `worktree.ts`, which:
+The bare clone may not exist on first visit (it was previously only created when starting an agent session). All bare clone readers now go through `ensureBareClone()` in `worktree.ts`, which:
 
 1. **Creates on demand** — if the bare clone doesn't exist, clones it using the user's OAuth token
 2. **Fetches with throttling** — refreshes refs at most once per 30 seconds per repo, so page loads stay fast while data stays reasonably current
-3. **Single entry point** — all consumers (spec tree, design library, interview, worktree recovery) call `ensureBareClone()` rather than managing clone/fetch independently
+3. **Single entry point** — all consumers (spec tree, design library, agent session, worktree recovery) call `ensureBareClone()` rather than managing clone/fetch independently
 
 ## Scope
 

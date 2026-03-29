@@ -67,6 +67,7 @@ export function CardWorkspace({
   const [files, setFiles] = useState(initialFiles)
   const [showNewSpecDialog, setShowNewSpecDialog] = useState(false)
   const [isEnsuring, setIsEnsuring] = useState(false)
+  const [specsPanelOpen, setSpecsPanelOpen] = useState(false)
   const chatScrollRef = useRef<HTMLDivElement>(null)
   const isEditingRef = useRef(false)
 
@@ -247,15 +248,20 @@ export function CardWorkspace({
     return () => clearInterval(interval)
   }, [card.id, view.type])
 
-  // Track file writes from the agent
+  // Track file writes from the agent — auto-expand specs panel when specs are written
   useEffect(() => {
+    let hasNewSpec = false
     for (const fw of fileWrites) {
       if (fw.filePath.startsWith('.workhorse/specs/')) {
+        hasNewSpec = true
         setFiles((prev) => {
           if (prev.some((f) => f.filePath === fw.filePath)) return prev
           return [...prev, { filePath: fw.filePath, isNew: true, content: '' }]
         })
       }
+    }
+    if (hasNewSpec) {
+      setSpecsPanelOpen(true)
     }
   }, [fileWrites])
 
@@ -400,7 +406,7 @@ export function CardWorkspace({
   const chatColumn = (
     <div className="flex-1 flex flex-col overflow-hidden">
       <div ref={chatScrollRef} className="flex-1 overflow-y-auto flex justify-center">
-        <div className="w-full" style={{ maxWidth: '680px', padding: '32px 24px' }}>
+        <div className="w-full" style={{ maxWidth: '680px', padding: '32px 24px 16px' }}>
           {messages.length === 0 && (
             <div className="text-center py-16">
               <p className="text-[14px] text-[var(--text-muted)] mb-1">
@@ -446,14 +452,14 @@ export function CardWorkspace({
             </div>
           )}
 
-          {isStreaming && messages[messages.length - 1]?.content === '' && (
+          {isStreaming && thinkingSnippet && (
             <ThinkingIndicator snippet={thinkingSnippet} />
           )}
         </div>
       </div>
 
       {/* Pills + Input */}
-      <div className="w-full flex flex-col items-center shrink-0">
+      <div className="w-full flex flex-col items-center shrink-0 border-t border-[var(--border-subtle)] pt-3">
         {pills.length > 0 && !isStreaming && (
           <div style={{ maxWidth: '680px', padding: '0 24px' }} className="w-full mb-2">
             <ActionPills
@@ -622,6 +628,8 @@ export function CardWorkspace({
             onSelectSpec={(fp) => navigateTo({ type: 'artifact', filePath: fp })}
             onSelectMockup={(fp) => navigateTo({ type: 'mockup', filePath: fp })}
             onCreateSpec={() => setShowNewSpecDialog(true)}
+            collapsed={!specsPanelOpen}
+            onToggle={() => setSpecsPanelOpen((prev) => !prev)}
           />
         </>
       )}

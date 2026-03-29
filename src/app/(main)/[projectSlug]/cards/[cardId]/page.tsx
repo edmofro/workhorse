@@ -8,10 +8,12 @@ import { fetchRepoSpecTree } from '../../../../../lib/git/specTree'
 
 interface Props {
   params: Promise<{ cardId: string }>
+  searchParams: Promise<{ session?: string }>
 }
 
-export default async function CardPage({ params }: Props) {
+export default async function CardPage({ params, searchParams }: Props) {
   const { cardId } = await params
+  const { session: sessionParam } = await searchParams
 
   const card = await prisma.card.findUnique({
     where: { identifier: cardId },
@@ -40,7 +42,7 @@ export default async function CardPage({ params }: Props) {
   const { owner, repoName, defaultBranch } = card.team.project
 
   // Parallelise independent fetches
-  const [users, teams, hasWorktree, currentUser] = await Promise.all([
+  const [users, teams, hasWorktree, currentUser, sessions] = await Promise.all([
     prisma.user.findMany({ orderBy: { displayName: 'asc' } }),
     prisma.team.findMany({
       where: { projectId: card.team.projectId },
@@ -48,6 +50,10 @@ export default async function CardPage({ params }: Props) {
     }),
     worktreeExists(owner, repoName, card.identifier),
     getCurrentUser(),
+    prisma.conversationSession.findMany({
+      where: { cardId: card.id },
+      orderBy: { lastMessageAt: 'desc' },
+    }),
   ])
 
   // Load spec files from worktree if it exists
@@ -160,6 +166,14 @@ export default async function CardPage({ params }: Props) {
       initialFiles={initialFiles}
       mockups={mockupData}
       projectSpecs={projectSpecs}
+      sessions={sessions.map((s) => ({
+        id: s.id,
+        title: s.title,
+        messageCount: s.messageCount,
+        lastMessageAt: s.lastMessageAt.toISOString(),
+        createdAt: s.createdAt.toISOString(),
+      }))}
+      initialSessionId={sessionParam ?? null}
     />
   )
 }

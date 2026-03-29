@@ -6,7 +6,7 @@ import { useCallback, useReducer, useState } from 'react'
 
 export type ViewState =
   | { type: 'card' }
-  | { type: 'chat' }
+  | { type: 'chat'; sessionId: string | null; sessionTitle: string | null }
   | { type: 'artifact'; filePath: string }
   | { type: 'focus'; filePath: string; editing: boolean }
   | { type: 'mockup'; filePath: string }
@@ -37,13 +37,18 @@ function viewReducer(state: ViewNavState, action: ViewAction): ViewNavState {
         history: state.history.slice(0, -1),
       }
     }
-    case 'close_artifact':
+    case 'close_artifact': {
       // Close artifact -> return to centred chat. Clear history past chat
       // so back goes to card home, not a stale artifact entry.
+      // Preserve the session context from the most recent chat in history
+      const lastChat = [...state.history].reverse().find((v) => v.type === 'chat')
+      const sessionId = lastChat?.type === 'chat' ? lastChat.sessionId : null
+      const sessionTitle = lastChat?.type === 'chat' ? lastChat.sessionTitle : null
       return {
-        current: { type: 'chat' },
+        current: { type: 'chat', sessionId, sessionTitle },
         history: state.history.filter((v) => v.type !== 'artifact' && v.type !== 'focus'),
       }
+    }
   }
 }
 

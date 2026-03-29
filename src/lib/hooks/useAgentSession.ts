@@ -24,7 +24,7 @@ export interface FileWriteNotification {
   timestamp: string
 }
 
-export function useAgentSession(cardId: string) {
+export function useAgentSession(cardId: string, sessionId: string | null) {
   const [messages, setMessages] = useState<SessionMessage[]>([])
   const [isStreaming, setIsStreaming] = useState(false)
   const isStreamingRef = useRef(false)
@@ -34,8 +34,10 @@ export function useAgentSession(cardId: string) {
   const [thinkingSnippet, setThinkingSnippet] = useState<string | null>(null)
   const thinkingBufferRef = useRef('')
   const thinkingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
-  const historyCardIdRef = useRef<string | null>(null)
+  const historySessionIdRef = useRef<string | null>(null)
   const abortRef = useRef<AbortController | null>(null)
+  // Track the conversation session ID (may be set after first message)
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(sessionId)
 
   // Text buffering for smooth streaming — accumulate deltas and flush every ~60ms
   const textBufferRef = useRef('')
@@ -43,14 +45,27 @@ export function useAgentSession(cardId: string) {
   const assistantContentRef = useRef('')
   const assistantIdRef = useRef('')
 
-  // Load chat history from Agent SDK session on mount or when cardId changes
+  // Update currentSessionId when prop changes
   useEffect(() => {
-    if (historyCardIdRef.current === cardId) return
-    historyCardIdRef.current = cardId
+    setCurrentSessionId(sessionId)
+  }, [sessionId])
+
+  // Load chat history from Agent SDK session on mount or when sessionId changes
+  useEffect(() => {
+    if (!sessionId) {
+      // No session yet — clear messages
+      if (historySessionIdRef.current !== null) {
+        setMessages([])
+        historySessionIdRef.current = null
+      }
+      return
+    }
+    if (historySessionIdRef.current === sessionId) return
+    historySessionIdRef.current = sessionId
 
     async function loadHistory() {
       try {
-        const res = await fetch(`/api/chat-history?cardId=${cardId}`)
+        const res = await fetch(`/api/chat-history?sessionId=${sessionId}`)
         if (res.ok) {
           const data = await res.json()
           if (data.messages && data.messages.length > 0) {
@@ -63,7 +78,7 @@ export function useAgentSession(cardId: string) {
     }
 
     loadHistory()
-  }, [cardId])
+  }, [sessionId])
 
   // Clean up timers on unmount
   useEffect(() => {
@@ -149,7 +164,13 @@ export function useAgentSession(cardId: string) {
         const res = await fetch('/api/agent-session', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ cardId, message: content, attachmentIds, mode }),
+          body: JSON.stringify({
+            cardId,
+            sessionId: currentSessionId,
+            message: content,
+            attachmentIds,
+            mode,
+          }),
           signal: abortRef.current.signal,
         })
 
@@ -219,7 +240,7 @@ export function useAgentSession(cardId: string) {
         abortRef.current = null
       }
     },
-    [cardId],
+    [cardId, currentSessionId],
   )
 
   function processEvent(
@@ -227,6 +248,12 @@ export function useAgentSession(cardId: string) {
     assistantId: string,
     scheduleFlush: () => void,
   ) {
+    // Handle session ID from server (conversation session, not Agent SDK session)
+    if (event.type === 'session') {
+      const newSessionId = event.sessionId as string
+      setCurrentSessionId(newSessionId)
+    }
+
     // Handle streaming text and thinking events
     if (event.type === 'stream_event') {
       const streamEvent = event.event as Record<string, unknown> | undefined
@@ -358,6 +385,7 @@ export function useAgentSession(cardId: string) {
     fileWrites,
     committedFiles,
     thinkingSnippet,
+    currentSessionId,
     sendMessage,
     interrupt,
   }

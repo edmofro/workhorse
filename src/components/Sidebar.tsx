@@ -14,11 +14,22 @@ interface SidebarProject {
   teams: { id: string; name: string; colour: string }[]
 }
 
-interface SidebarProps {
-  projects: SidebarProject[]
+export interface RecentSession {
+  id: string
+  title: string | null
+  cardId: string | null
+  cardIdentifier: string | null
+  teamColour: string | null
+  projectName: string | null
+  lastMessageAt: string
 }
 
-export function Sidebar({ projects }: SidebarProps) {
+interface SidebarProps {
+  projects: SidebarProject[]
+  recentSessions?: RecentSession[]
+}
+
+export function Sidebar({ projects, recentSessions = [] }: SidebarProps) {
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const { user } = useUser()
@@ -128,6 +139,38 @@ export function Sidebar({ projects }: SidebarProps) {
               <p className="px-2 py-2 text-[11px] text-[var(--text-faint)]">
                 No teams yet
               </p>
+            )}
+
+            {/* Recent sessions */}
+            {recentSessions.length > 0 && (
+              <>
+                <div className="px-2 pt-5 pb-[6px] text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-[0.06em]">
+                  Recent
+                </div>
+                {recentSessions
+                  .filter((s) => !activeProject || s.projectName?.toLowerCase() === activeProject.name.toLowerCase())
+                  .slice(0, 8)
+                  .map((session) => {
+                    const href = session.cardId && session.cardIdentifier && session.projectName
+                      ? `/${encodeURIComponent(session.projectName.toLowerCase())}/cards/${session.cardIdentifier}?session=${session.id}`
+                      : session.projectName
+                        ? `/${encodeURIComponent(session.projectName.toLowerCase())}/sessions/${session.id}`
+                        : '#'
+                    const label = session.cardIdentifier
+                      ? `${session.cardIdentifier} ${session.title ?? 'Untitled'}`
+                      : session.title ?? 'New conversation'
+                    return (
+                      <NavItem
+                        key={session.id}
+                        href={href}
+                        dot={session.teamColour ?? undefined}
+                        active={false}
+                      >
+                        <span className="truncate">{label}</span>
+                      </NavItem>
+                    )
+                  })}
+              </>
             )}
           </>
         )}

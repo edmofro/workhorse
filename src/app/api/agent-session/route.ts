@@ -30,8 +30,9 @@ export async function POST(request: NextRequest) {
   const user = await requireUser()
 
   const body = await request.json()
-  const { cardId, message, attachmentIds, mode } = body as {
+  const { cardId, sessionId: incomingSessionId, message, attachmentIds, mode } = body as {
     cardId: string
+    sessionId?: string
     message: string
     attachmentIds?: string[]
     mode?: string
@@ -46,6 +47,21 @@ export async function POST(request: NextRequest) {
 
   if (!card) {
     return new Response('Card not found', { status: 404 })
+  }
+
+  // Resolve or create ConversationSession
+  let convSession = incomingSessionId
+    ? await prisma.conversationSession.findUnique({ where: { id: incomingSessionId } })
+    : null
+
+  if (!convSession) {
+    convSession = await prisma.conversationSession.create({
+      data: {
+        userId: user.id,
+        cardId,
+        teamId: card.teamId,
+      },
+    })
   }
 
   const { project } = card.team
@@ -184,12 +200,14 @@ export async function POST(request: NextRequest) {
     model: 'claude-sonnet-4-6',
     maxTurns: 10,
     persistSession: true,
-    ...(card.agentSessionId ? { resume: card.agentSessionId } : {}),
+    ...(convSession.agentSessionId ? { resume: convSession.agentSessionId } : {}),
   }
 
   // Stream SSE to the client
   const encoder = new TextEncoder()
-  let sessionId = card.agentSessionId ?? ''
+  let agentSdkSessionId = convSession.agentSessionId ?? ''
+  const convSessionId = convSession.id
+  const isFirstMessage = convSession.messageCount === 0
 
   const stream = new ReadableStream({
     async start(controller) {
@@ -214,11 +232,11 @@ export async function POST(request: NextRequest) {
             }
 
             // Process the first event normally
-            if (!sessionId && 'session_id' in event && event.session_id) {
-              sessionId = event.session_id as string
-              await prisma.card.update({
-                where: { id: cardId },
-                data: { agentSessionId: sessionId },
+            if (!agentSdkSessionId && 'session_id' in event && event.session_id) {
+              agentSdkSessionId = event.session_id as string
+              await prisma.conversationSession.update({
+                where: { id: convSessionId },
+                data: { agentSessionId: agentSdkSessionId },
               })
             }
             controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`))
@@ -229,11 +247,11 @@ export async function POST(request: NextRequest) {
             err instanceof StaleSessionError ||
             (err instanceof Error && err.message.includes('No conversation found with session ID'))
 
-          if (isStaleSession && card.agentSessionId) {
-            console.warn(`Stale session ${card.agentSessionId} for card ${cardId}, starting fresh`)
-            sessionId = ''
-            await prisma.card.update({
-              where: { id: cardId },
+          if (isStaleSession && convSession.agentSessionId) {
+            console.warn(`Stale agent session ${convSession.agentSessionId} for conversation ${convSessionId}, starting fresh`)
+            agentSdkSessionId = ''
+            await prisma.conversationSession.update({
+              where: { id: convSessionId },
               data: { agentSessionId: null },
             })
             // Retry without resume
@@ -246,13 +264,12 @@ export async function POST(request: NextRequest) {
         }
 
         for await (const event of agentQuery) {
-          // Capture session ID from first message
-          if (!sessionId && 'session_id' in event && event.session_id) {
-            sessionId = event.session_id
-            // Save session ID to card
-            await prisma.card.update({
-              where: { id: cardId },
-              data: { agentSessionId: sessionId },
+          // Capture agent SDK session ID from first message
+          if (!agentSdkSessionId && 'session_id' in event && event.session_id) {
+            agentSdkSessionId = event.session_id
+            await prisma.conversationSession.update({
+              where: { id: convSessionId },
+              data: { agentSessionId: agentSdkSessionId },
             })
           }
 
@@ -300,6 +317,30 @@ export async function POST(request: NextRequest) {
         // Release AI locks
         await releaseAllLocks(cardId, AI_LOCK_AGENT)
 
+        // Update conversation session metadata
+        const now = new Date()
+        const updateData: Record<string, unknown> = {
+          messageCount: { increment: 2 }, // user + assistant
+          lastMessageAt: now,
+        }
+
+        // Auto-title from first user message if this is the first exchange
+        if (isFirstMessage && !convSession.title) {
+          updateData.title = generateSessionTitle(message)
+        }
+
+        await prisma.conversationSession.update({
+          where: { id: convSessionId },
+          data: updateData,
+        })
+
+        // Send conversation session info to client
+        controller.enqueue(
+          encoder.encode(
+            `data: ${JSON.stringify({ type: 'session', sessionId: convSessionId })}\n\n`,
+          ),
+        )
+
         controller.enqueue(encoder.encode('data: [DONE]\n\n'))
         controller.close()
       } catch (err) {
@@ -321,4 +362,21 @@ export async function POST(request: NextRequest) {
       Connection: 'keep-alive',
     },
   })
+}
+
+/**
+ * Generate a short session title from the user's first message.
+ * Simple heuristic: take the first sentence/clause, truncate to ~50 chars.
+ */
+function generateSessionTitle(message: string): string {
+  // Strip leading whitespace and take the first line
+  const firstLine = message.trim().split('\n')[0]
+  // Take first sentence (end at period, question mark, or exclamation)
+  const sentenceMatch = firstLine.match(/^[^.!?]+[.!?]?/)
+  const sentence = sentenceMatch?.[0] ?? firstLine
+  // Truncate to ~50 chars at a word boundary
+  if (sentence.length <= 50) return sentence.trim()
+  const truncated = sentence.slice(0, 50)
+  const lastSpace = truncated.lastIndexOf(' ')
+  return (lastSpace > 20 ? truncated.slice(0, lastSpace) : truncated).trim() + '…'
 }

@@ -17,7 +17,7 @@ import { ThinkingIndicator } from './ThinkingIndicator'
 import { SpecEditor } from './SpecEditor'
 import { NewSpecDialog } from './NewSpecDialog'
 import { MockupViewer } from './MockupViewer'
-import { FileText } from 'lucide-react'
+import { FileText, MessageCircle } from 'lucide-react'
 import { parseSpec, buildDefaultSpec, generateSpecPath } from '../../lib/specs/format'
 import { updateCardTitleFromSpec } from '../../lib/actions/cards'
 
@@ -39,6 +39,14 @@ interface ProjectSpecData {
   content: string
 }
 
+export interface ConversationSessionData {
+  id: string
+  title: string | null
+  messageCount: number
+  lastMessageAt: string
+  createdAt: string
+}
+
 interface CardWorkspaceProps {
   card: {
     id: string
@@ -51,6 +59,8 @@ interface CardWorkspaceProps {
   initialFiles: SpecFileData[]
   mockups: MockupData[]
   projectSpecs: ProjectSpecData[]
+  sessions: ConversationSessionData[]
+  initialSessionId?: string | null
 }
 
 export function CardWorkspace({
@@ -59,9 +69,19 @@ export function CardWorkspace({
   initialFiles,
   mockups,
   projectSpecs,
+  sessions: initialSessions,
+  initialSessionId,
 }: CardWorkspaceProps) {
   const { user } = useUser()
   const router = useRouter()
+
+  // Sessions state (can be updated when new sessions are created)
+  const [sessions, setSessions] = useState(initialSessions)
+
+  // The active session ID for the chat zone (null = no session yet)
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(
+    initialSessionId ?? null,
+  )
 
   // Spec files state
   const [files, setFiles] = useState(initialFiles)
@@ -71,14 +91,36 @@ export function CardWorkspace({
   const chatScrollRef = useRef<HTMLDivElement>(null)
   const isEditingRef = useRef(false)
 
-  // Agent session state
+  // Agent session state — uses activeSessionId for history loading
   const {
     messages,
     isStreaming,
     fileWrites,
     thinkingSnippet,
+    currentSessionId,
     sendMessage: rawSendMessage,
-  } = useAgentSession(card.id)
+  } = useAgentSession(card.id, activeSessionId)
+
+  // Sync back the session ID from the hook (set after first message creates a session)
+  useEffect(() => {
+    if (currentSessionId && currentSessionId !== activeSessionId) {
+      setActiveSessionId(currentSessionId)
+      // Add to sessions list if not already there
+      setSessions((prev) => {
+        if (prev.some((s) => s.id === currentSessionId)) return prev
+        return [
+          {
+            id: currentSessionId,
+            title: null,
+            messageCount: 0,
+            lastMessageAt: new Date().toISOString(),
+            createdAt: new Date().toISOString(),
+          },
+          ...prev,
+        ]
+      })
+    }
+  }, [currentSessionId, activeSessionId])
 
   // Attachments for chat
   const chatAttachments = useAttachments(card.id)
@@ -265,6 +307,20 @@ export function CardWorkspace({
     }
   }, [fileWrites])
 
+  // Navigate to a session's chat zone
+  const openSession = useCallback(
+    (sessionId: string) => {
+      const session = sessions.find((s) => s.id === sessionId)
+      setActiveSessionId(sessionId)
+      navigateTo({
+        type: 'chat',
+        sessionId,
+        sessionTitle: session?.title ?? null,
+      })
+    },
+    [sessions, navigateTo],
+  )
+
   // Send message with mode support
   const handleSendMessage = useCallback(
     (content: string, mode?: string) => {
@@ -273,7 +329,10 @@ export function CardWorkspace({
       chatAttachments.clear()
 
       if (view.type === 'card') {
-        navigateTo({ type: 'chat' })
+        // Starting a new conversation from card home — navigate to chat zone
+        // The session will be created by the API and synced back via currentSessionId
+        setActiveSessionId(null) // Will be set when server responds
+        navigateTo({ type: 'chat', sessionId: null, sessionTitle: null })
       }
     },
     [rawSendMessage, user.displayName, chatAttachments, view.type, navigateTo],
@@ -403,8 +462,20 @@ export function CardWorkspace({
 
   // --- Chat column (shared between chat mode and artifact mode) ---
 
+  // Session title for the chat zone header
+  const chatSessionTitle = view.type === 'chat' ? view.sessionTitle : null
+
   const chatColumn = (
     <div className="flex-1 flex flex-col overflow-hidden">
+      {/* Session header bar in chat zone */}
+      {view.type === 'chat' && chatSessionTitle && (
+        <div className="shrink-0 px-4 py-2 border-b border-[var(--border-subtle)] flex items-center gap-2">
+          <MessageCircle size={13} className="text-[var(--text-muted)]" />
+          <span className="text-[13px] font-medium text-[var(--text-secondary)] truncate">
+            {chatSessionTitle}
+          </span>
+        </div>
+      )}
       <div ref={chatScrollRef} className="flex-1 overflow-y-auto flex justify-center">
         <div className="w-full" style={{ maxWidth: '680px', padding: '32px 24px 16px' }}>
           {messages.length === 0 && (
@@ -536,10 +607,40 @@ export function CardWorkspace({
           <div className="flex-1 overflow-y-auto">
             {cardTabContent}
 
-            {/* Inline specs and mockups */}
+            {/* Conversations and specs/mockups sections */}
             <div className="max-w-[720px] mx-auto px-10 pb-8">
-              {(specFiles.length > 0 || allMockupFiles.length > 0) && (
+              {/* Conversations section */}
+              {sessions.length > 0 && (
                 <div className="border-t border-[var(--border-subtle)] pt-6">
+                  <h3 className="text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-[0.06em] mb-3">
+                    Conversations
+                  </h3>
+                  <div className="space-y-1">
+                    {sessions.map((session) => (
+                      <button
+                        key={session.id}
+                        onClick={() => openSession(session.id)}
+                        className="flex items-center gap-2 w-full px-3 py-2 rounded-[var(--radius-default)] text-left text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer"
+                      >
+                        <MessageCircle size={13} className="shrink-0 text-[var(--text-muted)]" />
+                        <span className="text-[13px] font-medium truncate">
+                          {session.title ?? 'New conversation'}
+                        </span>
+                        <span className="text-[11px] text-[var(--text-muted)] shrink-0">
+                          {session.messageCount} msgs
+                        </span>
+                        <span className="text-[11px] text-[var(--text-faint)] shrink-0">
+                          {formatRelativeTime(session.lastMessageAt)}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Inline specs and mockups */}
+              {(specFiles.length > 0 || allMockupFiles.length > 0) && (
+                <div className="border-t border-[var(--border-subtle)] pt-6 mt-2">
                   <div className="flex items-center justify-between mb-3">
                     <h3 className="text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-[0.06em]">
                       Specs &amp; Mockups
@@ -604,11 +705,7 @@ export function CardWorkspace({
             <ChatInput
               onSend={(content) => handleSendMessage(content)}
               disabled={isStreaming}
-              placeholder={
-                card.status === 'NOT_STARTED'
-                  ? 'Describe what you\'d like to build...'
-                  : 'Continue the conversation...'
-              }
+              placeholder="Start a new conversation..."
               pendingAttachments={chatAttachments.pending}
               onAddFiles={chatAttachments.addFiles}
               onRemoveAttachment={chatAttachments.removeAttachment}
@@ -727,4 +824,19 @@ function extractAreas(specs: ProjectSpecData[]): string[] {
     }
   }
   return [...areas].sort()
+}
+
+function formatRelativeTime(dateStr: string): string {
+  const date = new Date(dateStr)
+  const now = new Date()
+  const diffMs = now.getTime() - date.getTime()
+  const diffMins = Math.floor(diffMs / 60000)
+  if (diffMins < 1) return 'just now'
+  if (diffMins < 60) return `${diffMins}m ago`
+  const diffHours = Math.floor(diffMins / 60)
+  if (diffHours < 24) return `${diffHours}h ago`
+  const diffDays = Math.floor(diffHours / 24)
+  if (diffDays === 1) return 'yesterday'
+  if (diffDays < 7) return `${diffDays}d ago`
+  return date.toLocaleDateString()
 }

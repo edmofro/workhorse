@@ -111,8 +111,8 @@ model FileLock {
   id        String   @id @default(cuid())
   cardId    String
   filePath  String
-  lockedBy  String   // user ID or "ai-interviewer"
-  userId    String?  // null when lockedBy is "ai-interviewer"
+  lockedBy  String   // user ID or "ai-agent"
+  userId    String?  // null when lockedBy is "ai-agent"
   lockedAt  DateTime @default(now())
   expiresAt DateTime // 10 min for humans, 2 min for AI
 

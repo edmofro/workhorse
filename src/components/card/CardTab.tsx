@@ -155,14 +155,18 @@ export function CardTab({ card, users, teams }: CardTabProps) {
     const uploaded = commentAttachments.getUploadedAttachments()
     if (!content && uploaded.length === 0) return
     startTransition(async () => {
-      await addComment(
-        card.id,
-        content,
-        uploaded.map((a) => a.id),
-      )
+      try {
+        await addComment(
+          card.id,
+          content,
+          uploaded.map((a) => a.id),
+        )
+        setNewComment('')
+        commentAttachments.clear()
+      } catch (error) {
+        console.error('Failed to add comment:', error)
+      }
     })
-    setNewComment('')
-    commentAttachments.clear()
   }
 
   function handleCommentKeyDown(e: React.KeyboardEvent) {

@@ -167,15 +167,16 @@ The Claude API streams thinking blocks (`thinking_delta` events) alongside text 
 - [ ] Multiple thinking blocks in a single turn are each displayed as separate collapsible sections
 - [ ] If a turn has no thinking blocks (e.g. the model responds immediately), no thinking section appears
 
-### Agent turn limits and error handling
+### Agent turn limits and result handling
 
-The Agent SDK returns a `result` event at the end of each query, which may indicate the agent was cut short (e.g. hit the maximum turn limit). These events are surfaced to the user as assistant messages rather than silently swallowed.
+The Agent SDK returns a `result` event at the end of every query. This is not necessarily an error — the agent may have produced a complete, useful response within the allowed turns. The `result` event carries metadata including whether the agent wanted to keep going (`stop_reason: "tool_use"` means it was mid-flow; `stop_reason: "end_turn"` means it finished naturally).
 
-- [ ] When a `result` event has `subtype: "error_max_turns"`, the UI appends an assistant message explaining that the interviewer ran out of steps and inviting the user to send another message to continue
-- [ ] The message is written in the interviewer's voice (e.g. "I ran out of steps before finishing — send another message and I'll pick up where I left off"), not as a raw technical error
-- [ ] Other error subtypes in `result` events are similarly surfaced as friendly assistant messages
-- [ ] A `result` event with no error subtype is not shown to the user — it is the normal completion signal
-- [ ] The `maxTurns` configuration is set high enough that the agent can complete a typical interview turn without hitting the limit (at least 10 turns rather than the current 3)
+- [ ] The turn limit is set high enough that the agent can complete a typical interview turn without being cut short (at least 10 turns rather than 3)
+- [ ] When a `result` event has `subtype: "error_max_turns"` and `stop_reason: "tool_use"` (the agent was cut off mid-work), the UI appends a brief assistant message noting that the interviewer had more to do and inviting the user to send another message to continue
+- [ ] When a `result` event has `subtype: "error_max_turns"` but the agent already produced a text response in an earlier turn, the continuation message is non-alarming — the agent did useful work, it just didn't get to finish everything it wanted to do
+- [ ] The continuation message is written in the interviewer's voice (e.g. "I had more to explore but ran out of steps — send another message and I'll continue"), not as a raw technical error
+- [ ] A `result` event with no error subtype (normal completion) is not shown to the user
+- [ ] Other error subtypes in `result` events are surfaced as friendly assistant messages
 
 ### API route
 

@@ -2,7 +2,7 @@
 title: Card navigation and chat-first workflow
 area: cards
 card: WH-006
-status: draft
+status: in-progress
 ---
 
 The card detail experience is rebuilt around an ever-present chat. The chat is the primary interaction surface — always visible, always the same conversation. Specs and mockups are views you open from within the card workspace, not destinations you navigate to via tabs. The card's status shapes what actions are prominent and what the AI focuses on, but never gates access to any view.
@@ -204,10 +204,10 @@ Track which quality steps have been completed for each card, surfaced as soft ga
 
 ## Open questions
 
-> **URL routing vs client state:** Should the view state (card/chat/spec/mockup) be reflected in the URL (e.g. `/cards/WH-042?view=spec&file=allergies.md`) or purely client-side? URL-based means you can link to a specific view, but adds routing complexity. Client-side is simpler but loses deep linking.
-
-> **Floating chat height in card view:** The floating chat overlays card content. Should it be a fixed height (e.g. 280px) or should it push the card content up (taking space rather than overlaying)? Overlay means card content is always fully visible underneath; pushing means the chat has guaranteed space but the card content scrolls more.
-
 > **Interview complexity threshold:** What determines whether a card is "complex enough" to warrant the interview soft-gate? Number of spec sections? Word count? Presence of open questions? AI-assessed complexity score? This needs definition.
 
-> **Pill system prompt injection:** How are the system prompt fragments delivered? Options: (a) the frontend sends a `mode` parameter alongside the message, and the API maps mode to prompt; (b) the frontend sends the full system prompt fragment; (c) the mode is stored on the card and persists across messages until changed. Option (a) is simplest and keeps prompt logic server-side.
+## Resolved decisions
+
+- **URL routing vs client state:** Client-side state. View state (card/chat/spec/mockup) is managed via React state in `CardWorkspace`, not URL segments. Simpler implementation, no deep-linking needed since users always enter via the card view.
+- **Floating chat height in card view:** Overlay, not push. The floating chat sits on top of card content. Card content remains fully scrollable underneath.
+- **Pill system prompt injection:** Option (a) — the frontend sends a `mode` parameter alongside the message, and the interview API maps mode to a system prompt fragment server-side. Keeps prompt logic server-side.

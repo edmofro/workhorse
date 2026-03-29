@@ -3,6 +3,7 @@
 import { useEffect, useRef } from 'react'
 import { useUser } from '../UserProvider'
 import { useInterview } from '../../lib/hooks/useInterview'
+import { useAttachments } from '../../lib/hooks/useAttachments'
 import { ChatMessage } from './ChatMessage'
 import { ChatInput } from './ChatInput'
 import { FileText } from 'lucide-react'
@@ -19,6 +20,14 @@ export function InterviewView({ cardId }: InterviewViewProps) {
     fileWrites,
     sendMessage,
   } = useInterview(cardId)
+  const {
+    pending,
+    addFiles,
+    removeAttachment,
+    clear: clearAttachments,
+    getUploadedAttachments,
+    isUploading,
+  } = useAttachments(cardId)
   const scrollRef = useRef<HTMLDivElement>(null)
 
   // Auto-scroll on new messages
@@ -29,7 +38,9 @@ export function InterviewView({ cardId }: InterviewViewProps) {
   }, [messages, fileWrites])
 
   function handleSend(content: string) {
-    sendMessage(content, user.displayName)
+    const attachments = getUploadedAttachments()
+    sendMessage(content, user.displayName, attachments.length > 0 ? attachments : undefined)
+    clearAttachments()
   }
 
   return (
@@ -57,6 +68,7 @@ export function InterviewView({ cardId }: InterviewViewProps) {
               content={msg.content}
               userName={msg.userName}
               timestamp={msg.createdAt}
+              attachments={msg.attachments}
             />
           ))}
 
@@ -77,12 +89,19 @@ export function InterviewView({ cardId }: InterviewViewProps) {
 
           {isStreaming && messages[messages.length - 1]?.content === '' && (
             <div className="flex items-center gap-2 pl-[34px] text-[13px] text-[var(--text-muted)]">
-              <span className="animate-pulse">Interviewer is working...</span>
+              <span className="animate-pulse">Interviewer is working…</span>
             </div>
           )}
         </div>
       </div>
-      <ChatInput onSend={handleSend} disabled={isStreaming} />
+      <ChatInput
+        onSend={handleSend}
+        disabled={isStreaming}
+        pendingAttachments={pending}
+        onAddFiles={addFiles}
+        onRemoveAttachment={removeAttachment}
+        isUploading={isUploading}
+      />
     </div>
   )
 }

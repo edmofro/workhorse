@@ -9,10 +9,11 @@ interface InterviewContext {
   projectName: string
   repoOwner: string
   repoName: string
+  attachmentFiles?: string[]
 }
 
 export function buildInterviewInstructions(ctx: InterviewContext): string {
-  return `## Your role
+  let instructions = `## Your role
 
 You are a spec interviewer for a software card in the Workhorse spec-driven development workbench. Your job is to guide the user through developing comprehensive, testable acceptance criteria.
 
@@ -84,4 +85,22 @@ Each mockup is a standalone HTML file with inline CSS. Include an HTML comment h
 - Create new spec files at paths you determine based on codebase structure
 - When you write or edit a spec file, mention it briefly in your response (e.g. "Updated the allergies spec with the edge case")
 - Do NOT reproduce full file contents in your messages — just describe what you changed`
+
+  if (ctx.attachmentFiles && ctx.attachmentFiles.length > 0) {
+    instructions += `
+
+## Attachments
+
+The user has attached files to this card. They are stored in the worktree at:
+\`.workhorse/attachments/${ctx.cardIdentifier.toLowerCase()}/\`
+
+Available files:
+${ctx.attachmentFiles.map((f) => `- ${f}`).join('\n')}
+
+You can read these files using the Read tool. Image files (screenshots, mockups, diagrams) will be rendered visually. Use these attachments as context when developing specs — they may show existing UI, desired designs, error states, or other reference material.
+
+When the user sends images inline with their messages, examine them carefully and incorporate any relevant details into the acceptance criteria.`
+  }
+
+  return instructions
 }

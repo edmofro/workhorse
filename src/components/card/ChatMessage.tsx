@@ -1,5 +1,7 @@
 import { Avatar } from '../Avatar'
 import { MarkdownContent } from './MarkdownContent'
+import { MessageAttachments } from './AttachmentPreview'
+import type { AttachmentData } from '../../lib/attachments'
 
 interface ChatMessageProps {
   role: 'user' | 'assistant'
@@ -7,6 +9,7 @@ interface ChatMessageProps {
   userName?: string
   timestamp?: string
   compact?: boolean
+  attachments?: AttachmentData[]
 }
 
 export function ChatMessage({
@@ -15,6 +18,7 @@ export function ChatMessage({
   userName,
   timestamp,
   compact = false,
+  attachments,
 }: ChatMessageProps) {
   const isAI = role === 'assistant'
 
@@ -26,7 +30,7 @@ export function ChatMessage({
           size="chat"
           initial={userName ?? 'U'}
         />
-        <span className="text-[13px] font-semibold">
+        <span className="text-[13px] font-medium">
           {isAI ? 'Workhorse' : userName ?? 'You'}
         </span>
         {timestamp && (
@@ -40,6 +44,9 @@ export function ChatMessage({
         style={{ paddingLeft: '34px' }}
       >
         <MarkdownContent content={content} />
+        {attachments && attachments.length > 0 && (
+          <MessageAttachments attachments={attachments} />
+        )}
       </div>
     </div>
   )

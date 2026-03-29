@@ -58,7 +58,7 @@ export function FloatingChat({
     return (
       <button
         onClick={onExpand}
-        className="absolute left-1/2 -translate-x-1/2 bottom-5 px-5 py-[10px] bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-full shadow-[var(--shadow-md)] text-[13px] font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors duration-100 cursor-pointer z-10"
+        className="absolute left-1/2 -translate-x-1/2 bottom-5 px-5 py-2 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-full shadow-[var(--shadow-md)] text-[13px] font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors duration-100 cursor-pointer z-10"
       >
         Chat
       </button>

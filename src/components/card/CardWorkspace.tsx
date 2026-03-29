@@ -365,6 +365,7 @@ export function CardWorkspace({
   // Chat heights per view — padding derived as height + 20px for breathing room
   const cardChatHeight = 260
   const specChatHeight = 200
+  const chatBreathingRoom = 24
 
   return (
     <div className="flex-1 flex overflow-hidden">
@@ -372,7 +373,7 @@ export function CardWorkspace({
       <div className="flex-1 flex flex-col overflow-hidden relative">
         {/* Card view */}
         {view.type === 'card' && (
-          <div className="flex-1 overflow-y-auto" style={{ paddingBottom: `${cardChatHeight + 20}px` }}>
+          <div className="flex-1 overflow-y-auto" style={{ paddingBottom: `${cardChatHeight + chatBreathingRoom}px` }}>
             {cardTabContent}
           </div>
         )}
@@ -460,7 +461,7 @@ export function CardWorkspace({
 
         {/* Spec view */}
         {view.type === 'spec' && activeSpec && (
-          <div className="flex-1 overflow-y-auto bg-[var(--bg-surface)] flex justify-center relative" style={{ paddingBottom: `${specChatHeight + 20}px` }}>
+          <div className="flex-1 overflow-y-auto bg-[var(--bg-surface)] flex justify-center relative" style={{ paddingBottom: `${specChatHeight + chatBreathingRoom}px` }}>
             <div className="w-full" style={{ maxWidth: '720px', padding: '48px 40px 80px' }}>
               <div className="flex items-center justify-between mb-2">
                 <span className="text-[12px] text-[var(--text-faint)] font-mono">

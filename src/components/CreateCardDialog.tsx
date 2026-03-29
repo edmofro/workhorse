@@ -187,7 +187,7 @@ export function CreateCardDialog({ teams, projectName }: CreateCardDialogProps) 
               </Button>
               <Button type="submit" disabled={!prompt.trim() || busy || attachments.isUploading}>
                 {busy ? (
-                  <span className="flex items-center gap-1.5">
+                  <span className="flex items-center gap-2">
                     <Loader2 size={12} className="animate-spin" />
                     Creating...
                   </span>

@@ -290,7 +290,7 @@ export function CardTab({ card, users, teams }: CardTabProps) {
 
           {card.dependsOn.length > 0 && (
             <MetadataRow label="Depends on">
-              <div className="flex flex-wrap gap-[6px]">
+              <div className="flex flex-wrap gap-2">
                 {card.dependsOn.map((dep) => (
                   <span
                     key={dep.identifier}
@@ -316,7 +316,7 @@ export function CardTab({ card, users, teams }: CardTabProps) {
             {tags.map((tag) => (
               <span
                 key={tag}
-                className="inline-flex items-center gap-1 px-2 py-[2px] text-[11px] font-medium bg-[var(--bg-inset)] rounded-[5px] text-[var(--text-secondary)]"
+                className="inline-flex items-center gap-1 px-2 py-[2px] text-[11px] font-medium bg-[var(--bg-inset)] rounded-[var(--radius-sm)] text-[var(--text-secondary)]"
               >
                 {tag}
                 <button
@@ -334,7 +334,7 @@ export function CardTab({ card, users, teams }: CardTabProps) {
                 onChange={(e) => setNewTag(e.target.value)}
                 onKeyDown={handleTagKeyDown}
                 placeholder="Add tag..."
-                className="px-2 py-[2px] text-[11px] font-medium bg-transparent border border-[var(--border-subtle)] rounded-[5px] outline-none focus:border-[var(--accent)] transition-[border-color] duration-100 w-[100px] placeholder:text-[var(--text-faint)]"
+                className="px-2 py-[2px] text-[11px] font-medium bg-transparent border border-[var(--border-subtle)] rounded-[var(--radius-sm)] outline-none focus:border-[var(--accent)] transition-[border-color] duration-100 w-[100px] placeholder:text-[var(--text-faint)]"
               />
               <button
                 onClick={handleAddTag}
@@ -428,7 +428,7 @@ export function CardTab({ card, users, teams }: CardTabProps) {
                   <button
                     onClick={handleAddComment}
                     disabled={commentAttachments.isUploading}
-                    className="px-3 py-[5px] text-[12px] font-medium bg-[var(--accent)] text-white rounded-[var(--radius-default)] hover:bg-[var(--accent-hover)] transition-colors duration-100 cursor-pointer disabled:opacity-40"
+                    className="px-3 py-1 text-[12px] font-medium bg-[var(--accent)] text-white rounded-[var(--radius-default)] hover:bg-[var(--accent-hover)] transition-colors duration-100 cursor-pointer disabled:opacity-40"
                   >
                     Comment
                   </button>

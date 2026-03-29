@@ -34,7 +34,7 @@ export function CardItem({ card, projectName }: CardItemProps) {
     <Link
       href={href}
       className="block bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-[var(--radius-lg)] shadow-[var(--shadow-sm)] cursor-pointer transition-[border-color,box-shadow] duration-100 hover:border-[var(--border-default)] hover:shadow-[var(--shadow-md)]"
-      style={{ padding: '16px 18px', marginBottom: '8px' }}
+      style={{ padding: '16px 20px', marginBottom: '8px' }}
     >
       <div
         className="text-xs text-[var(--text-muted)] font-mono font-medium"

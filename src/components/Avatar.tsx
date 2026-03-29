@@ -6,7 +6,7 @@ type AvatarSize = 'sm' | 'chat'
 interface AvatarProps {
   /** 'human' shows the user's avatar or initial; 'ai' shows "W" with inset background */
   variant: AvatarVariant
-  /** 'sm' is 22px, 'chat' is 26px */
+  /** 'sm' is 24px, 'chat' is 28px */
   size?: AvatarSize
   /** The initial letter to display as fallback (only used for human variant) */
   initial?: string
@@ -22,7 +22,7 @@ export function Avatar({
   avatarUrl,
   className,
 }: AvatarProps) {
-  const sizeValue = size === 'sm' ? '22px' : '26px'
+  const sizeValue = size === 'sm' ? '24px' : '28px'
 
   if (variant === 'human' && avatarUrl) {
     return (

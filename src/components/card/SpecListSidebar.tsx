@@ -53,7 +53,7 @@ export function SpecListSidebar({
 
   return (
     <aside
-      className="flex flex-col border-r border-[var(--border-subtle)] bg-[var(--bg-page)] shrink-0 overflow-y-auto"
+      className="flex flex-col border-r border-[var(--border-subtle)] bg-[var(--bg-sidebar)] shrink-0 overflow-y-auto"
       style={{ width: '216px' }}
     >
       {/* Card specs section */}
@@ -78,7 +78,7 @@ export function SpecListSidebar({
             key={spec.id}
             onClick={() => onSelect(spec.id)}
             className={cn(
-              'flex items-center gap-2 mx-2 px-2 py-[6px] rounded-[var(--radius-md)] text-left cursor-pointer transition-colors duration-100',
+              'flex items-center gap-2 mx-2 px-2 py-2 rounded-[var(--radius-md)] text-left cursor-pointer transition-colors duration-100',
               isActive
                 ? 'bg-[var(--bg-surface)] shadow-[var(--shadow-sm)] text-[var(--text-primary)]'
                 : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]',
@@ -102,7 +102,7 @@ export function SpecListSidebar({
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search specs..."
-            className="w-full pl-[26px] pr-2 py-[5px] text-[11px] bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-[var(--radius-default)] outline-none focus:border-[var(--accent)] transition-[border-color] duration-100 placeholder:text-[var(--text-faint)]"
+            className="w-full pl-6 pr-2 py-1 text-[11px] bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-[var(--radius-default)] outline-none focus:border-[var(--accent)] transition-[border-color] duration-100 placeholder:text-[var(--text-faint)]"
           />
         </div>
       </div>
@@ -112,7 +112,7 @@ export function SpecListSidebar({
         <>
           <button
             onClick={() => setProjectSpecsOpen(!projectSpecsOpen)}
-            className="flex items-center gap-1 px-3 py-[6px] text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-[0.06em] cursor-pointer hover:text-[var(--text-secondary)] transition-colors duration-100"
+            className="flex items-center gap-1 px-3 py-2 text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-[0.06em] cursor-pointer hover:text-[var(--text-secondary)] transition-colors duration-100"
           >
             <ChevronRight
               size={11}
@@ -139,7 +139,7 @@ export function SpecListSidebar({
                 return (
                   <div
                     key={ps.id}
-                    className="flex items-center gap-2 mx-2 px-2 py-[6px] rounded-[var(--radius-md)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-colors duration-100"
+                    className="flex items-center gap-2 mx-2 px-2 py-2 rounded-[var(--radius-md)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-colors duration-100"
                   >
                     <FileText size={13} className="shrink-0 text-[var(--text-faint)]" />
                     <div className="flex-1 min-w-0">

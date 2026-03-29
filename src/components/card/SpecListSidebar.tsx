@@ -54,7 +54,7 @@ export function SpecListSidebar({
   return (
     <aside
       className="flex flex-col border-r border-[var(--border-subtle)] bg-[var(--bg-page)] shrink-0 overflow-y-auto"
-      style={{ width: '200px' }}
+      style={{ width: '216px' }}
     >
       {/* Card specs section */}
       <div className="flex items-center justify-between px-3 pt-4 pb-2">
@@ -102,7 +102,7 @@ export function SpecListSidebar({
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search specs..."
-            className="w-full pl-[26px] pr-2 py-[5px] text-[11px] bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-[var(--radius-default)] outline-none focus:border-[var(--accent)] transition-[border-color] duration-150 placeholder:text-[var(--text-faint)]"
+            className="w-full pl-[26px] pr-2 py-[5px] text-[11px] bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-[var(--radius-default)] outline-none focus:border-[var(--accent)] transition-[border-color] duration-100 placeholder:text-[var(--text-faint)]"
           />
         </div>
       </div>

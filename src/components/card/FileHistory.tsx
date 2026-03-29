@@ -116,7 +116,7 @@ export function FileHistory({ cardId, filePath }: FileHistoryProps) {
           <div className="flex justify-end px-4 py-3 border-t border-[var(--border-subtle)]">
             <button
               onClick={() => { setViewingContent(null); setIsOpen(false) }}
-              className="px-3 py-[6px] text-xs font-medium text-[var(--text-secondary)] bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-[var(--radius-default)] hover:bg-[var(--bg-hover)] cursor-pointer"
+              className="px-3 py-[6px] text-xs font-medium text-[var(--text-secondary)] bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-[var(--radius-default)] hover:bg-[var(--bg-hover)] cursor-pointer transition-colors duration-100"
             >
               Close
             </button>
@@ -164,11 +164,11 @@ export function FileHistory({ cardId, filePath }: FileHistoryProps) {
                 <div className="text-[13px] text-[var(--text-primary)] truncate">
                   {entry.message}
                 </div>
-                <div className="text-[11px] text-[var(--text-muted)] mt-0.5">
+                <div className="text-[11px] text-[var(--text-muted)] mt-1">
                   {entry.author === 'Workhorse' ? 'Interviewer' : entry.author}
                 </div>
               </div>
-              <span className="text-[11px] text-[var(--text-faint)] shrink-0 mt-0.5">
+              <span className="text-[11px] text-[var(--text-faint)] shrink-0 mt-1">
                 {relativeTime(entry.date)}
               </span>
             </button>

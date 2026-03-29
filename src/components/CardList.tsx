@@ -49,7 +49,7 @@ export function CardList({ cards, projectName }: CardListProps) {
           <div key={group.key} style={{ marginBottom: '32px' }}>
             <div className="flex items-center gap-2 mb-3 px-[2px]">
               <StatusDot state={group.dotState} />
-              <span className="text-[13px] font-semibold">{group.label}</span>
+              <span className="text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-[0.06em]">{group.label}</span>
               <span className="text-xs text-[var(--text-muted)]">
                 {groupCards.length}
               </span>

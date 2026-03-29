@@ -156,7 +156,7 @@ export function CommitButton({
           href={prUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-[6px] px-[14px] py-[7px] rounded-[var(--radius-default)] text-xs font-medium bg-[var(--bg-surface)] text-[var(--text-secondary)] border border-[var(--border-default)] shadow-[var(--shadow-sm)] hover:bg-[var(--bg-hover)] transition-colors duration-100"
+          className="inline-flex items-center gap-[6px] px-3 py-2 rounded-[var(--radius-default)] text-xs font-medium bg-[var(--bg-surface)] text-[var(--text-secondary)] border border-[var(--border-default)] shadow-[var(--shadow-sm)] hover:bg-[var(--bg-hover)] transition-colors duration-100"
         >
           <ExternalLink size={12} />
           View PR
@@ -169,14 +169,14 @@ export function CommitButton({
           <div className="inline-flex rounded-[var(--radius-default)] border border-[var(--border-default)] shadow-[var(--shadow-sm)] overflow-hidden">
             <button
               onClick={handleModeAction}
-              className="inline-flex items-center gap-[6px] px-[14px] py-[7px] text-xs font-medium bg-[var(--bg-surface)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer"
+              className="inline-flex items-center gap-[6px] px-3 py-2 text-xs font-medium bg-[var(--bg-surface)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer"
             >
               {mode === 'launch' ? <Globe size={12} /> : <Clipboard size={12} />}
               {mode === 'launch' ? 'Launch Claude Code' : 'Copy prompt'}
             </button>
             <button
               onClick={() => setDropdownOpen(!dropdownOpen)}
-              className="inline-flex items-center px-[6px] py-[7px] border-l border-[var(--border-default)] bg-[var(--bg-surface)] text-[var(--text-muted)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer"
+              className="inline-flex items-center px-[6px] py-2 border-l border-[var(--border-default)] bg-[var(--bg-surface)] text-[var(--text-muted)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer"
             >
               <ChevronDown size={12} />
             </button>

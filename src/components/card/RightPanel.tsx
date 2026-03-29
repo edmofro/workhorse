@@ -106,7 +106,7 @@ export function RightPanel({
   return (
     <aside
       className="shrink-0 border-l border-[var(--border-subtle)] bg-[var(--bg-page)] flex flex-col overflow-y-auto"
-      style={{ width: '220px' }}
+      style={{ width: '216px' }}
     >
       {/* Collapse toggle */}
       <div className="flex items-center justify-between px-3 pt-3 pb-1">
@@ -199,7 +199,7 @@ export function RightPanel({
             value={searchQuery}
             onChange={(e) => handleSearchChange(e.target.value)}
             placeholder="Search specs..."
-            className="w-full pl-[26px] pr-2 py-[5px] text-[11px] bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-[var(--radius-default)] outline-none focus:border-[var(--accent)] transition-[border-color] duration-150 placeholder:text-[var(--text-faint)]"
+            className="w-full pl-[26px] pr-2 py-[5px] text-[11px] bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-[var(--radius-default)] outline-none focus:border-[var(--accent)] transition-[border-color] duration-100 placeholder:text-[var(--text-faint)]"
           />
         </div>
       </div>

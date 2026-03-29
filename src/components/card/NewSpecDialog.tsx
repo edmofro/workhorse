@@ -31,7 +31,7 @@ export function NewSpecDialog({
 
   return (
     <>
-      <div className="fixed inset-0 z-40" onClick={onCancel} />
+      <div className="fixed inset-0 z-40 bg-[rgba(28,25,23,0.40)]" onClick={onCancel} />
       <div className="fixed inset-0 z-50 flex items-center justify-center">
         <div className="w-full max-w-[440px] bg-[var(--bg-surface)] rounded-[var(--radius-lg)] border border-[var(--border-subtle)] shadow-[var(--shadow-lg)] p-6">
           <h2 className="text-[16px] font-semibold tracking-[-0.02em] mb-1">

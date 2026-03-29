@@ -1,10 +1,11 @@
 'use client'
 
-import { useState, useCallback, useEffect, useReducer, useRef } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { useUser } from '../UserProvider'
 import { useAgentSession } from '../../lib/hooks/useAgentSession'
 import { useAttachments } from '../../lib/hooks/useAttachments'
+import { useViewNavigation, type ViewState } from '../../lib/hooks/useViewNavigation'
 import { SpecsPanel } from './SpecsPanel'
 import { SpecRail } from './SpecRail'
 import { SpecHeaderBar } from './SpecHeaderBar'
@@ -18,15 +19,6 @@ import { MockupViewer } from './MockupViewer'
 import { FileText } from 'lucide-react'
 import { parseSpec, buildDefaultSpec, generateSpecPath } from '../../lib/specs/format'
 import { updateCardTitleFromSpec } from '../../lib/actions/cards'
-
-// --- View state types ---
-
-type ViewState =
-  | { type: 'card' }
-  | { type: 'chat' }
-  | { type: 'artifact'; filePath: string }
-  | { type: 'focus'; filePath: string; editing: boolean }
-  | { type: 'mockup'; filePath: string }
 
 interface SpecFileData {
   filePath: string
@@ -45,45 +37,6 @@ interface ProjectSpecData {
   filePath: string
   content: string
 }
-
-// --- View reducer ---
-
-type ViewAction =
-  | { type: 'navigate'; to: ViewState }
-  | { type: 'back' }
-  | { type: 'close_artifact' }
-
-interface ViewNavState {
-  current: ViewState
-  history: ViewState[]
-}
-
-function viewReducer(state: ViewNavState, action: ViewAction): ViewNavState {
-  switch (action.type) {
-    case 'navigate':
-      return {
-        current: action.to,
-        history: [...state.history, state.current],
-      }
-    case 'back': {
-      if (state.history.length === 0) {
-        return { current: { type: 'card' }, history: [] }
-      }
-      return {
-        current: state.history[state.history.length - 1],
-        history: state.history.slice(0, -1),
-      }
-    }
-    case 'close_artifact':
-      // Close artifact -> return to centred chat (not history-based)
-      return {
-        current: { type: 'chat' },
-        history: state.history,
-      }
-  }
-}
-
-// --- Component ---
 
 interface CardWorkspaceProps {
   card: {
@@ -108,22 +61,19 @@ export function CardWorkspace({
 }: CardWorkspaceProps) {
   const { user } = useUser()
   const router = useRouter()
-  const [viewNav, dispatchView] = useReducer(viewReducer, {
-    current: { type: 'card' },
-    history: [],
-  })
-  const view = viewNav.current
 
   // Spec files state
   const [files, setFiles] = useState(initialFiles)
   const [isEditing, setIsEditing] = useState(false)
+  const isEditingRef = useRef(false)
   const [showNewSpecDialog, setShowNewSpecDialog] = useState(false)
   const [isEnsuring, setIsEnsuring] = useState(false)
-  const [savePrompt, setSavePrompt] = useState<{
-    fromPath: string
-    toPath: string
-  } | null>(null)
   const chatScrollRef = useRef<HTMLDivElement>(null)
+
+  // Keep ref in sync with state
+  useEffect(() => {
+    isEditingRef.current = isEditing
+  }, [isEditing])
 
   // Agent session state
   const {
@@ -137,12 +87,134 @@ export function CardWorkspace({
   // Attachments for chat
   const chatAttachments = useAttachments(card.id)
 
+  // Separate specs and mockup files
+  const specFiles = files.filter((f) => f.filePath.startsWith('.workhorse/specs/'))
+  const mockupFiles = files
+    .filter((f) => f.filePath.startsWith('.workhorse/design/mockups/'))
+    .map((f) => ({ filePath: f.filePath }))
+  const allMockupFiles = [
+    ...mockupFiles,
+    ...mockups
+      .filter((m) => !mockupFiles.some((mf) => mf.filePath === m.filePath))
+      .map((m) => ({ filePath: m.filePath })),
+  ]
+
+  // All navigable files (specs + mockups) for prev/next
+  const allNavigableFiles = [
+    ...specFiles.map((f) => f.filePath),
+    ...allMockupFiles.map((f) => f.filePath),
+  ]
+
+  // Spec editing operations
+  const handleStartEditing = useCallback(
+    async (filePath: string) => {
+      const res = await fetch('/api/file-lock', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cardId: card.id, filePath }),
+      })
+      if (res.status === 409) {
+        const data = await res.json()
+        alert(`File is being edited by ${data.holder?.displayName ?? 'someone else'}`)
+        return false
+      }
+      setIsEditing(true)
+      return true
+    },
+    [card.id],
+  )
+
+  const handleDoneEditing = useCallback(
+    async (filePath: string) => {
+      try {
+        await fetch(
+          `/api/file-lock?cardId=${card.id}&filePath=${encodeURIComponent(filePath)}`,
+          { method: 'DELETE' },
+        )
+        await fetch('/api/auto-commit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ cardId: card.id, commitMessage: 'Update spec' }),
+        })
+        if (card.title === 'Untitled spec') {
+          const file = files.find((f) => f.filePath === filePath)
+          if (file) {
+            const parsed = parseSpec(file.content)
+            if (parsed.frontmatter.title && parsed.frontmatter.title !== 'Untitled') {
+              await updateCardTitleFromSpec(card.id, parsed.frontmatter.title)
+              router.refresh()
+            }
+          }
+        }
+      } finally {
+        setIsEditing(false)
+      }
+    },
+    [card.id, card.title, files, router],
+  )
+
+  const handleReleaseLock = useCallback(
+    async (filePath: string) => {
+      await fetch(
+        `/api/file-lock?cardId=${card.id}&filePath=${encodeURIComponent(filePath)}`,
+        { method: 'DELETE' },
+      )
+      setIsEditing(false)
+    },
+    [card.id],
+  )
+
+  // Restore file content from worktree (used on discard)
+  const handleRestoreContent = useCallback(
+    async (filePath: string) => {
+      try {
+        const res = await fetch(
+          `/api/worktree-files?cardId=${card.id}&filePath=${encodeURIComponent(filePath)}`,
+        )
+        if (res.ok) {
+          const data = await res.json()
+          setFiles((prev) =>
+            prev.map((f) => (f.filePath === filePath ? { ...f, content: data.content as string } : f)),
+          )
+        }
+      } catch {
+        // Best-effort restore
+      }
+    },
+    [card.id],
+  )
+
+  // View navigation (extracted hook)
+  const {
+    view,
+    navigateTo,
+    goBack,
+    closeArtifact,
+    openFile,
+    focusNavigate,
+    navigatePrev,
+    navigateNext,
+    enterFocus,
+    enterEdit,
+    finishEditing,
+    exitFocus,
+    savePrompt,
+    saveAndFlip,
+    discardAndFlip,
+  } = useViewNavigation({
+    allNavigableFiles,
+    onStartEditing: handleStartEditing,
+    onDoneEditing: handleDoneEditing,
+    onReleaseLock: handleReleaseLock,
+    onRestoreContent: handleRestoreContent,
+  })
+
   // Refresh files from worktree periodically
   useEffect(() => {
     if (view.type === 'mockup') return
 
     const interval = setInterval(async () => {
-      if (isEditing) return
+      if (isEditingRef.current) return
       if (document.hidden) return
       try {
         const res = await fetch(`/api/worktree-files?cardId=${card.id}`)
@@ -178,7 +250,7 @@ export function CardWorkspace({
     }, 10000)
 
     return () => clearInterval(interval)
-  }, [card.id, isEditing, view.type])
+  }, [card.id, view.type])
 
   // Track file writes from the agent
   useEffect(() => {
@@ -192,37 +264,6 @@ export function CardWorkspace({
     }
   }, [fileWrites])
 
-  // Separate specs and mockup files
-  const specFiles = files.filter((f) => f.filePath.startsWith('.workhorse/specs/'))
-  const mockupFiles = files
-    .filter((f) => f.filePath.startsWith('.workhorse/design/mockups/'))
-    .map((f) => ({ filePath: f.filePath }))
-  const allMockupFiles = [
-    ...mockupFiles,
-    ...mockups
-      .filter((m) => !mockupFiles.some((mf) => mf.filePath === m.filePath))
-      .map((m) => ({ filePath: m.filePath })),
-  ]
-
-  // All navigable files (specs + mockups) for prev/next
-  const allNavigableFiles = [
-    ...specFiles.map((f) => f.filePath),
-    ...allMockupFiles.map((f) => f.filePath),
-  ]
-
-  // View navigation helpers
-  const navigateTo = useCallback((next: ViewState) => {
-    dispatchView({ type: 'navigate', to: next })
-  }, [])
-
-  const goBack = useCallback(() => {
-    dispatchView({ type: 'back' })
-  }, [])
-
-  const closeArtifact = useCallback(() => {
-    dispatchView({ type: 'close_artifact' })
-  }, [])
-
   // Send message with mode support
   const handleSendMessage = useCallback(
     (content: string, mode?: string) => {
@@ -230,7 +271,6 @@ export function CardWorkspace({
       rawSendMessage(content, user.displayName, uploaded.length > 0 ? uploaded : undefined, mode)
       chatAttachments.clear()
 
-      // Expand to full chat on first message from card home
       if (view.type === 'card') {
         navigateTo({ type: 'chat' })
       }
@@ -280,53 +320,6 @@ export function CardWorkspace({
     [card.id],
   )
 
-  const handleStartEditing = useCallback(
-    async (filePath: string) => {
-      const res = await fetch('/api/file-lock', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cardId: card.id, filePath }),
-      })
-      if (res.status === 409) {
-        const data = await res.json()
-        alert(`File is being edited by ${data.holder?.displayName ?? 'someone else'}`)
-        return false
-      }
-      setIsEditing(true)
-      return true
-    },
-    [card.id],
-  )
-
-  const handleDoneEditing = useCallback(
-    async (filePath: string) => {
-      try {
-        await fetch(
-          `/api/file-lock?cardId=${card.id}&filePath=${encodeURIComponent(filePath)}`,
-          { method: 'DELETE' },
-        )
-        await fetch('/api/auto-commit', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ cardId: card.id, commitMessage: 'Update spec' }),
-        })
-        if (card.title === 'Untitled spec') {
-          const file = files.find((f) => f.filePath === filePath)
-          if (file) {
-            const parsed = parseSpec(file.content)
-            if (parsed.frontmatter.title && parsed.frontmatter.title !== 'Untitled') {
-              await updateCardTitleFromSpec(card.id, parsed.frontmatter.title)
-              router.refresh()
-            }
-          }
-        }
-      } finally {
-        setIsEditing(false)
-      }
-    },
-    [card.id, card.title, files, router],
-  )
-
   const handleCreateSpec = useCallback(
     async (title: string, area: string) => {
       await ensureWorktree()
@@ -346,178 +339,29 @@ export function CardWorkspace({
   )
 
   const handleSelectProjectSpec = useCallback(
-    async (filePath: string, content: string) => {
-      const existing = files.find((f) => f.filePath === filePath)
-      if (!existing) {
-        setFiles((prev) => {
-          if (prev.some((f) => f.filePath === filePath)) return prev
-          return [...prev, { filePath, isNew: false, content }]
-        })
-      }
-      // Open as artifact if we're in chat, or replace current artifact
-      if (view.type === 'chat' || view.type === 'artifact' || view.type === 'focus') {
-        navigateTo({ type: 'artifact', filePath })
-      } else {
-        navigateTo({ type: 'artifact', filePath })
-      }
-    },
-    [files, navigateTo, view.type],
-  )
-
-  // Open spec in artifact mode (from chat or specs panel)
-  const handleOpenSpec = useCallback(
-    (filePath: string) => {
-      if (filePath.startsWith('.workhorse/design/mockups/')) {
-        navigateTo({ type: 'mockup', filePath })
-      } else {
-        navigateTo({ type: 'artifact', filePath })
-      }
+    (filePath: string, content: string) => {
+      setFiles((prev) => {
+        if (prev.some((f) => f.filePath === filePath)) return prev
+        return [...prev, { filePath, isNew: false, content }]
+      })
+      navigateTo({ type: 'artifact', filePath })
     },
     [navigateTo],
   )
-
-  // Focus mode: navigate to different file
-  const handleFocusNavigate = useCallback(
-    (filePath: string) => {
-      if (view.type === 'focus' && view.editing && view.filePath !== filePath) {
-        // Prompt save before flipping while editing
-        setSavePrompt({ fromPath: view.filePath, toPath: filePath })
-        return
-      }
-      dispatchView({
-        type: 'navigate',
-        to: { type: 'focus', filePath, editing: false },
-      })
-    },
-    [view],
-  )
-
-  // Prev/Next spec navigation
-  const handlePrevSpec = useCallback(() => {
-    const currentPath = view.type === 'artifact' || view.type === 'focus' ? view.filePath : null
-    if (!currentPath) return
-    const idx = allNavigableFiles.indexOf(currentPath)
-    if (idx > 0) {
-      const newPath = allNavigableFiles[idx - 1]
-      if (view.type === 'focus') {
-        handleFocusNavigate(newPath)
-      } else {
-        dispatchView({ type: 'navigate', to: { type: 'artifact', filePath: newPath } })
-      }
-    }
-  }, [view, allNavigableFiles, handleFocusNavigate])
-
-  const handleNextSpec = useCallback(() => {
-    const currentPath = view.type === 'artifact' || view.type === 'focus' ? view.filePath : null
-    if (!currentPath) return
-    const idx = allNavigableFiles.indexOf(currentPath)
-    if (idx < allNavigableFiles.length - 1) {
-      const newPath = allNavigableFiles[idx + 1]
-      if (view.type === 'focus') {
-        handleFocusNavigate(newPath)
-      } else {
-        dispatchView({ type: 'navigate', to: { type: 'artifact', filePath: newPath } })
-      }
-    }
-  }, [view, allNavigableFiles, handleFocusNavigate])
-
-  // Enter focus mode
-  const handleEnterFocus = useCallback(() => {
-    const filePath = view.type === 'artifact' ? view.filePath : null
-    if (!filePath) return
-    dispatchView({
-      type: 'navigate',
-      to: { type: 'focus', filePath, editing: false },
-    })
-  }, [view])
-
-  // Enter focus + editing
-  const handleEnterEdit = useCallback(async () => {
-    const filePath =
-      view.type === 'artifact' ? view.filePath :
-      view.type === 'focus' ? view.filePath : null
-    if (!filePath) return
-    const ok = await handleStartEditing(filePath)
-    if (!ok) return
-    // If already in focus mode, just enable editing
-    if (view.type === 'focus') {
-      dispatchView({
-        type: 'navigate',
-        to: { type: 'focus', filePath, editing: true },
-      })
-    } else {
-      // From artifact mode: enter focus + editing
-      dispatchView({
-        type: 'navigate',
-        to: { type: 'focus', filePath, editing: true },
-      })
-    }
-  }, [view, handleStartEditing])
-
-  // Done editing -> back to focus read-only
-  const handleFinishEditing = useCallback(async () => {
-    const filePath = view.type === 'focus' ? view.filePath : null
-    if (!filePath) return
-    await handleDoneEditing(filePath)
-    dispatchView({
-      type: 'navigate',
-      to: { type: 'focus', filePath, editing: false },
-    })
-  }, [view, handleDoneEditing])
-
-  // Toggle focus off -> back to artifact
-  const handleExitFocus = useCallback(() => {
-    const filePath = view.type === 'focus' ? view.filePath : null
-    if (!filePath) return
-    dispatchView({
-      type: 'navigate',
-      to: { type: 'artifact', filePath },
-    })
-  }, [view])
-
-  // Save prompt handlers
-  const handleSaveAndFlip = useCallback(async () => {
-    if (!savePrompt) return
-    await handleDoneEditing(savePrompt.fromPath)
-    dispatchView({
-      type: 'navigate',
-      to: { type: 'focus', filePath: savePrompt.toPath, editing: false },
-    })
-    setSavePrompt(null)
-  }, [savePrompt, handleDoneEditing])
-
-  const handleDiscardAndFlip = useCallback(async () => {
-    if (!savePrompt) return
-    // Release lock without committing
-    await fetch(
-      `/api/file-lock?cardId=${card.id}&filePath=${encodeURIComponent(savePrompt.fromPath)}`,
-      { method: 'DELETE' },
-    )
-    setIsEditing(false)
-    dispatchView({
-      type: 'navigate',
-      to: { type: 'focus', filePath: savePrompt.toPath, editing: false },
-    })
-    setSavePrompt(null)
-  }, [savePrompt, card.id])
 
   // Keyboard shortcuts
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key !== 'Escape') return
-      // Don't intercept if inside an input/textarea
       const active = document.activeElement
       if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA')) return
 
       e.preventDefault()
       if (view.type === 'focus') {
-        // Escape from focus -> artifact
-        handleExitFocus()
+        exitFocus()
       } else if (view.type === 'artifact') {
-        // Escape from artifact -> close to centred chat
         closeArtifact()
       } else if (view.type === 'chat') {
-        // Escape from chat -> card home
         goBack()
       } else if (view.type === 'mockup') {
         goBack()
@@ -525,7 +369,7 @@ export function CardWorkspace({
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [view.type, handleExitFocus, closeArtifact, goBack])
+  }, [view.type, exitFocus, closeArtifact, goBack])
 
   // Scroll chat to bottom on new messages
   useEffect(() => {
@@ -589,7 +433,7 @@ export function CardWorkspace({
               {fileWrites.map((fw, i) => (
                 <button
                   key={i}
-                  onClick={() => handleOpenSpec(fw.filePath)}
+                  onClick={() => openFile(fw.filePath)}
                   className="flex items-center gap-2 px-3 py-2 rounded-[var(--radius-default)] bg-[var(--green-alpha)] border border-[rgba(22,163,74,0.15)] text-[12px] text-[var(--text-secondary)] cursor-pointer hover:border-[rgba(22,163,74,0.3)] transition-colors duration-100 w-full text-left"
                 >
                   <FileText size={12} className="text-[var(--green)] shrink-0" />
@@ -643,20 +487,21 @@ export function CardWorkspace({
       <SpecHeaderBar
         filePath={activeSpec.filePath}
         cardId={card.id}
+        allNavigableFiles={allNavigableFiles}
         specs={specFiles.map((f) => ({ filePath: f.filePath, isNew: f.isNew }))}
         projectSpecs={projectSpecs}
         isFocusMode={view.type === 'focus'}
         isEditing={view.type === 'focus' && view.editing}
-        onPrev={handlePrevSpec}
-        onNext={handleNextSpec}
+        onPrev={navigatePrev}
+        onNext={navigateNext}
         onSelectSpec={(fp) => {
-          if (view.type === 'focus') handleFocusNavigate(fp)
-          else dispatchView({ type: 'navigate', to: { type: 'artifact', filePath: fp } })
+          if (view.type === 'focus') focusNavigate(fp)
+          else navigateTo({ type: 'artifact', filePath: fp } as ViewState)
         }}
         onSelectProjectSpec={handleSelectProjectSpec}
-        onToggleFocus={view.type === 'focus' ? handleExitFocus : handleEnterFocus}
-        onClose={view.type === 'focus' ? handleExitFocus : closeArtifact}
-        onEdit={handleEnterEdit}
+        onToggleFocus={view.type === 'focus' ? exitFocus : enterFocus}
+        onClose={view.type === 'focus' ? exitFocus : closeArtifact}
+        onEdit={enterEdit}
       />
       <div className="flex-1 overflow-y-auto flex justify-center">
         <div className="w-full" style={{ maxWidth: '720px', padding: '32px 40px 80px' }}>
@@ -673,7 +518,7 @@ export function CardWorkspace({
             }
             isEditing={view.type === 'focus' && view.editing}
             onStartEditing={() => handleStartEditing(activeSpec.filePath)}
-            onDoneEditing={handleFinishEditing}
+            onDoneEditing={finishEditing}
             cardStatus={card.status}
             hideEditButton
           />
@@ -789,11 +634,9 @@ export function CardWorkspace({
       {/* ===== Chat + artifact (spec open) ===== */}
       {view.type === 'artifact' && (
         <>
-          {/* Chat left ~40% */}
           <div className="flex flex-col overflow-hidden" style={{ width: '40%', minWidth: '320px' }}>
             {chatColumn}
           </div>
-          {/* Spec right ~60% */}
           <div className="flex flex-col overflow-hidden border-l border-[var(--border-subtle)]" style={{ flex: '1 1 60%' }}>
             {artifactColumn}
           </div>
@@ -807,7 +650,7 @@ export function CardWorkspace({
             specs={specFiles.map((f) => ({ filePath: f.filePath, isNew: f.isNew }))}
             mockups={allMockupFiles}
             activeFilePath={view.filePath}
-            onSelectFile={handleFocusNavigate}
+            onSelectFile={focusNavigate}
           />
           <div className="flex flex-col overflow-hidden flex-1">
             {artifactColumn}
@@ -852,13 +695,13 @@ export function CardWorkspace({
               </p>
               <div className="flex justify-end gap-2">
                 <button
-                  onClick={handleDiscardAndFlip}
+                  onClick={discardAndFlip}
                   className="px-3 py-[6px] rounded-[var(--radius-default)] text-xs font-medium text-[var(--text-secondary)] bg-[var(--bg-surface)] border border-[var(--border-default)] shadow-[var(--shadow-sm)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer"
                 >
                   Discard
                 </button>
                 <button
-                  onClick={handleSaveAndFlip}
+                  onClick={saveAndFlip}
                   className="px-3 py-[6px] rounded-[var(--radius-default)] text-xs font-medium bg-[var(--accent)] text-white hover:bg-[var(--accent-hover)] transition-colors duration-100 cursor-pointer"
                 >
                   Save

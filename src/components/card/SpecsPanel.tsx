@@ -61,7 +61,7 @@ export function SpecsPanel({
             key={spec.filePath}
             onClick={() => onSelectSpec(spec.filePath)}
             className={cn(
-              'flex items-center gap-[6px] mx-1 px-2 py-[5px] rounded-[var(--radius-md)] text-left cursor-pointer transition-colors duration-100',
+              'flex items-center gap-1 mx-1 px-2 py-1 rounded-[var(--radius-md)] text-left cursor-pointer transition-colors duration-100',
               isActive
                 ? 'bg-[var(--bg-surface)] shadow-[var(--shadow-sm)] text-[var(--text-primary)]'
                 : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]',
@@ -70,7 +70,7 @@ export function SpecsPanel({
             <FileText size={11} className="shrink-0 text-[var(--text-muted)]" />
             <span className="text-[11px] font-medium truncate flex-1">{fileName}</span>
             {spec.isNew && (
-              <span className="text-[9px] text-[var(--green)] font-medium shrink-0">new</span>
+              <span className="text-[10px] text-[var(--green)] font-medium shrink-0">new</span>
             )}
           </button>
         )
@@ -89,7 +89,7 @@ export function SpecsPanel({
               <button
                 key={mockup.filePath}
                 onClick={() => onSelectMockup(mockup.filePath)}
-                className="flex items-center gap-[6px] mx-1 px-2 py-[5px] rounded-[var(--radius-md)] text-left text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer"
+                className="flex items-center gap-1 mx-1 px-2 py-1 rounded-[var(--radius-md)] text-left text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer"
               >
                 <ImageIcon size={11} className="shrink-0 text-[var(--text-muted)]" />
                 <span className="text-[11px] font-medium truncate">{fileName}</span>

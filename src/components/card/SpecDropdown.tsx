@@ -112,7 +112,7 @@ export function SpecDropdown({
               if (e.key === 'Escape') onClose()
             }}
             placeholder="Search specs..."
-            className="w-full pl-[26px] pr-2 py-[5px] text-[12px] bg-[var(--bg-page)] border border-[var(--border-subtle)] rounded-[var(--radius-default)] outline-none focus:border-[var(--accent)] transition-[border-color] duration-100 placeholder:text-[var(--text-faint)]"
+            className="w-full pl-[26px] pr-2 py-1 text-[12px] bg-[var(--bg-page)] border border-[var(--border-subtle)] rounded-[var(--radius-default)] outline-none focus:border-[var(--accent)] transition-[border-color] duration-100 placeholder:text-[var(--text-faint)]"
           />
         </div>
       </div>
@@ -132,12 +132,12 @@ export function SpecDropdown({
                 <button
                   key={spec.filePath}
                   onClick={() => handleSelect(spec.filePath)}
-                  className="flex items-center gap-[6px] w-full px-2 py-[5px] rounded-[var(--radius-md)] text-left text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer"
+                  className="flex items-center gap-1 w-full px-2 py-1 rounded-[var(--radius-md)] text-left text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer"
                 >
                   <FileText size={11} className="shrink-0 text-[var(--text-muted)]" />
                   <span className="text-[11px] font-medium truncate flex-1">{fileName}</span>
                   {spec.isNew && (
-                    <span className="text-[9px] text-[var(--green)] font-medium shrink-0">new</span>
+                    <span className="text-[10px] text-[var(--green)] font-medium shrink-0">new</span>
                   )}
                 </button>
               )
@@ -159,7 +159,7 @@ export function SpecDropdown({
                 <button
                   key={ps.filePath}
                   onClick={() => handleSelectProject(ps.filePath, ps.content)}
-                  className="flex items-center gap-[6px] w-full px-2 py-[5px] rounded-[var(--radius-md)] text-left text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer"
+                  className="flex items-center gap-1 w-full px-2 py-1 rounded-[var(--radius-md)] text-left text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer"
                 >
                   <FileText size={11} className="shrink-0 text-[var(--text-faint)]" />
                   <span className="text-[11px] truncate flex-1">{fileName}</span>

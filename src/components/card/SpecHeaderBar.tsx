@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useCallback } from 'react'
-import { ChevronLeft, ChevronRight, ChevronDown, Maximize2, Minimize2, X, Pencil, History } from 'lucide-react'
+import { ChevronLeft, ChevronRight, ChevronDown, Maximize2, Minimize2, X, Pencil } from 'lucide-react'
 import { SpecDropdown } from './SpecDropdown'
 import { FileHistory } from './FileHistory'
 
@@ -18,6 +18,8 @@ interface ProjectSpecItem {
 interface SpecHeaderBarProps {
   filePath: string
   cardId: string
+  /** Full ordered list of navigable files (specs + mockups) for prev/next */
+  allNavigableFiles: string[]
   specs: SpecFileItem[]
   projectSpecs: ProjectSpecItem[]
   isFocusMode: boolean
@@ -35,6 +37,7 @@ interface SpecHeaderBarProps {
 export function SpecHeaderBar({
   filePath,
   cardId,
+  allNavigableFiles,
   specs,
   projectSpecs,
   isFocusMode,
@@ -51,11 +54,10 @@ export function SpecHeaderBar({
 
   const fileName = filePath.split('/').pop()?.replace(/\.md$/, '') ?? filePath
 
-  // Find current index for prev/next state
-  const allFiles = [...specs.map((s) => s.filePath)]
-  const currentIdx = allFiles.indexOf(filePath)
+  // Use allNavigableFiles for prev/next boundary detection
+  const currentIdx = allNavigableFiles.indexOf(filePath)
   const hasPrev = currentIdx > 0
-  const hasNext = currentIdx < allFiles.length - 1
+  const hasNext = currentIdx < allNavigableFiles.length - 1
 
   const handleDropdownSelect = useCallback((fp: string) => {
     onSelectSpec(fp)
@@ -113,7 +115,7 @@ export function SpecHeaderBar({
       {!isEditing && (
         <button
           onClick={onEdit}
-          className="inline-flex items-center gap-[5px] px-2 py-1 rounded-[var(--radius-default)] text-[11px] font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer"
+          className="inline-flex items-center gap-1 px-2 py-1 rounded-[var(--radius-default)] text-[12px] font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer"
           title="Edit this spec"
         >
           <Pencil size={11} />

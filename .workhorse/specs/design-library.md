@@ -55,24 +55,46 @@ Mockups copy relevant styles and component code directly rather than importing f
 
 ## Design area in Workhorse
 
-- [ ] Each product has a design area accessible from the main navigation
-- [ ] Browse the design library: design system docs, components, views, mockups
-- [ ] Each item is viewable as a rendered preview (markdown for docs, HTML/CSS for components/views/mockups)
+- [x] Each product has a design area accessible from the main navigation
+- [x] Browse the design library: design system docs, components, views, mockups
+- [x] Each item is viewable as a rendered preview (markdown for docs, HTML/CSS for components/views/mockups)
 - [ ] Device toggle for viewing components, views, and mockups at different sizes
 
 ## Design system documentation
 
-- [ ] Root-level markdown files describe the product's design conventions in detail
-- [ ] Colour palette, typography, spacing, border radii, shadows, and patterns are all documented
+- [x] Root-level markdown files describe the product's design conventions in detail
+- [x] Colour palette, typography, spacing, border radii, shadows, and patterns are all documented
+- [x] Markdown frontmatter is stripped from rendered output (title, status, etc. are not shown as raw text)
+- [x] Markdown tables render correctly as styled HTML tables
 - [ ] The AI references these documents when generating mockups
 
 ## Editing designs
 
-- [ ] AI-assisted editing of components and views through the design library explorer
-- [ ] Direct editing of the HTML/CSS (components/views) and markdown (docs)
-- [ ] Inspector-style live editing: select an element, tweak CSS properties in a panel, see changes update in real time in the preview
-- [ ] Edits are saved automatically (like specs) but not yet committed to the codebase
-- [ ] Separate commit step to push design changes to the codebase and create a PR (same flow as committing specs)
+Design library files use the same editing interfaces as specs within a card, but commit directly to the default branch (main) rather than going through the card workflow. There is no intermediate worktree or PR step — saves commit immediately.
+
+### Markdown files
+
+- [x] Markdown docs are editable using the same rich/raw editor as the spec editor within a card
+- [x] Edit button toggles between view and edit mode
+- [x] Rich editor mode shows sections as structured editable blocks (heading + content)
+- [x] Raw markdown mode for full control
+- [x] Auto-save with debounce commits directly to the default branch via the GitHub API
+- [x] Frontmatter is preserved during editing but hidden in view mode
+
+### HTML files (components, views, mockups)
+
+- [x] HTML files use the same full-screen viewer interface as mockups within a card
+- [x] Device toggle (Desktop / Tablet / Mobile) for responsive preview
+- [x] Floating chat panel for AI conversational edits (same pattern as card mockup chat)
+- [x] Inspector panel for selecting elements and tweaking CSS properties
+- [x] Source editor overlay for direct HTML editing
+- [x] Auto-save with debounce commits directly to the default branch
+- [ ] AI chat is wired to an agent endpoint for live design edits (placeholder for now)
+
+### Commit behaviour
+
+- [x] All design library edits commit directly to the default branch — no PR, no card workflow
+- [x] Commit messages are auto-generated from the file path (e.g. "Update design-system.md")
 - [ ] The AI agent does not edit components or views outside of the design library explorer context
 
 ## Mockup management

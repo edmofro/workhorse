@@ -17,12 +17,19 @@ export function MarkdownContent({ content }: MarkdownContentProps) {
   )
 }
 
+function stripFrontmatter(md: string): string {
+  const match = md.match(/^---\n[\s\S]*?\n---\n([\s\S]*)$/)
+  return match ? match[1] : md
+}
+
 function renderMarkdown(md: string): string {
   if (!md) return ''
 
+  // Strip YAML frontmatter if present
+  let html = stripFrontmatter(md)
+
   // Placeholder approach: extract special blocks from raw markdown into safe HTML,
   // then escape remaining text, then re-insert the placeholders.
-  let html = md
 
   const placeholders: string[] = []
   function placeholder(content: string): string {
@@ -100,6 +107,35 @@ function renderMarkdown(md: string): string {
     /```(\w*)\n([\s\S]*?)```/g,
     (_match, _lang: string, code: string) =>
       placeholder(`<pre class="code-block"><code>${escapeHtml(code)}</code></pre>`),
+  )
+
+  // Extract markdown tables before escaping
+  html = html.replace(
+    /(?:^\|.+\|[ \t]*\n\|[ \t]*[-:]+[-| :\t]*\|[ \t]*\n(?:\|.+\|[ \t]*\n?)*)/gm,
+    (match) => {
+      const rows = match.trim().split('\n')
+      if (rows.length < 2) return match
+
+      const parseRow = (row: string) =>
+        row.split('|').slice(1, -1).map((cell) => cell.trim())
+
+      const headerCells = parseRow(rows[0])
+      const alignRow = parseRow(rows[1])
+      const aligns = alignRow.map((cell) => {
+        if (cell.startsWith(':') && cell.endsWith(':')) return 'center'
+        if (cell.endsWith(':')) return 'right'
+        return 'left'
+      })
+
+      const thead = `<thead><tr>${headerCells.map((c, i) => `<th style="text-align:${aligns[i] ?? 'left'}">${escapeHtml(c)}</th>`).join('')}</tr></thead>`
+      const bodyRows = rows.slice(2).map((row) => {
+        const cells = parseRow(row)
+        return `<tr>${cells.map((c, i) => `<td style="text-align:${aligns[i] ?? 'left'}">${escapeHtml(c)}</td>`).join('')}</tr>`
+      }).join('')
+      const tbody = bodyRows ? `<tbody>${bodyRows}</tbody>` : ''
+
+      return placeholder(`<table class="md-table">${thead}${tbody}</table>`)
+    },
   )
 
   // Now escape remaining raw text

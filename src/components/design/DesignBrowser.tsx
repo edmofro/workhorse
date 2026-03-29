@@ -148,7 +148,20 @@ export function DesignBrowser({ owner, repoName, defaultBranch }: DesignBrowserP
       {/* Preview */}
       <div className="flex-1 overflow-y-auto flex justify-center">
         {selectedFile ? (
-          <DesignPreview file={selectedFile} />
+          <DesignPreview
+            file={selectedFile}
+            owner={owner}
+            repo={repoName}
+            branch={defaultBranch}
+            onFileUpdated={(path, newContent) => {
+              setFiles((prev) =>
+                prev.map((f) => (f.path === path ? { ...f, content: newContent } : f)),
+              )
+              if (selectedFile.path === path) {
+                setSelectedFile({ ...selectedFile, content: newContent })
+              }
+            }}
+          />
         ) : (
           <div className="text-center py-16 text-[var(--text-muted)] text-[13px]">
             Select a file to preview

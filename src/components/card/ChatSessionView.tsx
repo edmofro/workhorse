@@ -8,6 +8,7 @@ import { ChatMessage } from './ChatMessage'
 import { ChatInput } from './ChatInput'
 import { ThinkingIndicator } from './ThinkingIndicator'
 import { FileText } from 'lucide-react'
+import { humaniseFilename } from '../../lib/labels'
 
 interface ChatSessionViewProps {
   cardId: string
@@ -83,7 +84,7 @@ export function ChatSessionView({ cardId }: ChatSessionViewProps) {
                   className="flex items-center gap-2 px-3 py-2 rounded-[var(--radius-default)] bg-[var(--green-alpha)] border border-[rgba(22,163,74,0.15)] text-[12px] text-[var(--text-secondary)]"
                 >
                   <FileText size={12} className="text-[var(--green)] shrink-0" />
-                  <span>Updated <code className="text-[11px] font-mono">{fw.filePath}</code></span>
+                  <span>Updated <span className="font-medium">{humaniseFilename(fw.filePath.split('/').pop() ?? fw.filePath)}</span></span>
                 </div>
               ))}
             </div>

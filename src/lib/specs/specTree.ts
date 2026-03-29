@@ -2,17 +2,23 @@
  * Spec tree utilities — build hierarchical tree from flat file paths
  */
 
+import { humaniseFilename, deriveLabel } from '../labels'
+
 export interface SpecTreeNode {
+  /** Human-readable display label */
   name: string
+  /** Original segment name (for matching) */
+  slug: string
   path: string
   type: 'directory' | 'file'
   children: SpecTreeNode[]
 }
 
 /**
- * Build a tree structure from an array of file paths
+ * Build a tree structure from an array of file paths.
+ * If a contentMap is provided, file nodes use deriveLabel (title from content → humanised filename).
  */
-export function buildSpecTree(paths: string[]): SpecTreeNode[] {
+export function buildSpecTree(paths: string[], contentMap?: Map<string, string>): SpecTreeNode[] {
   const root: SpecTreeNode[] = []
 
   for (const fullPath of paths) {
@@ -22,14 +28,19 @@ export function buildSpecTree(paths: string[]): SpecTreeNode[] {
     for (let i = 0; i < parts.length; i++) {
       const part = parts[i]
       const isFile = i === parts.length - 1
-      const existingNode = current.find((n) => n.name === part)
+      const existingNode = current.find((n) => n.slug === part)
 
       if (existingNode) {
         current = existingNode.children
       } else {
+        const nodePath = parts.slice(0, i + 1).join('/')
+        const displayName = isFile && contentMap
+          ? deriveLabel(nodePath, contentMap.get(fullPath))
+          : humaniseFilename(part)
         const newNode: SpecTreeNode = {
-          name: part,
-          path: parts.slice(0, i + 1).join('/'),
+          name: displayName,
+          slug: part,
+          path: nodePath,
           type: isFile ? 'file' : 'directory',
           children: [],
         }

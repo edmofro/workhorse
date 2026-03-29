@@ -6,6 +6,7 @@ import { Plus } from 'lucide-react'
 import { SpecTree } from './SpecTree'
 import { SpecDocument } from './SpecDocument'
 import { createQuickCard } from '../../lib/actions/cards'
+import { deriveLabel, matchesSearch } from '../../lib/labels'
 
 interface SpecFile {
   path: string
@@ -89,11 +90,13 @@ export function SpecExplorer({
   const selectedFile = files.find((f) => f.path === selectedPath)
 
   const filteredFiles = search
-    ? files.filter(
-        (f) =>
-          f.path.toLowerCase().includes(search.toLowerCase()) ||
-          f.content.toLowerCase().includes(search.toLowerCase()),
-      )
+    ? files.filter((f) => {
+        const label = deriveLabel(f.path, f.content)
+        return (
+          matchesSearch(search, f.path, label) ||
+          f.content.toLowerCase().includes(search.toLowerCase())
+        )
+      })
     : files
 
   if (loading) {
@@ -162,6 +165,7 @@ export function SpecExplorer({
             files={filteredFiles.map((f) => f.path)}
             selectedPath={selectedPath}
             onSelect={setSelectedPath}
+            contentMap={new Map(filteredFiles.map((f) => [f.path, f.content]))}
           />
         </div>
       </aside>

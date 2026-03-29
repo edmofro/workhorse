@@ -4,10 +4,13 @@ import { useState, useCallback } from 'react'
 import { ChevronLeft, ChevronRight, ChevronDown, Maximize2, Minimize2, X, Pencil } from 'lucide-react'
 import { SpecDropdown } from './SpecDropdown'
 import { FileHistory } from './FileHistory'
+import { deriveLabel } from '../../lib/labels'
 import type { SpecFileItem, ProjectSpecItem } from './types'
 
 interface SpecHeaderBarProps {
   filePath: string
+  /** Content of the current file (for label derivation) */
+  fileContent?: string
   cardId: string
   /** Full ordered list of navigable files (specs + mockups) for prev/next */
   allNavigableFiles: string[]
@@ -27,6 +30,7 @@ interface SpecHeaderBarProps {
 /** Header bar at the top of the artifact/spec area with navigation controls. */
 export function SpecHeaderBar({
   filePath,
+  fileContent,
   cardId,
   allNavigableFiles,
   specs,
@@ -43,7 +47,7 @@ export function SpecHeaderBar({
 }: SpecHeaderBarProps) {
   const [dropdownOpen, setDropdownOpen] = useState(false)
 
-  const fileName = filePath.split('/').pop()?.replace(/\.md$/, '') ?? filePath
+  const fileName = deriveLabel(filePath, fileContent)
 
   // Use allNavigableFiles for prev/next boundary detection
   const currentIdx = allNavigableFiles.indexOf(filePath)

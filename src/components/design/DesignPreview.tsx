@@ -2,6 +2,7 @@
 
 import { DesignMarkdownEditor } from './DesignMarkdownEditor'
 import { DesignHtmlEditor } from './DesignHtmlEditor'
+import { deriveLabel } from '../../lib/labels'
 
 interface DesignFile {
   path: string
@@ -32,8 +33,8 @@ export function DesignPreview({ file, owner, repo, branch, onFileUpdated }: Desi
         <span className="text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-[0.06em]">
           {file.type}
         </span>
-        <span className="text-[12px] text-[var(--text-faint)] font-mono">
-          {file.name}
+        <span className="text-[12px] text-[var(--text-faint)]">
+          {deriveLabel(file.name, file.content)}
         </span>
       </div>
 

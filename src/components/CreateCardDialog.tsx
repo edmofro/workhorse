@@ -85,7 +85,7 @@ export function CreateCardDialog({ teams, projectName }: CreateCardDialogProps) 
       setPrompt('')
       attachments.clear()
       router.push(
-        `/${encodeURIComponent(projectName.toLowerCase())}/cards/${card.identifier}/chat`,
+        `/${encodeURIComponent(projectName.toLowerCase())}/cards/${card.identifier}`,
       )
     })
   }

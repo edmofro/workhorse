@@ -1,6 +1,10 @@
 import { notFound } from 'next/navigation'
 import { prisma } from '../../../../../lib/prisma'
 import { CardTab } from '../../../../../components/card/CardTab'
+import { CardWorkspace } from '../../../../../components/card/CardWorkspace'
+import { getChangedFiles, readWorktreeFile, worktreeExists } from '../../../../../lib/git/worktree'
+import { getCurrentUser } from '../../../../../lib/auth/session'
+import { fetchRepoSpecTree } from '../../../../../lib/git/specTree'
 
 interface Props {
   params: Promise<{ cardId: string }>
@@ -17,6 +21,7 @@ export default async function CardPage({ params }: Props) {
       dependsOn: { include: { parent: true } },
       dependedOnBy: { include: { dependent: true } },
       attachments: { where: { commentId: null }, orderBy: { createdAt: 'asc' } },
+      mockups: true,
       activities: {
         orderBy: { createdAt: 'desc' },
         take: 20,
@@ -38,7 +43,59 @@ export default async function CardPage({ params }: Props) {
     orderBy: { name: 'asc' },
   })
 
-  return (
+  const { owner, repoName, defaultBranch } = card.team.project
+
+  // Load spec files from worktree if it exists
+  let initialFiles: { filePath: string; isNew: boolean; content: string }[] = []
+
+  const hasWorktree = await worktreeExists(owner, repoName, card.identifier)
+  if (hasWorktree) {
+    const changedFiles = await getChangedFiles(
+      owner, repoName, card.identifier, defaultBranch,
+    )
+
+    const specFiles = changedFiles.filter((f) =>
+      f.filePath.startsWith('.workhorse/specs/') ||
+      f.filePath.startsWith('.workhorse/design/mockups/'),
+    )
+
+    initialFiles = await Promise.all(
+      specFiles.map(async (f) => {
+        const content = await readWorktreeFile(
+          owner, repoName, card.identifier, f.filePath,
+        ) ?? ''
+        return { ...f, content }
+      }),
+    )
+  }
+
+  // Load project specs
+  let projectSpecs: { filePath: string; content: string }[] = []
+  const currentUser = await getCurrentUser()
+  if (currentUser) {
+    try {
+      const specTree = await fetchRepoSpecTree(
+        currentUser.accessToken, owner, repoName, defaultBranch,
+      )
+      projectSpecs = specTree.files.map((f) => ({
+        filePath: f.path,
+        content: f.content,
+      }))
+    } catch {
+      // If we can't load project specs, continue without them
+    }
+  }
+
+  // Map mockups for the workspace
+  const mockupData = card.mockups.map((m) => ({
+    id: m.id,
+    title: m.title,
+    html: m.html,
+    filePath: `.workhorse/design/mockups/${card.identifier}/${m.title.toLowerCase().replace(/\s+/g, '-')}.html`,
+  }))
+
+  // Render CardTab content as server-rendered children
+  const cardTabContent = (
     <CardTab
       card={{
         id: card.id,
@@ -84,6 +141,22 @@ export default async function CardPage({ params }: Props) {
       }}
       users={users.map((u) => ({ id: u.id, displayName: u.displayName }))}
       teams={teams.map((t) => ({ id: t.id, name: t.name, colour: t.colour }))}
+    />
+  )
+
+  return (
+    <CardWorkspace
+      card={{
+        id: card.id,
+        identifier: card.identifier,
+        title: card.title,
+        status: card.status,
+        cardBranch: card.cardBranch,
+      }}
+      cardTabContent={cardTabContent}
+      initialFiles={initialFiles}
+      mockups={mockupData}
+      projectSpecs={projectSpecs}
     />
   )
 }

@@ -68,7 +68,7 @@ export function SpecExplorer({
     startTransition(async () => {
       const card = await createQuickCard({ teamId: defaultTeamId })
       router.push(
-        `/${encodeURIComponent(projectName.toLowerCase())}/cards/${card.identifier}/spec`,
+        `/${encodeURIComponent(projectName.toLowerCase())}/cards/${card.identifier}`,
       )
     })
   }
@@ -81,7 +81,7 @@ export function SpecExplorer({
         specPath,
       })
       router.push(
-        `/${encodeURIComponent(projectName.toLowerCase())}/cards/${card.identifier}/spec`,
+        `/${encodeURIComponent(projectName.toLowerCase())}/cards/${card.identifier}`,
       )
     })
   }

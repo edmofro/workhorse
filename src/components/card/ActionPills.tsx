@@ -46,9 +46,9 @@ export function ActionPills({ pills, onSelect, disabled }: ActionPillsProps) {
 export function getPillsForContext(
   status: string,
   hasMessages: boolean,
-  view: 'card' | 'chat' | 'spec' | 'mockup',
+  view: 'card' | 'chat' | 'artifact' | 'spec' | 'mockup',
 ): ActionPill[] {
-  if (view === 'spec') {
+  if (view === 'artifact' || view === 'spec') {
     return [
       { label: 'Review this spec', message: 'Review this spec', mode: 'review' },
       { label: 'Make changes', message: 'Make changes to the spec', mode: 'directed' },
@@ -56,7 +56,6 @@ export function getPillsForContext(
   }
 
   if (view === 'mockup') {
-    // No pills in mockup view — just type if you want to discuss
     return []
   }
 

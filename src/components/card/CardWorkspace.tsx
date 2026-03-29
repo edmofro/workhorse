@@ -1,28 +1,31 @@
 'use client'
 
-import { useState, useCallback, useEffect, useReducer } from 'react'
+import { useState, useCallback, useEffect, useReducer, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { useUser } from '../UserProvider'
 import { useAgentSession } from '../../lib/hooks/useAgentSession'
 import { useAttachments } from '../../lib/hooks/useAttachments'
-import { RightPanel } from './RightPanel'
-import { FloatingChat } from './FloatingChat'
+import { SpecsPanel } from './SpecsPanel'
+import { SpecRail } from './SpecRail'
+import { SpecHeaderBar } from './SpecHeaderBar'
 import { ActionPills, getPillsForContext, type ActionPill } from './ActionPills'
 import { ChatMessage } from './ChatMessage'
 import { ChatInput } from './ChatInput'
 import { ThinkingIndicator } from './ThinkingIndicator'
 import { SpecEditor } from './SpecEditor'
-import { FileHistory } from './FileHistory'
 import { NewSpecDialog } from './NewSpecDialog'
 import { MockupViewer } from './MockupViewer'
 import { FileText } from 'lucide-react'
 import { parseSpec, buildDefaultSpec, generateSpecPath } from '../../lib/specs/format'
 import { updateCardTitleFromSpec } from '../../lib/actions/cards'
 
+// --- View state types ---
+
 type ViewState =
   | { type: 'card' }
   | { type: 'chat' }
-  | { type: 'spec'; filePath: string }
+  | { type: 'artifact'; filePath: string }
+  | { type: 'focus'; filePath: string; editing: boolean }
   | { type: 'mockup'; filePath: string }
 
 interface SpecFileData {
@@ -43,9 +46,12 @@ interface ProjectSpecData {
   content: string
 }
 
+// --- View reducer ---
+
 type ViewAction =
   | { type: 'navigate'; to: ViewState }
   | { type: 'back' }
+  | { type: 'close_artifact' }
 
 interface ViewNavState {
   current: ViewState
@@ -68,8 +74,16 @@ function viewReducer(state: ViewNavState, action: ViewAction): ViewNavState {
         history: state.history.slice(0, -1),
       }
     }
+    case 'close_artifact':
+      // Close artifact -> return to centred chat (not history-based)
+      return {
+        current: { type: 'chat' },
+        history: state.history,
+      }
   }
 }
+
+// --- Component ---
 
 interface CardWorkspaceProps {
   card: {
@@ -79,7 +93,6 @@ interface CardWorkspaceProps {
     status: string
     cardBranch: string | null
   }
-  /** CardTab content rendered by the parent (server component) */
   cardTabContent: React.ReactNode
   initialFiles: SpecFileData[]
   mockups: MockupData[]
@@ -106,6 +119,11 @@ export function CardWorkspace({
   const [isEditing, setIsEditing] = useState(false)
   const [showNewSpecDialog, setShowNewSpecDialog] = useState(false)
   const [isEnsuring, setIsEnsuring] = useState(false)
+  const [savePrompt, setSavePrompt] = useState<{
+    fromPath: string
+    toPath: string
+  } | null>(null)
+  const chatScrollRef = useRef<HTMLDivElement>(null)
 
   // Agent session state
   const {
@@ -119,9 +137,9 @@ export function CardWorkspace({
   // Attachments for chat
   const chatAttachments = useAttachments(card.id)
 
-  // Refresh files from worktree periodically (only in views that show files)
+  // Refresh files from worktree periodically
   useEffect(() => {
-    if (view.type === 'mockup' || view.type === 'chat') return
+    if (view.type === 'mockup') return
 
     const interval = setInterval(async () => {
       if (isEditing) return
@@ -148,8 +166,6 @@ export function CardWorkspace({
           const validFiles = refreshed.filter((f): f is SpecFileData => f !== null)
           if (validFiles.length > 0) {
             setFiles((prev) => {
-              // Merge: update existing files, add new ones, keep locally-added files
-              // (e.g. project specs opened via handleSelectProjectSpec)
               const refreshedPaths = new Set(validFiles.map((f) => f.filePath))
               const kept = prev.filter((f) => !refreshedPaths.has(f.filePath))
               return [...validFiles, ...kept]
@@ -164,7 +180,7 @@ export function CardWorkspace({
     return () => clearInterval(interval)
   }, [card.id, isEditing, view.type])
 
-  // Track file writes from the agent — add them to the files list
+  // Track file writes from the agent
   useEffect(() => {
     for (const fw of fileWrites) {
       if (fw.filePath.startsWith('.workhorse/specs/')) {
@@ -176,13 +192,11 @@ export function CardWorkspace({
     }
   }, [fileWrites])
 
-  // Separate specs and mockup files from the files list
+  // Separate specs and mockup files
   const specFiles = files.filter((f) => f.filePath.startsWith('.workhorse/specs/'))
   const mockupFiles = files
     .filter((f) => f.filePath.startsWith('.workhorse/design/mockups/'))
     .map((f) => ({ filePath: f.filePath }))
-
-  // Combine DB mockups with file-based mockups
   const allMockupFiles = [
     ...mockupFiles,
     ...mockups
@@ -190,13 +204,23 @@ export function CardWorkspace({
       .map((m) => ({ filePath: m.filePath })),
   ]
 
-  // View navigation with history stack (single atomic dispatch)
+  // All navigable files (specs + mockups) for prev/next
+  const allNavigableFiles = [
+    ...specFiles.map((f) => f.filePath),
+    ...allMockupFiles.map((f) => f.filePath),
+  ]
+
+  // View navigation helpers
   const navigateTo = useCallback((next: ViewState) => {
     dispatchView({ type: 'navigate', to: next })
   }, [])
 
   const goBack = useCallback(() => {
     dispatchView({ type: 'back' })
+  }, [])
+
+  const closeArtifact = useCallback(() => {
+    dispatchView({ type: 'close_artifact' })
   }, [])
 
   // Send message with mode support
@@ -206,7 +230,7 @@ export function CardWorkspace({
       rawSendMessage(content, user.displayName, uploaded.length > 0 ? uploaded : undefined, mode)
       chatAttachments.clear()
 
-      // Expand to full-screen chat on first message from card view
+      // Expand to full chat on first message from card home
       if (view.type === 'card') {
         navigateTo({ type: 'chat' })
       }
@@ -316,248 +340,490 @@ export function CardWorkspace({
       const newFile: SpecFileData = { filePath, isNew: true, content }
       setFiles((prev) => [...prev, newFile])
       setShowNewSpecDialog(false)
-      navigateTo({ type: 'spec', filePath })
+      navigateTo({ type: 'artifact', filePath })
     },
     [card.id, card.identifier, ensureWorktree, navigateTo],
   )
 
   const handleSelectProjectSpec = useCallback(
     async (filePath: string, content: string) => {
-      // Open for reading — navigating to spec view
-      // If the user edits it, it will be written to the worktree and show up in card specs
       const existing = files.find((f) => f.filePath === filePath)
       if (!existing) {
-        // Add as a temporary read-only file for viewing
         setFiles((prev) => {
           if (prev.some((f) => f.filePath === filePath)) return prev
           return [...prev, { filePath, isNew: false, content }]
         })
       }
-      navigateTo({ type: 'spec', filePath })
+      // Open as artifact if we're in chat, or replace current artifact
+      if (view.type === 'chat' || view.type === 'artifact' || view.type === 'focus') {
+        navigateTo({ type: 'artifact', filePath })
+      } else {
+        navigateTo({ type: 'artifact', filePath })
+      }
     },
-    [files, navigateTo],
+    [files, navigateTo, view.type],
   )
 
-  // Keyboard shortcut: Escape to go back
+  // Open spec in artifact mode (from chat or specs panel)
+  const handleOpenSpec = useCallback(
+    (filePath: string) => {
+      if (filePath.startsWith('.workhorse/design/mockups/')) {
+        navigateTo({ type: 'mockup', filePath })
+      } else {
+        navigateTo({ type: 'artifact', filePath })
+      }
+    },
+    [navigateTo],
+  )
+
+  // Focus mode: navigate to different file
+  const handleFocusNavigate = useCallback(
+    (filePath: string) => {
+      if (view.type === 'focus' && view.editing && view.filePath !== filePath) {
+        // Prompt save before flipping while editing
+        setSavePrompt({ fromPath: view.filePath, toPath: filePath })
+        return
+      }
+      dispatchView({
+        type: 'navigate',
+        to: { type: 'focus', filePath, editing: false },
+      })
+    },
+    [view],
+  )
+
+  // Prev/Next spec navigation
+  const handlePrevSpec = useCallback(() => {
+    const currentPath = view.type === 'artifact' || view.type === 'focus' ? view.filePath : null
+    if (!currentPath) return
+    const idx = allNavigableFiles.indexOf(currentPath)
+    if (idx > 0) {
+      const newPath = allNavigableFiles[idx - 1]
+      if (view.type === 'focus') {
+        handleFocusNavigate(newPath)
+      } else {
+        dispatchView({ type: 'navigate', to: { type: 'artifact', filePath: newPath } })
+      }
+    }
+  }, [view, allNavigableFiles, handleFocusNavigate])
+
+  const handleNextSpec = useCallback(() => {
+    const currentPath = view.type === 'artifact' || view.type === 'focus' ? view.filePath : null
+    if (!currentPath) return
+    const idx = allNavigableFiles.indexOf(currentPath)
+    if (idx < allNavigableFiles.length - 1) {
+      const newPath = allNavigableFiles[idx + 1]
+      if (view.type === 'focus') {
+        handleFocusNavigate(newPath)
+      } else {
+        dispatchView({ type: 'navigate', to: { type: 'artifact', filePath: newPath } })
+      }
+    }
+  }, [view, allNavigableFiles, handleFocusNavigate])
+
+  // Enter focus mode
+  const handleEnterFocus = useCallback(() => {
+    const filePath = view.type === 'artifact' ? view.filePath : null
+    if (!filePath) return
+    dispatchView({
+      type: 'navigate',
+      to: { type: 'focus', filePath, editing: false },
+    })
+  }, [view])
+
+  // Enter focus + editing
+  const handleEnterEdit = useCallback(async () => {
+    const filePath =
+      view.type === 'artifact' ? view.filePath :
+      view.type === 'focus' ? view.filePath : null
+    if (!filePath) return
+    const ok = await handleStartEditing(filePath)
+    if (!ok) return
+    // If already in focus mode, just enable editing
+    if (view.type === 'focus') {
+      dispatchView({
+        type: 'navigate',
+        to: { type: 'focus', filePath, editing: true },
+      })
+    } else {
+      // From artifact mode: enter focus + editing
+      dispatchView({
+        type: 'navigate',
+        to: { type: 'focus', filePath, editing: true },
+      })
+    }
+  }, [view, handleStartEditing])
+
+  // Done editing -> back to focus read-only
+  const handleFinishEditing = useCallback(async () => {
+    const filePath = view.type === 'focus' ? view.filePath : null
+    if (!filePath) return
+    await handleDoneEditing(filePath)
+    dispatchView({
+      type: 'navigate',
+      to: { type: 'focus', filePath, editing: false },
+    })
+  }, [view, handleDoneEditing])
+
+  // Toggle focus off -> back to artifact
+  const handleExitFocus = useCallback(() => {
+    const filePath = view.type === 'focus' ? view.filePath : null
+    if (!filePath) return
+    dispatchView({
+      type: 'navigate',
+      to: { type: 'artifact', filePath },
+    })
+  }, [view])
+
+  // Save prompt handlers
+  const handleSaveAndFlip = useCallback(async () => {
+    if (!savePrompt) return
+    await handleDoneEditing(savePrompt.fromPath)
+    dispatchView({
+      type: 'navigate',
+      to: { type: 'focus', filePath: savePrompt.toPath, editing: false },
+    })
+    setSavePrompt(null)
+  }, [savePrompt, handleDoneEditing])
+
+  const handleDiscardAndFlip = useCallback(async () => {
+    if (!savePrompt) return
+    // Release lock without committing
+    await fetch(
+      `/api/file-lock?cardId=${card.id}&filePath=${encodeURIComponent(savePrompt.fromPath)}`,
+      { method: 'DELETE' },
+    )
+    setIsEditing(false)
+    dispatchView({
+      type: 'navigate',
+      to: { type: 'focus', filePath: savePrompt.toPath, editing: false },
+    })
+    setSavePrompt(null)
+  }, [savePrompt, card.id])
+
+  // Keyboard shortcuts
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === 'Escape' && view.type !== 'card') {
-        e.preventDefault()
+      if (e.key !== 'Escape') return
+      // Don't intercept if inside an input/textarea
+      const active = document.activeElement
+      if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA')) return
+
+      e.preventDefault()
+      if (view.type === 'focus') {
+        // Escape from focus -> artifact
+        handleExitFocus()
+      } else if (view.type === 'artifact') {
+        // Escape from artifact -> close to centred chat
+        closeArtifact()
+      } else if (view.type === 'chat') {
+        // Escape from chat -> card home
+        goBack()
+      } else if (view.type === 'mockup') {
         goBack()
       }
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [view.type, goBack])
+  }, [view.type, handleExitFocus, closeArtifact, goBack])
 
-  const pills = getPillsForContext(card.status, messages.length > 0, view.type === 'spec' ? 'spec' : view.type === 'mockup' ? 'mockup' : view.type === 'chat' ? 'chat' : 'card')
+  // Scroll chat to bottom on new messages
+  useEffect(() => {
+    if (chatScrollRef.current) {
+      chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight
+    }
+  }, [messages])
 
-  // Active spec file for spec view
-  const activeSpec = view.type === 'spec'
-    ? files.find((f) => f.filePath === view.filePath) ?? null
+  // Active spec for artifact/focus views
+  const activeFilePath =
+    view.type === 'artifact' ? view.filePath :
+    view.type === 'focus' ? view.filePath : null
+  const activeSpec = activeFilePath
+    ? files.find((f) => f.filePath === activeFilePath) ?? null
     : null
 
-  // Active mockup for mockup view
+  // Active mockup
   const activeMockup = view.type === 'mockup'
     ? mockups.find((m) => m.filePath === view.filePath) ?? null
     : null
 
   const extractedAreas = extractAreas(projectSpecs)
 
-  // Chat heights per view — padding derived as height + 20px for breathing room
-  const cardChatHeight = 260
-  const specChatHeight = 200
+  // Determine pill context
+  const pillView =
+    view.type === 'artifact' ? 'artifact' as const :
+    view.type === 'chat' ? 'chat' as const :
+    'card' as const
+  const pills = getPillsForContext(card.status, messages.length > 0, pillView)
+
+  // --- Chat column (shared between chat mode and artifact mode) ---
+
+  const chatColumn = (
+    <div className="flex-1 flex flex-col overflow-hidden">
+      <div ref={chatScrollRef} className="flex-1 overflow-y-auto flex justify-center">
+        <div className="w-full" style={{ maxWidth: '680px', padding: '32px 24px' }}>
+          {messages.length === 0 && (
+            <div className="text-center py-16">
+              <p className="text-[14px] text-[var(--text-muted)] mb-1">
+                Start developing specs
+              </p>
+              <p className="text-[13px] text-[var(--text-faint)]">
+                Describe what you want to build and the AI will help develop acceptance criteria.
+              </p>
+            </div>
+          )}
+          {messages.map((msg) => (
+            <ChatMessage
+              key={msg.id}
+              role={msg.role}
+              content={msg.content}
+              userName={msg.userName}
+              timestamp={msg.createdAt}
+              attachments={msg.attachments}
+            />
+          ))}
+
+          {/* File write notifications */}
+          {fileWrites.length > 0 && (
+            <div className="mt-3 space-y-1">
+              {fileWrites.map((fw, i) => (
+                <button
+                  key={i}
+                  onClick={() => handleOpenSpec(fw.filePath)}
+                  className="flex items-center gap-2 px-3 py-2 rounded-[var(--radius-default)] bg-[var(--green-alpha)] border border-[rgba(22,163,74,0.15)] text-[12px] text-[var(--text-secondary)] cursor-pointer hover:border-[rgba(22,163,74,0.3)] transition-colors duration-100 w-full text-left"
+                >
+                  <FileText size={12} className="text-[var(--green)] shrink-0" />
+                  <span>
+                    Updated{' '}
+                    <code className="text-[11px] font-mono">
+                      {fw.filePath.split('/').pop()}
+                    </code>
+                  </span>
+                  <span className="ml-auto text-[10px] text-[var(--accent)] font-medium">
+                    Open →
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+
+          {isStreaming && messages[messages.length - 1]?.content === '' && (
+            <ThinkingIndicator snippet={thinkingSnippet} />
+          )}
+        </div>
+      </div>
+
+      {/* Pills + Input */}
+      <div className="w-full flex flex-col items-center shrink-0">
+        {pills.length > 0 && !isStreaming && (
+          <div style={{ maxWidth: '680px', padding: '0 24px' }} className="w-full mb-2">
+            <ActionPills
+              pills={pills}
+              onSelect={handlePillSelect}
+              disabled={isStreaming}
+            />
+          </div>
+        )}
+        <ChatInput
+          onSend={(content) => handleSendMessage(content)}
+          disabled={isStreaming}
+          pendingAttachments={chatAttachments.pending}
+          onAddFiles={chatAttachments.addFiles}
+          onRemoveAttachment={chatAttachments.removeAttachment}
+          isUploading={chatAttachments.isUploading}
+        />
+      </div>
+    </div>
+  )
+
+  // --- Artifact column (spec editor) ---
+
+  const artifactColumn = activeSpec ? (
+    <div className="flex-1 flex flex-col overflow-hidden bg-[var(--bg-surface)]">
+      <SpecHeaderBar
+        filePath={activeSpec.filePath}
+        cardId={card.id}
+        specs={specFiles.map((f) => ({ filePath: f.filePath, isNew: f.isNew }))}
+        projectSpecs={projectSpecs}
+        isFocusMode={view.type === 'focus'}
+        isEditing={view.type === 'focus' && view.editing}
+        onPrev={handlePrevSpec}
+        onNext={handleNextSpec}
+        onSelectSpec={(fp) => {
+          if (view.type === 'focus') handleFocusNavigate(fp)
+          else dispatchView({ type: 'navigate', to: { type: 'artifact', filePath: fp } })
+        }}
+        onSelectProjectSpec={handleSelectProjectSpec}
+        onToggleFocus={view.type === 'focus' ? handleExitFocus : handleEnterFocus}
+        onClose={view.type === 'focus' ? handleExitFocus : closeArtifact}
+        onEdit={handleEnterEdit}
+      />
+      <div className="flex-1 overflow-y-auto flex justify-center">
+        <div className="w-full" style={{ maxWidth: '720px', padding: '32px 40px 80px' }}>
+          <SpecEditor
+            key={activeSpec.filePath}
+            spec={{
+              id: activeSpec.filePath,
+              filePath: activeSpec.filePath,
+              content: activeSpec.content,
+              isNew: activeSpec.isNew,
+            }}
+            onContentChange={(_, content) =>
+              handleSpecUpdate(activeSpec.filePath, content)
+            }
+            isEditing={view.type === 'focus' && view.editing}
+            onStartEditing={() => handleStartEditing(activeSpec.filePath)}
+            onDoneEditing={handleFinishEditing}
+            cardStatus={card.status}
+            hideEditButton
+          />
+        </div>
+      </div>
+    </div>
+  ) : null
 
   return (
     <div className="flex-1 flex overflow-hidden">
-      {/* Main content area */}
-      <div className="flex-1 flex flex-col overflow-hidden relative">
-        {/* Card view */}
-        {view.type === 'card' && (
-          <div className="flex-1 overflow-y-auto" style={{ paddingBottom: `${cardChatHeight + 20}px` }}>
+      {/* ===== Card home ===== */}
+      {view.type === 'card' && (
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <div className="flex-1 overflow-y-auto">
             {cardTabContent}
-          </div>
-        )}
 
-        {/* Full-screen chat */}
-        {view.type === 'chat' && (
-          <div className="flex-1 flex flex-col overflow-hidden items-center">
-            <div className="flex-1 overflow-y-auto w-full flex justify-center">
-              <div className="w-full" style={{ maxWidth: '680px', padding: '32px 24px' }}>
-                {messages.length === 0 && (
-                  <div className="text-center py-16">
-                    <p className="text-[14px] text-[var(--text-muted)] mb-1">
-                      Start developing specs
-                    </p>
-                    <p className="text-[13px] text-[var(--text-faint)]">
-                      Describe what you want to build and the AI will help develop acceptance criteria.
-                    </p>
+            {/* Inline specs and mockups */}
+            <div className="max-w-[720px] mx-auto px-10 pb-8">
+              {(specFiles.length > 0 || allMockupFiles.length > 0) && (
+                <div className="border-t border-[var(--border-subtle)] pt-6">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-[0.06em]">
+                      Specs &amp; Mockups
+                    </h3>
+                    <button
+                      onClick={() => setShowNewSpecDialog(true)}
+                      className="text-[11px] font-medium text-[var(--accent)] hover:text-[var(--accent-hover)] cursor-pointer transition-colors duration-100"
+                    >
+                      + New spec
+                    </button>
                   </div>
-                )}
-                {messages.map((msg) => (
-                  <ChatMessage
-                    key={msg.id}
-                    role={msg.role}
-                    content={msg.content}
-                    userName={msg.userName}
-                    timestamp={msg.createdAt}
-                    attachments={msg.attachments}
-                  />
-                ))}
-
-                {/* File write notifications — click-through */}
-                {fileWrites.length > 0 && (
-                  <div className="mt-3 space-y-1">
-                    {fileWrites.map((fw, i) => (
-                      <button
-                        key={i}
-                        onClick={() => navigateTo({ type: 'spec', filePath: fw.filePath })}
-                        className="flex items-center gap-2 px-3 py-2 rounded-[var(--radius-default)] bg-[var(--green-alpha)] border border-[rgba(22,163,74,0.15)] text-[12px] text-[var(--text-secondary)] cursor-pointer hover:border-[rgba(22,163,74,0.3)] transition-colors duration-100 w-full text-left"
-                      >
-                        <FileText size={12} className="text-[var(--green)] shrink-0" />
-                        <span>
-                          Updated{' '}
-                          <code className="text-[11px] font-mono">
-                            {fw.filePath.split('/').pop()}
-                          </code>
-                        </span>
-                        <span className="ml-auto text-[10px] text-[var(--accent)] font-medium">
-                          Open →
-                        </span>
-                      </button>
-                    ))}
+                  <div className="space-y-1">
+                    {specFiles.map((spec) => {
+                      const fileName = spec.filePath.split('/').pop()?.replace(/\.md$/, '') ?? spec.filePath
+                      return (
+                        <button
+                          key={spec.filePath}
+                          onClick={() => navigateTo({ type: 'artifact', filePath: spec.filePath })}
+                          className="flex items-center gap-2 w-full px-3 py-2 rounded-[var(--radius-default)] text-left text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer"
+                        >
+                          <FileText size={13} className="shrink-0 text-[var(--text-muted)]" />
+                          <span className="text-[13px] font-medium">{fileName}</span>
+                          {spec.isNew && (
+                            <span className="text-[10px] text-[var(--green)] font-medium">new</span>
+                          )}
+                          {!spec.isNew && (
+                            <span className="text-[10px] text-[var(--amber)] font-medium">updated</span>
+                          )}
+                        </button>
+                      )
+                    })}
+                    {allMockupFiles.map((mockup) => {
+                      const fileName = mockup.filePath.split('/').pop()?.replace(/\.html$/, '') ?? mockup.filePath
+                      return (
+                        <button
+                          key={mockup.filePath}
+                          onClick={() => navigateTo({ type: 'mockup', filePath: mockup.filePath })}
+                          className="flex items-center gap-2 w-full px-3 py-2 rounded-[var(--radius-default)] text-left text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer"
+                        >
+                          <FileText size={13} className="shrink-0 text-[var(--text-muted)]" />
+                          <span className="text-[13px] font-medium">{fileName}</span>
+                        </button>
+                      )
+                    })}
                   </div>
-                )}
-
-                {isStreaming && messages[messages.length - 1]?.content === '' && (
-                  <ThinkingIndicator snippet={thinkingSnippet} />
-                )}
-              </div>
-            </div>
-
-            {/* Pills + Input */}
-            <div className="w-full flex flex-col items-center shrink-0">
-              {pills.length > 0 && !isStreaming && (
-                <div style={{ maxWidth: '680px', padding: '0 24px' }} className="w-full mb-2">
-                  <ActionPills
-                    pills={pills}
-                    onSelect={handlePillSelect}
-                    disabled={isStreaming}
-                  />
                 </div>
               )}
-              <ChatInput
-                onSend={(content) => handleSendMessage(content)}
-                disabled={isStreaming}
-                pendingAttachments={chatAttachments.pending}
-                onAddFiles={chatAttachments.addFiles}
-                onRemoveAttachment={chatAttachments.removeAttachment}
-                isUploading={chatAttachments.isUploading}
-              />
             </div>
           </div>
-        )}
 
-        {/* Spec view */}
-        {view.type === 'spec' && activeSpec && (
-          <div className="flex-1 overflow-y-auto bg-[var(--bg-surface)] flex justify-center relative" style={{ paddingBottom: `${specChatHeight + 20}px` }}>
-            <div className="w-full" style={{ maxWidth: '720px', padding: '48px 40px 80px' }}>
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[12px] text-[var(--text-faint)] font-mono">
-                  {activeSpec.filePath}
-                </span>
-                <div className="flex items-center gap-3">
-                  <FileHistory cardId={card.id} filePath={activeSpec.filePath} />
-                </div>
+          {/* Input bar + pills at bottom */}
+          <div className="w-full flex flex-col items-center shrink-0">
+            {pills.length > 0 && (
+              <div style={{ maxWidth: '680px', padding: '0 24px' }} className="w-full mb-2">
+                <ActionPills
+                  pills={pills}
+                  onSelect={handlePillSelect}
+                  disabled={isStreaming}
+                />
               </div>
-
-              <SpecEditor
-                key={activeSpec.filePath}
-                spec={{
-                  id: activeSpec.filePath,
-                  filePath: activeSpec.filePath,
-                  content: activeSpec.content,
-                  isNew: activeSpec.isNew,
-                }}
-                onContentChange={(_, content) =>
-                  handleSpecUpdate(activeSpec.filePath, content)
-                }
-                isEditing={isEditing}
-                onStartEditing={() => handleStartEditing(activeSpec.filePath)}
-                onDoneEditing={() => handleDoneEditing(activeSpec.filePath)}
-                cardStatus={card.status}
-              />
-            </div>
-
-            {/* Floating chat in spec view */}
-            <FloatingChat
-              messages={messages}
-              isStreaming={isStreaming}
-              thinkingSnippet={thinkingSnippet}
-              pills={getPillsForContext(card.status, messages.length > 0, 'spec')}
+            )}
+            <ChatInput
               onSend={(content) => handleSendMessage(content)}
-              onPillSelect={handlePillSelect}
-              onExpand={() => navigateTo({ type: 'chat' })}
-              variant="panel"
-              height={specChatHeight}
-              placeholder="Ask about this spec..."
               disabled={isStreaming}
+              placeholder={
+                card.status === 'NOT_STARTED'
+                  ? 'Describe what you\'d like to build...'
+                  : 'Continue the conversation...'
+              }
               pendingAttachments={chatAttachments.pending}
               onAddFiles={chatAttachments.addFiles}
               onRemoveAttachment={chatAttachments.removeAttachment}
               isUploading={chatAttachments.isUploading}
             />
           </div>
-        )}
+        </div>
+      )}
 
-        {/* Mockup view */}
-        {view.type === 'mockup' && activeMockup && (
-          <MockupViewer
-            mockup={activeMockup}
-            onClose={goBack}
+      {/* ===== Centred chat ===== */}
+      {view.type === 'chat' && (
+        <>
+          {chatColumn}
+          <SpecsPanel
+            specs={specFiles.map((f) => ({ filePath: f.filePath, isNew: f.isNew }))}
+            mockups={allMockupFiles}
+            onSelectSpec={(fp) => navigateTo({ type: 'artifact', filePath: fp })}
+            onSelectMockup={(fp) => navigateTo({ type: 'mockup', filePath: fp })}
+            onCreateSpec={() => setShowNewSpecDialog(true)}
           />
-        )}
+        </>
+      )}
 
-        {/* Floating chat in card view */}
-        {view.type === 'card' && (
-          <FloatingChat
-            messages={messages}
-            isStreaming={isStreaming}
-            thinkingSnippet={thinkingSnippet}
-            pills={pills}
-            onSend={(content) => handleSendMessage(content)}
-            onPillSelect={handlePillSelect}
-            onExpand={() => navigateTo({ type: 'chat' })}
-            variant="panel"
-            height={cardChatHeight}
-            placeholder={
-              card.status === 'NOT_STARTED'
-                ? 'Describe what you\'d like to build...'
-                : 'Continue the conversation...'
-            }
-            disabled={isStreaming}
-            pendingAttachments={chatAttachments.pending}
-            onAddFiles={chatAttachments.addFiles}
-            onRemoveAttachment={chatAttachments.removeAttachment}
-            isUploading={chatAttachments.isUploading}
+      {/* ===== Chat + artifact (spec open) ===== */}
+      {view.type === 'artifact' && (
+        <>
+          {/* Chat left ~40% */}
+          <div className="flex flex-col overflow-hidden" style={{ width: '40%', minWidth: '320px' }}>
+            {chatColumn}
+          </div>
+          {/* Spec right ~60% */}
+          <div className="flex flex-col overflow-hidden border-l border-[var(--border-subtle)]" style={{ flex: '1 1 60%' }}>
+            {artifactColumn}
+          </div>
+        </>
+      )}
+
+      {/* ===== Focus mode (spec rail + artifact) ===== */}
+      {view.type === 'focus' && (
+        <>
+          <SpecRail
+            specs={specFiles.map((f) => ({ filePath: f.filePath, isNew: f.isNew }))}
+            mockups={allMockupFiles}
+            activeFilePath={view.filePath}
+            onSelectFile={handleFocusNavigate}
           />
-        )}
-      </div>
+          <div className="flex flex-col overflow-hidden flex-1">
+            {artifactColumn}
+          </div>
+        </>
+      )}
 
-      {/* Right panel — visible in card, chat, and spec views (not mockup) */}
-      {view.type !== 'mockup' && (
-        <RightPanel
-          specs={specFiles.map((f) => ({ filePath: f.filePath, isNew: f.isNew }))}
-          mockups={allMockupFiles}
-          projectSpecs={projectSpecs}
-          activeFilePath={view.type === 'spec' ? view.filePath : null}
-          onSelectSpec={(filePath) => navigateTo({ type: 'spec', filePath })}
-          onSelectMockup={(filePath) => navigateTo({ type: 'mockup', filePath })}
-          onCreateSpec={() => setShowNewSpecDialog(true)}
-          onSelectProjectSpec={handleSelectProjectSpec}
+      {/* ===== Mockup overlay ===== */}
+      {view.type === 'mockup' && activeMockup && (
+        <MockupViewer
+          mockup={activeMockup}
+          onClose={goBack}
         />
       )}
 
+      {/* New spec dialog */}
       {showNewSpecDialog && (
         <NewSpecDialog
           cardIdentifier={card.identifier}
@@ -566,6 +832,41 @@ export function CardWorkspace({
           onCancel={() => setShowNewSpecDialog(false)}
           isCreating={isEnsuring}
         />
+      )}
+
+      {/* Save prompt dialog */}
+      {savePrompt && (
+        <>
+          <div className="fixed inset-0 z-40 bg-[rgba(28,25,23,0.40)]" />
+          <div className="fixed inset-0 z-50 flex items-center justify-center">
+            <div className="w-full max-w-[400px] bg-[var(--bg-surface)] rounded-[var(--radius-lg)] border border-[var(--border-subtle)] shadow-[var(--shadow-lg)] p-6">
+              <h2 className="text-[15px] font-semibold tracking-[-0.02em] mb-2">
+                Save changes?
+              </h2>
+              <p className="text-[13px] text-[var(--text-secondary)] mb-5">
+                You have unsaved changes to{' '}
+                <code className="text-[12px] font-mono">
+                  {savePrompt.fromPath.split('/').pop()}
+                </code>
+                . Save before switching?
+              </p>
+              <div className="flex justify-end gap-2">
+                <button
+                  onClick={handleDiscardAndFlip}
+                  className="px-3 py-[6px] rounded-[var(--radius-default)] text-xs font-medium text-[var(--text-secondary)] bg-[var(--bg-surface)] border border-[var(--border-default)] shadow-[var(--shadow-sm)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer"
+                >
+                  Discard
+                </button>
+                <button
+                  onClick={handleSaveAndFlip}
+                  className="px-3 py-[6px] rounded-[var(--radius-default)] text-xs font-medium bg-[var(--accent)] text-white hover:bg-[var(--accent-hover)] transition-colors duration-100 cursor-pointer"
+                >
+                  Save
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
       )}
     </div>
   )

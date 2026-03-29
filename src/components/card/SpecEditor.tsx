@@ -18,6 +18,8 @@ interface SpecEditorProps {
   onStartEditing?: () => Promise<boolean> | boolean
   onDoneEditing?: () => void
   cardStatus?: string
+  /** Hide the built-in Edit button (when header bar provides it) */
+  hideEditButton?: boolean
 }
 
 export function SpecEditor({
@@ -27,6 +29,7 @@ export function SpecEditor({
   onStartEditing,
   onDoneEditing,
   cardStatus,
+  hideEditButton = false,
 }: SpecEditorProps) {
   const parsed = parseSpec(spec.content)
   const [title, setTitle] = useState(parsed.frontmatter.title)
@@ -101,16 +104,18 @@ export function SpecEditor({
   if (!editing) {
     return (
       <div>
-        <div className="flex items-center justify-between mb-4">
-          <div />
-          <button
-            onClick={handleStartEdit}
-            className="inline-flex items-center gap-[6px] px-3 py-[6px] rounded-[var(--radius-default)] text-xs font-medium bg-[var(--bg-surface)] text-[var(--text-secondary)] border border-[var(--border-default)] shadow-[var(--shadow-sm)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer"
-          >
-            <Pencil size={11} />
-            Edit
-          </button>
-        </div>
+        {!hideEditButton && (
+          <div className="flex items-center justify-between mb-4">
+            <div />
+            <button
+              onClick={handleStartEdit}
+              className="inline-flex items-center gap-[6px] px-3 py-[6px] rounded-[var(--radius-default)] text-xs font-medium bg-[var(--bg-surface)] text-[var(--text-secondary)] border border-[var(--border-default)] shadow-[var(--shadow-sm)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer"
+            >
+              <Pencil size={11} />
+              Edit
+            </button>
+          </div>
+        )}
 
         {/* Title */}
         <h1 className="text-[24px] font-bold tracking-[-0.03em] leading-[1.3] mb-2">

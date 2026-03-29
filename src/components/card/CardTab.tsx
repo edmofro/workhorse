@@ -177,8 +177,8 @@ export function CardTab({ card, users, teams }: CardTabProps) {
   }
 
   return (
-    <div className="flex-1 overflow-y-auto">
-      <div className="max-w-[720px] mx-auto" style={{ padding: '32px 40px 80px' }}>
+    <div>
+      <div className="max-w-[720px] mx-auto" style={{ padding: '32px 40px 16px' }}>
         {/* Title */}
         <input
           type="text"

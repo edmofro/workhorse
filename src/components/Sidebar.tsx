@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname, useSearchParams } from 'next/navigation'
-import { Settings, LogOut, FileText, Palette, ChevronDown } from 'lucide-react'
+import { Settings, LogOut, ChevronDown } from 'lucide-react'
 import { cn } from '../lib/cn'
 import { Avatar } from './Avatar'
 import { useUser } from './UserProvider'
@@ -93,7 +93,6 @@ export function Sidebar({ projects }: SidebarProps) {
             {/* Specs link */}
             <NavItem
               href={`${projectPath}/specs`}
-              icon={<FileText size={14} />}
               active={pathname.startsWith(`${projectPath}/specs`)}
             >
               Specs
@@ -102,7 +101,6 @@ export function Sidebar({ projects }: SidebarProps) {
             {/* Design link */}
             <NavItem
               href={`${projectPath}/design`}
-              icon={<Palette size={14} />}
               active={pathname.startsWith(`${projectPath}/design`)}
             >
               Design

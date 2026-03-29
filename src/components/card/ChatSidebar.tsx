@@ -70,13 +70,13 @@ export function ChatSidebar({
           </p>
         )}
         {messages.map((msg) => (
-          <div key={msg.id} style={{ marginBottom: '20px' }}>
-            <ChatMessage
-              role={msg.role}
-              content={msg.content}
-              userName={msg.userName}
-            />
-          </div>
+          <ChatMessage
+            key={msg.id}
+            role={msg.role}
+            content={msg.content}
+            userName={msg.userName}
+            compact
+          />
         ))}
       </div>
       <ChatInput

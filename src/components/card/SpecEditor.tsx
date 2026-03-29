@@ -2,6 +2,7 @@
 
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { parseSpec, serializeSpec, type SpecFrontmatter } from '../../lib/specs/format'
+import { MarkdownContent } from './MarkdownContent'
 import { Pencil, Check } from 'lucide-react'
 
 interface SpecEditorProps {
@@ -117,14 +118,15 @@ export function SpecEditor({
         </h1>
 
         <div className="text-[14px] text-[var(--text-muted)] mb-8">
-          {spec.isNew ? 'New spec' : 'Existing spec'} · {parsed.frontmatter.card ?? 'No card'}
-          {' · '}
-          {parsed.frontmatter.status ?? 'draft'}
+          {parsed.frontmatter.card && (
+            <span className="font-mono text-[12px] mr-2">{parsed.frontmatter.card}</span>
+          )}
+          <span className="capitalize">{parsed.frontmatter.status ?? 'draft'}</span>
         </div>
 
         {/* Body (read-only rendered) */}
-        <div className="text-[14px] text-[var(--text-secondary)] leading-[1.75] whitespace-pre-wrap">
-          {body}
+        <div className="text-[14px] text-[var(--text-secondary)] leading-[1.75]">
+          <MarkdownContent content={body} />
         </div>
 
         {isInterviewerWorking && (
@@ -205,9 +207,10 @@ export function SpecEditor({
       />
 
       <div className="text-[14px] text-[var(--text-muted)] mb-8">
-        {spec.isNew ? 'New spec' : 'Editing existing'} · {parsed.frontmatter.card ?? 'No card'}
-        {' · '}
-        {parsed.frontmatter.status ?? 'draft'}
+        {parsed.frontmatter.card && (
+          <span className="font-mono text-[12px] mr-2">{parsed.frontmatter.card}</span>
+        )}
+        <span className="capitalize">{parsed.frontmatter.status ?? 'draft'}</span>
       </div>
 
       {/* Body editor */}

@@ -3,6 +3,7 @@
  */
 
 import { getRef, getTree, getFileContent } from './githubClient'
+import { blobCache } from './blobCache'
 
 export interface DesignFile {
   path: string
@@ -23,31 +24,41 @@ export async function fetchDesignLibrary(
   const treeData = await getTree(token, owner, repo, ref.object.sha, true)
   if (!treeData?.tree) return []
 
-  const designFiles = treeData.tree.filter(
-    (item: { path: string; type: string }) =>
+  const designItems = treeData.tree.filter(
+    (item: { path: string; type: string; sha: string }) =>
       item.path.startsWith('.workhorse/design/') && item.type === 'blob',
   )
 
-  const files: DesignFile[] = []
+  // Fetch all files in parallel, using blob SHA cache
+  const results = await Promise.all(
+    designItems.map(async (item: { path: string; sha: string }) => {
+      const cached = blobCache.get(item.sha)
+      let decodedContent: string
 
-  for (const item of designFiles) {
-    const content = await getFileContent(token, owner, repo, item.path, branch)
-    if (!content?.decodedContent) continue
+      if (cached) {
+        decodedContent = cached
+      } else {
+        const content = await getFileContent(token, owner, repo, item.path, branch)
+        if (!content?.decodedContent) return null
+        decodedContent = content.decodedContent
+        blobCache.set(item.sha, decodedContent)
+      }
 
-    const relativePath = item.path.replace('.workhorse/design/', '')
-    let type: DesignFile['type'] = 'markdown'
+      const relativePath = item.path.replace('.workhorse/design/', '')
+      let type: DesignFile['type'] = 'markdown'
 
-    if (relativePath.startsWith('components/')) type = 'component'
-    else if (relativePath.startsWith('views/')) type = 'view'
-    else if (relativePath.startsWith('mockups/')) type = 'mockup'
+      if (relativePath.startsWith('components/')) type = 'component'
+      else if (relativePath.startsWith('views/')) type = 'view'
+      else if (relativePath.startsWith('mockups/')) type = 'mockup'
 
-    files.push({
-      path: item.path,
-      name: relativePath,
-      type,
-      content: content.decodedContent,
-    })
-  }
+      return {
+        path: item.path,
+        name: relativePath,
+        type,
+        content: decodedContent,
+      }
+    }),
+  )
 
-  return files
+  return results.filter((f): f is DesignFile => f !== null)
 }

@@ -119,6 +119,68 @@ export async function getProjectCards(projectId: string) {
   })
 }
 
+/**
+ * Create a card with a placeholder title, intended for quick-start flows
+ * (e.g. clicking edit on a spec in the explorer). The title is updated
+ * automatically after the first edit session once we know the user's intent.
+ */
+export async function createQuickCard(data: {
+  teamId: string
+  specPath?: string
+}) {
+  await requireUser()
+
+  const lastCard = await prisma.card.findFirst({
+    orderBy: { identifier: 'desc' },
+  })
+
+  let nextNum = 1
+  if (lastCard) {
+    const match = lastCard.identifier.match(/WH-(\d+)/)
+    if (match) nextNum = parseInt(match[1], 10) + 1
+  }
+
+  const identifier = `WH-${String(nextNum).padStart(3, '0')}`
+
+  const card = await prisma.card.create({
+    data: {
+      identifier,
+      title: 'Untitled spec',
+      teamId: data.teamId,
+      status: 'SPECIFYING',
+      priority: 'MEDIUM',
+      tags: JSON.stringify([]),
+    },
+  })
+
+  revalidatePath('/')
+  return card
+}
+
+/**
+ * Update a card's title based on spec content, used when exiting edit mode
+ * on a card that still has the placeholder title.
+ */
+export async function updateCardTitleFromSpec(
+  cardId: string,
+  specTitle: string,
+) {
+  await requireUser()
+
+  const card = await prisma.card.findUnique({ where: { id: cardId } })
+  if (!card) return null
+  if (card.title !== 'Untitled spec') return card
+
+  const title = specTitle.trim() || 'Untitled spec'
+  const updated = await prisma.card.update({
+    where: { id: cardId },
+    data: { title },
+  })
+
+  revalidatePath('/')
+  return updated
+}
+
 export async function addComment(cardId: string, content: string) {
   const user = await requireUser()
   const comment = await prisma.cardComment.create({

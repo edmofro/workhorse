@@ -39,8 +39,27 @@ As specs accumulate, they form a knowledge base for each project. Product owners
 - [ ] The card remains as the record of how the spec was developed — chat history, comments, mockups
 - [ ] If a spec is updated later (new card, or direct edit), the browser reflects the latest from main
 
+## Quick-start editing from the explorer
+
+- [ ] Each spec in the document viewer shows an edit pencil button (top-right, beside the title)
+- [ ] Clicking the edit pencil creates a new card (auto-generated WH-XXX identifier within the current team) with a placeholder title ("Untitled spec")
+- [ ] The card is created in SPECIFYING status and the user is navigated to its spec editing view
+- [ ] A "New spec" button appears in the sidebar (below the search field) for creating a blank spec from scratch
+- [ ] Clicking "New spec" follows the same flow: creates a card and navigates to the spec editor
+- [ ] The first team in the project is used as the default team for quick-created cards
+- [ ] When the empty state is shown (no specs yet), a "New spec" button is also available
+
+## Auto-title on first edit
+
+- [ ] Cards created via the explorer start with the placeholder title "Untitled spec"
+- [ ] When the user leaves edit mode for the first time, the card title is automatically updated to match the spec's frontmatter title
+- [ ] If the spec title is still the default "Untitled", the card title remains "Untitled spec"
+- [ ] Once the card title has been updated from the placeholder, subsequent edits do not change it
+
 ## Open questions
 
 > **Area organisation:** Who decides the hierarchy? Does the AI suggest where a spec should live based on codebase structure, or does the user choose?
 
 > **Existing code without specs:** For areas of the project that predate Workhorse, is there value in backfilling specs? Or does the hierarchy just grow organically from new work?
+
+> **Team selection:** Currently defaults to the first team. Should a team picker appear if the project has multiple teams?

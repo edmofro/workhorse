@@ -5,12 +5,18 @@ import { useRouter } from 'next/navigation'
 import { SpecEditor } from './SpecEditor'
 import { SpecListSidebar } from './SpecListSidebar'
 import { FileHistory } from './FileHistory'
+import { NewSpecDialog } from './NewSpecDialog'
+import { buildDefaultSpec, generateSpecPath, parseSpec } from '../../lib/specs/format'
 import { updateCardTitleFromSpec } from '../../lib/actions/cards'
-import { parseSpec } from '../../lib/specs/format'
 
 interface SpecFileData {
   filePath: string
   isNew: boolean
+  content: string
+}
+
+interface ProjectSpecData {
+  filePath: string
   content: string
 }
 
@@ -22,12 +28,15 @@ interface SpecTabProps {
     status: string
   }
   initialFiles: SpecFileData[]
+  projectSpecs?: ProjectSpecData[]
 }
 
-export function SpecTab({ card, initialFiles }: SpecTabProps) {
+export function SpecTab({ card, initialFiles, projectSpecs = [] }: SpecTabProps) {
   const [files, setFiles] = useState(initialFiles)
   const [activeFilePath, setActiveFilePath] = useState(files[0]?.filePath ?? null)
   const [isEditing, setIsEditing] = useState(false)
+  const [showNewSpecDialog, setShowNewSpecDialog] = useState(false)
+  const [isEnsuring, setIsEnsuring] = useState(false)
   const router = useRouter()
 
   const activeFile = files.find((f) => f.filePath === activeFilePath) ?? null
@@ -69,6 +78,23 @@ export function SpecTab({ card, initialFiles }: SpecTabProps) {
     }, 10000) // Every 10 seconds
 
     return () => clearInterval(interval)
+  }, [card.id, isEditing])
+
+  /** Ensure the card has a worktree before writing any files */
+  const ensureWorktree = useCallback(async () => {
+    setIsEnsuring(true)
+    try {
+      const res = await fetch('/api/ensure-worktree', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cardId: card.id }),
+      })
+      if (!res.ok) {
+        throw new Error('Failed to prepare worktree')
+      }
+    } finally {
+      setIsEnsuring(false)
+    }
   }, [card.id])
 
   const handleSpecUpdate = useCallback(
@@ -143,18 +169,98 @@ export function SpecTab({ card, initialFiles }: SpecTabProps) {
     [card.id],
   )
 
-  // If no files, show empty state
+  /** Create a brand-new spec file for this card */
+  const handleCreateSpec = useCallback(
+    async (title: string, area: string) => {
+      await ensureWorktree()
+
+      const filePath = generateSpecPath(area, title)
+      const content = buildDefaultSpec(title, card.identifier, area)
+
+      // Write file to worktree
+      await fetch('/api/worktree-files', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cardId: card.id, filePath, content }),
+      })
+
+      const newFile: SpecFileData = { filePath, isNew: true, content }
+      setFiles((prev) => [...prev, newFile])
+      setActiveFilePath(filePath)
+      setShowNewSpecDialog(false)
+    },
+    [card.id, card.identifier, ensureWorktree],
+  )
+
+  /** Copy a project spec into the card's worktree for editing */
+  const handleAttachProjectSpec = useCallback(
+    async (filePath: string, content: string) => {
+      await ensureWorktree()
+
+      // Write the project spec content into the card's worktree
+      await fetch('/api/worktree-files', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cardId: card.id, filePath, content }),
+      })
+
+      const newFile: SpecFileData = { filePath, isNew: false, content }
+      setFiles((prev) => {
+        // Don't add duplicates
+        if (prev.some((f) => f.filePath === filePath)) return prev
+        return [...prev, newFile]
+      })
+      setActiveFilePath(filePath)
+    },
+    [card.id, ensureWorktree],
+  )
+
+  const mappedProjectSpecs = projectSpecs.map((ps) => ({
+    id: ps.filePath,
+    filePath: ps.filePath,
+    content: ps.content,
+  }))
+
+  // If no files, show empty state with sidebar for project specs + new spec
   if (files.length === 0) {
     return (
-      <div className="flex-1 flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-[14px] text-[var(--text-muted)] mb-1">
-            No specs yet
-          </p>
-          <p className="text-[13px] text-[var(--text-faint)] mb-4">
-            Start a chat interview to develop specs, or wait for the interviewer to create spec files.
-          </p>
+      <div className="flex-1 flex overflow-hidden">
+        <SpecListSidebar
+          specs={[]}
+          projectSpecs={mappedProjectSpecs}
+          activeSpecId={null}
+          onSelect={() => {}}
+          onAdd={() => setShowNewSpecDialog(true)}
+          onAttachProjectSpec={handleAttachProjectSpec}
+        />
+
+        <div className="flex-1 flex items-center justify-center bg-[var(--bg-surface)]">
+          <div className="text-center max-w-[320px]">
+            <p className="text-[14px] text-[var(--text-muted)] mb-1">
+              No specs yet
+            </p>
+            <p className="text-[13px] text-[var(--text-faint)] mb-4">
+              Create a new spec, edit an existing project spec, or start a chat interview.
+            </p>
+            <button
+              onClick={() => setShowNewSpecDialog(true)}
+              disabled={isEnsuring}
+              className="inline-flex items-center gap-[6px] px-3 py-[6px] rounded-[var(--radius-default)] text-xs font-medium bg-[var(--accent)] text-white hover:bg-[var(--accent-hover)] transition-colors duration-100 cursor-pointer disabled:opacity-50"
+            >
+              {isEnsuring ? 'Preparing...' : 'New spec'}
+            </button>
+          </div>
         </div>
+
+        {showNewSpecDialog && (
+          <NewSpecDialog
+            cardIdentifier={card.identifier}
+            existingAreas={extractAreas(projectSpecs)}
+            onConfirm={handleCreateSpec}
+            onCancel={() => setShowNewSpecDialog(false)}
+            isCreating={isEnsuring}
+          />
+        )}
       </div>
     )
   }
@@ -168,11 +274,11 @@ export function SpecTab({ card, initialFiles }: SpecTabProps) {
           filePath: f.filePath,
           isNew: f.isNew,
         }))}
-        projectSpecs={[]}
+        projectSpecs={mappedProjectSpecs}
         activeSpecId={activeFilePath}
         onSelect={setActiveFilePath}
-        onAdd={() => {}}
-        onAttachProjectSpec={() => {}}
+        onAdd={() => setShowNewSpecDialog(true)}
+        onAttachProjectSpec={handleAttachProjectSpec}
       />
 
       {/* Spec document */}
@@ -211,6 +317,29 @@ export function SpecTab({ card, initialFiles }: SpecTabProps) {
           </div>
         )}
       </div>
+
+      {showNewSpecDialog && (
+        <NewSpecDialog
+          cardIdentifier={card.identifier}
+          existingAreas={extractAreas(projectSpecs)}
+          onConfirm={handleCreateSpec}
+          onCancel={() => setShowNewSpecDialog(false)}
+          isCreating={isEnsuring}
+        />
+      )}
     </div>
   )
+}
+
+/** Extract unique area names from project spec file paths */
+function extractAreas(specs: ProjectSpecData[]): string[] {
+  const areas = new Set<string>()
+  for (const spec of specs) {
+    // Path format: .workhorse/specs/{area}/{slug}.md
+    const parts = spec.filePath.split('/')
+    if (parts.length >= 3 && parts[0] === '.workhorse' && parts[1] === 'specs') {
+      areas.add(parts[2])
+    }
+  }
+  return [...areas].sort()
 }

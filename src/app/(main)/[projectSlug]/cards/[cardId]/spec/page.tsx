@@ -2,6 +2,8 @@ import { notFound } from 'next/navigation'
 import { prisma } from '../../../../../../lib/prisma'
 import { SpecTab } from '../../../../../../components/card/SpecTab'
 import { getChangedFiles, readWorktreeFile, worktreeExists } from '../../../../../../lib/git/worktree'
+import { getCurrentUser } from '../../../../../../lib/auth/session'
+import { fetchRepoSpecTree } from '../../../../../../lib/git/specTree'
 
 interface Props {
   params: Promise<{ cardId: string }>
@@ -47,6 +49,23 @@ export default async function SpecPage({ params }: Props) {
     )
   }
 
+  // Load project specs from the repo so users can browse/edit them
+  let projectSpecs: { filePath: string; content: string }[] = []
+  const user = await getCurrentUser()
+  if (user) {
+    try {
+      const specTree = await fetchRepoSpecTree(
+        user.accessToken, owner, repoName, defaultBranch,
+      )
+      projectSpecs = specTree.files.map((f) => ({
+        filePath: f.path,
+        content: f.content,
+      }))
+    } catch {
+      // If we can't load project specs, continue without them
+    }
+  }
+
   return (
     <SpecTab
       card={{
@@ -56,6 +75,7 @@ export default async function SpecPage({ params }: Props) {
         status: card.status,
       }}
       initialFiles={initialFiles}
+      projectSpecs={projectSpecs}
     />
   )
 }

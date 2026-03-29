@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useReducer } from 'react'
 import { useRouter } from 'next/navigation'
 import { useUser } from '../UserProvider'
 import { useInterview } from '../../lib/hooks/useInterview'
@@ -42,6 +42,34 @@ interface ProjectSpecData {
   content: string
 }
 
+type ViewAction =
+  | { type: 'navigate'; to: ViewState }
+  | { type: 'back' }
+
+interface ViewNavState {
+  current: ViewState
+  history: ViewState[]
+}
+
+function viewReducer(state: ViewNavState, action: ViewAction): ViewNavState {
+  switch (action.type) {
+    case 'navigate':
+      return {
+        current: action.to,
+        history: [...state.history, state.current],
+      }
+    case 'back': {
+      if (state.history.length === 0) {
+        return { current: { type: 'card' }, history: [] }
+      }
+      return {
+        current: state.history[state.history.length - 1],
+        history: state.history.slice(0, -1),
+      }
+    }
+  }
+}
+
 interface CardWorkspaceProps {
   card: {
     id: string
@@ -66,8 +94,11 @@ export function CardWorkspace({
 }: CardWorkspaceProps) {
   const { user } = useUser()
   const router = useRouter()
-  const [view, setView] = useState<ViewState>({ type: 'card' })
-  const [, setViewHistory] = useState<ViewState[]>([])
+  const [viewNav, dispatchView] = useReducer(viewReducer, {
+    current: { type: 'card' },
+    history: [],
+  })
+  const view = viewNav.current
 
   // Spec files state
   const [files, setFiles] = useState(initialFiles)
@@ -114,7 +145,13 @@ export function CardWorkspace({
 
           const validFiles = refreshed.filter((f): f is SpecFileData => f !== null)
           if (validFiles.length > 0) {
-            setFiles(validFiles)
+            setFiles((prev) => {
+              // Merge: update existing files, add new ones, keep locally-added files
+              // (e.g. project specs opened via handleSelectProjectSpec)
+              const refreshedPaths = new Set(validFiles.map((f) => f.filePath))
+              const kept = prev.filter((f) => !refreshedPaths.has(f.filePath))
+              return [...validFiles, ...kept]
+            })
           }
         }
       } catch {
@@ -151,24 +188,13 @@ export function CardWorkspace({
       .map((m) => ({ filePath: m.filePath })),
   ]
 
-  // View navigation with history stack
+  // View navigation with history stack (single atomic dispatch)
   const navigateTo = useCallback((next: ViewState) => {
-    setView((current) => {
-      setViewHistory((prev) => [...prev, current])
-      return next
-    })
+    dispatchView({ type: 'navigate', to: next })
   }, [])
 
   const goBack = useCallback(() => {
-    setViewHistory((prev) => {
-      if (prev.length === 0) {
-        setView({ type: 'card' })
-        return prev
-      }
-      const last = prev[prev.length - 1]
-      setView(last)
-      return prev.slice(0, -1)
-    })
+    dispatchView({ type: 'back' })
   }, [])
 
   // Send message with mode support
@@ -336,13 +362,17 @@ export function CardWorkspace({
 
   const extractedAreas = extractAreas(projectSpecs)
 
+  // Chat heights per view — padding derived as height + 20px for breathing room
+  const cardChatHeight = 260
+  const specChatHeight = 200
+
   return (
     <div className="flex-1 flex overflow-hidden">
       {/* Main content area */}
       <div className="flex-1 flex flex-col overflow-hidden relative">
         {/* Card view */}
         {view.type === 'card' && (
-          <div className="flex-1 overflow-y-auto" style={{ paddingBottom: '280px' }}>
+          <div className="flex-1 overflow-y-auto" style={{ paddingBottom: `${cardChatHeight + 20}px` }}>
             {cardTabContent}
           </div>
         )}
@@ -430,7 +460,7 @@ export function CardWorkspace({
 
         {/* Spec view */}
         {view.type === 'spec' && activeSpec && (
-          <div className="flex-1 overflow-y-auto bg-[var(--bg-surface)] flex justify-center relative" style={{ paddingBottom: '220px' }}>
+          <div className="flex-1 overflow-y-auto bg-[var(--bg-surface)] flex justify-center relative" style={{ paddingBottom: `${specChatHeight + 20}px` }}>
             <div className="w-full" style={{ maxWidth: '720px', padding: '48px 40px 80px' }}>
               <div className="flex items-center justify-between mb-2">
                 <span className="text-[12px] text-[var(--text-faint)] font-mono">
@@ -468,7 +498,7 @@ export function CardWorkspace({
               onPillSelect={handlePillSelect}
               onExpand={() => navigateTo({ type: 'chat' })}
               variant="panel"
-              height={200}
+              height={specChatHeight}
               placeholder="Ask about this spec..."
               disabled={isStreaming}
               pendingAttachments={chatAttachments.pending}
@@ -497,7 +527,7 @@ export function CardWorkspace({
             onPillSelect={handlePillSelect}
             onExpand={() => navigateTo({ type: 'chat' })}
             variant="panel"
-            height={260}
+            height={cardChatHeight}
             placeholder={
               card.status === 'NOT_STARTED'
                 ? 'Describe what you\'d like to build...'

@@ -31,7 +31,11 @@ export async function GET(request: NextRequest) {
   try {
     // Attempt to load session messages from the Agent SDK
     // The SDK stores sessions on disk; getSessionMessages retrieves them
-    const { getSessionMessages } = await import('@anthropic-ai/claude-agent-sdk')
+    const sdk = await import('@anthropic-ai/claude-agent-sdk')
+    const getSessionMessages = 'getSessionMessages' in sdk ? sdk.getSessionMessages : undefined
+    if (typeof getSessionMessages !== 'function') {
+      return NextResponse.json({ messages: [] })
+    }
     const transcript = await getSessionMessages(card.agentSessionId)
 
     if (!transcript || !Array.isArray(transcript)) {

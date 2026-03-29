@@ -31,15 +31,13 @@ export function useInterview(cardId: string) {
   const [activeToolCalls, setActiveToolCalls] = useState<ToolCallInfo[]>([])
   const [fileWrites, setFileWrites] = useState<FileWriteNotification[]>([])
   const [committedFiles, setCommittedFiles] = useState<string[]>([])
-  const [historyLoaded, setHistoryLoaded] = useState(false)
   const historyCardIdRef = useRef<string | null>(null)
   const abortRef = useRef<AbortController | null>(null)
 
   // Load chat history from Agent SDK session on mount or when cardId changes
   useEffect(() => {
-    if (historyLoaded && historyCardIdRef.current === cardId) return
+    if (historyCardIdRef.current === cardId) return
     historyCardIdRef.current = cardId
-    setHistoryLoaded(false)
 
     async function loadHistory() {
       try {
@@ -52,13 +50,11 @@ export function useInterview(cardId: string) {
         }
       } catch {
         // Ignore — history retrieval is best-effort
-      } finally {
-        setHistoryLoaded(true)
       }
     }
 
     loadHistory()
-  }, [cardId, historyLoaded])
+  }, [cardId])
 
   const sendMessage = useCallback(
     async (content: string, userName: string, attachments?: AttachmentData[], mode?: string) => {

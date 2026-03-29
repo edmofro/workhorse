@@ -2,11 +2,11 @@
 
 import Link from 'next/link'
 import { usePathname, useSearchParams } from 'next/navigation'
-import { Settings, LogOut, FileText, Palette, ChevronDown } from 'lucide-react'
+import { Settings, LogOut, FileText, Palette, ChevronDown, Ellipsis } from 'lucide-react'
 import { cn } from '../lib/cn'
 import { Avatar } from './Avatar'
 import { useUser } from './UserProvider'
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 
 interface SidebarProject {
   id: string
@@ -134,28 +134,63 @@ export function Sidebar({ projects }: SidebarProps) {
       </nav>
 
       {/* Footer */}
-      <div className="flex items-center gap-2 px-4 py-[14px] border-t border-[var(--border-subtle)]">
+      <UserMenu user={user} />
+    </aside>
+  )
+}
+
+function UserMenu({ user }: { user: { displayName: string; avatarUrl: string | null } }) {
+  const [open, setOpen] = useState(false)
+  const menuRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    function handleClick(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [open])
+
+  return (
+    <div className="relative border-t border-[var(--border-subtle)]" ref={menuRef}>
+      {open && (
+        <div className="absolute bottom-full left-2 right-2 mb-1 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-[var(--radius-default)] shadow-[var(--shadow-md)] py-1 z-40">
+          <Link
+            href="/settings"
+            onClick={() => setOpen(false)}
+            className="flex items-center gap-2 px-3 py-[7px] text-[13px] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-colors duration-100"
+          >
+            <Settings size={14} />
+            Settings
+          </Link>
+          <div className="my-1 border-t border-[var(--border-subtle)]" />
+          <form action="/api/auth/sign-out" method="POST">
+            <button
+              type="submit"
+              className="flex items-center gap-2 w-full px-3 py-[7px] text-[13px] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer"
+            >
+              <LogOut size={14} />
+              Sign out
+            </button>
+          </form>
+        </div>
+      )}
+      <div className="flex items-center gap-2 px-4 py-[14px]">
         <Avatar variant="human" initial={user.displayName} avatarUrl={user.avatarUrl} size="sm" />
         <span className="text-xs text-[var(--text-secondary)] truncate flex-1">
           {user.displayName}
         </span>
-        <Link
-          href="/settings"
-          className="text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors duration-100"
+        <button
+          onClick={() => setOpen(!open)}
+          className="text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors duration-100 cursor-pointer"
         >
-          <Settings size={14} />
-        </Link>
-        <form action="/api/auth/sign-out" method="POST">
-          <button
-            type="submit"
-            className="text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors duration-100 cursor-pointer"
-            title="Sign out"
-          >
-            <LogOut size={14} />
-          </button>
-        </form>
+          <Ellipsis size={14} />
+        </button>
       </div>
-    </aside>
+    </div>
   )
 }
 

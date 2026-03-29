@@ -326,26 +326,44 @@ export async function getChangedFiles(
   const wtPath = worktreePath(owner, repo, cardIdentifier)
 
   try {
+    // Committed changes: files changed on the branch vs the default branch
     const diff = await git(
       ['diff', '--name-status', `origin/${defaultBranch}...HEAD`],
       wtPath,
     )
 
-    return diff
-      .split('\n')
-      .filter(Boolean)
-      .map((line) => {
-        const parts = line.split('\t')
-        const status = parts[0]!
-        // For renames (R100), the new path is the third column
-        const filePath = status.startsWith('R') ? parts[2]! : parts[1]!
-        return { status, filePath }
-      })
-      .filter(({ filePath }) => filePath.startsWith('.workhorse/'))
-      .map(({ status, filePath }) => ({
-        filePath,
-        isNew: status === 'A',
-      }))
+    const committedFiles = new Map<string, boolean>()
+    for (const line of diff.split('\n').filter(Boolean)) {
+      const parts = line.split('\t')
+      const status = parts[0]!
+      const filePath = status.startsWith('R') ? parts[2]! : parts[1]!
+      if (filePath.startsWith('.workhorse/')) {
+        committedFiles.set(filePath, status === 'A')
+      }
+    }
+
+    // Uncommitted changes: files the agent has written but not yet committed.
+    // This covers both staged/unstaged modifications and new untracked files.
+    try {
+      const porcelain = await git(['status', '--porcelain', '--', '.workhorse/'], wtPath)
+      for (const line of porcelain.split('\n').filter(Boolean)) {
+        // Porcelain format: XY filename (X = index, Y = worktree)
+        const statusCodes = line.slice(0, 2)
+        const filePath = line.slice(3)
+        if (!filePath.startsWith('.workhorse/')) continue
+        if (committedFiles.has(filePath)) continue
+        // '??' = untracked (new), 'A ' = staged new, ' M' = modified, etc.
+        const isNew = statusCodes === '??' || statusCodes.startsWith('A')
+        committedFiles.set(filePath, isNew)
+      }
+    } catch {
+      // Fall through — committed files are still returned
+    }
+
+    return [...committedFiles.entries()].map(([filePath, isNew]) => ({
+      filePath,
+      isNew,
+    }))
   } catch {
     return []
   }

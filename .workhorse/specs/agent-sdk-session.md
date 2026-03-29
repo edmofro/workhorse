@@ -148,17 +148,15 @@ The mode parameter flows from the action pill UI → `useAgentSession` hook → 
 
 ### What the user sees during an agent query
 
-A single user message may trigger a long sequence of work — the agent thinks, reads files, searches code, writes specs, thinks again, and eventually responds. This can take 30 seconds or more. The user doesn't need to see the internal machinery. They need to know the agent is working, have a rough sense of what it's doing, and then see the response when it arrives.
+A single user message may trigger a long sequence of internal work — thinking, reading files, searching code, writing specs — that can take 30 seconds or more. The user doesn't need to see the machinery. They need reassurance that the agent is working, and then the response when it arrives.
 
-- [ ] While the agent is working, a single status line appears below the user's message (in place of where the response will go)
-- [ ] The status line shows the latest activity: thinking, reading a file, searching, writing a file
-- [ ] Each new activity replaces the previous one — only one status line is ever visible, not a growing log
-- [ ] Thinking events show as "Thinking..." (no thinking text displayed — it's internal reasoning, not useful to show)
-- [ ] Tool calls show as brief descriptions: "Reading `patient/search.ts`", "Searching for `allergy`", "Writing `specs/patient/allergies.md`"
-- [ ] File write/edit events are the exception — these persist as notifications (e.g. "Updated specs/patient/allergies.md") since they represent meaningful output the user may want to act on
-- [ ] When the agent produces its text response, the status line disappears and the response streams in character by character
-- [ ] If the agent does more work after producing text (reads more files, thinks again), the text remains and the status line reappears below it
-- [ ] All text the agent produces across the full query is collected into a single assistant message — the internal turn structure is not exposed
+- [ ] While the agent is working, an animated progress indicator appears below the user's message — a randomly generated word that rewrites itself letter by letter every second or so, in the accent colour, with a subtle animation (e.g. a pulsing or twinkling icon)
+- [ ] The progress word is cosmetic — it does not reflect what the agent is actually doing. It's just a sign of life
+- [ ] Thinking events, tool calls, file reads, and searches are not shown individually — all internal activity is behind the progress indicator
+- [ ] File write/edit operations are the one exception: these appear as persistent notifications (e.g. "Updated specs/patient/allergies.md") since they represent meaningful output the user may want to act on
+- [ ] When the agent produces text, the progress indicator disappears and the response streams in character by character
+- [ ] If the agent produces text partway through and then continues working (more tool calls, more thinking), the text stays visible and the progress indicator reappears below it
+- [ ] All text the agent produces across the full query is collected into a single assistant message — the internal structure is not exposed
 - [ ] Soft-lock on the spec editor during active work ("Agent is working...")
 
 ### Agent turn limits and result handling

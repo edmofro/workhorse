@@ -30,6 +30,9 @@ export async function exchangeCodeForToken(code: string): Promise<string> {
   const clientSecret = process.env.GITHUB_CLIENT_SECRET
   if (!clientSecret) throw new Error('GITHUB_CLIENT_SECRET not set')
 
+  const baseUrl = process.env.NEXTAUTH_URL ?? 'http://localhost:3000'
+  const redirectUri = `${baseUrl}/api/auth/github/callback`
+
   const res = await fetch('https://github.com/login/oauth/access_token', {
     method: 'POST',
     headers: {
@@ -40,6 +43,7 @@ export async function exchangeCodeForToken(code: string): Promise<string> {
       client_id: clientId,
       client_secret: clientSecret,
       code,
+      redirect_uri: redirectUri,
     }),
   })
 

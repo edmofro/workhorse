@@ -13,15 +13,19 @@ export async function GET(request: Request) {
   // Generate a random state parameter to prevent CSRF
   const state = crypto.randomUUID()
 
+  const isProduction = process.env.NODE_ENV === 'production'
+
   const cookieStore = await cookies()
   cookieStore.set('oauth_state', state, {
     httpOnly: true,
+    secure: isProduction,
     sameSite: 'lax',
     maxAge: 600, // 10 minutes
     path: '/',
   })
   cookieStore.set('oauth_return_to', returnTo, {
     httpOnly: true,
+    secure: isProduction,
     sameSite: 'lax',
     maxAge: 600,
     path: '/',

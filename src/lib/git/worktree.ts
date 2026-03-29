@@ -17,50 +17,6 @@ const execFileAsync = promisify(execFile)
 
 const REPOS_BASE = process.env.REPOS_BASE_PATH ?? '/data/repos'
 
-/**
- * Cache for the local repo identity (owner/repo extracted from git remote).
- * null = not yet checked, undefined = not a matching repo.
- */
-let localRepoIdentity: { owner: string; repo: string } | undefined | null = null
-
-/**
- * Check if the requested owner/repo matches the app's own git repository.
- * If so, return the project root path (which has a .git directory we can read from).
- * This avoids needing a bare clone for the app's own repo.
- */
-export async function getLocalGitDir(owner: string, repo: string): Promise<string | null> {
-  const cwd = process.cwd()
-
-  // Lazily detect the local repo identity
-  if (localRepoIdentity === null) {
-    try {
-      const url = await git(['remote', 'get-url', 'origin'], cwd)
-      // Extract owner/repo from various URL formats:
-      // https://github.com/owner/repo.git
-      // git@github.com:owner/repo.git
-      // http://proxy@host/git/owner/repo
-      const match = url.match(/[/:]([^/:]+)\/([^/.]+?)(?:\.git)?$/)
-      if (match) {
-        localRepoIdentity = { owner: match[1]!, repo: match[2]! }
-      } else {
-        localRepoIdentity = undefined
-      }
-    } catch {
-      localRepoIdentity = undefined
-    }
-  }
-
-  if (
-    localRepoIdentity &&
-    localRepoIdentity.owner.toLowerCase() === owner.toLowerCase() &&
-    localRepoIdentity.repo.toLowerCase() === repo.toLowerCase()
-  ) {
-    return cwd
-  }
-
-  return null
-}
-
 const SHA_RE = /^[a-f0-9]{7,40}$/
 
 /** Validate that a resolved path is within the expected root directory. */

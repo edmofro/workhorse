@@ -247,10 +247,41 @@ export function useAgentSession(cardId: string) {
       }
     }
 
+    // Handle error events from the server
+    if (event.type === 'error') {
+      const errorMessage = (event.message as string) || 'Something went wrong. Please try again.'
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === assistantId ? { ...m, content: errorMessage } : m,
+        ),
+      )
+    }
+
     // Handle result events (end of agent query)
     if (event.type === 'result') {
       const subtype = event.subtype as string | undefined
       const stopReason = event.stop_reason as string | undefined
+
+      if (subtype === 'error_during_execution') {
+        // Agent encountered an error during execution
+        const errors = event.errors as string[] | undefined
+        const errorMessage = errors?.length
+          ? errors.join('. ')
+          : 'Something went wrong during processing. Please try again.'
+        setMessages((prev) => {
+          const lastMsg = prev.find((m) => m.id === assistantId)
+          if (lastMsg && lastMsg.content) {
+            return prev.map((m) =>
+              m.id === assistantId
+                ? { ...m, content: m.content + '\n\n' + errorMessage }
+                : m,
+            )
+          }
+          return prev.map((m) =>
+            m.id === assistantId ? { ...m, content: errorMessage } : m,
+          )
+        })
+      }
 
       if (subtype === 'error_max_turns' && stopReason === 'tool_use') {
         // Agent was cut off mid-work — append a friendly continuation message

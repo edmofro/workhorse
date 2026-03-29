@@ -1,3 +1,4 @@
+import '../../../lib/ai/ensureSessionStorage'
 import { NextRequest } from 'next/server'
 import { query } from '@anthropic-ai/claude-agent-sdk'
 import type { SDKUserMessage } from '@anthropic-ai/claude-agent-sdk'
@@ -18,6 +19,12 @@ import {
 import { branchNameFromCard } from '../../../lib/git/branchNaming'
 import { releaseAllLocks, AI_LOCK_AGENT } from '../../../lib/fileLock'
 import { safeParseTouchedFiles } from '../../../lib/safeParseTouchedFiles'
+
+class StaleSessionError extends Error {
+  constructor() {
+    super('Stale session')
+  }
+}
 
 export async function POST(request: NextRequest) {
   const user = await requireUser()
@@ -187,7 +194,56 @@ export async function POST(request: NextRequest) {
   const stream = new ReadableStream({
     async start(controller) {
       try {
-        const agentQuery = query({ prompt: promptInput, options })
+        let agentQuery: ReturnType<typeof query>
+
+        try {
+          agentQuery = query({ prompt: promptInput, options })
+          // Eagerly pull the first event to detect stale session errors early
+          const firstChunk = await (agentQuery as AsyncIterable<unknown>)[Symbol.asyncIterator]().next()
+          if (!firstChunk.done) {
+            const event = firstChunk.value as Record<string, unknown>
+
+            // Check if the first event itself is an error about a missing session
+            if (
+              event.type === 'result' &&
+              event.subtype === 'error_during_execution' &&
+              Array.isArray(event.errors) &&
+              (event.errors as string[]).some((e: string) => e.includes('No conversation found with session ID'))
+            ) {
+              throw new StaleSessionError()
+            }
+
+            // Process the first event normally
+            if (!sessionId && 'session_id' in event && event.session_id) {
+              sessionId = event.session_id as string
+              await prisma.card.update({
+                where: { id: cardId },
+                data: { agentSessionId: sessionId },
+              })
+            }
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`))
+          }
+        } catch (err) {
+          // If the session ID is stale, clear it and retry without resume
+          const isStaleSession =
+            err instanceof StaleSessionError ||
+            (err instanceof Error && err.message.includes('No conversation found with session ID'))
+
+          if (isStaleSession && card.agentSessionId) {
+            console.warn(`Stale session ${card.agentSessionId} for card ${cardId}, starting fresh`)
+            sessionId = ''
+            await prisma.card.update({
+              where: { id: cardId },
+              data: { agentSessionId: null },
+            })
+            // Retry without resume
+            const freshOptions = { ...options }
+            delete (freshOptions as Record<string, unknown>).resume
+            agentQuery = query({ prompt: promptInput, options: freshOptions })
+          } else {
+            throw err
+          }
+        }
 
         for await (const event of agentQuery) {
           // Capture session ID from first message

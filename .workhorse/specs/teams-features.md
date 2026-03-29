@@ -13,7 +13,7 @@ The home view of Workhorse. Each team has a board — a list of open cards group
 - [ ] The board shows cards grouped by status: Not started, Specifying, Spec complete
 - [ ] Each card shows: ID, title, description snippet, tags, assignee
 - [ ] Cards can be created, edited, and archived
-- [ ] Clicking a card opens it with tabs: Card, Chat, Spec
+- [ ] Clicking a card opens its workspace (card view with floating chat and right panel)
 - [ ] Cards can be filtered by status and assignee
 - [ ] Cards are created from the board via a "New card" button
 

@@ -45,7 +45,7 @@ Product owners refining requirements, testers bringing attention to edge cases a
 
 - [ ] AI automatically drafts a spec document when it has gathered enough information
 - [ ] User can also manually trigger spec generation at any time
-- [ ] Spec appears in the Spec tab as an editable document
+- [ ] Spec appears in the right panel and can be opened in the spec view as an editable document
 - [ ] AI sees the user's direct edits on the next chat turn
 - [ ] AI can suggest revisions to previously extracted criteria based on new information
 - [ ] The spec document is collaboratively editable (multiple users can edit, like Google Docs)

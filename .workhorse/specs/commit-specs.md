@@ -21,7 +21,7 @@ For developers picking up the work, Workhorse generates an implementation prompt
 
 Each file has a navigable edit history powered by descriptive commit messages:
 
-- [ ] "History" affordance per file in the spec tab
+- [ ] "History" affordance per file in the spec view
 - [ ] Shows: relative timestamp, author (user name or "Interviewer"), change description
 - [ ] Click a version to see the file at that point
 - [ ] Diff between any two versions
@@ -29,9 +29,9 @@ Each file has a navigable edit history powered by descriptive commit messages:
 
 ## Status transitions
 
-Status changes (including `SPECIFYING` → `IMPLEMENTING`) are handled via the status dropdown on the Card tab — no dedicated button. This avoids conditionally-rendered topbar buttons that flash in and shift the layout.
+Status changes (including `SPECIFYING` → `IMPLEMENTING`) are handled via the status dropdown on the card view — no dedicated button. This avoids conditionally-rendered topbar buttons that flash in and shift the layout.
 
-- [ ] Status dropdown on the Card tab handles all transitions including `SPECIFYING` → `IMPLEMENTING`
+- [ ] Status dropdown on the card view handles all transitions including `SPECIFYING` → `IMPLEMENTING`
 - [ ] No PR is created at this point. The implementation phase creates PRs when the developer is ready
 - [ ] Backward transition allowed: `IMPLEMENTING` → `SPECIFYING` if specs need rework
 

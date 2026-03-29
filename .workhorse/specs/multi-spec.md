@@ -17,13 +17,13 @@ A card isn't "one spec" — it's a set of changes to the spec tree. A card may c
 
 The AI identifies which specs are needed based on the conversation and its codebase analysis. For new work, the AI suggests which area and filename to use. When the AI detects interactions with existing functionality, it proposes pulling in the relevant existing spec for editing. The user can also browse the project's spec tree and manually add existing specs to the card.
 
-## Spec tab
+## Right panel and spec view
 
-- [ ] The sidebar shows this card's specs at the top (the working set), with the full project spec tree available below via search or disclosure (see `editor/spec-editor.md` for full UX)
+- [ ] The right panel shows this card's specs at the top (the working set), with the full project spec tree available below via search or disclosure (see `card-navigation.md` for right panel layout)
 - [ ] Each card spec is tagged: "new" or "editing existing"
-- [ ] Clicking a spec opens it in the editor
+- [ ] Clicking a spec opens it in the spec view (with floating chat at the bottom)
 - [ ] For edits to existing specs, the current version from main is the starting point
-- [ ] Browsing the project tree and clicking "Edit" on any spec attaches it to the card and opens it for editing
+- [ ] Browsing the project tree and clicking a spec opens it for reading; editing it adds it to the card
 - [ ] User can create additional new specs and choose their area/filename
 
 ## During the interview

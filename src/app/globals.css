@@ -110,6 +110,21 @@
   --radius-round: var(--radius-round);
 }
 
+/* Thinking indicator */
+.thinking-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--accent);
+  animation: thinking-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes thinking-pulse {
+  0%, 100% { opacity: 0.3; transform: scale(0.85); }
+  50% { opacity: 1; transform: scale(1); }
+}
+
 /* Scrollbar */
 ::-webkit-scrollbar {
   width: 5px;

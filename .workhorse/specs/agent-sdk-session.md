@@ -146,18 +146,31 @@ The mode parameter flows from the action pill UI → `useAgentSession` hook → 
 
 ## Streaming and UI
 
-### What the user sees during an agent turn
+### What the user sees during an agent query
 
-- [ ] Text responses stream in real-time (character by character)
-- [ ] Tool calls are visible: "Reading `src/patient/search.ts`...", "Searching for `allergy`...", "Updated `specs/patient/allergies.md`"
-- [ ] File write/edit events highlighted as notifications (e.g. "Updated specs/patient/allergies.md")
-- [ ] Soft-lock on the spec editor during active turns ("Agent is working...")
+A single user message may trigger a long sequence of internal work — thinking, reading files, searching code, writing specs — that can take 30 seconds or more. The user doesn't need to see the machinery. They need reassurance that the agent is working, and then the response when it arrives.
 
-### What the user does NOT see
+- [ ] While the agent is working, a progress indicator appears below the user's message: a gently pulsing dot in the accent colour next to the word "Thinking..."
+- [ ] Below the indicator, a short snippet from the agent's thinking stream cycles every 1–2 seconds — a raw snatch of whatever the agent is currently thinking, truncated to a single line
+- [ ] Each snippet replaces the previous one with a quick fade transition. They stay just long enough to register movement, not long enough to read carefully
+- [ ] The snippets are not selectable or interactive — they are ephemeral texture, not content. They convey busy-ness, not information
+- [ ] Thinking events, tool calls, file reads, and searches are not shown individually — all internal activity is behind the progress indicator
+- [ ] File write/edit operations are the one exception: these appear as persistent notifications (e.g. "Updated specs/patient/allergies.md") since they represent meaningful output the user may want to act on
+- [ ] When the agent produces text, the progress indicator disappears and the response streams in character by character
+- [ ] If the agent produces text partway through and then continues working (more tool calls, more thinking), the text stays visible and the progress indicator reappears below it
+- [ ] All text the agent produces across the full query is collected into a single assistant message — the internal structure is not exposed
+- [ ] Soft-lock on the spec editor during active work ("Agent is working...")
 
-Extended thinking is incompatible with streaming in the Agent SDK. With streaming enabled, the agent's internal reasoning is not visible. Tool results (file contents, search results) are not streamed inline — they appear in the next complete message.
+### Agent turn limits and result handling
 
-Trade-off: streaming UX (seeing text arrive in real-time, seeing tool calls happen) is more valuable than seeing thinking steps. Users who want full detail can review the session transcript after the fact.
+The Agent SDK returns a `result` event at the end of every query. This is not necessarily an error — the agent may have produced a complete, useful response within the allowed turns. The `result` event carries metadata including whether the agent wanted to keep going (`stop_reason: "tool_use"` means it was mid-flow; `stop_reason: "end_turn"` means it finished naturally).
+
+- [ ] The turn limit is set high enough that the agent can complete a typical interview turn without being cut short (at least 10 turns rather than 3)
+- [ ] When a `result` event has `subtype: "error_max_turns"` and `stop_reason: "tool_use"` (the agent was cut off mid-work), the UI appends a brief assistant message noting that the interviewer had more to do and inviting the user to send another message to continue
+- [ ] When a `result` event has `subtype: "error_max_turns"` but the agent already produced a text response in an earlier turn, the continuation message is non-alarming — the agent did useful work, it just didn't get to finish everything it wanted to do
+- [ ] The continuation message is written in the interviewer's voice (e.g. "I had more to explore but ran out of steps — send another message and I'll continue"), not as a raw technical error
+- [ ] A `result` event with no error subtype (normal completion) is not shown to the user
+- [ ] Other error subtypes in `result` events are surfaced as friendly assistant messages
 
 ### API route
 

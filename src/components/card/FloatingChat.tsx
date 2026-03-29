@@ -4,6 +4,7 @@ import { useRef, useEffect } from 'react'
 import { Maximize2, X } from 'lucide-react'
 import { ChatMessage } from './ChatMessage'
 import { ChatInput } from './ChatInput'
+import { ThinkingIndicator } from './ThinkingIndicator'
 import { ActionPills, type ActionPill } from './ActionPills'
 import type { SessionMessage } from '../../lib/hooks/useAgentSession'
 import type { PendingAttachment } from '../../lib/attachments'
@@ -11,6 +12,7 @@ import type { PendingAttachment } from '../../lib/attachments'
 interface FloatingChatProps {
   messages: SessionMessage[]
   isStreaming: boolean
+  thinkingSnippet?: string | null
   pills: ActionPill[]
   onSend: (content: string) => void
   onPillSelect: (pill: ActionPill) => void
@@ -32,6 +34,7 @@ interface FloatingChatProps {
 export function FloatingChat({
   messages,
   isStreaming,
+  thinkingSnippet,
   pills,
   onSend,
   onPillSelect,
@@ -117,9 +120,7 @@ export function FloatingChat({
           </div>
         ))}
         {isStreaming && messages[messages.length - 1]?.content === '' && (
-          <div className="text-[12px] text-[var(--text-muted)]">
-            <span className="animate-pulse">Agent is working…</span>
-          </div>
+          <ThinkingIndicator snippet={thinkingSnippet ?? null} />
         )}
       </div>
 

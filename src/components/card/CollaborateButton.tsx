@@ -19,18 +19,14 @@ function setStoredMode(mode: LaunchMode) {
 
 interface CollaborateButtonProps {
   cardId: string
-  cardIdentifier: string
   cardBranch: string | null
   status: string
-  touchedFiles: string[]
-  defaultBranch: string
 }
 
 export function CollaborateButton({
+  cardId,
   cardBranch,
   status,
-  touchedFiles,
-  defaultBranch,
 }: CollaborateButtonProps) {
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const [mode, setMode] = useState<LaunchMode>(getStoredMode)
@@ -63,65 +59,21 @@ export function CollaborateButton({
 
   if (!visible || !cardBranch) return null
 
-  function generatePrompt(): string {
-    const lines: string[] = []
-
-    lines.push(`git fetch origin ${cardBranch}`)
-    lines.push(`git checkout ${cardBranch}`)
-    lines.push('')
-
-    const specFiles = touchedFiles.filter((f) => f.startsWith('.workhorse/specs/'))
-    const mockupFiles = touchedFiles.filter((f) => f.startsWith('.workhorse/design/mockups/'))
-
-    if (status === 'SPECIFYING') {
-      if (specFiles.length > 0) {
-        lines.push('Specs in progress:')
-        for (const f of specFiles) {
-          lines.push(`- ${f}`)
-        }
-        lines.push('')
-      }
-
-      if (mockupFiles.length > 0) {
-        lines.push('Mockups:')
-        for (const f of mockupFiles) {
-          lines.push(`- ${f}`)
-        }
-        lines.push('')
-      }
-
-      lines.push('Review the current specs and the codebase, then help develop')
-      lines.push('the acceptance criteria. Edit the spec files directly.')
-    } else {
-      // IMPLEMENTING
-      if (specFiles.length > 0) {
-        lines.push('Specs:')
-        for (const f of specFiles) {
-          lines.push(`- ${f}`)
-        }
-        lines.push('')
-      }
-
-      if (mockupFiles.length > 0) {
-        lines.push('Mockups:')
-        for (const f of mockupFiles) {
-          lines.push(`- ${f}`)
-        }
-        lines.push('')
-      }
-
-      lines.push('Review the diff to see what changed:')
-      lines.push(`git diff ${defaultBranch}...${cardBranch} -- .workhorse/`)
-      lines.push('')
-      lines.push('Read the specs and mockups, then implement all acceptance criteria.')
+  async function fetchPrompt(): Promise<string | null> {
+    try {
+      const res = await fetch(`/api/handoff?cardId=${encodeURIComponent(cardId)}`)
+      if (!res.ok) return null
+      const data = await res.json()
+      return data.prompt as string
+    } catch {
+      return null
     }
-
-    return lines.join('\n')
   }
 
   async function copyPrompt(): Promise<boolean> {
     try {
-      const prompt = generatePrompt()
+      const prompt = await fetchPrompt()
+      if (!prompt) return false
       await navigator.clipboard.writeText(prompt)
       return true
     } catch {

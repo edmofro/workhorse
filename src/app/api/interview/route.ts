@@ -110,7 +110,9 @@ export async function POST(request: NextRequest) {
   })
 
   // Build multimodal prompt if there are image attachments
-  const imageAttachments = messageAttachments.filter((a) => a.mimeType.startsWith('image/'))
+  const imageAttachments = messageAttachments.filter(
+    (a) => a.mimeType.startsWith('image/') && a.mimeType !== 'image/svg+xml',
+  )
 
   let promptInput: string | AsyncIterable<SDKUserMessage>
 

@@ -114,18 +114,19 @@ export function CardTab({ card, users, teams }: CardTabProps) {
   function handleDescriptionBlur() {
     if (description !== (card.description ?? '')) {
       handleUpdate({ description: description || null })
+    }
 
-      // Associate any pending description attachments with the card
-      const uploaded = descAttachments.getUploadedAttachments()
-      if (uploaded.length > 0) {
-        startTransition(async () => {
-          await associateAttachmentsWithCard(
-            card.id,
-            uploaded.map((a) => a.id),
-          )
-        })
-        descAttachments.clear()
-      }
+    // Associate any pending description attachments with the card
+    // (independent of whether description text changed)
+    const uploaded = descAttachments.getUploadedAttachments()
+    if (uploaded.length > 0) {
+      startTransition(async () => {
+        await associateAttachmentsWithCard(
+          card.id,
+          uploaded.map((a) => a.id),
+        )
+      })
+      descAttachments.clear()
     }
   }
 

@@ -1,0 +1,490 @@
+<!--
+  spec: mockups/visual-mockups.md
+  title: Full-screen mockup viewer with floating chat
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Workhorse — B9</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,450;14..32,500;14..32,600;14..32,700&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #f8f7f4;
+    --surface: #ffffff;
+    --sidebar-bg: #f1efeb;
+    --hover: #edeae5;
+    --inset: #e8e5df;
+    --border: #dfdcd5;
+    --border-light: #eae7e1;
+    --text: #1c1917;
+    --text-2: #57534e;
+    --text-3: #a8a29e;
+    --text-4: #d1cdc6;
+    --accent: #c2410c;
+    --green: #16a34a;
+    --amber: #b45309;
+    --amber-bg: rgba(180,83,9,0.06);
+    --blue: #2563eb;
+    --r: 8px;
+    --shadow: 0 1px 3px rgba(28,25,23,0.04);
+    --shadow-lg: 0 12px 40px rgba(28,25,23,0.14), 0 2px 8px rgba(28,25,23,0.06);
+  }
+
+  body {
+    font-family: 'Inter', -apple-system, sans-serif;
+    background: var(--bg); color: var(--text);
+    font-size: 14px; line-height: 1.5;
+    height: 100vh; display: flex; overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .sidebar {
+    width: 216px; background: var(--sidebar-bg);
+    border-right: 1px solid var(--border-light);
+    display: flex; flex-direction: column; flex-shrink: 0;
+  }
+  .sidebar-header { padding: 20px 16px 24px; display: flex; align-items: center; gap: 10px; }
+  .logo {
+    width: 26px; height: 26px; background: var(--accent); border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 13px; color: white;
+  }
+  .logo-text { font-weight: 700; font-size: 15px; letter-spacing: -0.03em; }
+  .sidebar-nav { padding: 0 8px; flex: 1; }
+  .nav-label {
+    padding: 20px 8px 6px; font-size: 11px; font-weight: 600;
+    color: var(--text-3); text-transform: uppercase; letter-spacing: 0.06em;
+  }
+  .nav-item {
+    display: flex; align-items: center; gap: 8px;
+    padding: 7px 8px; border-radius: 6px;
+    color: var(--text-2); cursor: pointer; font-size: 13px; font-weight: 450;
+  }
+  .nav-item:hover { background: var(--hover); }
+  .nav-item.active { background: var(--surface); color: var(--text); font-weight: 500; box-shadow: var(--shadow); }
+  .nav-dot { width: 7px; height: 7px; border-radius: 50%; }
+  .sidebar-footer {
+    padding: 14px 16px; border-top: 1px solid var(--border-light);
+    font-size: 12px; color: var(--text-2);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .avatar {
+    width: 22px; height: 22px; border-radius: 50%; background: var(--accent); color: white;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; font-weight: 600;
+  }
+
+  .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; position: relative; }
+
+  .topbar {
+    padding: 0 24px; height: 52px;
+    display: flex; align-items: center;
+    border-bottom: 1px solid var(--border-light);
+    background: var(--surface); flex-shrink: 0; gap: 16px;
+  }
+  .topbar-title { font-size: 15px; font-weight: 600; letter-spacing: -0.01em; }
+  .topbar-id { font-size: 12px; color: var(--text-3); margin-left: 2px; }
+  .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+  .view-toggle {
+    display: flex; background: var(--bg);
+    border: 1px solid var(--border-light); border-radius: 8px; padding: 2px; gap: 1px;
+  }
+  .view-toggle-btn {
+    padding: 5px 14px; border-radius: 6px; font-size: 12px; font-weight: 500;
+    cursor: pointer; border: none; font-family: inherit;
+    background: transparent; color: var(--text-3);
+  }
+  .view-toggle-btn:hover { color: var(--text-2); }
+  .view-toggle-btn.active { background: var(--surface); color: var(--text); box-shadow: var(--shadow); }
+  .btn {
+    padding: 7px 14px; border-radius: var(--r); font-size: 12px; font-weight: 500;
+    cursor: pointer; border: none; font-family: inherit;
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .btn-primary { background: var(--accent); color: white; }
+
+  /* Mockup toolbar */
+  .mockup-toolbar {
+    display: flex; align-items: center;
+    padding: 8px 16px;
+    background: var(--sidebar-bg);
+    border-bottom: 1px solid var(--border-light);
+    flex-shrink: 0;
+  }
+  .mockup-toolbar-title { font-size: 12px; color: var(--text); font-weight: 500; }
+  .toolbar-right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+  .inspect-toggle {
+    padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 500;
+    cursor: pointer; border: 1px solid var(--border-light); font-family: inherit;
+    background: var(--bg); color: var(--text-3);
+    display: flex; align-items: center; gap: 5px;
+  }
+  .inspect-toggle:hover { color: var(--text-2); border-color: var(--border); }
+  .inspect-toggle.active { background: rgba(194,65,12,0.06); color: var(--accent); border-color: rgba(194,65,12,0.2); }
+  .device-toggle {
+    display: flex; background: var(--bg); border: 1px solid var(--border-light);
+    border-radius: 6px; padding: 2px;
+  }
+  .device-btn {
+    padding: 3px 10px; border-radius: 4px; font-size: 11px; font-weight: 500;
+    cursor: pointer; border: none; font-family: inherit;
+    background: transparent; color: var(--text-3);
+  }
+  .device-btn.active { background: var(--surface); color: var(--text); box-shadow: var(--shadow); }
+
+  /* Mockup fills the area */
+  .mockup-view { flex: 1; display: flex; flex-direction: column; overflow: hidden; position: relative; }
+  .mockup-stage {
+    flex: 1; overflow: auto; background: var(--bg);
+    padding: 3px;
+  }
+  .mockup-stage > div {
+    background: var(--surface);
+    border: 1px solid var(--border-light);
+    border-radius: 6px;
+    overflow: hidden;
+    min-height: 100%;
+  }
+  .mockup-stage.responsive {
+    background: #e5e3de;
+    display: flex; align-items: flex-start; justify-content: center;
+    padding: 24px;
+  }
+  .mockup-frame-responsive {
+    background: var(--surface);
+    border-radius: 10px;
+    box-shadow: 0 4px 24px rgba(28,25,23,0.10), 0 1px 4px rgba(28,25,23,0.06);
+    overflow: hidden;
+    width: 100%;
+    transition: max-width 0.3s ease;
+  }
+  .mockup-frame-responsive.tablet { max-width: 768px; }
+  .mockup-frame-responsive.mobile { max-width: 375px; }
+
+  /* Inspector */
+  .inspecting [data-inspectable]:hover {
+    outline: 2px solid var(--accent);
+    outline-offset: -1px;
+    cursor: crosshair;
+  }
+  [data-inspectable].commented { position: relative; }
+  .comment-badge {
+    position: absolute; top: -8px; right: -8px;
+    width: 20px; height: 20px; border-radius: 50%;
+    background: var(--accent); color: white;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; font-weight: 700;
+    box-shadow: 0 1px 4px rgba(194,65,12,0.3);
+    z-index: 10;
+  }
+
+  /* Demo content */
+  .demo-app { font-family: 'Inter', sans-serif; font-size: 14px; color: #1a1a1a; }
+  .demo-header {
+    padding: 16px 24px; border-bottom: 1px solid #e5e5e5;
+    display: flex; align-items: center; justify-content: space-between; background: white;
+  }
+  .demo-header h1 { font-size: 16px; font-weight: 600; }
+  .demo-nav { display: flex; gap: 4px; position: relative; }
+  .demo-nav-item { padding: 6px 14px; border-radius: 6px; font-size: 13px; color: #666; cursor: pointer; }
+  .demo-nav-item.active { background: #f3f3f3; color: #1a1a1a; font-weight: 500; }
+  .demo-body { padding: 24px; background: #fafafa; min-height: 480px; }
+  .demo-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px; }
+  .demo-stat { background: white; border: 1px solid #e8e8e8; border-radius: 8px; padding: 16px; }
+  .demo-stat-value { font-size: 24px; font-weight: 700; margin-bottom: 2px; }
+  .demo-stat-label { font-size: 12px; color: #888; }
+  .demo-table { width: 100%; }
+  .demo-table th {
+    text-align: left; font-size: 11px; font-weight: 600; color: #888;
+    text-transform: uppercase; letter-spacing: 0.04em;
+    padding: 8px 12px; border-bottom: 1px solid #e8e8e8;
+  }
+  .demo-table td { padding: 10px 12px; font-size: 13px; border-bottom: 1px solid #f0f0f0; }
+  .demo-badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 500; }
+  .demo-badge-green { background: #dcfce7; color: #166534; }
+  .demo-badge-amber { background: #fef3c7; color: #92400e; }
+  .demo-badge-gray { background: #f3f4f6; color: #6b7280; }
+
+  /* Chat pill — bottom centre */
+  .chat-pill {
+    position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+    padding: 10px 18px; border-radius: 24px;
+    background: var(--surface); color: var(--text);
+    box-shadow: var(--shadow-lg); border: 1px solid var(--border);
+    font-size: 13px; font-weight: 500;
+    cursor: pointer; z-index: 100;
+    display: flex; align-items: center; gap: 8px;
+    user-select: none;
+  }
+  .chat-pill:hover { box-shadow: 0 12px 40px rgba(28,25,23,0.18), 0 2px 8px rgba(28,25,23,0.08); }
+  .chat-pill.hidden { display: none; }
+  .chat-pill-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); }
+  .chat-pill-badge {
+    background: var(--accent); color: white; font-size: 10px; font-weight: 700;
+    width: 18px; height: 18px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  /* Chat panel — floats bottom centre over the mockup */
+  .chat-float {
+    position: absolute;
+    bottom: 20px; left: 50%; transform: translateX(-50%);
+    width: 640px;
+    max-height: 60vh;
+    background: var(--surface);
+    border-radius: 16px;
+    box-shadow: var(--shadow-lg);
+    border: 1px solid var(--border);
+    display: flex; flex-direction: column;
+    overflow: hidden;
+    z-index: 200;
+  }
+  .chat-float.hidden { display: none; }
+
+  .chat-float-header {
+    padding: 14px 20px;
+    display: flex; align-items: center;
+    border-bottom: 1px solid var(--border-light);
+    flex-shrink: 0;
+  }
+  .chat-float-title { font-size: 14px; font-weight: 600; }
+  .chat-float-close {
+    margin-left: auto; padding: 4px 10px; border-radius: 6px;
+    font-size: 12px; font-weight: 500; cursor: pointer;
+    border: none; font-family: inherit;
+    background: var(--bg); color: var(--text-3);
+  }
+  .chat-float-close:hover { background: var(--hover); color: var(--text-2); }
+
+  .chat-float-body { flex: 1; overflow-y: auto; padding: 20px; }
+
+  .msg { margin-bottom: 22px; }
+  .msg-header { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+  .msg-avatar {
+    width: 24px; height: 24px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; font-weight: 600; flex-shrink: 0;
+  }
+  .msg-avatar.ai { background: var(--inset); color: var(--text-2); }
+  .msg-avatar.human { background: var(--accent); color: white; }
+  .msg-name { font-size: 13px; font-weight: 600; }
+  .msg-body { font-size: 14px; color: var(--text-2); line-height: 1.65; padding-left: 32px; }
+  .msg-body strong { color: var(--text); font-weight: 600; }
+  .msg-body p { margin-bottom: 10px; }
+  .msg-body p:last-child { margin-bottom: 0; }
+  .msg-component-ref {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 2px 8px; border-radius: 4px;
+    background: rgba(194,65,12,0.06); color: var(--accent);
+    font-size: 12px; font-weight: 500; cursor: pointer;
+  }
+  .msg-component-ref:hover { background: rgba(194,65,12,0.1); }
+
+  .chat-float-input {
+    padding: 14px 20px; border-top: 1px solid var(--border-light); flex-shrink: 0;
+  }
+  .input-box {
+    display: flex; align-items: flex-end;
+    background: var(--bg); border: 1px solid var(--border);
+    border-radius: 12px; padding: 6px 6px 6px 16px;
+    transition: border-color 0.15s;
+  }
+  .input-box:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(194,65,12,0.05); }
+  .input-field {
+    flex: 1; padding: 8px 0; border: none; background: none;
+    font-size: 14px; font-family: inherit; color: var(--text);
+    outline: none; resize: none; min-height: 24px; line-height: 1.5;
+  }
+  .input-field::placeholder { color: var(--text-4); }
+  .send {
+    padding: 8px 16px; background: var(--accent); color: white;
+    border: none; border-radius: 8px; font-size: 13px; font-weight: 500;
+    cursor: pointer; font-family: inherit;
+  }
+
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border-light); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<div class="sidebar">
+  <div class="sidebar-header">
+    <div class="logo">W</div>
+    <div class="logo-text">Workhorse</div>
+  </div>
+  <div class="sidebar-nav">
+    <div class="nav-item active">
+      <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="2" y="2" width="5" height="5" rx="1"/><rect x="9" y="2" width="5" height="5" rx="1"/><rect x="2" y="9" width="5" height="5" rx="1"/><rect x="9" y="9" width="5" height="5" rx="1"/></svg>
+      Features
+    </div>
+    <div class="nav-label">Teams</div>
+    <div class="nav-item"><div class="nav-dot" style="background: var(--accent);"></div> Tamanu</div>
+    <div class="nav-item"><div class="nav-dot" style="background: var(--blue);"></div> Tupaia</div>
+  </div>
+  <div class="sidebar-footer">
+    <div class="avatar">E</div>
+    Edwin M-F
+  </div>
+</div>
+
+<div class="main">
+  <div class="topbar">
+    <span class="topbar-title">AI-driven spec interview</span>
+    <span class="topbar-id">WH-001</span>
+    <div class="topbar-right">
+      <div class="view-toggle">
+        <button class="view-toggle-btn">Chat</button>
+        <button class="view-toggle-btn">Spec</button>
+        <button class="view-toggle-btn active">Mockup</button>
+      </div>
+      <button class="btn btn-primary">Commit spec</button>
+    </div>
+  </div>
+
+  <div class="mockup-view">
+    <div class="mockup-toolbar">
+      <span class="mockup-toolbar-title">Patient allergies — list view</span>
+      <div class="toolbar-right">
+        <button class="inspect-toggle" id="inspect-btn" onclick="toggleInspect()">
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="1" width="6" height="6" rx="1"/><path d="M10 3h3v3M10 13h3v-3M3 10v3h3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Comment on element
+        </button>
+        <div class="device-toggle">
+          <button class="device-btn active" onclick="setDevice('desktop')">Desktop</button>
+          <button class="device-btn" onclick="setDevice('tablet')">Tablet</button>
+          <button class="device-btn" onclick="setDevice('mobile')">Mobile</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Desktop: mockup fills the stage. Tablet/mobile: centred with grey surround -->
+    <div class="mockup-stage" id="mockup-stage">
+      <div id="mockup-content">
+        <div class="demo-app" id="demo-app">
+          <div class="demo-header" data-inspectable data-component="Header">
+            <h1>Patient Record — Allergies</h1>
+            <div class="demo-nav commented" data-inspectable data-component="Tab navigation" style="position:relative;">
+              <div class="comment-badge">1</div>
+              <div class="demo-nav-item">Summary</div>
+              <div class="demo-nav-item">Vitals</div>
+              <div class="demo-nav-item active">Allergies</div>
+              <div class="demo-nav-item">Medications</div>
+              <div class="demo-nav-item">History</div>
+            </div>
+          </div>
+          <div class="demo-body" data-inspectable data-component="Main content">
+            <div class="demo-grid" data-inspectable data-component="Stats cards">
+              <div class="demo-stat" data-inspectable data-component="Active allergies stat">
+                <div class="demo-stat-value">7</div>
+                <div class="demo-stat-label">Active allergies</div>
+              </div>
+              <div class="demo-stat" data-inspectable data-component="Unconfirmed stat">
+                <div class="demo-stat-value">2</div>
+                <div class="demo-stat-label">Unconfirmed</div>
+              </div>
+            </div>
+            <table class="demo-table" data-inspectable data-component="Allergies table">
+              <thead>
+                <tr>
+                  <th>Allergen</th>
+                  <th>Reaction</th>
+                  <th>Severity</th>
+                  <th>Status</th>
+                  <th data-inspectable data-component="Merge behaviour column" class="commented" style="position:relative;">
+                    Merge behaviour
+                    <div class="comment-badge" style="top:-6px;right:-6px;">2</div>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr data-inspectable data-component="Allergy row"><td><strong>Penicillin</strong></td><td>Anaphylaxis</td><td><span class="demo-badge demo-badge-amber">High</span></td><td><span class="demo-badge demo-badge-green">Confirmed</span></td><td><span class="demo-badge demo-badge-gray">Keep both</span></td></tr>
+                <tr data-inspectable data-component="Allergy row"><td><strong>Sulfonamides</strong></td><td>Rash</td><td><span class="demo-badge demo-badge-gray">Low</span></td><td><span class="demo-badge demo-badge-green">Confirmed</span></td><td><span class="demo-badge demo-badge-gray">Keep both</span></td></tr>
+                <tr data-inspectable data-component="Allergy row"><td><strong>Latex</strong></td><td>Contact dermatitis</td><td><span class="demo-badge demo-badge-amber">Moderate</span></td><td><span class="demo-badge demo-badge-amber">Unconfirmed</span></td><td><span class="demo-badge demo-badge-gray">Prompt user</span></td></tr>
+                <tr data-inspectable data-component="Allergy row"><td><strong>Aspirin</strong></td><td>Bronchospasm</td><td><span class="demo-badge demo-badge-amber">High</span></td><td><span class="demo-badge demo-badge-green">Confirmed</span></td><td><span class="demo-badge demo-badge-gray">Keep both</span></td></tr>
+                <tr data-inspectable data-component="Allergy row"><td><strong>Shellfish</strong></td><td>Gastrointestinal</td><td><span class="demo-badge demo-badge-gray">Low</span></td><td><span class="demo-badge demo-badge-green">Confirmed</span></td><td><span class="demo-badge demo-badge-gray">Keep both</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Chat pill -->
+    <div class="chat-pill" id="chat-pill" onclick="openChat()">
+      <div class="chat-pill-dot"></div>
+      Chat
+      <div class="chat-pill-badge">3</div>
+    </div>
+
+    <!-- Chat float — bottom centre, no blur -->
+    <div class="chat-float hidden" id="chat-float">
+      <div class="chat-float-header">
+        <div class="chat-float-title">Chat</div>
+        <button class="chat-float-close" onclick="closeChat()">Minimise</button>
+      </div>
+      <div class="chat-float-body">
+        <div class="msg">
+          <div class="msg-header"><div class="msg-avatar ai">W</div><div class="msg-name">Workhorse</div></div>
+          <div class="msg-body"><p>Here's a mockup of the allergies list view with the <strong>merge behaviour column</strong> we discussed. I've included "Keep both" and "Prompt user" as the initial merge strategies.</p></div>
+        </div>
+        <div class="msg">
+          <div class="msg-header"><div class="msg-avatar human">E</div><div class="msg-name">Edwin</div></div>
+          <div class="msg-body">
+            <p>Two things:</p>
+            <p>The <span class="msg-component-ref">Tab navigation</span> — I'm not sure tabs are right here. In the rest of Tamanu we use a sidebar for patient record sections. Can you try that?</p>
+            <p>The <span class="msg-component-ref">Merge behaviour column</span> also needs a "Keep newest" option.</p>
+          </div>
+        </div>
+        <div class="msg">
+          <div class="msg-header"><div class="msg-avatar ai">W</div><div class="msg-name">Workhorse</div></div>
+          <div class="msg-body"><p>I'll update both — switching to sidebar navigation and adding "Keep newest" as a merge strategy. Noted the nav pattern as an open decision in the spec.</p></div>
+        </div>
+      </div>
+      <div class="chat-float-input">
+        <div class="input-box">
+          <textarea class="input-field" placeholder="Comment on this mockup..." rows="1"></textarea>
+          <button class="send">Send</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function openChat() {
+  document.getElementById('chat-float').classList.remove('hidden');
+  document.getElementById('chat-pill').classList.add('hidden');
+}
+function closeChat() {
+  document.getElementById('chat-float').classList.add('hidden');
+  document.getElementById('chat-pill').classList.remove('hidden');
+}
+function toggleInspect() {
+  document.getElementById('demo-app').classList.toggle('inspecting');
+  document.getElementById('inspect-btn').classList.toggle('active');
+}
+function setDevice(size) {
+  const stage = document.getElementById('mockup-stage');
+  const content = document.getElementById('mockup-content');
+  document.querySelectorAll('.device-btn').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+  if (size === 'desktop') {
+    stage.classList.remove('responsive');
+    content.classList.remove('mockup-frame-responsive','tablet','mobile');
+  } else {
+    stage.classList.add('responsive');
+    content.className = 'mockup-frame-responsive';
+    if (size !== 'desktop') content.classList.add(size);
+  }
+}
+</script>
+
+</body>
+</html>

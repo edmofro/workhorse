@@ -1,31 +1,29 @@
 /**
  * GitHub API client for branch/commit/PR operations
- * Uses personal access token from environment
+ * Uses the authenticated user's OAuth token for all requests
  */
 
 const GITHUB_API = 'https://api.github.com'
 
-function getHeaders() {
-  const token = process.env.GITHUB_TOKEN
-  if (!token) throw new Error('GITHUB_TOKEN not set')
-
+function getHeaders(token: string) {
   return {
-    Authorization: `token ${token}`,
+    Authorization: `Bearer ${token}`,
     Accept: 'application/vnd.github.v3+json',
     'Content-Type': 'application/json',
   }
 }
 
-export async function getRef(owner: string, repo: string, ref: string) {
+export async function getRef(token: string, owner: string, repo: string, ref: string) {
   const res = await fetch(
     `${GITHUB_API}/repos/${owner}/${repo}/git/ref/heads/${ref}`,
-    { headers: getHeaders() },
+    { headers: getHeaders(token) },
   )
   if (!res.ok) return null
   return res.json()
 }
 
 export async function createBranch(
+  token: string,
   owner: string,
   repo: string,
   branchName: string,
@@ -35,7 +33,7 @@ export async function createBranch(
     `${GITHUB_API}/repos/${owner}/${repo}/git/refs`,
     {
       method: 'POST',
-      headers: getHeaders(),
+      headers: getHeaders(token),
       body: JSON.stringify({
         ref: `refs/heads/${branchName}`,
         sha: fromSha,
@@ -50,6 +48,7 @@ export async function createBranch(
 }
 
 export async function createOrUpdateFile(
+  token: string,
   owner: string,
   repo: string,
   path: string,
@@ -69,7 +68,7 @@ export async function createOrUpdateFile(
     `${GITHUB_API}/repos/${owner}/${repo}/contents/${path}`,
     {
       method: 'PUT',
-      headers: getHeaders(),
+      headers: getHeaders(token),
       body: JSON.stringify(body),
     },
   )
@@ -81,6 +80,7 @@ export async function createOrUpdateFile(
 }
 
 export async function getFileContent(
+  token: string,
   owner: string,
   repo: string,
   path: string,
@@ -89,7 +89,7 @@ export async function getFileContent(
   const url = new URL(`${GITHUB_API}/repos/${owner}/${repo}/contents/${path}`)
   if (ref) url.searchParams.set('ref', ref)
 
-  const res = await fetch(url.toString(), { headers: getHeaders() })
+  const res = await fetch(url.toString(), { headers: getHeaders(token) })
   if (!res.ok) return null
 
   const data = await res.json()
@@ -103,6 +103,7 @@ export async function getFileContent(
 }
 
 export async function createPullRequest(
+  token: string,
   owner: string,
   repo: string,
   title: string,
@@ -114,7 +115,7 @@ export async function createPullRequest(
     `${GITHUB_API}/repos/${owner}/${repo}/pulls`,
     {
       method: 'POST',
-      headers: getHeaders(),
+      headers: getHeaders(token),
       body: JSON.stringify({ title, body, head, base }),
     },
   )
@@ -126,13 +127,14 @@ export async function createPullRequest(
 }
 
 export async function getTree(
+  token: string,
   owner: string,
   repo: string,
   treeSha: string,
   recursive = true,
 ) {
   const url = `${GITHUB_API}/repos/${owner}/${repo}/git/trees/${treeSha}${recursive ? '?recursive=1' : ''}`
-  const res = await fetch(url, { headers: getHeaders() })
+  const res = await fetch(url, { headers: getHeaders(token) })
   if (!res.ok) return null
   return res.json()
 }

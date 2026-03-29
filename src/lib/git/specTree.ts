@@ -14,14 +14,15 @@ export interface RepoSpecFile {
  * Fetch all .workhorse/specs/ files from a repository
  */
 export async function fetchRepoSpecTree(
+  token: string,
   owner: string,
   repo: string,
   branch: string,
 ): Promise<{ tree: SpecTreeNode[]; files: RepoSpecFile[] }> {
-  const ref = await getRef(owner, repo, branch)
+  const ref = await getRef(token, owner, repo, branch)
   if (!ref) return { tree: [], files: [] }
 
-  const treeData = await getTree(owner, repo, ref.object.sha, true)
+  const treeData = await getTree(token, owner, repo, ref.object.sha, true)
   if (!treeData?.tree) return { tree: [], files: [] }
 
   const specFiles = treeData.tree.filter(
@@ -37,7 +38,7 @@ export async function fetchRepoSpecTree(
   // Fetch content for all files
   const files: RepoSpecFile[] = []
   for (const specFile of specFiles) {
-    const content = await getFileContent(owner, repo, specFile.path, branch)
+    const content = await getFileContent(token, owner, repo, specFile.path, branch)
     if (content?.decodedContent) {
       files.push({
         path: specFile.path,

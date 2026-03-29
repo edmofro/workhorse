@@ -33,6 +33,12 @@
   --amber-alpha: rgba(180, 83, 9, 0.06);
   --blue: #2563eb;
 
+  /* Diff / tracked-changes */
+  --bg-diff-delete: rgba(239, 68, 68, 0.15);
+  --bg-diff-insert: rgba(34, 197, 94, 0.15);
+  --text-diff-delete: #b91c1c;
+  --text-diff-insert: #15803d;
+
   /* Spacing (4px base grid) */
   --space-1: 4px;
   --space-2: 8px;
@@ -158,7 +164,7 @@ body {
 }
 .spec-extract-label {
   font-size: 11px; font-weight: 600; color: var(--green);
-  text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 8px;
+  text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px;
 }
 .spec-criterion {
   display: flex; align-items: flex-start; gap: 10px;
@@ -186,7 +192,7 @@ body {
 }
 .mockup-label {
   font-size: 11px; font-weight: 600; color: var(--text-muted);
-  text-transform: uppercase; letter-spacing: 0.04em;
+  text-transform: uppercase; letter-spacing: 0.06em;
   padding: 8px 12px; background: var(--bg-page);
   border-bottom: 1px solid var(--border-subtle);
 }
@@ -203,5 +209,5 @@ body {
 }
 .open-question-label {
   font-size: 11px; font-weight: 600; color: var(--amber);
-  text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 6px;
+  text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px;
 }

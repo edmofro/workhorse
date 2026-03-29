@@ -4,27 +4,42 @@ type AvatarVariant = 'human' | 'ai'
 type AvatarSize = 'sm' | 'chat'
 
 interface AvatarProps {
-  /** 'human' shows the initial letter with accent background; 'ai' shows "W" with inset background */
+  /** 'human' shows the user's avatar or initial; 'ai' shows "W" with inset background */
   variant: AvatarVariant
   /** 'sm' is 22px, 'chat' is 26px */
   size?: AvatarSize
-  /** The initial letter to display (only used for human variant) */
+  /** The initial letter to display as fallback (only used for human variant) */
   initial?: string
+  /** URL of the user's avatar image (only used for human variant) */
+  avatarUrl?: string | null
   className?: string
 }
 
-/**
- * Avatar component for human users and AI.
- * Human avatars display an initial letter on accent background.
- * AI avatars display "W" on the inset background.
- */
 export function Avatar({
   variant,
   size = 'sm',
   initial = 'U',
+  avatarUrl,
   className,
 }: AvatarProps) {
   const sizeValue = size === 'sm' ? '22px' : '26px'
+
+  if (variant === 'human' && avatarUrl) {
+    return (
+      <img
+        src={avatarUrl}
+        alt=""
+        className={cn(
+          'rounded-full shrink-0 object-cover',
+          className,
+        )}
+        style={{
+          width: sizeValue,
+          height: sizeValue,
+        }}
+      />
+    )
+  }
 
   return (
     <div

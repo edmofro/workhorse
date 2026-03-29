@@ -3,10 +3,10 @@
 import { prisma } from '../prisma'
 import { revalidatePath } from 'next/cache'
 
-export async function getTeams(productId: string) {
+export async function getTeams(projectId: string) {
   return prisma.team.findMany({
-    where: { productId },
-    include: { features: true },
+    where: { projectId },
+    include: { cards: true, members: true },
     orderBy: { name: 'asc' },
   })
 }
@@ -14,7 +14,7 @@ export async function getTeams(productId: string) {
 export async function createTeam(data: {
   name: string
   colour: string
-  productId: string
+  projectId: string
 }) {
   const team = await prisma.team.create({ data })
   revalidatePath('/')
@@ -33,4 +33,28 @@ export async function updateTeam(
 export async function deleteTeam(id: string) {
   await prisma.team.delete({ where: { id } })
   revalidatePath('/')
+}
+
+export async function joinTeam(userId: string, teamId: string) {
+  await prisma.teamMember.upsert({
+    where: { userId_teamId: { userId, teamId } },
+    create: { userId, teamId },
+    update: {},
+  })
+  revalidatePath('/')
+}
+
+export async function leaveTeam(userId: string, teamId: string) {
+  await prisma.teamMember.deleteMany({
+    where: { userId, teamId },
+  })
+  revalidatePath('/')
+}
+
+export async function getUserTeamIds(userId: string): Promise<string[]> {
+  const memberships = await prisma.teamMember.findMany({
+    where: { userId },
+    select: { teamId: true },
+  })
+  return memberships.map((m) => m.teamId)
 }

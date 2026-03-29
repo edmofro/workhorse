@@ -46,9 +46,9 @@ WH-013 (GitHub Integration)    — future/stretch, depends on WH-005
 
 ## Important references
 
-- **Design mockups:** `design-mockups/option-b6.html` (main UI), `option-b9-mockup-view.html` (mockup viewer)
-- **Design guide:** `docs/DESIGN-GUIDE.md` — exact CSS tokens, typography, spacing, component specs
-- **Specs:** `specs/` directory — all v1 feature specs with acceptance criteria
+- **Design mockups:** `.workhorse/design/mockups/feature-card-views.html` (main UI), `mockup-viewer.html` (mockup viewer)
+- **Design guide:** `.workhorse/design/design-system.md` — exact CSS tokens, typography, spacing, component specs
+- **Specs:** `.workhorse/specs/` directory — all v1 feature specs with acceptance criteria
 
 ---
 

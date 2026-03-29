@@ -10,14 +10,14 @@ export async function addDependency(dependentId: string, parentId: string) {
     throw new Error('Adding this dependency would create a circular dependency')
   }
 
-  await prisma.featureDependency.create({
+  await prisma.cardDependency.create({
     data: { dependentId, parentId },
   })
   revalidatePath('/')
 }
 
 export async function removeDependency(dependentId: string, parentId: string) {
-  await prisma.featureDependency.delete({
+  await prisma.cardDependency.delete({
     where: {
       dependentId_parentId: { dependentId, parentId },
     },
@@ -25,14 +25,14 @@ export async function removeDependency(dependentId: string, parentId: string) {
   revalidatePath('/')
 }
 
-export async function getDependencies(featureId: string) {
+export async function getDependencies(cardId: string) {
   const [dependsOn, dependedOnBy] = await Promise.all([
-    prisma.featureDependency.findMany({
-      where: { dependentId: featureId },
+    prisma.cardDependency.findMany({
+      where: { dependentId: cardId },
       include: { parent: true },
     }),
-    prisma.featureDependency.findMany({
-      where: { parentId: featureId },
+    prisma.cardDependency.findMany({
+      where: { parentId: cardId },
       include: { dependent: true },
     }),
   ])
@@ -54,7 +54,7 @@ async function detectCycle(dependentId: string, newParentId: string): Promise<bo
     visited.add(current)
 
     // Get what `current` depends on
-    const deps = await prisma.featureDependency.findMany({
+    const deps = await prisma.cardDependency.findMany({
       where: { dependentId: current },
       select: { parentId: true },
     })
@@ -68,8 +68,8 @@ async function detectCycle(dependentId: string, newParentId: string): Promise<bo
   return false
 }
 
-export async function searchFeatures(query: string, excludeId?: string) {
-  return prisma.feature.findMany({
+export async function searchCards(query: string, excludeId?: string) {
+  return prisma.card.findMany({
     where: {
       AND: [
         excludeId ? { id: { not: excludeId } } : {},
@@ -84,4 +84,36 @@ export async function searchFeatures(query: string, excludeId?: string) {
     take: 10,
     orderBy: { identifier: 'asc' },
   })
+}
+
+export async function checkParentsBranched(cardId: string): Promise<{ canProceed: boolean; unbranched: string[] }> {
+  const dependencies = await prisma.cardDependency.findMany({
+    where: { dependentId: cardId },
+    include: { parent: true },
+  })
+
+  const unbranched = dependencies
+    .filter((d) => !d.parent.cardBranch)
+    .map((d) => d.parent.identifier)
+
+  return {
+    canProceed: unbranched.length === 0,
+    unbranched,
+  }
+}
+
+export async function checkParentsImplementing(cardId: string): Promise<{ canProceed: boolean; incompleteParents: string[] }> {
+  const dependencies = await prisma.cardDependency.findMany({
+    where: { dependentId: cardId },
+    include: { parent: true },
+  })
+
+  const incompleteParents = dependencies
+    .filter((d) => !['IMPLEMENTING', 'COMPLETE'].includes(d.parent.status))
+    .map((d) => d.parent.identifier)
+
+  return {
+    canProceed: incompleteParents.length === 0,
+    incompleteParents,
+  }
 }

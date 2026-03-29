@@ -1,5 +1,7 @@
-import { getCurrentUser } from '../../lib/actions/user'
-import { getProducts } from '../../lib/actions/products'
+import { redirect } from 'next/navigation'
+import { getCurrentUser } from '../../lib/auth/session'
+import { getProjects } from '../../lib/actions/projects'
+import { filterAccessibleRepos } from '../../lib/auth/github'
 import { UserProvider } from '../../components/UserProvider'
 import { Sidebar } from '../../components/Sidebar'
 
@@ -8,12 +10,21 @@ export default async function MainLayout({
 }: {
   children: React.ReactNode
 }) {
-  const [user, products] = await Promise.all([
-    getCurrentUser(),
-    getProducts(),
-  ])
+  const user = await getCurrentUser()
+  if (!user) redirect('/sign-in')
 
-  const sidebarProducts = products.map((p) => ({
+  const allProjects = await getProjects()
+
+  const accessibleRepoKeys = await filterAccessibleRepos(
+    user.accessToken,
+    allProjects.map((p) => ({ owner: p.owner, repoName: p.repoName })),
+  )
+
+  const projects = allProjects.filter((p) =>
+    accessibleRepoKeys.has(`${p.owner}/${p.repoName}`),
+  )
+
+  const sidebarProjects = projects.map((p) => ({
     id: p.id,
     name: p.name,
     teams: p.teams.map((t) => ({ id: t.id, name: t.name, colour: t.colour })),
@@ -21,10 +32,15 @@ export default async function MainLayout({
 
   return (
     <UserProvider
-      initialUser={user ? { id: user.id, displayName: user.displayName } : null}
+      initialUser={{
+        id: user.id,
+        displayName: user.displayName,
+        avatarUrl: user.avatarUrl,
+        githubUsername: user.githubUsername,
+      }}
     >
       <div className="flex h-screen overflow-hidden">
-        <Sidebar products={sidebarProducts} />
+        <Sidebar projects={sidebarProjects} />
         <main className="flex-1 flex flex-col overflow-hidden">
           {children}
         </main>

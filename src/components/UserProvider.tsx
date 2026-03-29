@@ -1,11 +1,12 @@
 'use client'
 
 import { createContext, useContext, useState, useCallback, type ReactNode } from 'react'
-import { UserSetup } from './UserSetup'
 
 interface UserData {
   id: string
   displayName: string
+  avatarUrl: string | null
+  githubUsername: string
 }
 
 interface UserContextValue {
@@ -22,20 +23,16 @@ export function useUser() {
 }
 
 interface UserProviderProps {
-  initialUser: UserData | null
+  initialUser: UserData
   children: ReactNode
 }
 
 export function UserProvider({ initialUser, children }: UserProviderProps) {
-  const [user, setUserState] = useState<UserData | null>(initialUser)
+  const [user, setUserState] = useState<UserData>(initialUser)
 
   const setUser = useCallback((u: UserData) => {
     setUserState(u)
   }, [])
-
-  if (!user) {
-    return <UserSetup onComplete={setUser} />
-  }
 
   return (
     <UserContext value={{ user, setUser }}>

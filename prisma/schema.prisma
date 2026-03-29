@@ -8,17 +8,23 @@ datasource db {
 }
 
 model User {
-  id          String   @id @default(cuid())
-  displayName String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id             String   @id @default(cuid())
+  githubId       Int      @unique
+  githubUsername  String
+  displayName    String
+  avatarUrl      String?
+  accessToken    String   // GitHub OAuth access token (for API calls on behalf of user)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
-  features          Feature[]
-  specMessages      SpecMessage[]
-  featureActivities FeatureActivity[]
+  cards             Card[]
+  cardActivities    CardActivity[]
+  teamMemberships   TeamMember[]
+  comments          CardComment[]
+  fileLocks         FileLock[]
 }
 
-model Product {
+model Project {
   id            String   @id @default(cuid())
   name          String   // e.g., "Tamanu", "Tupaia"
   githubUrl     String   @unique
@@ -35,96 +41,111 @@ model Team {
   id        String   @id @default(cuid())
   name      String
   colour    String   @default("#c2410c")
-  productId String
+  projectId String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  product  Product   @relation(fields: [productId], references: [id])
-  features Feature[]
+  project  Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  cards    Card[]
+  members  TeamMember[]
 }
 
-model Feature {
-  id          String   @id @default(cuid())
-  identifier  String   @unique // e.g., "WH-001"
-  title       String
-  description String?
-  status      String   @default("NOT_STARTED") // NOT_STARTED, SPECIFYING, SPEC_COMPLETE
-  priority    String   @default("MEDIUM") // URGENT, HIGH, MEDIUM, LOW
-  teamId      String
-  assigneeId  String?
-  tags        String   @default("[]") // JSON array of strings
-  specBranch  String?  // Git branch (internal, not surfaced to user)
-  prNumber    Int?     // GitHub PR number
-  prUrl       String?  // GitHub PR URL (shown next to commit button)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+model TeamMember {
+  userId    String
+  teamId    String
+  createdAt DateTime @default(now())
 
-  team         Team        @relation(fields: [teamId], references: [id])
-  assignee     User?       @relation(fields: [assigneeId], references: [id])
-  specMessages SpecMessage[]
-  activities   FeatureActivity[]
-  specs        FeatureSpec[]
+  user User @relation(fields: [userId], references: [id])
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@id([userId, teamId])
+}
+
+model Card {
+  id              String   @id @default(cuid())
+  identifier      String   @unique // e.g., "WH-001"
+  title           String
+  description     String?
+  status          String   @default("NOT_STARTED") // NOT_STARTED, SPECIFYING, IMPLEMENTING, COMPLETE
+  priority        String   @default("MEDIUM") // URGENT, HIGH, MEDIUM, LOW
+  teamId          String
+  assigneeId      String?
+  tags            String   @default("[]") // JSON array of strings
+  cardBranch      String?  // Git branch for this card's work (internal, not surfaced to user)
+  agentSessionId  String?  // Agent SDK session ID for resumption
+  touchedFiles    String   @default("[]") // JSON array of file paths this card has modified
+  prNumber        Int?     // GitHub PR number
+  prUrl           String?  // GitHub PR URL
+  lastActivityAt  DateTime @default(now()) // For stale worktree cleanup
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  team         Team             @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  assignee     User?            @relation(fields: [assigneeId], references: [id], onDelete: SetNull)
+  activities   CardActivity[]
   mockups      Mockup[]
-  dependsOn    FeatureDependency[] @relation("dependent")
-  dependedOnBy FeatureDependency[] @relation("parent")
-}
-
-model FeatureSpec {
-  id        String   @id @default(cuid())
-  featureId String
-  filePath  String   // e.g., ".workhorse/specs/patient/allergies.md"
-  isNew     Boolean  @default(true) // new spec vs editing existing
-  content   String   // current content (auto-saved to DB)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  feature Feature @relation(fields: [featureId], references: [id], onDelete: Cascade)
-
-  @@unique([featureId, filePath])
+  comments     CardComment[]
+  fileLocks    FileLock[]
+  dependsOn    CardDependency[] @relation("dependent")
+  dependedOnBy CardDependency[] @relation("parent")
 }
 
 model Mockup {
   id        String   @id @default(cuid())
-  featureId String
+  cardId    String
   title     String
   html      String   // the HTML/CSS content
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  feature Feature @relation(fields: [featureId], references: [id], onDelete: Cascade)
+  card Card @relation(fields: [cardId], references: [id], onDelete: Cascade)
 }
 
-model FeatureDependency {
+model CardDependency {
   dependentId String
   parentId    String
 
-  dependent Feature @relation("dependent", fields: [dependentId], references: [id])
-  parent    Feature @relation("parent", fields: [parentId], references: [id])
+  dependent Card @relation("dependent", fields: [dependentId], references: [id], onDelete: Cascade)
+  parent    Card @relation("parent", fields: [parentId], references: [id], onDelete: Cascade)
 
   @@id([dependentId, parentId])
 }
 
-model SpecMessage {
+model FileLock {
   id        String   @id @default(cuid())
-  featureId String
-  userId    String?
-  role      String   // "user", "assistant", "system"
-  content   String
-  metadata  String?  // JSON for mockup references, extracted specs, etc.
-  createdAt DateTime @default(now())
+  cardId    String
+  filePath  String
+  lockedBy  String   // user ID or "ai-interviewer"
+  userId    String?  // null when lockedBy is "ai-interviewer"
+  lockedAt  DateTime @default(now())
+  expiresAt DateTime // 10 min for humans, 2 min for AI
 
-  feature Feature @relation(fields: [featureId], references: [id], onDelete: Cascade)
-  user    User?   @relation(fields: [userId], references: [id])
+  card Card  @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@unique([cardId, filePath])
 }
 
-model FeatureActivity {
+model CardActivity {
   id        String   @id @default(cuid())
-  featureId String
+  cardId    String
   userId    String?
-  action    String   // "created", "status_changed", "spec_updated", "committed", etc.
+  action    String   // "created", "status_changed", "spec_updated", "committed", "dependency_added", "dependency_removed", "marked_ready"
   details   String?  // JSON with action-specific data
   createdAt DateTime @default(now())
 
-  feature Feature @relation(fields: [featureId], references: [id], onDelete: Cascade)
-  user    User?   @relation(fields: [userId], references: [id])
+  card Card @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  user User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+}
+
+model CardComment {
+  id        String   @id @default(cuid())
+  cardId    String
+  userId    String
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  card Card @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id])
 }

@@ -1,13 +1,20 @@
-import { getProducts } from '../../../lib/actions/products'
-import { getCurrentUser } from '../../../lib/actions/user'
+import { redirect } from 'next/navigation'
+import { getCurrentUser } from '../../../lib/auth/session'
+import { getProjects } from '../../../lib/actions/projects'
+import { getUserTeamIds } from '../../../lib/actions/teams'
 import { Topbar, TopbarTitle } from '../../../components/Topbar'
 import { SettingsForm } from '../../../components/SettingsForm'
 
 export default async function SettingsPage() {
-  const [products, user] = await Promise.all([
-    getProducts(),
-    getCurrentUser(),
+  const user = await getCurrentUser()
+  if (!user) redirect('/sign-in')
+
+  const [projects, memberTeamIds] = await Promise.all([
+    getProjects(),
+    getUserTeamIds(user.id),
   ])
+
+  const memberSet = new Set(memberTeamIds)
 
   return (
     <>
@@ -17,7 +24,7 @@ export default async function SettingsPage() {
       <div className="flex-1 overflow-y-auto p-8">
         <div className="max-w-[600px]">
           <SettingsForm
-            products={products.map((p) => ({
+            projects={projects.map((p) => ({
               id: p.id,
               name: p.name,
               githubUrl: p.githubUrl,
@@ -28,9 +35,9 @@ export default async function SettingsPage() {
                 id: t.id,
                 name: t.name,
                 colour: t.colour,
+                isMember: memberSet.has(t.id),
               })),
             }))}
-            user={user ? { id: user.id, displayName: user.displayName } : null}
           />
         </div>
       </div>

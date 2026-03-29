@@ -1,21 +1,19 @@
 'use server'
 
-import { prisma } from '../prisma'
+/**
+ * Message operations — conversation history is now managed by the Agent SDK.
+ * The SDK stores session transcripts on disk, retrievable by session_id.
+ * This file is kept as a placeholder for any future message-related operations.
+ */
 
-export async function getMessages(featureId: string) {
-  return prisma.specMessage.findMany({
-    where: { featureId },
-    include: { user: true },
-    orderBy: { createdAt: 'asc' },
+export async function getSessionId(cardId: string): Promise<string | null> {
+  // Import lazily to avoid circular dependencies
+  const { prisma } = await import('../prisma')
+
+  const card = await prisma.card.findUnique({
+    where: { id: cardId },
+    select: { agentSessionId: true },
   })
-}
 
-export async function createMessage(data: {
-  featureId: string
-  userId?: string
-  role: string
-  content: string
-  metadata?: string
-}) {
-  return prisma.specMessage.create({ data })
+  return card?.agentSessionId ?? null
 }

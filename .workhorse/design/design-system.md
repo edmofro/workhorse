@@ -9,15 +9,19 @@ Workhorse is a spec-driven development workbench. The interface should feel like
 
 ## Design philosophy
 
-**Clean and uncluttered.** Every element must earn its space. When in doubt, remove it. Low density, generous whitespace, room to breathe.
+**Every element earns its space.** Before adding anything — a label, a badge, an icon, a divider — ask: does this help the user do something, or understand something they couldn't already? If a label states what the user can already see from context ("New spec", "Editing", "Viewing"), it's clutter. If a status badge repeats information the surrounding UI already communicates, remove it. Low density, generous whitespace, room to breathe. When in doubt, take it out.
 
-**No redundancy.** If two elements serve the same purpose, one shouldn't exist. Redundancy is the primary source of clutter.
+**No redundancy.** If two elements serve the same purpose, one shouldn't exist. This applies to controls (don't show two buttons that do the same thing), labels (don't label what's self-evident), and information (don't show the same data in two places). Redundancy is the primary source of clutter.
 
-**AI is normal.** No sparkle icons, no magic imagery, no purple "AI" badges. The AI is simply how the tool works. The AI avatar is a neutral "W" in a muted circle — it's a colleague, not a novelty.
+**Consistency across surfaces.** The same content should look the same everywhere. A spec body should render as formatted markdown whether viewed in the spec browser, the card spec tab, or a chat extract — never as plain text in one place and rich text in another. Labels, inputs, and metadata should use the same sizing and colour treatment throughout the app, not vary by page.
+
+**Compact contexts need compact spacing.** Spacing values from this guide are calibrated for primary workspace widths (680–720px). When a component appears in a narrower context — a 320px sidebar, a 200px file list, a floating panel — tighten margins and padding proportionally. A 28px gap between chat messages is generous at full width but wasteful in a sidebar. Use judgement: the goal is breathing room relative to the container, not absolute pixel values everywhere.
+
+**Warmth through restraint.** The warm stone palette, the rounded corners, the subtle shadows — these give the interface character. Subtle decorative elements like muted icons on functional nav items are welcome when used sparingly; they add warmth without adding noise. But decoration should never compete with content. No sparkle icons, no magic imagery, no purple "AI" badges, no gradients on UI elements.
+
+**AI is normal.** The AI is simply how the tool works — a colleague, not a novelty. The AI avatar is a neutral "W" in a muted circle. No special treatment, no "powered by AI" labels, no distinct visual language for AI-generated content versus human content.
 
 **Primary workspace gets primary space.** The chat and spec editor are where people spend their time. They get generous width and aren't crammed into side panels.
-
-**Professional with character.** Purposeful, calm, refined, confident. The warm stone-toned palette gives it personality without being distracting. It should feel like something you'd want to use every day.
 
 ---
 
@@ -216,7 +220,7 @@ The app uses a fixed sidebar (216px) with a main content area. The topbar (52px)
 
 ### Navigation
 
-The sidebar contains product names and team names with coloured dots. No icons on product nav items. The view toggle (Chat/Spec) lives in the topbar, right-aligned.
+The sidebar contains product names and team names with coloured dots. Functional nav items (Specs, Design) may use subtle muted icons for warmth — these are decorative, not informational, and should be used sparingly. Product names and team names rely on text alone. The view toggle (Chat/Spec) lives in the topbar, right-aligned.
 
 ---
 
@@ -336,14 +340,28 @@ Thin and unobtrusive. Matches the warm neutral palette.
 
 ## Things to avoid
 
+These aren't just a checklist — they reflect the philosophy above. When reviewing UI, look for the *pattern* behind each rule, not just the literal item.
+
+### Clutter and redundancy
+- Labels that state the obvious ("Viewing", "Generated from...", "New spec", "Editing") — if the user already knows from context, the label is noise
+- Status badges or indicators that duplicate information already visible in the UI (e.g. marking sidebar items "new"/"editing" when every item is already in a working context)
 - Breadcrumbs near sidebar items that navigate to the same place
-- Labels that state the obvious ("Viewing", "Generated from...")
-- Progress bars and completion percentages
-- Purple or gradient accents
-- Sparkle, wand, or magic icons anywhere
-- Dense information layouts — if it feels busy, remove things
+- Progress bars and completion percentages — these create anxiety and false precision; use simple text summaries instead
+- Dense information layouts — if it feels busy, step back and ask what can be removed entirely, not just made smaller
 - Multiple controls that do the same action
-- Monospace font for anything other than identifiers and paths
+
+### Visual discipline
+- Purple or gradient accents — not in the palette
+- Sparkle, wand, or magic icons anywhere — AI is normal, not magical
 - Borders heavier than 1px
 - Shadows heavier than `--shadow-md` on non-floating elements
 - Any animation longer than 0.3s
+- Entrance/exit animations (fade-in, slide-in, etc.) — elements appear and disappear instantly
+- Monospace font for anything other than identifiers and file paths
+- Cool greys or blue-greys — the palette is warm throughout, including overlays and backdrops (use `rgba(28,25,23,...)` not `rgba(0,0,0,...)`)
+- Colours outside the defined palette — don't invent new tints or use similar-but-different values (e.g. emerald `#10b981` when the design green is `#16a34a`)
+
+### Inconsistency
+- Rendering the same content differently on different surfaces (e.g. plain text in one view, markdown in another)
+- Using different font sizes, weights, or colours for the same type of element across pages (e.g. field labels at 13px on one page and 12px on another)
+- Applying full-width spacing in compact contexts — spacing should feel proportional to the container, not rigidly identical everywhere

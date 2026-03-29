@@ -1,27 +1,15 @@
 /**
- * Deterministic branch naming from card ID
+ * Deterministic branch naming from card ID.
+ * Branch format: workhorse/{identifier}-spec
  */
 
-export function branchNameFromCard(identifier: string, title: string): string {
-  const slug = title
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-|-$/g, '')
-    .slice(0, 40)
-
-  return `workhorse/${identifier.toLowerCase()}/${slug}`
+export function branchNameFromCard(identifier: string): string {
+  return `workhorse/${identifier.toLowerCase()}-spec`
 }
 
 export function branchNameFromParent(
   parentBranch: string,
   childIdentifier: string,
-  childTitle: string,
 ): string {
-  const childSlug = childTitle
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-|-$/g, '')
-    .slice(0, 30)
-
-  return `${parentBranch}+${childIdentifier.toLowerCase()}-${childSlug}`
+  return `${parentBranch}+${childIdentifier.toLowerCase()}`
 }

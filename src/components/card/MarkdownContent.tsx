@@ -142,7 +142,10 @@ function renderMarkdown(md: string): string {
   html = escapeHtml(html)
 
   // Restore placeholders (they were escaped, so fix them)
-  html = html.replace(/\x00PH(\d+)\x00/g, (_match, idx: string) => placeholders[parseInt(idx, 10)])
+  html = html.replace(/\x00PH(\d+)\x00/g, (_match, idx: string) => {
+    const i = parseInt(idx, 10)
+    return placeholders[i] ?? _match
+  })
 
   // Basic markdown rendering (now operating on escaped text)
   // Bold

@@ -100,11 +100,15 @@ export function SpecTab({ card, initialFiles, projectSpecs = [] }: SpecTabProps)
   const handleSpecUpdate = useCallback(
     async (filePath: string, content: string) => {
       // Write to worktree
-      await fetch('/api/worktree-files', {
+      const res = await fetch('/api/worktree-files', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ cardId: card.id, filePath, content }),
       })
+      if (!res.ok) {
+        console.error('Failed to save spec update')
+        return
+      }
 
       setFiles((prev) =>
         prev.map((f) => (f.filePath === filePath ? { ...f, content } : f)),
@@ -115,34 +119,36 @@ export function SpecTab({ card, initialFiles, projectSpecs = [] }: SpecTabProps)
 
   const handleDoneEditing = useCallback(
     async (filePath: string) => {
-      setIsEditing(false)
+      try {
+        // Release lock
+        await fetch(
+          `/api/file-lock?cardId=${card.id}&filePath=${encodeURIComponent(filePath)}`,
+          { method: 'DELETE' },
+        )
 
-      // Release lock
-      await fetch(
-        `/api/file-lock?cardId=${card.id}&filePath=${encodeURIComponent(filePath)}`,
-        { method: 'DELETE' },
-      )
+        // Auto-commit
+        await fetch('/api/auto-commit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            cardId: card.id,
+            commitMessage: 'Update spec',
+          }),
+        })
 
-      // Auto-commit
-      await fetch('/api/auto-commit', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          cardId: card.id,
-          commitMessage: 'Update spec',
-        }),
-      })
-
-      // If the card still has the placeholder title, update it from the spec
-      if (card.title === 'Untitled spec') {
-        const file = files.find((f) => f.filePath === filePath)
-        if (file) {
-          const parsed = parseSpec(file.content)
-          if (parsed.frontmatter.title && parsed.frontmatter.title !== 'Untitled') {
-            await updateCardTitleFromSpec(card.id, parsed.frontmatter.title)
-            router.refresh()
+        // If the card still has the placeholder title, update it from the spec
+        if (card.title === 'Untitled spec') {
+          const file = files.find((f) => f.filePath === filePath)
+          if (file) {
+            const parsed = parseSpec(file.content)
+            if (parsed.frontmatter.title && parsed.frontmatter.title !== 'Untitled') {
+              await updateCardTitleFromSpec(card.id, parsed.frontmatter.title)
+              router.refresh()
+            }
           }
         }
+      } finally {
+        setIsEditing(false)
       }
     },
     [card.id, card.title, files, router],

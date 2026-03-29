@@ -79,7 +79,23 @@ export async function acquireFileLock(
     } catch (err) {
       // Unique constraint violation means another request won the race
       if (err instanceof Error && err.message.includes('Unique constraint')) {
-        return { acquired: false as const }
+        const winner = await tx.fileLock.findUnique({
+          where: { cardId_filePath: { cardId, filePath } },
+          include: { user: true },
+        })
+        return {
+          acquired: false as const,
+          holder: winner
+            ? {
+                lockedBy: winner.lockedBy,
+                userId: winner.userId,
+                isAI: winner.lockedBy === 'ai-interviewer',
+                displayName: winner.lockedBy === 'ai-interviewer'
+                  ? 'Interviewer'
+                  : winner.user?.displayName ?? 'Unknown',
+              }
+            : undefined,
+        }
       }
       throw err
     }

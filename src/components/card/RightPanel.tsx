@@ -161,7 +161,7 @@ export function RightPanel({
       })}
 
       {/* Mockups */}
-      {mockups.length > 0 && (
+      {filteredMockups.length > 0 && (
         <>
           <div className="flex items-center px-3 pt-4 pb-1">
             <span className="text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-[0.06em]">

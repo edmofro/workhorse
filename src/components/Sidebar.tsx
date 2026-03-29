@@ -42,11 +42,11 @@ export function Sidebar({ projects }: SidebarProps) {
     >
       {/* Header with project switcher */}
       <div className="px-3 pt-4 pb-2">
-        <div className="flex items-center gap-[10px] px-1 mb-3">
-          <div className="w-[26px] h-[26px] bg-[var(--accent)] rounded-[var(--radius-md)] flex items-center justify-center text-white text-[13px] font-bold">
+        <div className="flex items-center gap-2 px-1 mb-3">
+          <div className="w-[24px] h-[24px] bg-[var(--accent)] rounded-[var(--radius-md)] flex items-center justify-center text-white text-[13px] font-bold">
             W
           </div>
-          <span className="text-[15px] font-bold tracking-[-0.03em]">Workhorse</span>
+          <span className="text-[14px] font-bold tracking-[-0.03em]">Workhorse</span>
         </div>
 
         {/* Project switcher */}
@@ -54,7 +54,7 @@ export function Sidebar({ projects }: SidebarProps) {
           <div className="relative">
             <button
               onClick={() => setSwitcherOpen(!switcherOpen)}
-              className="flex items-center justify-between w-full px-2 py-[7px] rounded-[var(--radius-md)] text-[13px] font-medium text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer"
+              className="flex items-center justify-between w-full px-2 py-2 rounded-[var(--radius-md)] text-[13px] font-medium text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer"
             >
               <span className="truncate">{activeProject?.name ?? 'Select project'}</span>
               <ChevronDown size={13} className="text-[var(--text-muted)] shrink-0" />
@@ -70,7 +70,7 @@ export function Sidebar({ projects }: SidebarProps) {
                       href={`/${encodeURIComponent(project.name.toLowerCase())}`}
                       onClick={() => setSwitcherOpen(false)}
                       className={cn(
-                        'block px-3 py-[6px] text-[13px] transition-colors duration-100',
+                        'block px-3 py-2 text-[13px] transition-colors duration-100',
                         project.id === activeProject?.id
                           ? 'text-[var(--text-primary)] font-medium bg-[var(--bg-hover)]'
                           : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]',
@@ -109,7 +109,7 @@ export function Sidebar({ projects }: SidebarProps) {
             </NavItem>
 
             {/* Teams section */}
-            <div className="px-2 pt-5 pb-[6px] text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-[0.06em]">
+            <div className="px-2 pt-5 pb-2 text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-[0.06em]">
               Teams
             </div>
 
@@ -161,7 +161,7 @@ function UserMenu({ user }: { user: { displayName: string; avatarUrl: string | n
           <Link
             href="/settings"
             onClick={() => setOpen(false)}
-            className="flex items-center gap-2 px-3 py-[7px] text-[13px] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-colors duration-100"
+            className="flex items-center gap-2 px-3 py-2 text-[13px] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-colors duration-100"
           >
             <Settings size={14} />
             Settings
@@ -170,7 +170,7 @@ function UserMenu({ user }: { user: { displayName: string; avatarUrl: string | n
           <form action="/api/auth/sign-out" method="POST">
             <button
               type="submit"
-              className="flex items-center gap-2 w-full px-3 py-[7px] text-[13px] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer"
+              className="flex items-center gap-2 w-full px-3 py-2 text-[13px] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer"
             >
               <LogOut size={14} />
               Sign out
@@ -178,7 +178,7 @@ function UserMenu({ user }: { user: { displayName: string; avatarUrl: string | n
           </form>
         </div>
       )}
-      <div className="flex items-center gap-2 px-4 py-[14px]">
+      <div className="flex items-center gap-2 px-4 py-3">
         <Avatar variant="human" initial={user.displayName} avatarUrl={user.avatarUrl} size="sm" />
         <span className="text-xs text-[var(--text-secondary)] truncate flex-1">
           {user.displayName}
@@ -211,7 +211,7 @@ function NavItem({
     <Link
       href={href}
       className={cn(
-        'flex items-center gap-2 px-3 py-[7px] rounded-[var(--radius-md)]',
+        'flex items-center gap-2 px-3 py-2 rounded-[var(--radius-md)]',
         'text-[13px] cursor-pointer transition-colors duration-100',
         active
           ? 'bg-[var(--bg-surface)] text-[var(--text-primary)] font-medium shadow-[var(--shadow-sm)]'

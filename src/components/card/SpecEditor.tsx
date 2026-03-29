@@ -105,7 +105,7 @@ export function SpecEditor({
           <div />
           <button
             onClick={handleStartEdit}
-            className="inline-flex items-center gap-[6px] px-3 py-[6px] rounded-[var(--radius-default)] text-xs font-medium bg-[var(--bg-surface)] text-[var(--text-secondary)] border border-[var(--border-default)] shadow-[var(--shadow-sm)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer"
+            className="inline-flex items-center gap-2 px-3 py-1 rounded-[var(--radius-default)] text-xs font-medium bg-[var(--bg-surface)] text-[var(--text-secondary)] border border-[var(--border-default)] shadow-[var(--shadow-sm)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer"
           >
             <Pencil size={11} />
             Edit
@@ -155,7 +155,7 @@ export function SpecEditor({
             </button>
             <button
               onClick={handleDoneEdit}
-              className="inline-flex items-center gap-[6px] px-3 py-[6px] rounded-[var(--radius-default)] text-xs font-medium bg-[var(--accent)] text-white hover:bg-[var(--accent-hover)] transition-colors duration-100 cursor-pointer"
+              className="inline-flex items-center gap-2 px-3 py-1 rounded-[var(--radius-default)] text-xs font-medium bg-[var(--accent)] text-white hover:bg-[var(--accent-hover)] transition-colors duration-100 cursor-pointer"
             >
               <Check size={11} />
               Done editing
@@ -190,7 +190,7 @@ export function SpecEditor({
           </button>
           <button
             onClick={handleDoneEdit}
-            className="inline-flex items-center gap-[6px] px-3 py-[6px] rounded-[var(--radius-default)] text-xs font-medium bg-[var(--accent)] text-white hover:bg-[var(--accent-hover)] transition-colors duration-100 cursor-pointer"
+            className="inline-flex items-center gap-2 px-3 py-1 rounded-[var(--radius-default)] text-xs font-medium bg-[var(--accent)] text-white hover:bg-[var(--accent-hover)] transition-colors duration-100 cursor-pointer"
           >
             <Check size={11} />
             Done editing
@@ -247,7 +247,7 @@ function SpecBodyEditor({
                 newSections[idx] = { ...newSections[idx], heading: e.target.value }
                 onChange(sectionsToMarkdown(newSections))
               }}
-              className="w-full text-[16px] font-semibold tracking-[-0.01em] leading-[1.3] bg-transparent border-none outline-none mb-3 pb-[6px] border-b border-[var(--border-subtle)]"
+              className="w-full text-[16px] font-semibold tracking-[-0.01em] leading-[1.3] bg-transparent border-none outline-none mb-3 pb-2 border-b border-[var(--border-subtle)]"
               style={{ borderBottomWidth: '1px', borderBottomStyle: 'solid', borderBottomColor: 'var(--border-subtle)' }}
             />
           )}

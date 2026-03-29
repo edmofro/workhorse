@@ -40,7 +40,7 @@ export function CardList({ cards, projectName }: CardListProps) {
   }
 
   return (
-    <div className="flex-1 overflow-y-auto" style={{ padding: '28px 32px' }}>
+    <div className="flex-1 overflow-y-auto" style={{ padding: '32px' }}>
       {STATUS_GROUPS.map((group) => {
         const groupCards = cards.filter((c) => c.status === group.key)
         if (groupCards.length === 0) return null

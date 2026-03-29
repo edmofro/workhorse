@@ -44,10 +44,10 @@
   --space-2: 8px;
   --space-3: 12px;
   --space-4: 16px;
-  --space-5: 18px;
-  --space-6: 20px;
-  --space-7: 24px;
-  --space-8: 28px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 28px;
+  --space-8: 32px;
   --space-9: 32px;
   --space-10: 48px;
 
@@ -138,16 +138,16 @@ body {
 .prose-workhorse ol { padding-left: 20px; margin-bottom: 12px; }
 .prose-workhorse ol li { margin-bottom: 8px; }
 .prose-workhorse ul { padding-left: 20px; margin-bottom: 12px; }
-.prose-workhorse ul li { margin-bottom: 6px; }
+.prose-workhorse ul li { margin-bottom: 8px; }
 .prose-workhorse h1 { font-size: 16px; font-weight: 600; letter-spacing: -0.02em; margin: 20px 0 8px; }
 .prose-workhorse h2 { font-size: 15px; font-weight: 600; letter-spacing: -0.01em; margin: 16px 0 8px; }
-.prose-workhorse h3 { font-size: 14px; font-weight: 600; margin: 12px 0 6px; }
+.prose-workhorse h3 { font-size: 14px; font-weight: 600; margin: 12px 0 8px; }
 .prose-workhorse code {
-  font-size: 12px; background: var(--bg-inset); padding: 1px 5px;
-  border-radius: 3px; font-family: ui-monospace, 'SF Mono', 'Cascadia Code', monospace;
+  font-size: 12px; background: var(--bg-inset); padding: 1px 4px;
+  border-radius: 4px; font-family: ui-monospace, 'SF Mono', 'Cascadia Code', monospace;
 }
 .prose-workhorse pre.code-block {
-  background: var(--bg-inset); padding: 14px 16px; border-radius: var(--radius-default);
+  background: var(--bg-inset); padding: 16px; border-radius: var(--radius-default);
   margin: 12px 0; overflow-x: auto; font-size: 13px;
   font-family: ui-monospace, monospace; line-height: 1.6; color: var(--text-secondary);
 }
@@ -162,7 +162,7 @@ body {
   border-bottom: 1px solid var(--border-default); text-align: left;
 }
 .prose-workhorse table.md-table td {
-  padding: 6px 12px; border-bottom: 1px solid var(--border-subtle);
+  padding: 8px 12px; border-bottom: 1px solid var(--border-subtle);
   color: var(--text-secondary);
 }
 .prose-workhorse table.md-table tbody tr:last-child td {
@@ -171,7 +171,7 @@ body {
 
 /* Spec extract block in chat */
 .spec-extract-block {
-  padding: 14px 16px;
+  padding: 16px;
   background: var(--green-alpha);
   border-radius: var(--radius-default);
   margin: 12px 0;
@@ -181,7 +181,7 @@ body {
   text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px;
 }
 .spec-criterion {
-  display: flex; align-items: flex-start; gap: 10px;
+  display: flex; align-items: flex-start; gap: 8px;
   padding: 4px 0; font-size: 13px; color: var(--text-secondary); line-height: 1.6;
 }
 .spec-check {
@@ -218,10 +218,10 @@ body {
 .open-question-block {
   background: var(--amber-alpha);
   border-radius: var(--radius-default);
-  padding: 14px 16px;
+  padding: 16px;
   margin: 12px 0;
 }
 .open-question-label {
   font-size: 11px; font-weight: 600; color: var(--amber);
-  text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px;
+  text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px;
 }

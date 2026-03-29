@@ -23,8 +23,8 @@ export function ChatMessage({
   const isAI = role === 'assistant'
 
   return (
-    <div style={{ marginBottom: compact ? '16px' : '28px' }}>
-      <div className="flex items-center gap-2" style={{ marginBottom: '6px' }}>
+    <div style={{ marginBottom: compact ? '16px' : '24px' }}>
+      <div className="flex items-center gap-2" style={{ marginBottom: '8px' }}>
         <Avatar
           variant={isAI ? 'ai' : 'human'}
           size="chat"
@@ -41,7 +41,7 @@ export function ChatMessage({
       </div>
       <div
         className="text-[14px] text-[var(--text-secondary)] leading-[1.7]"
-        style={{ paddingLeft: '34px' }}
+        style={{ paddingLeft: '36px' }}
       >
         <MarkdownContent content={content} />
         {attachments && attachments.length > 0 && (

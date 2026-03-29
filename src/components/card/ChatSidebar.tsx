@@ -56,7 +56,7 @@ export function ChatSidebar({
 
   return (
     <aside
-      className="flex flex-col overflow-hidden bg-[var(--bg-page)] border-r border-[var(--border-subtle)] shrink-0"
+      className="flex flex-col overflow-hidden bg-[var(--bg-sidebar)] border-r border-[var(--border-subtle)] shrink-0"
       style={{ width: '320px' }}
     >
       <div

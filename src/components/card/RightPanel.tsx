@@ -145,7 +145,7 @@ export function RightPanel({
             key={spec.filePath}
             onClick={() => onSelectSpec(spec.filePath)}
             className={cn(
-              'flex items-center gap-2 mx-2 px-2 py-[6px] rounded-[var(--radius-md)] text-left cursor-pointer transition-colors duration-100',
+              'flex items-center gap-2 mx-2 px-2 py-2 rounded-[var(--radius-md)] text-left cursor-pointer transition-colors duration-100',
               isActive
                 ? 'bg-[var(--bg-surface)] shadow-[var(--shadow-sm)] text-[var(--text-primary)]'
                 : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]',
@@ -174,7 +174,7 @@ export function RightPanel({
               <button
                 key={mockup.filePath}
                 onClick={() => onSelectMockup(mockup.filePath)}
-                className="flex items-center gap-2 mx-2 px-2 py-[6px] rounded-[var(--radius-md)] text-left text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer"
+                className="flex items-center gap-2 mx-2 px-2 py-2 rounded-[var(--radius-md)] text-left text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer"
               >
                 <ImageIcon size={12} className="shrink-0 text-[var(--text-muted)]" />
                 <span className="text-[12px] font-medium truncate">{fileName}</span>
@@ -199,7 +199,7 @@ export function RightPanel({
             value={searchQuery}
             onChange={(e) => handleSearchChange(e.target.value)}
             placeholder="Search specs..."
-            className="w-full pl-[26px] pr-2 py-[5px] text-[11px] bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-[var(--radius-default)] outline-none focus:border-[var(--accent)] transition-[border-color] duration-100 placeholder:text-[var(--text-faint)]"
+            className="w-full pl-6 pr-2 py-1 text-[11px] bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-[var(--radius-default)] outline-none focus:border-[var(--accent)] transition-[border-color] duration-100 placeholder:text-[var(--text-faint)]"
           />
         </div>
       </div>
@@ -209,7 +209,7 @@ export function RightPanel({
         <>
           <button
             onClick={() => setProjectSpecsOpen(!projectSpecsOpen)}
-            className="flex items-center gap-1 px-3 py-[6px] text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-[0.06em] cursor-pointer hover:text-[var(--text-secondary)] transition-colors duration-100"
+            className="flex items-center gap-1 px-3 py-2 text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-[0.06em] cursor-pointer hover:text-[var(--text-secondary)] transition-colors duration-100"
           >
             <ChevronRight
               size={11}
@@ -237,7 +237,7 @@ export function RightPanel({
                   <button
                     key={ps.filePath}
                     onClick={() => onSelectProjectSpec(ps.filePath, ps.content)}
-                    className="flex items-center gap-2 mx-2 px-2 py-[6px] rounded-[var(--radius-md)] text-left text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer w-[calc(100%-16px)]"
+                    className="flex items-center gap-2 mx-2 px-2 py-2 rounded-[var(--radius-md)] text-left text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer w-[calc(100%-16px)]"
                   >
                     <FileText size={12} className="shrink-0 text-[var(--text-faint)]" />
                     <span className="text-[12px] truncate">{fileName}</span>

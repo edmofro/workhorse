@@ -101,12 +101,12 @@ export function ChatInput({
             placeholder="Ask to refine..."
             rows={1}
             className="flex-1 border-none bg-transparent outline-none resize-none text-[13px] leading-[1.5] min-h-[24px]"
-            style={{ padding: '6px 0' }}
+            style={{ padding: '4px 0' }}
           />
           <button
             onClick={handleSubmit}
             disabled={!canSend}
-            className="px-3 py-[6px] bg-[var(--accent)] text-white rounded-[var(--radius-default)] text-xs font-medium cursor-pointer disabled:opacity-40 shrink-0"
+            className="px-3 py-1 bg-[var(--accent)] text-white rounded-[var(--radius-default)] text-xs font-medium cursor-pointer disabled:opacity-40 shrink-0"
           >
             Send
           </button>
@@ -116,7 +116,7 @@ export function ChatInput({
   }
 
   return (
-    <div className="w-full shrink-0" style={{ maxWidth: '680px', padding: '0 24px 28px' }}>
+    <div className="w-full shrink-0" style={{ maxWidth: '680px', padding: '0 24px 24px' }}>
       {hasAttachments && (
         <div className="mb-3">
           <AttachmentPreview
@@ -126,7 +126,7 @@ export function ChatInput({
         </div>
       )}
       <div className="flex items-end bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] transition-[border-color,box-shadow] duration-150 focus-within:border-[var(--accent)] focus-within:shadow-[var(--shadow-input-focus)]"
-        style={{ padding: '6px 6px 6px 16px' }}
+        style={{ padding: '8px 8px 8px 16px' }}
       >
         {onAddFiles && (
           <AttachmentButton onFiles={onAddFiles} disabled={disabled} />

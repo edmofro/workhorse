@@ -46,7 +46,7 @@ Triggered when the user sends a message from card home. The card details slide a
 - [ ] Chat messages render at 680px max-width, centred in the content area
 - [ ] Thin specs panel (~160px) on the right edge lists this card's specs and mockups with new/updated labels — like Claude's "Artifacts" sidebar
 - [ ] Specs panel collapses on narrow screens
-- [ ] File write notifications from the AI appear inline in the chat as clickable cards (file name + snippet), like Claude's artifact reference cards
+- [ ] File write notifications from the AI appear inline in the chat as clickable cards (human-readable label + snippet; see labels.md), like Claude's artifact reference cards
 - [ ] Clicking a spec in the right panel or an inline notification opens it as an artifact (chat slides left)
 - [ ] `←` back arrow returns to card home
 - [ ] Suggested action pills visible above the input bar

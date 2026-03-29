@@ -14,7 +14,7 @@ File navigation for specs has moved from a left sidebar to the persistent right 
 - [ ] Clicking a spec in the right panel opens it in the spec view (720px centred, with floating chat at the bottom)
 - [ ] Clicking a project spec opens it for reading; editing it adds it to the card's working set
 - [ ] The right panel is always present — no separate sidebar within the spec editor
-- [ ] Search in the right panel filters both card specs and project specs by filename
+- [ ] Search in the right panel filters both card specs and project specs by label and filename (see labels.md)
 
 ## Editing
 

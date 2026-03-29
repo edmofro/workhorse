@@ -220,7 +220,7 @@ export function CommitButton({
 
       {/* Toast */}
       {toast && (
-        <span className="text-[11px] text-[var(--text-secondary)] animate-fade-in">
+        <span className="text-[11px] text-[var(--text-secondary)]">
           {toast}
         </span>
       )}

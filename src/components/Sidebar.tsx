@@ -87,7 +87,7 @@ export function Sidebar({ projects }: SidebarProps) {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 px-2 overflow-y-auto">
+      <nav className="flex-1 px-3 overflow-y-auto">
         {projectPath && (
           <>
             {/* Specs link */}
@@ -176,7 +176,7 @@ function NavItem({
     <Link
       href={href}
       className={cn(
-        'flex items-center gap-2 px-2 py-[7px] rounded-[var(--radius-md)]',
+        'flex items-center gap-2 px-3 py-[7px] rounded-[var(--radius-md)]',
         'text-[13px] cursor-pointer transition-colors duration-100',
         active
           ? 'bg-[var(--bg-surface)] text-[var(--text-primary)] font-medium shadow-[var(--shadow-sm)]'

@@ -94,7 +94,7 @@ export function FileHistory({ cardId, filePath }: FileHistoryProps) {
 
   if (viewingContent) {
     return (
-      <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-8">
+      <div className="fixed inset-0 z-50 bg-[rgba(28,25,23,0.40)] flex items-center justify-center p-8">
         <div className="bg-[var(--bg-surface)] rounded-[var(--radius-lg)] shadow-[var(--shadow-lg)] max-w-3xl w-full max-h-[80vh] flex flex-col">
           <div className="flex items-center gap-2 px-4 py-3 border-b border-[var(--border-subtle)]">
             <button
@@ -127,7 +127,7 @@ export function FileHistory({ cardId, filePath }: FileHistoryProps) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-8">
+    <div className="fixed inset-0 z-50 bg-[rgba(28,25,23,0.40)] flex items-center justify-center p-8">
       <div className="bg-[var(--bg-surface)] rounded-[var(--radius-lg)] shadow-[var(--shadow-lg)] max-w-md w-full max-h-[60vh] flex flex-col">
         <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border-subtle)]">
           <span className="text-[13px] font-semibold text-[var(--text-primary)]">

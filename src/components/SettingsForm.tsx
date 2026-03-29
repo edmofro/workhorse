@@ -199,7 +199,7 @@ export function SettingsForm({ projects: initialProjects }: SettingsFormProps) {
         </div>
         <div className="flex gap-2 items-end">
           <div className="flex-1">
-            <label className="block text-[13px] text-[var(--text-secondary)] mb-1">
+            <label className="block text-[12px] text-[var(--text-muted)] mb-1">
               Display name
             </label>
             <input

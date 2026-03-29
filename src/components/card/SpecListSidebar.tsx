@@ -85,14 +85,7 @@ export function SpecListSidebar({
             )}
           >
             <FileText size={13} className="shrink-0 text-[var(--text-muted)]" />
-            <div className="flex-1 min-w-0">
-              <div className="text-[12px] font-medium truncate">{fileName}</div>
-              {spec.isNew ? (
-                <div className="text-[10px] text-[var(--green)]">new</div>
-              ) : (
-                <div className="text-[10px] text-[var(--amber)]">editing</div>
-              )}
-            </div>
+            <span className="text-[12px] font-medium truncate">{fileName}</span>
           </button>
         )
       })}

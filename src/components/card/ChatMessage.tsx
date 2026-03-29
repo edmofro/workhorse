@@ -6,6 +6,7 @@ interface ChatMessageProps {
   content: string
   userName?: string
   timestamp?: string
+  compact?: boolean
 }
 
 export function ChatMessage({
@@ -13,11 +14,12 @@ export function ChatMessage({
   content,
   userName,
   timestamp,
+  compact = false,
 }: ChatMessageProps) {
   const isAI = role === 'assistant'
 
   return (
-    <div style={{ marginBottom: '28px' }}>
+    <div style={{ marginBottom: compact ? '16px' : '28px' }}>
       <div className="flex items-center gap-2" style={{ marginBottom: '6px' }}>
         <Avatar
           variant={isAI ? 'ai' : 'human'}

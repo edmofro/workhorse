@@ -61,7 +61,7 @@ export function ChatInput({
           <button
             onClick={handleSubmit}
             disabled={!value.trim() || disabled}
-            className="px-3 py-[6px] bg-[var(--accent)] text-white rounded-[var(--radius-md)] text-xs font-medium cursor-pointer disabled:opacity-40 shrink-0"
+            className="px-3 py-[6px] bg-[var(--accent)] text-white rounded-[var(--radius-default)] text-xs font-medium cursor-pointer disabled:opacity-40 shrink-0"
           >
             Send
           </button>
@@ -89,7 +89,7 @@ export function ChatInput({
         <button
           onClick={handleSubmit}
           disabled={!value.trim() || disabled}
-          className="px-4 py-2 bg-[var(--accent)] text-white rounded-[var(--radius-default)] text-[13px] font-medium cursor-pointer disabled:opacity-40 shrink-0"
+          className="px-4 py-2 bg-[var(--accent)] text-white rounded-[var(--radius-default)] text-xs font-medium cursor-pointer disabled:opacity-40 shrink-0"
         >
           Send
         </button>

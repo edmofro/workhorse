@@ -18,7 +18,7 @@ export function StatusDot({ state, className }: StatusDotProps) {
       className={cn(
         'inline-block shrink-0 rounded-full',
         state === 'not-started' &&
-          'border-2 border-[var(--border-default)] bg-transparent',
+          'border border-[var(--border-default)] bg-transparent',
         state === 'specifying' && 'bg-[var(--amber)]',
         state === 'implementing' && 'bg-[var(--blue,#3b82f6)]',
         state === 'complete' && 'bg-[var(--green)]',

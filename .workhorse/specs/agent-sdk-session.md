@@ -150,7 +150,10 @@ The mode parameter flows from the action pill UI → `useAgentSession` hook → 
 
 A single user message may trigger a long sequence of internal work — thinking, reading files, searching code, writing specs — that can take 30 seconds or more. The user doesn't need to see the machinery. They need reassurance that the agent is working, and then the response when it arrives.
 
-- [ ] While the agent is working, a subtle animated progress indicator appears below the user's message — just enough to show the agent is alive, not a description of what it's doing
+- [ ] While the agent is working, a progress indicator appears below the user's message: a gently pulsing dot in the accent colour next to the word "Thinking..."
+- [ ] Every few seconds, a short snippet from the agent's thinking stream appears below the indicator in muted text — not every thought, just an occasional sample to show the state is changing (e.g. one snippet every 5–10 seconds, replacing the previous one)
+- [ ] Thinking snippets are truncated to a single line and fade in/out rather than appearing abruptly
+- [ ] The snippets are not selectable or interactive — they are ephemeral texture, not content
 - [ ] Thinking events, tool calls, file reads, and searches are not shown individually — all internal activity is behind the progress indicator
 - [ ] File write/edit operations are the one exception: these appear as persistent notifications (e.g. "Updated specs/patient/allergies.md") since they represent meaningful output the user may want to act on
 - [ ] When the agent produces text, the progress indicator disappears and the response streams in character by character

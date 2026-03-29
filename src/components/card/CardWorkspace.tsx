@@ -1,11 +1,12 @@
 'use client'
 
 import { useState, useCallback, useEffect, useRef } from 'react'
+import type { ViewState } from '../../lib/hooks/useViewNavigation'
 import { useRouter } from 'next/navigation'
 import { useUser } from '../UserProvider'
 import { useAgentSession } from '../../lib/hooks/useAgentSession'
 import { useAttachments } from '../../lib/hooks/useAttachments'
-import { useViewNavigation, type ViewState } from '../../lib/hooks/useViewNavigation'
+import { useViewNavigation } from '../../lib/hooks/useViewNavigation'
 import { SpecsPanel } from './SpecsPanel'
 import { SpecRail } from './SpecRail'
 import { SpecHeaderBar } from './SpecHeaderBar'
@@ -64,15 +65,10 @@ export function CardWorkspace({
 
   // Spec files state
   const [files, setFiles] = useState(initialFiles)
-  const [isEditing, _setIsEditing] = useState(false)
-  const isEditingRef = useRef(false)
-  const setIsEditing = useCallback((v: boolean) => {
-    isEditingRef.current = v
-    _setIsEditing(v)
-  }, [])
   const [showNewSpecDialog, setShowNewSpecDialog] = useState(false)
   const [isEnsuring, setIsEnsuring] = useState(false)
   const chatScrollRef = useRef<HTMLDivElement>(null)
+  const isEditingRef = useRef(false)
 
   // Agent session state
   const {
@@ -117,7 +113,6 @@ export function CardWorkspace({
         alert(`File is being edited by ${data.holder?.displayName ?? 'someone else'}`)
         return false
       }
-      setIsEditing(true)
       return true
     },
     [card.id],
@@ -125,28 +120,24 @@ export function CardWorkspace({
 
   const handleDoneEditing = useCallback(
     async (filePath: string) => {
-      try {
-        await fetch(
-          `/api/file-lock?cardId=${card.id}&filePath=${encodeURIComponent(filePath)}`,
-          { method: 'DELETE' },
-        )
-        await fetch('/api/auto-commit', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ cardId: card.id, commitMessage: 'Update spec' }),
-        })
-        if (card.title === 'Untitled spec') {
-          const file = files.find((f) => f.filePath === filePath)
-          if (file) {
-            const parsed = parseSpec(file.content)
-            if (parsed.frontmatter.title && parsed.frontmatter.title !== 'Untitled') {
-              await updateCardTitleFromSpec(card.id, parsed.frontmatter.title)
-              router.refresh()
-            }
+      await fetch(
+        `/api/file-lock?cardId=${card.id}&filePath=${encodeURIComponent(filePath)}`,
+        { method: 'DELETE' },
+      )
+      await fetch('/api/auto-commit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cardId: card.id, commitMessage: 'Update spec' }),
+      })
+      if (card.title === 'Untitled spec') {
+        const file = files.find((f) => f.filePath === filePath)
+        if (file) {
+          const parsed = parseSpec(file.content)
+          if (parsed.frontmatter.title && parsed.frontmatter.title !== 'Untitled') {
+            await updateCardTitleFromSpec(card.id, parsed.frontmatter.title)
+            router.refresh()
           }
         }
-      } finally {
-        setIsEditing(false)
       }
     },
     [card.id, card.title, files, router],
@@ -158,7 +149,6 @@ export function CardWorkspace({
         `/api/file-lock?cardId=${card.id}&filePath=${encodeURIComponent(filePath)}`,
         { method: 'DELETE' },
       )
-      setIsEditing(false)
     },
     [card.id],
   )
@@ -183,9 +173,10 @@ export function CardWorkspace({
     [card.id],
   )
 
-  // View navigation (extracted hook)
+  // View navigation (extracted hook — isEditing derived from view state)
   const {
     view,
+    isEditing,
     navigateTo,
     goBack,
     closeArtifact,
@@ -207,6 +198,11 @@ export function CardWorkspace({
     onReleaseLock: handleReleaseLock,
     onRestoreContent: handleRestoreContent,
   })
+
+  // Keep ref in sync with hook-derived isEditing (for use in setInterval)
+  useEffect(() => {
+    isEditingRef.current = isEditing
+  }, [isEditing])
 
   // Refresh files from worktree periodically
   useEffect(() => {
@@ -503,7 +499,7 @@ export function CardWorkspace({
         onEdit={enterEdit}
       />
       <div className="flex-1 overflow-y-auto flex justify-center">
-        <div className="w-full" style={{ maxWidth: '720px', padding: '32px 40px 80px' }}>
+        <div className="w-full" style={{ maxWidth: '720px', padding: '48px 40px 80px' }}>
           <SpecEditor
             key={activeSpec.filePath}
             spec={{
@@ -682,7 +678,7 @@ export function CardWorkspace({
           <div className="fixed inset-0 z-40 bg-[rgba(28,25,23,0.40)]" />
           <div className="fixed inset-0 z-50 flex items-center justify-center">
             <div className="w-full max-w-[400px] bg-[var(--bg-surface)] rounded-[var(--radius-lg)] border border-[var(--border-subtle)] shadow-[var(--shadow-lg)] p-6">
-              <h2 className="text-[15px] font-semibold tracking-[-0.02em] mb-2">
+              <h2 className="text-[16px] font-semibold tracking-[-0.02em] mb-2">
                 Save changes?
               </h2>
               <p className="text-[13px] text-[var(--text-secondary)] mb-5">

@@ -21,7 +21,7 @@ export function SpecRail({
   return (
     <div
       className="shrink-0 border-r border-[var(--border-subtle)] bg-[var(--bg-page)] flex flex-col overflow-y-auto"
-      style={{ width: '140px' }}
+      style={{ width: '144px' }}
     >
       <div className="px-3 pt-3 pb-1">
         <span className="text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-[0.06em]">

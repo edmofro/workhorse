@@ -47,6 +47,13 @@ function viewReducer(state: ViewNavState, action: ViewAction): ViewNavState {
   }
 }
 
+export interface SavePrompt {
+  /** File being edited */
+  fromPath: string
+  /** Where to go after save/discard. null = exit to artifact mode */
+  toPath: string | null
+}
+
 interface UseViewNavigationOptions {
   allNavigableFiles: string[]
   onStartEditing: (filePath: string) => Promise<boolean>
@@ -68,10 +75,10 @@ export function useViewNavigation({
   })
   const view = viewNav.current
 
-  const [savePrompt, setSavePrompt] = useState<{
-    fromPath: string
-    toPath: string
-  } | null>(null)
+  const [savePrompt, setSavePrompt] = useState<SavePrompt | null>(null)
+
+  /** Whether the view is currently in an editing state */
+  const isEditing = view.type === 'focus' && view.editing
 
   const navigateTo = useCallback((next: ViewState) => {
     dispatchView({ type: 'navigate', to: next })
@@ -165,8 +172,12 @@ export function useViewNavigation({
       view.type === 'artifact' ? view.filePath :
       view.type === 'focus' ? view.filePath : null
     if (!filePath) return
-    const ok = await onStartEditing(filePath)
-    if (!ok) return
+    try {
+      const ok = await onStartEditing(filePath)
+      if (!ok) return
+    } catch {
+      return
+    }
     dispatchView({
       type: 'navigate',
       to: { type: 'focus', filePath, editing: true },
@@ -184,43 +195,62 @@ export function useViewNavigation({
     })
   }, [view, onDoneEditing])
 
-  // Exit focus -> back to artifact (releases lock if editing)
-  const exitFocus = useCallback(async () => {
+  // Exit focus -> back to artifact. Prompts save if editing.
+  const exitFocus = useCallback(() => {
     if (view.type !== 'focus') return
     if (view.editing) {
-      await onReleaseLock(view.filePath)
+      // Prompt save — toPath null means "exit to artifact mode"
+      setSavePrompt({ fromPath: view.filePath, toPath: null })
+      return
     }
     dispatchView({
       type: 'navigate',
       to: { type: 'artifact', filePath: view.filePath },
     })
-  }, [view, onReleaseLock])
+  }, [view])
 
-  // Save prompt: save and flip
+  // Save prompt: save and continue
   const saveAndFlip = useCallback(async () => {
     if (!savePrompt) return
     await onDoneEditing(savePrompt.fromPath)
-    dispatchView({
-      type: 'navigate',
-      to: { type: 'focus', filePath: savePrompt.toPath, editing: false },
-    })
+    if (savePrompt.toPath) {
+      // Flipping to another file in focus mode
+      dispatchView({
+        type: 'navigate',
+        to: { type: 'focus', filePath: savePrompt.toPath, editing: false },
+      })
+    } else {
+      // Exiting focus mode to artifact
+      dispatchView({
+        type: 'navigate',
+        to: { type: 'artifact', filePath: savePrompt.fromPath },
+      })
+    }
     setSavePrompt(null)
   }, [savePrompt, onDoneEditing])
 
-  // Save prompt: discard and flip (restores content, releases lock)
+  // Save prompt: discard and continue (restores content, releases lock)
   const discardAndFlip = useCallback(async () => {
     if (!savePrompt) return
     await onRestoreContent(savePrompt.fromPath)
     await onReleaseLock(savePrompt.fromPath)
-    dispatchView({
-      type: 'navigate',
-      to: { type: 'focus', filePath: savePrompt.toPath, editing: false },
-    })
+    if (savePrompt.toPath) {
+      dispatchView({
+        type: 'navigate',
+        to: { type: 'focus', filePath: savePrompt.toPath, editing: false },
+      })
+    } else {
+      dispatchView({
+        type: 'navigate',
+        to: { type: 'artifact', filePath: savePrompt.fromPath },
+      })
+    }
     setSavePrompt(null)
   }, [savePrompt, onReleaseLock, onRestoreContent])
 
   return {
     view,
+    isEditing,
     navigateTo,
     goBack,
     closeArtifact,

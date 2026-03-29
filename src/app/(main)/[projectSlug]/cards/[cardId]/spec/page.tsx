@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation'
 import { prisma } from '../../../../../../lib/prisma'
 import { SpecTab } from '../../../../../../components/card/SpecTab'
+import { getChangedFiles, readWorktreeFile, worktreeExists } from '../../../../../../lib/git/worktree'
 
 interface Props {
   params: Promise<{ cardId: string }>
@@ -12,17 +13,39 @@ export default async function SpecPage({ params }: Props) {
   const card = await prisma.card.findUnique({
     where: { identifier: cardId },
     include: {
-      specs: { orderBy: { filePath: 'asc' } },
-      specMessages: {
-        orderBy: { createdAt: 'asc' },
-        include: { user: true },
-        where: { role: { in: ['user', 'assistant'] } },
-      },
       team: { include: { project: true } },
     },
   })
 
   if (!card) notFound()
+
+  const { owner, repoName, defaultBranch } = card.team.project
+
+  // Load spec files from worktree if it exists
+  let initialFiles: { filePath: string; isNew: boolean; content: string }[] = []
+
+  const hasWorktree = await worktreeExists(owner, repoName, card.identifier)
+  if (hasWorktree) {
+    const changedFiles = await getChangedFiles(
+      owner, repoName, card.identifier, defaultBranch,
+    )
+
+    // Filter to spec files only
+    const specFiles = changedFiles.filter((f) =>
+      f.filePath.startsWith('.workhorse/specs/') ||
+      f.filePath.startsWith('.workhorse/design/mockups/'),
+    )
+
+    // Read content for each file
+    initialFiles = await Promise.all(
+      specFiles.map(async (f) => {
+        const content = await readWorktreeFile(
+          owner, repoName, card.identifier, f.filePath,
+        ) ?? ''
+        return { ...f, content }
+      }),
+    )
+  }
 
   return (
     <SpecTab
@@ -30,21 +53,9 @@ export default async function SpecPage({ params }: Props) {
         id: card.id,
         identifier: card.identifier,
         title: card.title,
+        status: card.status,
       }}
-      specs={card.specs.map((s) => ({
-        id: s.id,
-        filePath: s.filePath,
-        isNew: s.isNew,
-        content: s.content,
-        baselineContent: s.baselineContent,
-      }))}
-      messages={card.specMessages.map((m) => ({
-        id: m.id,
-        role: m.role,
-        content: m.content,
-        userName: m.user?.displayName,
-        createdAt: m.createdAt.toISOString(),
-      }))}
+      initialFiles={initialFiles}
     />
   )
 }

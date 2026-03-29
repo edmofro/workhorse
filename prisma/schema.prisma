@@ -18,10 +18,10 @@ model User {
   updatedAt      DateTime @updatedAt
 
   cards             Card[]
-  specMessages      SpecMessage[]
   cardActivities    CardActivity[]
   teamMemberships   TeamMember[]
   comments          CardComment[]
+  fileLocks         FileLock[]
 }
 
 model Project {
@@ -62,46 +62,32 @@ model TeamMember {
 }
 
 model Card {
-  id          String   @id @default(cuid())
-  identifier  String   @unique // e.g., "WH-001"
-  title       String
-  description String?
-  status      String   @default("NOT_STARTED") // NOT_STARTED, SPECIFYING, SPEC_COMPLETE
-  priority    String   @default("MEDIUM") // URGENT, HIGH, MEDIUM, LOW
-  teamId      String
-  assigneeId  String?
-  tags        String   @default("[]") // JSON array of strings
-  specBranch  String?  // Git branch (internal, not surfaced to user)
-  prNumber    Int?     // GitHub PR number
-  prUrl       String?  // GitHub PR URL (shown next to commit button)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id              String   @id @default(cuid())
+  identifier      String   @unique // e.g., "WH-001"
+  title           String
+  description     String?
+  status          String   @default("NOT_STARTED") // NOT_STARTED, SPECIFYING, IMPLEMENTING, COMPLETE
+  priority        String   @default("MEDIUM") // URGENT, HIGH, MEDIUM, LOW
+  teamId          String
+  assigneeId      String?
+  tags            String   @default("[]") // JSON array of strings
+  cardBranch      String?  // Git branch for this card's work (internal, not surfaced to user)
+  agentSessionId  String?  // Agent SDK session ID for resumption
+  touchedFiles    String   @default("[]") // JSON array of file paths this card has modified
+  prNumber        Int?     // GitHub PR number
+  prUrl           String?  // GitHub PR URL
+  lastActivityAt  DateTime @default(now()) // For stale worktree cleanup
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   team         Team             @relation(fields: [teamId], references: [id], onDelete: Cascade)
   assignee     User?            @relation(fields: [assigneeId], references: [id], onDelete: SetNull)
-  specMessages SpecMessage[]
   activities   CardActivity[]
-  specs        CardSpec[]
   mockups      Mockup[]
   comments     CardComment[]
+  fileLocks    FileLock[]
   dependsOn    CardDependency[] @relation("dependent")
   dependedOnBy CardDependency[] @relation("parent")
-}
-
-model CardSpec {
-  id               String   @id @default(cuid())
-  cardId           String
-  filePath         String   // e.g., ".workhorse/specs/patient/allergies.md"
-  isNew            Boolean  @default(true) // new spec vs editing existing
-  content          String   // current content (auto-saved to DB)
-  baselineContent  String?  // content from main at time of attachment (for tracked-changes diff)
-  committedContent String?  // content as of last commit (null = never committed)
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-
-  card Card @relation(fields: [cardId], references: [id], onDelete: Cascade)
-
-  @@unique([cardId, filePath])
 }
 
 model Mockup {
@@ -125,24 +111,26 @@ model CardDependency {
   @@id([dependentId, parentId])
 }
 
-model SpecMessage {
+model FileLock {
   id        String   @id @default(cuid())
   cardId    String
-  userId    String?
-  role      String   // "user", "assistant", "system"
-  content   String
-  metadata  String?  // JSON for mockup references, extracted specs, auto-review results, etc.
-  createdAt DateTime @default(now())
+  filePath  String
+  lockedBy  String   // user ID or "ai-interviewer"
+  userId    String?  // null when lockedBy is "ai-interviewer"
+  lockedAt  DateTime @default(now())
+  expiresAt DateTime // 10 min for humans, 2 min for AI
 
-  card Card @relation(fields: [cardId], references: [id], onDelete: Cascade)
-  user User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+  card Card  @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@unique([cardId, filePath])
 }
 
 model CardActivity {
   id        String   @id @default(cuid())
   cardId    String
   userId    String?
-  action    String   // "created", "status_changed", "spec_updated", "committed", "dependency_added", "dependency_removed"
+  action    String   // "created", "status_changed", "spec_updated", "committed", "dependency_added", "dependency_removed", "marked_ready"
   details   String?  // JSON with action-specific data
   createdAt DateTime @default(now())
 

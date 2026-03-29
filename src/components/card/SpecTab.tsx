@@ -1,24 +1,13 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { SpecEditor } from './SpecEditor'
-import { ChatSidebar } from './ChatSidebar'
 import { SpecListSidebar } from './SpecListSidebar'
-import { buildDefaultSpec } from '../../lib/specs/format'
-import { createSpec, createSpecWithBaseline } from '../../lib/actions/specs'
-import { useUser } from '../UserProvider'
+import { FileHistory } from './FileHistory'
 
-interface SpecData {
-  id: string
+interface SpecFileData {
   filePath: string
   isNew: boolean
-  content: string
-  baselineContent?: string | null
-}
-
-interface ProjectSpecData {
-  id: string
-  filePath: string
   content: string
 }
 
@@ -27,64 +16,119 @@ interface SpecTabProps {
     id: string
     identifier: string
     title: string
+    status: string
   }
-  specs: SpecData[]
-  projectSpecs?: ProjectSpecData[]
-  messages: {
-    id: string
-    role: string
-    content: string
-    userName?: string
-    createdAt: string
-  }[]
+  initialFiles: SpecFileData[]
 }
 
-export function SpecTab({ card, specs: initialSpecs, projectSpecs, messages }: SpecTabProps) {
-  const { user } = useUser()
-  const [specs, setSpecs] = useState(initialSpecs)
-  const [activeSpecId, setActiveSpecId] = useState(specs[0]?.id ?? null)
+export function SpecTab({ card, initialFiles }: SpecTabProps) {
+  const [files, setFiles] = useState(initialFiles)
+  const [activeFilePath, setActiveFilePath] = useState(files[0]?.filePath ?? null)
+  const [isEditing, setIsEditing] = useState(false)
 
-  const activeSpec = specs.find((s) => s.id === activeSpecId) ?? null
+  const activeFile = files.find((f) => f.filePath === activeFilePath) ?? null
 
-  const handleAddSpec = useCallback(async () => {
-    const filePath = `.workhorse/specs/${card.identifier.toLowerCase().replace(/[^a-z0-9]+/g, '-')}/new-spec.md`
-    const content = buildDefaultSpec(
-      'New spec',
-      card.identifier,
-    )
+  // Refresh files from worktree periodically (detect external changes)
+  // Skip refresh while user is actively editing to avoid overwriting their work
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      if (isEditing) return
+      if (document.hidden) return // Skip while tab is in background
+      try {
+        const res = await fetch(`/api/worktree-files?cardId=${card.id}`)
+        if (res.ok) {
+          const data = await res.json()
+          const changedFiles = data.files as { filePath: string; isNew: boolean }[]
 
-    const spec = await createSpec({
-      cardId: card.id,
-      filePath,
-      isNew: true,
-      content,
-    })
+          // Refresh content for changed files
+          const refreshed = await Promise.all(
+            changedFiles.map(async (f) => {
+              const contentRes = await fetch(
+                `/api/worktree-files?cardId=${card.id}&filePath=${encodeURIComponent(f.filePath)}`,
+              )
+              if (contentRes.ok) {
+                const contentData = await contentRes.json()
+                return { ...f, content: contentData.content as string }
+              }
+              return null
+            }),
+          )
 
-    setSpecs((prev) => [...prev, spec])
-    setActiveSpecId(spec.id)
-  }, [card])
+          const validFiles = refreshed.filter((f): f is SpecFileData => f !== null)
+          if (validFiles.length > 0) {
+            setFiles(validFiles)
+          }
+        }
+      } catch {
+        // Ignore refresh errors
+      }
+    }, 10000) // Every 10 seconds
 
-  const handleAttachProjectSpec = useCallback(async (filePath: string, content: string) => {
-    const spec = await createSpecWithBaseline({
-      cardId: card.id,
-      filePath,
-      isNew: false,
-      content,
-      baselineContent: content,
-    })
-
-    setSpecs((prev) => [...prev, spec])
-    setActiveSpecId(spec.id)
+    return () => clearInterval(interval)
   }, [card.id])
 
-  const handleSpecUpdate = useCallback((id: string, content: string) => {
-    setSpecs((prev) =>
-      prev.map((s) => (s.id === id ? { ...s, content } : s)),
-    )
-  }, [])
+  const handleSpecUpdate = useCallback(
+    async (filePath: string, content: string) => {
+      // Write to worktree
+      await fetch('/api/worktree-files', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cardId: card.id, filePath, content }),
+      })
 
-  // If no specs, show empty state with create button
-  if (specs.length === 0) {
+      setFiles((prev) =>
+        prev.map((f) => (f.filePath === filePath ? { ...f, content } : f)),
+      )
+    },
+    [card.id],
+  )
+
+  const handleDoneEditing = useCallback(
+    async (filePath: string) => {
+      setIsEditing(false)
+
+      // Release lock
+      await fetch(
+        `/api/file-lock?cardId=${card.id}&filePath=${encodeURIComponent(filePath)}`,
+        { method: 'DELETE' },
+      )
+
+      // Auto-commit
+      await fetch('/api/auto-commit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          cardId: card.id,
+          commitMessage: 'Update spec',
+        }),
+      })
+    },
+    [card.id],
+  )
+
+  const handleStartEditing = useCallback(
+    async (filePath: string) => {
+      // Acquire lock
+      const res = await fetch('/api/file-lock', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cardId: card.id, filePath }),
+      })
+
+      if (res.status === 409) {
+        const data = await res.json()
+        alert(`File is being edited by ${data.holder?.displayName ?? 'someone else'}`)
+        return false
+      }
+
+      setIsEditing(true)
+      return true
+    },
+    [card.id],
+  )
+
+  // If no files, show empty state
+  if (files.length === 0) {
     return (
       <div className="flex-1 flex items-center justify-center">
         <div className="text-center">
@@ -92,14 +136,8 @@ export function SpecTab({ card, specs: initialSpecs, projectSpecs, messages }: S
             No specs yet
           </p>
           <p className="text-[13px] text-[var(--text-faint)] mb-4">
-            Start a chat interview first, or create a spec manually.
+            Start a chat interview to develop specs, or wait for the interviewer to create spec files.
           </p>
-          <button
-            onClick={handleAddSpec}
-            className="inline-flex items-center justify-center px-[14px] py-[7px] rounded-[var(--radius-default)] text-xs font-medium bg-[var(--accent)] text-white hover:bg-[var(--accent-hover)] transition-colors duration-100 cursor-pointer"
-          >
-            Create spec
-          </button>
         </div>
       </div>
     )
@@ -107,36 +145,53 @@ export function SpecTab({ card, specs: initialSpecs, projectSpecs, messages }: S
 
   return (
     <div className="flex-1 flex overflow-hidden">
-      {/* Chat sidebar */}
-      <ChatSidebar
-        cardId={card.id}
-        userId={user.id}
-        userName={user.displayName}
-        messages={messages}
-      />
-
-      {/* Spec list sidebar (two-layer design) */}
+      {/* Spec list sidebar */}
       <SpecListSidebar
-        specs={specs}
-        projectSpecs={projectSpecs ?? []}
-        activeSpecId={activeSpecId}
-        onSelect={setActiveSpecId}
-        onAdd={handleAddSpec}
-        onAttachProjectSpec={handleAttachProjectSpec}
+        specs={files.map((f) => ({
+          id: f.filePath,
+          filePath: f.filePath,
+          isNew: f.isNew,
+        }))}
+        projectSpecs={[]}
+        activeSpecId={activeFilePath}
+        onSelect={setActiveFilePath}
+        onAdd={() => {}}
+        onAttachProjectSpec={() => {}}
       />
 
       {/* Spec document */}
       <div className="flex-1 overflow-y-auto bg-[var(--bg-surface)] flex justify-center">
-        {activeSpec ? (
-          <SpecEditor
-            key={activeSpec.id}
-            spec={activeSpec}
-            onContentChange={handleSpecUpdate}
-            baselineContent={activeSpec.baselineContent}
-          />
+        {activeFile ? (
+          <div className="w-full" style={{ maxWidth: '720px', padding: '48px 40px 80px' }}>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[12px] text-[var(--text-faint)] font-mono">
+                {activeFile.filePath}
+              </span>
+              <div className="flex items-center gap-3">
+                <FileHistory cardId={card.id} filePath={activeFile.filePath} />
+              </div>
+            </div>
+
+            <SpecEditor
+              key={activeFile.filePath}
+              spec={{
+                id: activeFile.filePath,
+                filePath: activeFile.filePath,
+                content: activeFile.content,
+                isNew: activeFile.isNew,
+              }}
+              onContentChange={(_, content) =>
+                handleSpecUpdate(activeFile.filePath, content)
+              }
+              isEditing={isEditing}
+              onStartEditing={() => handleStartEditing(activeFile.filePath)}
+              onDoneEditing={() => handleDoneEditing(activeFile.filePath)}
+              cardStatus={card.status}
+            />
+          </div>
         ) : (
           <div className="text-center py-16 text-[var(--text-muted)] text-[13px]">
-            Select a spec to edit
+            Select a spec to view
           </div>
         )}
       </div>

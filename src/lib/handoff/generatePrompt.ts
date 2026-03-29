@@ -8,8 +8,8 @@ interface HandoffContext {
   cardTitle: string
   branchName: string
   baseBranch: string
-  specs: { filePath: string; isNew: boolean }[]
-  mockupPaths: string[]
+  touchedFiles: string[]
+  status: string
 }
 
 export function generateHandoffPrompt(ctx: HandoffContext): string {
@@ -19,39 +19,51 @@ export function generateHandoffPrompt(ctx: HandoffContext): string {
   lines.push(`git checkout ${ctx.branchName}`)
   lines.push('')
 
-  const newSpecs = ctx.specs.filter((s) => s.isNew)
-  const updatedSpecs = ctx.specs.filter((s) => !s.isNew)
+  const specFiles = ctx.touchedFiles.filter((f) => f.startsWith('.workhorse/specs/'))
+  const mockupFiles = ctx.touchedFiles.filter((f) => f.startsWith('.workhorse/design/mockups/'))
 
-  if (newSpecs.length > 0) {
-    lines.push('New specs:')
-    for (const s of newSpecs) {
-      lines.push(`- ${s.filePath}`)
+  if (ctx.status === 'SPECIFYING') {
+    if (specFiles.length > 0) {
+      lines.push('Specs in progress:')
+      for (const f of specFiles) {
+        lines.push(`- ${f}`)
+      }
+      lines.push('')
     }
-    lines.push('')
-  }
 
-  if (updatedSpecs.length > 0) {
-    lines.push('Updated specs:')
-    for (const s of updatedSpecs) {
-      lines.push(`- ${s.filePath}`)
+    if (mockupFiles.length > 0) {
+      lines.push('Mockups:')
+      for (const f of mockupFiles) {
+        lines.push(`- ${f}`)
+      }
+      lines.push('')
     }
-    lines.push('')
-  }
 
-  if (ctx.mockupPaths.length > 0) {
-    lines.push('Mockups:')
-    for (const p of ctx.mockupPaths) {
-      lines.push(`- ${p}`)
+    lines.push('Review the current specs and the codebase, then help develop')
+    lines.push('the acceptance criteria. Edit the spec files directly.')
+  } else {
+    // IMPLEMENTING or other
+    if (specFiles.length > 0) {
+      lines.push('Specs:')
+      for (const f of specFiles) {
+        lines.push(`- ${f}`)
+      }
+      lines.push('')
     }
-    lines.push('')
-  }
 
-  lines.push('Review the diff to see what changed:')
-  lines.push(
-    `git diff ${ctx.baseBranch}...${ctx.branchName} -- .workhorse/`,
-  )
-  lines.push('')
-  lines.push('Read the specs and mockups, then implement all acceptance criteria.')
+    if (mockupFiles.length > 0) {
+      lines.push('Mockups:')
+      for (const f of mockupFiles) {
+        lines.push(`- ${f}`)
+      }
+      lines.push('')
+    }
+
+    lines.push('Review the diff to see what changed:')
+    lines.push(`git diff ${ctx.baseBranch}...${ctx.branchName} -- .workhorse/`)
+    lines.push('')
+    lines.push('Read the specs and mockups, then implement all acceptance criteria.')
+  }
 
   return lines.join('\n')
 }

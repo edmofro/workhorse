@@ -44,3 +44,29 @@ export async function requireUser() {
   if (!user) throw new Error('Not authenticated')
   return user
 }
+
+/**
+ * Verify the user is a member of the card's team.
+ * Returns the card (with team.project included) if authorised.
+ */
+export async function requireCardAccess(
+  userId: string,
+  cardId: string,
+) {
+  const card = await prisma.card.findUnique({
+    where: { id: cardId },
+    include: { team: { include: { project: true } } },
+  })
+
+  if (!card) return null
+
+  const membership = await prisma.teamMember.findUnique({
+    where: { userId_teamId: { userId, teamId: card.teamId } },
+  })
+
+  if (!membership) {
+    throw new Error('Not authorised for this card')
+  }
+
+  return card
+}

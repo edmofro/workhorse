@@ -15,16 +15,18 @@ export default async function CardLayout({ params, children }: Props) {
     include: {
       team: { include: { project: true } },
       assignee: true,
-      specs: { select: { content: true, committedContent: true } },
     },
   })
 
   if (!card) notFound()
 
-  const hasSpecs = card.specs.length > 0
-  const specsDirty = card.specs.some(
-    (s) => s.committedContent === null || s.content !== s.committedContent,
-  )
+  let touchedFiles: string[] = []
+  try {
+    const parsed = JSON.parse(card.touchedFiles)
+    touchedFiles = Array.isArray(parsed) ? parsed : []
+  } catch {
+    // Ignore corrupted touchedFiles
+  }
 
   return (
     <CardDetailShell
@@ -33,9 +35,9 @@ export default async function CardLayout({ params, children }: Props) {
         identifier: card.identifier,
         title: card.title,
         status: card.status,
-        prUrl: card.prUrl,
-        hasSpecs,
-        specsDirty,
+        cardBranch: card.cardBranch,
+        touchedFiles,
+        defaultBranch: card.team.project.defaultBranch,
       }}
       projectSlug={projectSlug}
     >

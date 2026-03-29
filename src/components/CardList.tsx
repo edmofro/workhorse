@@ -19,9 +19,10 @@ interface CardListProps {
 }
 
 const STATUS_GROUPS = [
-  { key: 'SPECIFYING', label: 'In progress', dotState: 'specifying' as const },
+  { key: 'SPECIFYING', label: 'Specifying', dotState: 'specifying' as const },
+  { key: 'IMPLEMENTING', label: 'Implementing', dotState: 'implementing' as const },
   { key: 'NOT_STARTED', label: 'Not started', dotState: 'not-started' as const },
-  { key: 'SPEC_COMPLETE', label: 'Spec complete', dotState: 'complete' as const },
+  { key: 'COMPLETE', label: 'Complete', dotState: 'complete' as const },
 ] as const
 
 export function CardList({ cards, projectName }: CardListProps) {

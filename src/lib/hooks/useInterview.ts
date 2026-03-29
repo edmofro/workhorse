@@ -25,6 +25,7 @@ export interface FileWriteNotification {
 export function useInterview(cardId: string) {
   const [messages, setMessages] = useState<InterviewMessage[]>([])
   const [isStreaming, setIsStreaming] = useState(false)
+  const isStreamingRef = useRef(false)
   const [activeToolCalls, setActiveToolCalls] = useState<ToolCallInfo[]>([])
   const [fileWrites, setFileWrites] = useState<FileWriteNotification[]>([])
   const [committedFiles, setCommittedFiles] = useState<string[]>([])
@@ -32,7 +33,7 @@ export function useInterview(cardId: string) {
 
   const sendMessage = useCallback(
     async (content: string, userName: string) => {
-      if (!content.trim() || isStreaming) return
+      if (!content.trim() || isStreamingRef.current) return
 
       // Add user message
       const userMsg: InterviewMessage = {
@@ -52,6 +53,7 @@ export function useInterview(cardId: string) {
       ])
 
       setIsStreaming(true)
+      isStreamingRef.current = true
       setActiveToolCalls([])
       abortRef.current = new AbortController()
 
@@ -107,11 +109,12 @@ export function useInterview(cardId: string) {
         )
       } finally {
         setIsStreaming(false)
+        isStreamingRef.current = false
         setActiveToolCalls([])
         abortRef.current = null
       }
     },
-    [cardId, isStreaming],
+    [cardId],
   )
 
   function processEvent(

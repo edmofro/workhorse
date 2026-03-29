@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '../../../lib/prisma'
-import { requireUser } from '../../../lib/auth/session'
+import { requireUser, requireCardAccess } from '../../../lib/auth/session'
 import { generateHandoffPrompt } from '../../../lib/handoff/generatePrompt'
+import { safeParseTouchedFiles } from '../../../lib/safeParseTouchedFiles'
 
 export async function GET(request: NextRequest) {
-  await requireUser()
+  const user = await requireUser()
 
   const cardId = request.nextUrl.searchParams.get('cardId')
 
@@ -12,18 +12,13 @@ export async function GET(request: NextRequest) {
     return new Response('Missing cardId', { status: 400 })
   }
 
-  const card = await prisma.card.findUnique({
-    where: { id: cardId },
-    include: {
-      team: { include: { project: true } },
-    },
-  })
+  const card = await requireCardAccess(user.id, cardId)
 
   if (!card) {
     return new Response('Card not found', { status: 404 })
   }
 
-  const touchedFiles: string[] = JSON.parse(card.touchedFiles)
+  const touchedFiles = safeParseTouchedFiles(card.touchedFiles)
 
   const prompt = generateHandoffPrompt({
     cardIdentifier: card.identifier,

@@ -8,6 +8,7 @@
 
 import { autoCommit } from './worktree'
 import { prisma } from '../prisma'
+import { safeParseTouchedFiles } from '../safeParseTouchedFiles'
 
 export async function commitCardChanges(
   cardId: string,
@@ -39,7 +40,7 @@ export async function commitCardChanges(
 
   if (changedFiles.length > 0) {
     // Update touched files
-    const existingFiles: string[] = JSON.parse(card.touchedFiles)
+    const existingFiles = safeParseTouchedFiles(card.touchedFiles)
     const allFiles = [...new Set([...existingFiles, ...changedFiles])]
     await prisma.card.update({
       where: { id: cardId },

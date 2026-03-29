@@ -11,10 +11,10 @@ interface MarkReadyButtonProps {
 export function MarkReadyButton({ cardId, status }: MarkReadyButtonProps) {
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
-  const [currentStatus, setCurrentStatus] = useState(status)
+  const [didMarkReady, setDidMarkReady] = useState(false)
 
   // Only show in SPECIFYING status
-  if (currentStatus !== 'SPECIFYING') return null
+  if (status !== 'SPECIFYING' || didMarkReady) return null
 
   function handleMarkReady() {
     setError(null)
@@ -29,7 +29,7 @@ export function MarkReadyButton({ cardId, status }: MarkReadyButtonProps) {
           const text = await res.text()
           throw new Error(text)
         }
-        setCurrentStatus('IMPLEMENTING')
+        setDidMarkReady(true)
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to mark ready')
       }

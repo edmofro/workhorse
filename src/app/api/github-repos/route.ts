@@ -40,6 +40,14 @@ export async function GET() {
     const batch: GitHubRepo[] = await res.json()
     if (batch.length === 0) break
 
+    // Detect if GitHub omitted permissions data (happens with limited OAuth scopes
+    // or certain organisation membership scenarios). If so, we can't filter by
+    // write access and must surface this to the caller.
+    const permissionsUnavailable = batch.some((repo) => repo.permissions === undefined)
+    if (permissionsUnavailable) {
+      return NextResponse.json({ repos: [], permissionsUnavailable: true })
+    }
+
     // Only include repos the user has write access to
     for (const repo of batch) {
       if (repo.permissions?.push || repo.permissions?.admin) {
@@ -51,13 +59,14 @@ export async function GET() {
     page++
   }
 
-  return NextResponse.json(
-    repos.map((r) => ({
+  return NextResponse.json({
+    repos: repos.map((r) => ({
       fullName: r.full_name,
       name: r.name,
       owner: r.owner.login,
       htmlUrl: r.html_url,
       defaultBranch: r.default_branch,
     })),
-  )
+    permissionsUnavailable: false,
+  })
 }

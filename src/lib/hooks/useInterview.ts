@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useCallback, useRef } from 'react'
+import type { AttachmentData } from '../attachments'
 
 export interface InterviewMessage {
   id: string
@@ -8,6 +9,7 @@ export interface InterviewMessage {
   content: string
   userName?: string
   createdAt?: string
+  attachments?: AttachmentData[]
 }
 
 export interface ToolCallInfo {
@@ -32,8 +34,8 @@ export function useInterview(cardId: string) {
   const abortRef = useRef<AbortController | null>(null)
 
   const sendMessage = useCallback(
-    async (content: string, userName: string) => {
-      if (!content.trim() || isStreamingRef.current) return
+    async (content: string, userName: string, attachments?: AttachmentData[]) => {
+      if ((!content.trim() && (!attachments || attachments.length === 0)) || isStreamingRef.current) return
 
       // Add user message
       const userMsg: InterviewMessage = {
@@ -42,6 +44,7 @@ export function useInterview(cardId: string) {
         content,
         userName,
         createdAt: new Date().toISOString(),
+        attachments,
       }
       setMessages((prev) => [...prev, userMsg])
 
@@ -58,10 +61,11 @@ export function useInterview(cardId: string) {
       abortRef.current = new AbortController()
 
       try {
+        const attachmentIds = attachments?.map((a) => a.id) ?? []
         const res = await fetch('/api/interview', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ cardId, message: content }),
+          body: JSON.stringify({ cardId, message: content, attachmentIds }),
           signal: abortRef.current.signal,
         })
 

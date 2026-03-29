@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireUser, requireCardAccess } from '../../../lib/auth/session'
 import { generateHandoffPrompt } from '../../../lib/handoff/generatePrompt'
 import { safeParseTouchedFiles } from '../../../lib/safeParseTouchedFiles'
+import { prisma } from '../../../lib/prisma'
 
 export async function GET(request: NextRequest) {
   const user = await requireUser()
@@ -20,6 +21,15 @@ export async function GET(request: NextRequest) {
 
   const touchedFiles = safeParseTouchedFiles(card.touchedFiles)
 
+  // Get attachment file paths for the handoff prompt
+  const attachments = await prisma.attachment.findMany({
+    where: { cardId: card.id },
+    select: { fileName: true },
+  })
+  const attachmentFiles = attachments.map(
+    (a) => `.workhorse/attachments/${card.identifier.toLowerCase()}/${a.fileName}`,
+  )
+
   const prompt = generateHandoffPrompt({
     cardIdentifier: card.identifier,
     cardTitle: card.title,
@@ -27,6 +37,7 @@ export async function GET(request: NextRequest) {
     baseBranch: card.team.project.defaultBranch,
     touchedFiles,
     status: card.status,
+    attachmentFiles,
   })
 
   return NextResponse.json({ prompt })

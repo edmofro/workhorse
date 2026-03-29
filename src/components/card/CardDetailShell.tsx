@@ -69,11 +69,8 @@ export function CardDetailShell({
           </div>
           <CollaborateButton
             cardId={card.id}
-            cardIdentifier={card.identifier}
             cardBranch={card.cardBranch}
             status={card.status}
-            touchedFiles={card.touchedFiles}
-            defaultBranch={card.defaultBranch}
           />
         </TopbarRight>
       </Topbar>

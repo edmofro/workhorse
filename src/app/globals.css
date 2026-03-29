@@ -33,11 +33,11 @@
   --amber-alpha: rgba(180, 83, 9, 0.06);
   --blue: #2563eb;
 
-  /* Diff / tracked-changes */
-  --bg-diff-delete: rgba(239, 68, 68, 0.15);
-  --bg-diff-insert: rgba(34, 197, 94, 0.15);
-  --text-diff-delete: #b91c1c;
-  --text-diff-insert: #15803d;
+  /* Diff / tracked-changes (derived from accent and green palette tokens) */
+  --bg-diff-delete: rgba(194, 65, 12, 0.1);
+  --bg-diff-insert: rgba(22, 163, 74, 0.1);
+  --text-diff-delete: #c2410c;
+  --text-diff-insert: #16a34a;
 
   /* Spacing (4px base grid) */
   --space-1: 4px;

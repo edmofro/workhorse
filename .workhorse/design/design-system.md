@@ -190,6 +190,7 @@ Shadows are subtle. Non-floating elements never use anything heavier than `--sha
 - Maximum transition: `0.2s` — nothing longer
 - Device toggle frame resize: `0.3s ease` (the one exception)
 - No entrance/exit animations, no bounces, no spring physics
+- Subtle continuous animations (e.g. `animate-pulse`, `animate-spin`) are permitted for loading/streaming indicators — keep them small and text-only or icon-only, never on large regions
 
 ---
 
@@ -360,7 +361,7 @@ These aren't just a checklist — they reflect the philosophy above. When review
 - Borders heavier than 1px
 - Shadows heavier than `--shadow-md` on non-floating elements
 - Any animation longer than 0.3s
-- Entrance/exit animations (fade-in, slide-in, etc.) — elements appear and disappear instantly
+- Entrance/exit animations (fade-in, slide-in, etc.) — elements appear and disappear instantly. Subtle continuous animations (`animate-pulse`, `animate-spin`) on small loading indicators are fine
 - Monospace font for anything other than identifiers and file paths
 - Cool greys or blue-greys — the palette is warm throughout, including overlays and backdrops (use `rgba(28,25,23,...)` not `rgba(0,0,0,...)`)
 - Colours outside the defined palette — don't invent new tints or use similar-but-different values (e.g. emerald `#10b981` when the design green is `#16a34a`)

@@ -8,7 +8,7 @@ import path from 'path'
 import { prisma } from '../../../lib/prisma'
 import { requireUser, requireCardAccess } from '../../../lib/auth/session'
 import { buildSessionInstructions } from '../../../lib/ai/sessionPrompt'
-import type { AgentMode } from '../../../lib/ai/workhorseContext'
+import { isValidAgentMode } from '../../../lib/ai/workhorseContext'
 import {
   ensureBareClone,
   createWorktree,
@@ -16,7 +16,7 @@ import {
   autoCommit,
 } from '../../../lib/git/worktree'
 import { branchNameFromCard } from '../../../lib/git/branchNaming'
-import { releaseAllLocks } from '../../../lib/fileLock'
+import { releaseAllLocks, AI_LOCK_AGENT } from '../../../lib/fileLock'
 import { safeParseTouchedFiles } from '../../../lib/safeParseTouchedFiles'
 
 export async function POST(request: NextRequest) {
@@ -112,7 +112,7 @@ export async function POST(request: NextRequest) {
     repoOwner: owner,
     repoName,
     attachmentFiles: allAttachmentFiles.length > 0 ? allAttachmentFiles : undefined,
-    mode: mode as AgentMode | undefined,
+    mode: isValidAgentMode(mode) ? mode : undefined,
   })
 
   // Build multimodal prompt if there are raster image attachments (exclude SVG — not a valid
@@ -242,7 +242,7 @@ export async function POST(request: NextRequest) {
         }
 
         // Release AI locks
-        await releaseAllLocks(cardId, 'ai-agent')
+        await releaseAllLocks(cardId, AI_LOCK_AGENT)
 
         controller.enqueue(encoder.encode('data: [DONE]\n\n'))
         controller.close()

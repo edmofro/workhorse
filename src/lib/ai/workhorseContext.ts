@@ -5,8 +5,7 @@
  * how Workhorse works. The agent should already know all of this.
  */
 
-export function buildWorkhorseContext(): string {
-  return `## What Workhorse is
+export const WORKHORSE_CONTEXT = `## What Workhorse is
 
 Workhorse is a spec-driven development workbench. It helps product owners, testers, and developers develop comprehensive acceptance criteria for software cards through AI-assisted interviews, then commits those specs to the codebase.
 
@@ -98,13 +97,17 @@ Use the design system palette: warm stone greys (\`#f8f7f4\` page, \`#ffffff\` s
 - When the user provides information, acknowledge it briefly and move to the next area.
 - Use Australian/NZ English spelling.
 - When you write or edit a spec file, mention it briefly (e.g. "Updated the allergies spec with the edge case"). Do NOT reproduce full file contents in messages.`
-}
 
 /**
  * Mode-specific instructions appended to the system prompt based on which
  * action pill the user clicked (or what they typed).
  */
-export type AgentMode = 'interview' | 'draft' | 'review' | 'directed' | 'implement' | 'design_audit' | 'security_audit'
+export const AGENT_MODES = ['interview', 'draft', 'review', 'directed', 'implement', 'design_audit', 'security_audit'] as const
+export type AgentMode = typeof AGENT_MODES[number]
+
+export function isValidAgentMode(value: string | undefined): value is AgentMode {
+  return typeof value === 'string' && (AGENT_MODES as readonly string[]).includes(value)
+}
 
 export function buildModeInstructions(mode: AgentMode | undefined, cardTitle: string, cardDescription: string | null): string {
   switch (mode) {
@@ -138,7 +141,7 @@ Ask focused questions — one or two at a time, not long lists.`
     case 'review':
       return `## Your task: Review existing specs
 
-Read the spec files in \`.workhorse/specs/\` that relate to the card "${cardTitle}" and provide a thorough review:
+Read the spec files in \`.workhorse/specs/\` that relate to this card and provide a thorough review:
 
 - Gaps in acceptance criteria
 - Contradictions between specs
@@ -183,6 +186,6 @@ Review the implementation for security concerns. Check for:
     default:
       return `## Your task
 
-Assist the user with their request related to the card "${cardTitle}". ${cardDescription ? `The card description is: ${cardDescription}` : ''} You can interview them, draft specs, review existing specs, or make targeted changes — follow the user's lead.`
+Assist the user with their request related to this card. You can interview them, draft specs, review existing specs, or make targeted changes — follow the user's lead.`
   }
 }

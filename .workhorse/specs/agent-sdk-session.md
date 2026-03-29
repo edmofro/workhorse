@@ -146,31 +146,20 @@ The mode parameter flows from the action pill UI → `useAgentSession` hook → 
 
 ## Streaming and UI
 
-### Multi-turn streaming
+### What the user sees during an agent query
 
-A single user message may trigger multiple agent turns — the agent reads files, searches code, writes specs, and responds with text across several turns before the query completes. The UI handles this full sequence as one cohesive interaction.
+A single user message may trigger a long sequence of work — the agent thinks, reads files, searches code, writes specs, thinks again, and eventually responds. This can take 30 seconds or more. The user doesn't need to see the internal machinery. They need to know the agent is working, have a rough sense of what it's doing, and then see the response when it arrives.
 
-- [ ] Each agent turn that produces text creates a separate assistant message in the chat (not concatenated into one)
-- [ ] Tool-use-only turns (where the agent reads or searches but produces no text) do not create empty messages
-- [ ] Text responses stream in real-time (character by character) within each message
-- [ ] Tool calls are visible: "Reading `src/patient/search.ts`...", "Searching for `allergy`...", "Updated `specs/patient/allergies.md`"
-- [ ] File write/edit events highlighted as notifications (e.g. "Updated specs/patient/allergies.md")
-- [ ] Soft-lock on the spec editor during active turns ("Agent is working...")
-- [ ] If the agent produces text in an early turn then does tool-only turns afterward, the earlier text remains visible — later turns do not overwrite or clear it
-
-### Thinking events
-
-The Claude API streams thinking blocks (`thinking_delta` events) alongside text output. These show the model's internal reasoning — planning, weighing options, working through problems. Workhorse surfaces them in the chat UI using the standard Claude Code conventions:
-
-- [ ] Thinking blocks appear inline in the conversation, before the assistant's text response
-- [ ] Each thinking block is displayed as a collapsible section with a "Thinking..." header
-- [ ] While streaming, the thinking section is expanded and shows the thinking text accumulating in real time
-- [ ] Once the thinking block is complete and the assistant's text response begins streaming, the thinking section automatically collapses
-- [ ] Collapsed thinking sections show a summary line: "Thinking" with a chevron to expand
-- [ ] Thinking text is rendered in a muted, secondary style (smaller font, `var(--text-muted)` colour) to visually distinguish it from the assistant's actual response
-- [ ] Thinking text is plain text, not markdown-rendered — it is internal reasoning, not authored content
-- [ ] Multiple thinking blocks in a single turn are each displayed as separate collapsible sections
-- [ ] If a turn has no thinking blocks (e.g. the model responds immediately), no thinking section appears
+- [ ] While the agent is working, a single status line appears below the user's message (in place of where the response will go)
+- [ ] The status line shows the latest activity: thinking, reading a file, searching, writing a file
+- [ ] Each new activity replaces the previous one — only one status line is ever visible, not a growing log
+- [ ] Thinking events show as "Thinking..." (no thinking text displayed — it's internal reasoning, not useful to show)
+- [ ] Tool calls show as brief descriptions: "Reading `patient/search.ts`", "Searching for `allergy`", "Writing `specs/patient/allergies.md`"
+- [ ] File write/edit events are the exception — these persist as notifications (e.g. "Updated specs/patient/allergies.md") since they represent meaningful output the user may want to act on
+- [ ] When the agent produces its text response, the status line disappears and the response streams in character by character
+- [ ] If the agent does more work after producing text (reads more files, thinks again), the text remains and the status line reappears below it
+- [ ] All text the agent produces across the full query is collected into a single assistant message — the internal turn structure is not exposed
+- [ ] Soft-lock on the spec editor during active work ("Agent is working...")
 
 ### Agent turn limits and result handling
 

@@ -146,12 +146,17 @@ The mode parameter flows from the action pill UI → `useAgentSession` hook → 
 
 ## Streaming and UI
 
-### What the user sees during an agent turn
+### Multi-turn streaming
 
-- [ ] Text responses stream in real-time (character by character)
+A single user message may trigger multiple agent turns — the agent reads files, searches code, writes specs, and responds with text across several turns before the query completes. The UI handles this full sequence as one cohesive interaction.
+
+- [ ] Each agent turn that produces text creates a separate assistant message in the chat (not concatenated into one)
+- [ ] Tool-use-only turns (where the agent reads or searches but produces no text) do not create empty messages
+- [ ] Text responses stream in real-time (character by character) within each message
 - [ ] Tool calls are visible: "Reading `src/patient/search.ts`...", "Searching for `allergy`...", "Updated `specs/patient/allergies.md`"
 - [ ] File write/edit events highlighted as notifications (e.g. "Updated specs/patient/allergies.md")
 - [ ] Soft-lock on the spec editor during active turns ("Agent is working...")
+- [ ] If the agent produces text in an early turn then does tool-only turns afterward, the earlier text remains visible — later turns do not overwrite or clear it
 
 ### Thinking events
 

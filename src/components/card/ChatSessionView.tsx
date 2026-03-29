@@ -2,24 +2,24 @@
 
 import { useEffect, useRef } from 'react'
 import { useUser } from '../UserProvider'
-import { useInterview } from '../../lib/hooks/useInterview'
+import { useAgentSession } from '../../lib/hooks/useAgentSession'
 import { useAttachments } from '../../lib/hooks/useAttachments'
 import { ChatMessage } from './ChatMessage'
 import { ChatInput } from './ChatInput'
 import { FileText } from 'lucide-react'
 
-interface InterviewViewProps {
+interface ChatSessionViewProps {
   cardId: string
 }
 
-export function InterviewView({ cardId }: InterviewViewProps) {
+export function ChatSessionView({ cardId }: ChatSessionViewProps) {
   const { user } = useUser()
   const {
     messages,
     isStreaming,
     fileWrites,
     sendMessage,
-  } = useInterview(cardId)
+  } = useAgentSession(cardId)
   const {
     pending,
     addFiles,
@@ -53,11 +53,11 @@ export function InterviewView({ cardId }: InterviewViewProps) {
           {messages.length === 0 && (
             <div className="text-center py-16">
               <p className="text-[14px] text-[var(--text-muted)] mb-1">
-                Start the spec interview
+                Start developing specs
               </p>
               <p className="text-[13px] text-[var(--text-faint)]">
                 Describe what you want to build and the AI will help develop acceptance criteria.
-                The interviewer has full access to the target codebase.
+                The agent has full access to the target codebase.
               </p>
             </div>
           )}
@@ -89,7 +89,7 @@ export function InterviewView({ cardId }: InterviewViewProps) {
 
           {isStreaming && messages[messages.length - 1]?.content === '' && (
             <div className="flex items-center gap-2 pl-[34px] text-[13px] text-[var(--text-muted)]">
-              <span className="animate-pulse">Interviewer is working…</span>
+              <span className="animate-pulse">Agent is working…</span>
             </div>
           )}
         </div>

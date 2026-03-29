@@ -3,7 +3,7 @@
 import { useState, useCallback, useEffect, useReducer } from 'react'
 import { useRouter } from 'next/navigation'
 import { useUser } from '../UserProvider'
-import { useInterview } from '../../lib/hooks/useInterview'
+import { useAgentSession } from '../../lib/hooks/useAgentSession'
 import { useAttachments } from '../../lib/hooks/useAttachments'
 import { RightPanel } from './RightPanel'
 import { FloatingChat } from './FloatingChat'
@@ -106,13 +106,13 @@ export function CardWorkspace({
   const [showNewSpecDialog, setShowNewSpecDialog] = useState(false)
   const [isEnsuring, setIsEnsuring] = useState(false)
 
-  // Interview state
+  // Agent session state
   const {
     messages,
     isStreaming,
     fileWrites,
     sendMessage: rawSendMessage,
-  } = useInterview(card.id)
+  } = useAgentSession(card.id)
 
   // Attachments for chat
   const chatAttachments = useAttachments(card.id)
@@ -162,7 +162,7 @@ export function CardWorkspace({
     return () => clearInterval(interval)
   }, [card.id, isEditing, view.type])
 
-  // Track file writes from the interview — add them to the files list
+  // Track file writes from the agent — add them to the files list
   useEffect(() => {
     for (const fw of fileWrites) {
       if (fw.filePath.startsWith('.workhorse/specs/')) {
@@ -385,7 +385,7 @@ export function CardWorkspace({
                 {messages.length === 0 && (
                   <div className="text-center py-16">
                     <p className="text-[14px] text-[var(--text-muted)] mb-1">
-                      Start the spec interview
+                      Start developing specs
                     </p>
                     <p className="text-[13px] text-[var(--text-faint)]">
                       Describe what you want to build and the AI will help develop acceptance criteria.
@@ -429,7 +429,7 @@ export function CardWorkspace({
 
                 {isStreaming && messages[messages.length - 1]?.content === '' && (
                   <div className="flex items-center gap-2 pl-[34px] text-[13px] text-[var(--text-muted)]">
-                    <span className="animate-pulse">Interviewer is working…</span>
+                    <span className="animate-pulse">Agent is working…</span>
                   </div>
                 )}
               </div>

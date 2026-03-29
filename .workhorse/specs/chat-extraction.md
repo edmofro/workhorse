@@ -4,7 +4,7 @@ area: workflow
 status: draft
 ---
 
-Connects the AI chat interview to the rest of the system by automatically persisting mockups and specs extracted from chat responses and populating the activity log.
+Connects the AI chat session to the rest of the system by automatically persisting mockups and specs extracted from chat responses and populating the activity log.
 
 ## Mockup extraction and persistence
 

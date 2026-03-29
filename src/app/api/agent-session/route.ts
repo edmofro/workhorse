@@ -7,7 +7,8 @@ import { existsSync } from 'fs'
 import path from 'path'
 import { prisma } from '../../../lib/prisma'
 import { requireUser, requireCardAccess } from '../../../lib/auth/session'
-import { buildInterviewInstructions } from '../../../lib/ai/interviewPrompt'
+import { buildSessionInstructions } from '../../../lib/ai/sessionPrompt'
+import { isValidAgentMode } from '../../../lib/ai/workhorseContext'
 import {
   ensureBareClone,
   createWorktree,
@@ -15,17 +16,18 @@ import {
   autoCommit,
 } from '../../../lib/git/worktree'
 import { branchNameFromCard } from '../../../lib/git/branchNaming'
-import { releaseAllLocks } from '../../../lib/fileLock'
+import { releaseAllLocks, AI_LOCK_AGENT } from '../../../lib/fileLock'
 import { safeParseTouchedFiles } from '../../../lib/safeParseTouchedFiles'
 
 export async function POST(request: NextRequest) {
   const user = await requireUser()
 
   const body = await request.json()
-  const { cardId, message, attachmentIds } = body as {
+  const { cardId, message, attachmentIds, mode } = body as {
     cardId: string
     message: string
     attachmentIds?: string[]
+    mode?: string
   }
 
   if (!cardId || !message) {
@@ -101,8 +103,8 @@ export async function POST(request: NextRequest) {
   // Build deduplicated attachment file list for the prompt context
   const allAttachmentFiles = [...new Set(allAttachments.map((a) => a.fileName))]
 
-  // Build interview instructions
-  const interviewInstructions = buildInterviewInstructions({
+  // Build session instructions with mode-specific context
+  const sessionInstructions = buildSessionInstructions({
     cardTitle: card.title,
     cardDescription: card.description,
     cardIdentifier: card.identifier,
@@ -110,6 +112,7 @@ export async function POST(request: NextRequest) {
     repoOwner: owner,
     repoName,
     attachmentFiles: allAttachmentFiles.length > 0 ? allAttachmentFiles : undefined,
+    mode: isValidAgentMode(mode) ? mode : undefined,
   })
 
   // Build multimodal prompt if there are raster image attachments (exclude SVG — not a valid
@@ -167,7 +170,7 @@ export async function POST(request: NextRequest) {
     systemPrompt: {
       type: 'preset' as const,
       preset: 'claude_code' as const,
-      append: interviewInstructions,
+      append: sessionInstructions,
     },
     settingSources: ['project' as const],
     includePartialMessages: true,
@@ -239,7 +242,7 @@ export async function POST(request: NextRequest) {
         }
 
         // Release AI locks
-        await releaseAllLocks(cardId, 'ai-interviewer')
+        await releaseAllLocks(cardId, AI_LOCK_AGENT)
 
         controller.enqueue(encoder.encode('data: [DONE]\n\n'))
         controller.close()

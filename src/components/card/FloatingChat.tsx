@@ -5,11 +5,11 @@ import { Maximize2, X } from 'lucide-react'
 import { ChatMessage } from './ChatMessage'
 import { ChatInput } from './ChatInput'
 import { ActionPills, type ActionPill } from './ActionPills'
-import type { InterviewMessage } from '../../lib/hooks/useInterview'
+import type { SessionMessage } from '../../lib/hooks/useAgentSession'
 import type { PendingAttachment } from '../../lib/attachments'
 
 interface FloatingChatProps {
-  messages: InterviewMessage[]
+  messages: SessionMessage[]
   isStreaming: boolean
   pills: ActionPill[]
   onSend: (content: string) => void
@@ -118,7 +118,7 @@ export function FloatingChat({
         ))}
         {isStreaming && messages[messages.length - 1]?.content === '' && (
           <div className="text-[12px] text-[var(--text-muted)]">
-            <span className="animate-pulse">Interviewer is working…</span>
+            <span className="animate-pulse">Agent is working…</span>
           </div>
         )}
       </div>

@@ -6,6 +6,13 @@ import { prisma } from './prisma'
 
 const HUMAN_LOCK_DURATION_MS = 10 * 60 * 1000 // 10 minutes
 const AI_LOCK_DURATION_MS = 2 * 60 * 1000     // 2 minutes
+export const AI_LOCK_AGENT = 'ai-agent'
+/** Pre-rename value — kept for transition so stale locks can be released. */
+const AI_LOCK_AGENT_LEGACY = 'ai-interviewer'
+
+function isAILock(lockedBy: string): boolean {
+  return lockedBy === AI_LOCK_AGENT || lockedBy === AI_LOCK_AGENT_LEGACY
+}
 
 export type LockHolder = {
   lockedBy: string
@@ -24,7 +31,7 @@ export async function acquireFileLock(
   lockedBy: string,
   userId: string | null,
 ): Promise<{ acquired: boolean; holder?: LockHolder }> {
-  const isAI = lockedBy === 'ai-interviewer'
+  const isAI = isAILock(lockedBy)
   const durationMs = isAI ? AI_LOCK_DURATION_MS : HUMAN_LOCK_DURATION_MS
   const expiresAt = new Date(Date.now() + durationMs)
 
@@ -46,9 +53,9 @@ export async function acquireFileLock(
             holder: {
               lockedBy: existing.lockedBy,
               userId: existing.userId,
-              isAI: existing.lockedBy === 'ai-interviewer',
-              displayName: existing.lockedBy === 'ai-interviewer'
-                ? 'Interviewer'
+              isAI: isAILock(existing.lockedBy),
+              displayName: isAILock(existing.lockedBy)
+                ? 'Workhorse'
                 : existing.user?.displayName ?? 'Unknown',
             },
           }
@@ -89,9 +96,9 @@ export async function acquireFileLock(
             ? {
                 lockedBy: winner.lockedBy,
                 userId: winner.userId,
-                isAI: winner.lockedBy === 'ai-interviewer',
-                displayName: winner.lockedBy === 'ai-interviewer'
-                  ? 'Interviewer'
+                isAI: isAILock(winner.lockedBy),
+                displayName: isAILock(winner.lockedBy)
+                  ? 'Workhorse'
                   : winner.user?.displayName ?? 'Unknown',
               }
             : undefined,
@@ -117,13 +124,17 @@ export async function releaseFileLock(
 
 /**
  * Release all locks held by a specific entity for a card.
+ * For AI locks, also releases any legacy 'ai-interviewer' locks from before the rename.
  */
 export async function releaseAllLocks(
   cardId: string,
   lockedBy: string,
 ): Promise<void> {
+  const values = isAILock(lockedBy)
+    ? [AI_LOCK_AGENT, AI_LOCK_AGENT_LEGACY]
+    : [lockedBy]
   await prisma.fileLock.deleteMany({
-    where: { cardId, lockedBy },
+    where: { cardId, lockedBy: { in: values } },
   })
 }
 
@@ -150,9 +161,9 @@ export async function getFileLockStatus(
   return {
     lockedBy: lock.lockedBy,
     userId: lock.userId,
-    isAI: lock.lockedBy === 'ai-interviewer',
-    displayName: lock.lockedBy === 'ai-interviewer'
-      ? 'Interviewer'
+    isAI: isAILock(lock.lockedBy),
+    displayName: isAILock(lock.lockedBy)
+      ? 'Workhorse'
       : lock.user?.displayName ?? 'Unknown',
   }
 }
@@ -182,9 +193,9 @@ export async function getCardLocks(
       holder: {
         lockedBy: lock.lockedBy,
         userId: lock.userId,
-        isAI: lock.lockedBy === 'ai-interviewer',
-        displayName: lock.lockedBy === 'ai-interviewer'
-          ? 'Interviewer'
+        isAI: isAILock(lock.lockedBy),
+        displayName: isAILock(lock.lockedBy)
+          ? 'Workhorse'
           : lock.user?.displayName ?? 'Unknown',
       },
     })

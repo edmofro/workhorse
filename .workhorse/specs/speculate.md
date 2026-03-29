@@ -1,11 +1,11 @@
 ---
 title: AI-driven spec interview
-area: interview
+area: agent
 card: WH-001
 status: draft
 ---
 
-An AI-powered interview system that guides users through developing comprehensive acceptance criteria. The interviewer has remote access to the target codebase to understand how changes fit together, identify edge cases, and find interactions with existing functionality.
+An AI-powered interview system that guides users through developing comprehensive acceptance criteria. The agent has remote access to the target codebase to understand how changes fit together, identify edge cases, and find interactions with existing functionality.
 
 ## Users
 
@@ -68,7 +68,7 @@ Product owners refining requirements, testers bringing attention to edge cases a
 
 ## Automated spec review
 
-The user can trigger an auto-review at any point — a fresh-context AI agent reviews the specs, mockups, and all existing project specs, then posts findings into the chat for the interview AI to help work through. See `workflow/auto-review.md` for full details.
+The user can trigger an auto-review at any point — a fresh-context AI agent reviews the specs, mockups, and all existing project specs, then posts findings into the chat for the session agent to help work through. See `workflow/auto-review.md` for full details.
 
 ## Spec completeness signals
 

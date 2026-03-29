@@ -22,7 +22,7 @@ For developers picking up the work, Workhorse generates an implementation prompt
 Each file has a navigable edit history powered by descriptive commit messages:
 
 - [ ] "History" affordance per file in the spec view
-- [ ] Shows: relative timestamp, author (user name or "Interviewer"), change description
+- [ ] Shows: relative timestamp, author (user name or "Workhorse"), change description
 - [ ] Click a version to see the file at that point
 - [ ] Diff between any two versions
 - [ ] Powered by `git log -- {filepath}` under the hood
@@ -40,11 +40,11 @@ Status changes (including `SPECIFYING` → `IMPLEMENTING`) are handled via the s
 - [ ] Workhorse creates a branch following the project's conventions on first spec activity (from CLAUDE.md, llm rules)
 - [ ] Subsequent changes push new commits to the same branch automatically
 - [ ] Dependent cards branch off parent card branches; rebasing is automatic
-- [ ] Branch is the source of truth; worktree on disk is a recreatable cache (see agent-sdk-interview spec for recovery details)
+- [ ] Branch is the source of truth; worktree on disk is a recreatable cache (see agent-sdk-session spec for recovery details)
 
 ## Collaborate with agent button
 
-See the agent SDK interview spec (`.workhorse/specs/agent-sdk-interview.md`) for full details. The split dropdown button appears in both `SPECIFYING` and `IMPLEMENTING` modes, generating a phase-appropriate prompt for external Claude Code sessions.
+See the agent SDK session spec (`.workhorse/specs/agent-sdk-session.md`) for full details. The split dropdown button appears in both `SPECIFYING` and `IMPLEMENTING` modes, generating a phase-appropriate prompt for external Claude Code sessions.
 
 ## Open questions
 

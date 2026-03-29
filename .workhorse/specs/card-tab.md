@@ -17,7 +17,7 @@ Initially, users will copy-paste descriptions from Linear. Over time, Workhorse 
 - [ ] Card metadata (status, team, assignee) is editable inline
 - [ ] All edits and metadata changes are visible to other users in real time
 - [ ] Card view is the default when opening a card
-- [ ] The AI interviewer reads the card description as starting context for the chat
+- [ ] The AI agent reads the card description as starting context for the chat
 
 ## Tags
 
@@ -31,7 +31,7 @@ Initially, users will copy-paste descriptions from Linear. Over time, Workhorse 
 - [ ] Comments are human-only text entries (no AI participation)
 - [ ] Each comment shows the author's avatar, display name, and timestamp
 - [ ] Comments are attributed to the user who wrote them
-- [ ] Comments are not included in the AI interview context
+- [ ] Comments are not included in the AI agent session context
 
 ## Activity timeline
 

@@ -9,7 +9,7 @@ Each product has a `.workhorse/design/` directory in its codebase containing a l
 
 ## Why
 
-Designers can iterate on UI without touching production code. The AI uses design components and views as reference when generating mockups during spec interviews, so mockups are consistent with the product's actual look and feel. Developers and AI agents reference the design library during implementation. It's version-controlled so there's history and collaboration. Committed mockups give AI agents concrete visual references when implementing specs.
+Designers can iterate on UI without touching production code. The AI uses design components and views as reference when generating mockups during agent sessions, so mockups are consistent with the product's actual look and feel. Developers and AI agents reference the design library during implementation. It's version-controlled so there's history and collaboration. Committed mockups give AI agents concrete visual references when implementing specs.
 
 ## What lives in `.workhorse/design/`
 
@@ -27,7 +27,7 @@ Full page compositions showing how components come together into complete screen
 
 ### `mockups/`
 
-Committed mockups from spec interviews, organised by card number. Each card's mockups live in a subfolder. See WH-003 for the full mockup lifecycle.
+Committed mockups from agent sessions, organised by card number. Each card's mockups live in a subfolder. See WH-003 for the full mockup lifecycle.
 
 ## Directory structure
 

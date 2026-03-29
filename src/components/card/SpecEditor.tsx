@@ -37,7 +37,7 @@ export function SpecEditor({
   const [lastSaved, setLastSaved] = useState<string | null>(null)
   const [editing, setEditing] = useState(isEditing)
 
-  const isInterviewerWorking = cardStatus === 'SPECIFYING'
+  const isAgentWorking = cardStatus === 'SPECIFYING'
 
   const save = useCallback(
     (content: string) => {
@@ -129,9 +129,9 @@ export function SpecEditor({
           <MarkdownContent content={body} />
         </div>
 
-        {isInterviewerWorking && (
+        {isAgentWorking && (
           <div className="mt-6 px-3 py-2 rounded-[var(--radius-default)] bg-[var(--amber-alpha)] border border-[rgba(180,83,9,0.15)] text-[12px] text-[var(--text-muted)]">
-            Interviewer is working... spec may update automatically.
+            Agent is working... spec may update automatically.
           </div>
         )}
       </div>

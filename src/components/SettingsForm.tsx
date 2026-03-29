@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition, useRef, useCallback } from 'react'
+import { useState, useTransition, useRef, useCallback, useMemo } from 'react'
 import { Button } from './Button'
 import { Avatar } from './Avatar'
 import { useUser } from './UserProvider'
@@ -37,6 +37,7 @@ export function SettingsForm({ projects: initialProjects }: SettingsFormProps) {
   const [projects, setProjects] = useState(initialProjects)
   const [isPending, startTransition] = useTransition()
   const [showRepoPicker, setShowRepoPicker] = useState(false)
+  const existingRepoUrls = useMemo(() => new Set(projects.map((p) => p.githubUrl)), [projects])
   const projectSaveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
 
   function handleUpdateName() {
@@ -350,7 +351,7 @@ export function SettingsForm({ projects: initialProjects }: SettingsFormProps) {
 
         {showRepoPicker && (
           <RepoPickerDialog
-            existingRepoUrls={new Set(projects.map((p) => p.githubUrl))}
+            existingRepoUrls={existingRepoUrls}
             onSelect={handleAddProjectFromRepo}
             onClose={() => setShowRepoPicker(false)}
           />

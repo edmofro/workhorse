@@ -1,6 +1,6 @@
 'use client'
 
-import { FileText, Image as ImageIcon, Plus } from 'lucide-react'
+import { FileText, Image as ImageIcon, Plus, PanelRightOpen, PanelRightClose } from 'lucide-react'
 import { cn } from '../../lib/cn'
 import type { SpecFileItem, MockupFileItem } from './types'
 
@@ -11,9 +11,12 @@ interface SpecsPanelProps {
   onSelectSpec: (filePath: string) => void
   onSelectMockup: (filePath: string) => void
   onCreateSpec: () => void
+  collapsed?: boolean
+  onToggle?: () => void
 }
 
-/** Thin right-side panel (~160px) listing card specs and mockups. Shown in chat mode. */
+/** Right-side panel listing card specs and mockups. Shown in chat mode.
+ *  Supports a collapsed state (narrow strip with toggle) and expanded (160px file list). */
 export function SpecsPanel({
   specs,
   mockups,
@@ -21,7 +24,35 @@ export function SpecsPanel({
   onSelectSpec,
   onSelectMockup,
   onCreateSpec,
+  collapsed = false,
+  onToggle,
 }: SpecsPanelProps) {
+  const hasFiles = specs.length > 0 || mockups.length > 0
+
+  // Collapsed: narrow strip with toggle button and file count badge
+  if (collapsed) {
+    return (
+      <aside
+        className="shrink-0 border-l border-[var(--border-subtle)] bg-[var(--bg-page)] flex flex-col items-center pt-3 gap-3"
+        style={{ width: '44px' }}
+      >
+        <button
+          onClick={onToggle}
+          className="p-1.5 rounded-[var(--radius-default)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer"
+          title="Show specs panel"
+        >
+          <PanelRightOpen size={14} />
+        </button>
+        {hasFiles && (
+          <span className="text-[10px] font-medium text-[var(--text-muted)] tabular-nums">
+            {specs.length + mockups.length}
+          </span>
+        )}
+      </aside>
+    )
+  }
+
+  // Expanded: full file list
   return (
     <aside
       className="shrink-0 border-l border-[var(--border-subtle)] bg-[var(--bg-page)] flex flex-col overflow-y-auto"
@@ -31,13 +62,24 @@ export function SpecsPanel({
         <span className="text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-[0.06em]">
           Specs
         </span>
-        <button
-          onClick={onCreateSpec}
-          className="p-1 text-[var(--text-muted)] hover:text-[var(--accent)] transition-colors duration-100 cursor-pointer"
-          title="New spec"
-        >
-          <Plus size={11} />
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={onCreateSpec}
+            className="p-1 text-[var(--text-muted)] hover:text-[var(--accent)] transition-colors duration-100 cursor-pointer"
+            title="New spec"
+          >
+            <Plus size={11} />
+          </button>
+          {onToggle && (
+            <button
+              onClick={onToggle}
+              className="p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors duration-100 cursor-pointer"
+              title="Collapse specs panel"
+            >
+              <PanelRightClose size={11} />
+            </button>
+          )}
+        </div>
       </div>
 
       {specs.length === 0 && (

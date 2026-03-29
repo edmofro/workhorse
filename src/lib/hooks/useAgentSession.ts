@@ -37,6 +37,12 @@ export function useAgentSession(cardId: string) {
   const historyCardIdRef = useRef<string | null>(null)
   const abortRef = useRef<AbortController | null>(null)
 
+  // Text buffering for smooth streaming — accumulate deltas and flush every ~60ms
+  const textBufferRef = useRef('')
+  const flushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const assistantContentRef = useRef('')
+  const assistantIdRef = useRef('')
+
   // Load chat history from Agent SDK session on mount or when cardId changes
   useEffect(() => {
     if (historyCardIdRef.current === cardId) return
@@ -59,12 +65,16 @@ export function useAgentSession(cardId: string) {
     loadHistory()
   }, [cardId])
 
-  // Clean up thinking timer on unmount
+  // Clean up timers on unmount
   useEffect(() => {
     return () => {
       if (thinkingTimerRef.current) {
         clearInterval(thinkingTimerRef.current)
         thinkingTimerRef.current = null
+      }
+      if (flushTimerRef.current) {
+        clearTimeout(flushTimerRef.current)
+        flushTimerRef.current = null
       }
     }
   }, [])
@@ -96,7 +106,31 @@ export function useAgentSession(cardId: string) {
       setActiveToolCalls([])
       setThinkingSnippet(null)
       thinkingBufferRef.current = ''
+      textBufferRef.current = ''
+      assistantContentRef.current = ''
+      assistantIdRef.current = assistantId
       abortRef.current = new AbortController()
+
+      // Flush buffered text to React state — called on a 60ms throttle
+      // so multiple small deltas batch into one smooth render.
+      function flushTextBuffer() {
+        if (!textBufferRef.current) return
+        const flushed = assistantContentRef.current + textBufferRef.current
+        assistantContentRef.current = flushed
+        textBufferRef.current = ''
+        const id = assistantIdRef.current
+        setMessages((prev) =>
+          prev.map((m) => (m.id === id ? { ...m, content: flushed } : m)),
+        )
+      }
+
+      function scheduleFlush() {
+        if (flushTimerRef.current) return
+        flushTimerRef.current = setTimeout(() => {
+          flushTimerRef.current = null
+          flushTextBuffer()
+        }, 60)
+      }
 
       // Sample thinking snippets every 1.5s from the buffer
       thinkingTimerRef.current = setInterval(() => {
@@ -124,11 +158,6 @@ export function useAgentSession(cardId: string) {
         const reader = res.body.getReader()
         const decoder = new TextDecoder()
         let buffer = ''
-        let assistantContent = ''
-        // Track the stable ID separately from the message's display ID,
-        // so we can always find the message to update even after the
-        // assistant event swaps in the real uuid.
-        const stableId = assistantId
 
         while (true) {
           const { done, value } = await reader.read()
@@ -148,9 +177,7 @@ export function useAgentSession(cardId: string) {
 
             try {
               const event = JSON.parse(data)
-              processEvent(event, stableId, assistantContent, (newContent) => {
-                assistantContent = newContent
-              })
+              processEvent(event, assistantId, scheduleFlush)
             } catch {
               // Ignore unparseable events
             }
@@ -166,6 +193,20 @@ export function useAgentSession(cardId: string) {
           ),
         )
       } finally {
+        // Flush any remaining buffered text before closing
+        if (flushTimerRef.current) {
+          clearTimeout(flushTimerRef.current)
+          flushTimerRef.current = null
+        }
+        if (textBufferRef.current) {
+          const finalContent = assistantContentRef.current + textBufferRef.current
+          const id = assistantIdRef.current
+          textBufferRef.current = ''
+          assistantContentRef.current = finalContent
+          setMessages((prev) =>
+            prev.map((m) => (m.id === id ? { ...m, content: finalContent } : m)),
+          )
+        }
         setIsStreaming(false)
         isStreamingRef.current = false
         setActiveToolCalls([])
@@ -184,8 +225,7 @@ export function useAgentSession(cardId: string) {
   function processEvent(
     event: Record<string, unknown>,
     assistantId: string,
-    currentContent: string,
-    setContent: (c: string) => void,
+    scheduleFlush: () => void,
   ) {
     // Handle streaming text and thinking events
     if (event.type === 'stream_event') {
@@ -193,17 +233,12 @@ export function useAgentSession(cardId: string) {
       if (streamEvent?.type === 'content_block_delta') {
         const delta = streamEvent.delta as Record<string, unknown> | undefined
 
-        // Text deltas — append to the assistant message
+        // Text deltas — buffer and schedule a throttled flush to React state
         if (delta?.type === 'text_delta' && typeof delta.text === 'string') {
           setThinkingSnippet(null)
           thinkingBufferRef.current = ''
-          const newContent = currentContent + delta.text
-          setContent(newContent)
-          setMessages((prev) =>
-            prev.map((m) =>
-              m.id === assistantId ? { ...m, content: newContent } : m,
-            ),
-          )
+          textBufferRef.current += delta.text
+          scheduleFlush()
         }
 
         // Thinking deltas — accumulate into buffer for periodic sampling (capped to avoid unbounded growth)
@@ -225,9 +260,17 @@ export function useAgentSession(cardId: string) {
           .join('')
 
         if (textParts) {
+          // Flush any pending buffer first so assistantContentRef is up to date
+          const currentContent = assistantContentRef.current + textBufferRef.current
+          textBufferRef.current = ''
+          if (flushTimerRef.current) {
+            clearTimeout(flushTimerRef.current)
+            flushTimerRef.current = null
+          }
+
           if (!currentContent || currentContent === textParts) {
             // First text, or exact match of already-streamed content — just confirm
-            setContent(textParts)
+            assistantContentRef.current = textParts
             setMessages((prev) =>
               prev.map((m) =>
                 m.id === assistantId ? { ...m, content: textParts } : m,
@@ -236,7 +279,7 @@ export function useAgentSession(cardId: string) {
           } else {
             // New text from a later turn — append to what we already have
             const newContent = currentContent + '\n\n' + textParts
-            setContent(newContent)
+            assistantContentRef.current = newContent
             setMessages((prev) =>
               prev.map((m) =>
                 m.id === assistantId ? { ...m, content: newContent } : m,
@@ -247,41 +290,10 @@ export function useAgentSession(cardId: string) {
       }
     }
 
-    // Handle error events from the server
-    if (event.type === 'error') {
-      const errorMessage = (event.message as string) || 'Something went wrong. Please try again.'
-      setMessages((prev) =>
-        prev.map((m) =>
-          m.id === assistantId ? { ...m, content: errorMessage } : m,
-        ),
-      )
-    }
-
     // Handle result events (end of agent query)
     if (event.type === 'result') {
       const subtype = event.subtype as string | undefined
       const stopReason = event.stop_reason as string | undefined
-
-      if (subtype === 'error_during_execution') {
-        // Agent encountered an error during execution
-        const errors = event.errors as string[] | undefined
-        const errorMessage = errors?.length
-          ? errors.join('. ')
-          : 'Something went wrong during processing. Please try again.'
-        setMessages((prev) => {
-          const lastMsg = prev.find((m) => m.id === assistantId)
-          if (lastMsg && lastMsg.content) {
-            return prev.map((m) =>
-              m.id === assistantId
-                ? { ...m, content: m.content + '\n\n' + errorMessage }
-                : m,
-            )
-          }
-          return prev.map((m) =>
-            m.id === assistantId ? { ...m, content: errorMessage } : m,
-          )
-        })
-      }
 
       if (subtype === 'error_max_turns' && stopReason === 'tool_use') {
         // Agent was cut off mid-work — append a friendly continuation message

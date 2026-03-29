@@ -59,6 +59,16 @@ export function useAgentSession(cardId: string) {
     loadHistory()
   }, [cardId])
 
+  // Clean up thinking timer on unmount
+  useEffect(() => {
+    return () => {
+      if (thinkingTimerRef.current) {
+        clearInterval(thinkingTimerRef.current)
+        thinkingTimerRef.current = null
+      }
+    }
+  }, [])
+
   const sendMessage = useCallback(
     async (content: string, userName: string, attachments?: AttachmentData[], mode?: string) => {
       if ((!content.trim() && (!attachments || attachments.length === 0)) || isStreamingRef.current) return
@@ -196,9 +206,9 @@ export function useAgentSession(cardId: string) {
           )
         }
 
-        // Thinking deltas — accumulate into buffer for periodic sampling
+        // Thinking deltas — accumulate into buffer for periodic sampling (capped to avoid unbounded growth)
         if (delta?.type === 'thinking_delta' && typeof delta.thinking === 'string') {
-          thinkingBufferRef.current += delta.thinking as string
+          thinkingBufferRef.current = (thinkingBufferRef.current + (delta.thinking as string)).slice(-256)
         }
       }
     }
@@ -215,7 +225,15 @@ export function useAgentSession(cardId: string) {
           .join('')
 
         if (textParts) {
-          if (currentContent && !currentContent.endsWith(textParts)) {
+          if (!currentContent || currentContent === textParts) {
+            // First text, or exact match of already-streamed content — just confirm
+            setContent(textParts)
+            setMessages((prev) =>
+              prev.map((m) =>
+                m.id === assistantId ? { ...m, content: textParts } : m,
+              ),
+            )
+          } else {
             // New text from a later turn — append to what we already have
             const newContent = currentContent + '\n\n' + textParts
             setContent(newContent)
@@ -224,17 +242,7 @@ export function useAgentSession(cardId: string) {
                 m.id === assistantId ? { ...m, content: newContent } : m,
               ),
             )
-          } else if (!currentContent) {
-            // First text, not yet streamed via deltas
-            setContent(textParts)
-            setMessages((prev) =>
-              prev.map((m) =>
-                m.id === assistantId ? { ...m, content: textParts } : m,
-              ),
-            )
           }
-          // If currentContent already ends with textParts, it was streamed
-          // via deltas — no update needed, just confirming what's there.
         }
       }
     }

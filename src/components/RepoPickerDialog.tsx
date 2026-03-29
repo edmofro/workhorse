@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Search, Loader2 } from 'lucide-react'
 import { Button } from './Button'
 
@@ -29,23 +29,33 @@ export function RepoPickerDialog({
   const [search, setSearch] = useState('')
 
   useEffect(() => {
+    const controller = new AbortController()
+
     async function fetchRepos() {
       try {
-        const res = await fetch('/api/github-repos')
+        const res = await fetch('/api/github-repos', { signal: controller.signal })
         if (!res.ok) throw new Error('Failed to fetch repositories')
-        const data: GitHubRepo[] = await res.json()
-        setRepos(data)
+        const data: { repos: GitHubRepo[]; permissionsUnavailable: boolean } = await res.json()
+        if (data.permissionsUnavailable) {
+          setError('Repository permissions data is unavailable. Ensure your GitHub token has the repo scope.')
+        } else {
+          setRepos(data.repos)
+        }
       } catch (err) {
+        if ((err as { name?: string }).name === 'AbortError') return
         setError(err instanceof Error ? err.message : 'Failed to fetch repositories')
       } finally {
         setLoading(false)
       }
     }
     fetchRepos()
+
+    return () => controller.abort()
   }, [])
 
-  const filtered = repos.filter((r) =>
-    r.fullName.toLowerCase().includes(search.toLowerCase()),
+  const filtered = useMemo(
+    () => repos.filter((r) => r.fullName.toLowerCase().includes(search.toLowerCase())),
+    [repos, search],
   )
 
   return (

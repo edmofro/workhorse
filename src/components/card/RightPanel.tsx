@@ -109,7 +109,7 @@ export function RightPanel({
   return (
     <aside
       className="shrink-0 border-l border-[var(--border-subtle)] bg-[var(--bg-page)] flex flex-col overflow-y-auto"
-      style={{ width: '216px' }}
+      style={{ width: '240px' }}
     >
       {/* Collapse toggle */}
       <div className="flex items-center justify-between px-3 pt-3 pb-1">
@@ -122,14 +122,14 @@ export function RightPanel({
             className="p-1 text-[var(--text-muted)] hover:text-[var(--accent)] transition-colors duration-100 cursor-pointer"
             title="New spec"
           >
-            <Plus size={12} />
+            <Plus size={14} />
           </button>
           <button
             onClick={() => setCollapsed(true)}
             className="p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors duration-100 cursor-pointer"
             title="Collapse panel"
           >
-            <PanelRightClose size={12} />
+            <PanelRightClose size={14} />
           </button>
         </div>
       </div>

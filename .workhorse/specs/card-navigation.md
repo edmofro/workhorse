@@ -5,118 +5,181 @@ card: WH-006
 status: in-progress
 ---
 
-The card detail experience is rebuilt around an ever-present chat. The chat is the primary interaction surface — always visible, always the same conversation. Specs and mockups are views you open from within the card workspace, not destinations you navigate to via tabs. The card's status shapes what actions are prominent and what the AI focuses on, but never gates access to any view.
+The card detail experience is rebuilt around a chat-first workflow following the Claude/ChatGPT artifact pattern. The chat is the primary interaction surface — centred when no spec is open, sliding left when a spec opens as an artifact on the right. Specs and mockups are artifacts produced by or referenced by the conversation. The card's status shapes what actions are prominent and what the AI focuses on, but never gates access to any view.
 
 ## Mental model
 
-A card is a workspace. The chat is how you interact with the AI about it. Everything the AI produces — specs, mockups — appears in a persistent file panel and can be opened alongside the chat. The three-tab navigation (Card / Chat / Spec) is replaced by a fluid system where the chat grows, shrinks, and repositions based on what you're doing.
+A card is a workspace. The chat is how you interact with the AI about it. Specs and mockups are artifacts that open alongside the chat — chat on the left, artifact on the right, exactly like Claude's artifact panel or ChatGPT's canvas. When no artifact is open, the chat is centred and a small specs panel on the right lists what's been created (like Claude's "Artifacts" sidebar).
 
-The file panel on the right shows files this card has changed (driven by `git diff --name-only main` under the hood). When the AI edits a project spec that overlaps with the card's work, that file automatically appears in the panel. No "attach" action — editing a file is what makes it show up.
+The workspace has three primary modes, each using the full content area (no floating panels):
 
-## Card view (home state)
+1. **Card home** — card details centred, input bar + pills at the bottom
+2. **Chat** — centred conversation (~680px), specs panel on the right
+3. **Chat + artifact** — chat left (~40%), spec/mockup right (~60%)
 
-The default when opening a card. Card details fill the content area (title, description, metadata, comments, activity). A floating chat panel sits in the lower portion. The right panel lists changed files (specs and mockups).
+Within the artifact view, a **focus mode** hides the chat and replaces it with a spec navigation rail for reviewing and editing files without the AI.
 
-- [ ] Card details (title, description, metadata, comments, activity) fill the main content area
-- [ ] Floating chat panel in the lower portion of the content area, overlaying the card content
-- [ ] Chat panel shows recent messages (retrieved from Agent SDK session history) and suggested action pills
-- [ ] Chat input bar always visible at the bottom of the floating panel
-- [ ] Right panel (220px, collapsible) lists specs and mockups this card has changed
-- [ ] Right panel is collapsible via a thin edge toggle; remembers state in localStorage
-- [ ] Right panel starts collapsed on screens below 1200px
-- [ ] Clicking a spec in the right panel opens the spec view
-- [ ] Clicking a mockup in the right panel opens the mockup view
+## Card home (landing state)
+
+The default when opening a card. Card details fill the content area, centred. Specs and mockups are listed inline within the card details. An input bar with action pills sits at the bottom to kick off conversation.
+
+- [ ] Card details (title, description, metadata, comments, activity) fill the content area, centred
+- [ ] Specs and mockups listed inline within the card details (not a separate panel), with new/updated labels
+- [ ] New spec button (+) available in the inline specs list
+- [ ] Input bar fixed at the bottom with action pills above it
+- [ ] No chat messages shown — just the input bar and pills as a launchpad
+- [ ] Clicking a spec opens it in artifact view (chat + spec)
+- [ ] Clicking a mockup opens the mockup overlay
+- [ ] Sending a message or clicking a pill transitions to full chat
 
 ### When returning to a SPECIFYING card
 
-If the card is mid-specifying and the user returns (e.g. after closing the browser), the card view is shown with:
+- [ ] Chat history loaded from Agent SDK session transcript on mount (if available)
+- [ ] If no history, the input bar shows cold-start pills for resuming
+- [ ] Specs and mockups listed inline show files already on the card's branch
+- [ ] One click on a pill or message resumes the conversation and transitions to full chat
 
-- [ ] Chat history loaded from Agent SDK session transcript (if available)
-- [ ] If no history available, the floating chat shows suggested pills for resuming
-- [ ] Right panel shows specs and mockups already created on this card's branch
-- [ ] One click on a pill or message resumes the conversation and expands to full-screen chat
+## Chat mode (centred conversation)
 
-## Full-screen chat (interview / deep conversation)
+Triggered when the user sends a message from card home. The card details slide away and the chat fills the content area (~680px max-width, centred). A thin specs panel on the right lists the card's artifacts.
 
-Triggered when the user sends a message (via pill or by typing). The card details slide away and the chat expands to fill the content area (680px max-width, centred). The right panel remains. This is where specifying happens — the interview runs here.
-
-- [ ] Chat expands to full-screen on first message sent, like claude.ai's expand-on-first-message pattern
 - [ ] Chat messages render at 680px max-width, centred in the content area
-- [ ] Right panel stays visible, showing files as they're created/updated in real time
-- [ ] Spec and mockup update notifications in the chat are click-through previews: a compact card showing the file name and a snippet of changes, clickable to open the full view
-- [ ] Back to card view via breadcrumb, back arrow, or Escape
-- [ ] Suggested action pills visible above the input bar (see "Action pills" section)
-- [ ] Chat scroll position preserved when switching between views and returning
+- [ ] Thin specs panel (~160px) on the right edge lists this card's specs and mockups with new/updated labels — like Claude's "Artifacts" sidebar
+- [ ] Specs panel collapses on narrow screens
+- [ ] File write notifications from the AI appear inline in the chat as clickable cards (file name + snippet), like Claude's artifact reference cards
+- [ ] Clicking a spec in the right panel or an inline notification opens it as an artifact (chat slides left)
+- [ ] `←` back arrow returns to card home
+- [ ] Suggested action pills visible above the input bar
+- [ ] Chat scroll position preserved across view transitions
 
-## Spec view (document open)
+## Chat + artifact mode (spec open)
 
-Triggered when the user clicks a spec in the right panel or a chat notification. The spec editor opens as the main content. The chat becomes a floating panel at the bottom of the spec editor area. The right panel stays.
+Triggered when the user clicks a spec from the chat, the specs panel, or an inline notification. The chat slides left (~40% width), and the spec opens on the right (~60% width) as an artifact.
 
-- [ ] Spec editor fills the content area (720px max-width, centred within available space)
-- [ ] The spec editor has no left sidebar — the right panel handles all file navigation
-- [ ] Chat becomes a floating panel at the bottom of the spec editor area, 200px tall by default
-- [ ] Floating chat panel is resizable by dragging the top edge
-- [ ] Floating chat shows recent messages, suggested pills, and the input bar
-- [ ] Expand button (↗ icon) in the floating chat header returns to full-screen chat
-- [ ] Close/back affordance on the spec view returns to the previous state (card view or full-screen chat, depending on where the user came from)
-- [ ] Closing the spec via the back button and expanding the chat are both ways to exit spec view, but lead to different destinations
+- [ ] Chat on the left, spec editor on the right — follows the Claude/ChatGPT artifact convention
+- [ ] The specs panel disappears (replaced by the artifact itself)
+- [ ] The spec is read-only by default
+- [ ] AI edits to the spec appear in real time on the right while the user chats on the left
 
-## Mockup view (mockup open)
+### Spec header bar
 
-Triggered when the user clicks a mockup in the right panel or a chat notification. The mockup viewer opens as a full-screen overlay with device toggle. The chat becomes a floating pill at the bottom centre, expandable to a panel.
+The spec header sits at the top of the artifact area:
+
+- [ ] **◀ ▶ arrows**: flip sequentially between this card's specs and mockups
+- [ ] **⌄ dropdown**: spec browser (see "Spec dropdown" section below)
+- [ ] **⤢ focus toggle**: enters focus mode (hides chat, shows spec rail)
+- [ ] **✕ close**: closes the artifact, returns to centred chat. This is a "close", not a "back" — like ChatGPT's canvas close.
+- [ ] **Edit button**: enters focus mode with editing enabled on the current spec (shortcut: ⤢ + Edit in one click)
+
+### Transitions from artifact mode
+
+- [ ] ✕ close → centred chat (specs panel reappears on right)
+- [ ] ⤢ focus → focus mode (chat replaced by spec rail)
+- [ ] Edit → focus mode + editing (chat replaced by spec rail, spec editable)
+- [ ] ◀ ▶ → same mode, different spec
+- [ ] Typing in the chat input → stays in artifact mode (chat alongside spec)
+- [ ] Escape → close artifact (same as ✕)
+
+## Focus mode (spec rail + artifact)
+
+Entered by clicking ⤢ (focus) or Edit in the spec header. The chat column is replaced by a narrow spec navigation rail. The spec takes ~85% of the width. This mode is for working directly with specs — reviewing or editing — without the AI.
+
+### Spec rail
+
+- [ ] Narrow column (~140px) replacing the chat column
+- [ ] Lists this card's specs and mockups as clickable items
+- [ ] Active file is visually highlighted
+- [ ] Clicking a file in the rail opens it on the right (read-only)
+- [ ] No chat input visible — to chat, exit focus mode first
+
+### Reviewing (focus mode, read-only)
+
+- [ ] Spec content displayed read-only at ~85% width
+- [ ] Flip between files using the rail, ◀ ▶ arrows, or dropdown
+- [ ] No save prompts when flipping — you're just reading
+- [ ] Edit button available to enter editing for the current spec
+- [ ] Exit focus mode (⤢ toggle again, or Escape) → returns to chat + artifact
+
+### Editing (focus mode, editable)
+
+- [ ] Spec content is editable at ~85% width
+- [ ] Spec rail remains visible for navigation context
+- [ ] "Done editing" button saves changes and returns the spec to read-only (still in focus mode)
+- [ ] Flipping to another spec while editing prompts "Save changes to {filename}?" with Save / Discard options
+- [ ] Must exit editing (Done or save via flip prompt) before returning to chat — there is no chat input to type into during editing
+- [ ] Can also enter editing by clicking "Edit" from artifact mode (shortcut that does ⤢ + Edit together)
+
+## Mockup view
+
+Triggered when the user clicks a mockup. Full-screen overlay with device toggle, same pattern as current.
 
 - [ ] Full-screen overlay with device toggle (Desktop, Tablet, Mobile) in the topbar
 - [ ] Chat as floating pill at bottom centre, expandable to a panel on click
-- [ ] Closing the mockup view returns to the previous state
-- [ ] Expand button on the floating chat returns to full-screen chat (closes mockup view)
+- [ ] ◀ ▶ arrows to flip between mockups
+- [ ] ✕ close returns to the previous state
+- [ ] Expand button on the floating chat returns to centred chat (closes mockup view)
 
 ## State transitions
 
 ```
-Card view  ──(send message / click pill)──▶  Full-screen chat
-Card view  ──(click spec in right panel)──▶  Spec view
-Card view  ──(click mockup in right panel)──▶  Mockup view
+Card home ──(send message / pill)──────────→ Chat (centred)
+Card home ──(click spec)───────────────────→ Chat + artifact
+Card home ──(click mockup)─────────────────→ Mockup overlay
+Card home ──(← back)───────────────────────→ Team board
 
-Full-screen chat  ──(click spec in right panel or notification)──▶  Spec view
-Full-screen chat  ──(click mockup in right panel or notification)──▶  Mockup view
-Full-screen chat  ──(back / Escape)──▶  Card view
+Chat ──(click spec in panel/notification)──→ Chat + artifact
+Chat ──(click mockup)──────────────────────→ Mockup overlay
+Chat ──(← back)────────────────────────────→ Card home
 
-Spec view  ──(expand chat)──▶  Full-screen chat
-Spec view  ──(click mockup)──▶  Mockup view
-Spec view  ──(close / back)──▶  (previous state: card view or full-screen chat)
+Chat + artifact ──(✕ close / Escape)───────→ Chat (centred)
+Chat + artifact ──(⤢ focus)────────────────→ Focus mode (read-only)
+Chat + artifact ──(Edit)───────────────────→ Focus mode (editing)
+Chat + artifact ──(◀ ▶)────────────────────→ Chat + artifact (different file)
 
-Mockup view  ──(close)──▶  (previous state)
-Mockup view  ──(expand chat)──▶  Full-screen chat
+Focus mode ──(Edit)────────────────────────→ Focus mode (editing)
+Focus mode ──(click file in rail)──────────→ Focus mode (that file, read-only)
+Focus mode ──(⤢ toggle / Escape)───────────→ Chat + artifact
+
+Focus editing ──(Done editing)─────────────→ Focus mode (read-only)
+Focus editing ──(click other file in rail)─→ Save prompt → Focus mode (other file, read-only)
+
+Mockup overlay ──(✕ close)─────────────────→ Previous state
 ```
 
-## Right panel
+## Spec dropdown (file browser)
 
-A persistent panel on the right side of the content area, consistent across all views except mockup view (which is a full-screen overlay). Shows the same content everywhere — no adaptive behaviour.
+Available via the ⌄ chevron in the spec header bar in both artifact and focus modes. This is the primary way to find and open any spec.
 
-- [ ] Fixed width: 220px
-- [ ] Collapsible via thin edge toggle; remembers state in localStorage
-- [ ] Starts collapsed on screens below 1200px
+- [ ] Search bar at the top, always focused on open
+- [ ] Typing instantly filters card specs below by name
+- [ ] Simultaneously fires a backend search across all project specs, fuzzy matching on title and content
+- [ ] Below search: **This card** section showing card specs/mockups with new/updated labels (always visible, not filtered by search unless search is active)
+- [ ] Below that: **All project specs** section showing results from the backend search, or the full list when no search query
+- [ ] Clicking a card spec opens it (in current mode — artifact or focus)
+- [ ] Clicking a project spec opens it for reading; editing it auto-commits to the card's branch and it appears in the card specs section
 
-### Contents
+## Navigation model
 
-The panel has three sections: specs and mockups for this card (the user's work), then a project explorer below a separator (browsing what else exists).
+### Back arrow (← in topbar)
 
-- [ ] **Specs** section: files changed on this card's branch within `.workhorse/specs/`, with new/updated labels derived from whether the file exists on main
-- [ ] **New spec** button (+ icon) to create a new spec file (opens the NewSpecDialog)
-- [ ] Clicking a card spec opens it in the spec view for editing
-- [ ] **Mockups** section: mockup files changed on this card's branch within `.workhorse/design/mockups/`
-- [ ] Clicking a mockup opens the mockup view
-- [ ] Items in both sections appear in real time as the AI creates or updates files during the interview
+- [ ] On card home → navigates to the team board
+- [ ] In chat mode → returns to card home
+- [ ] In artifact/focus mode → Escape closes the artifact first; ← from chat goes to card home
 
-Below a visual separator:
+### Escape key
 
-- [ ] **Search bar**: filters both card specs/mockups above and project specs below by filename
-- [ ] **Project specs** section (collapsible, collapsed by default): all specs in the project's main branch, excluding those already changed by this card. Searching auto-expands this section
-- [ ] Clicking a project spec opens it in the spec view for reading; editing it auto-commits to the card's branch, which makes it appear in the specs section above
+- [ ] In focus mode → exits to chat + artifact
+- [ ] In chat + artifact → closes artifact (same as ✕), returns to centred chat
+- [ ] In chat → returns to card home
+- [ ] In mockup overlay → closes overlay
+
+### Close (✕) vs back (←)
+
+Close (✕) dismisses the current artifact and returns to centred chat. It's a "close this document" action, not a navigation back. Back (←) navigates up the hierarchy: artifact → chat → card home → board.
 
 ## Action pills
 
-Contextual action chips displayed above the chat input bar. Clicking a pill sends a message and (for most pills) triggers a mode-specific system prompt that shapes the AI's behaviour. Always 3–4 pills maximum. The text input is always available beneath the pills for free-form messages.
+Contextual action chips displayed above the chat input bar. Clicking a pill sends a message and triggers a mode-specific system prompt that shapes the AI's behaviour. Always 3–4 pills maximum. The text input is always available beneath the pills for free-form messages.
 
 Pills send a visible message (the user sees it in the chat) but also carry a hidden system prompt fragment that reorients the AI. For example, clicking "Review specs" sends a message like "Review specs" but the API prepends review-specific instructions.
 
@@ -140,7 +203,7 @@ Pills send a visible message (the user sees it in the chat) but also carry a hid
 - "Review specs" — switch to review mode (AI critiques)
 - "Make changes" — switch to directed mode (AI follows instructions)
 
-**SPECIFYING, floating chat in spec view:**
+**SPECIFYING, spec open in artifact mode:**
 - "Review this spec" — AI reviews the currently-open spec
 - "Make changes" — AI follows user's editing directions
 
@@ -152,7 +215,7 @@ Pills send a visible message (the user sees it in the chat) but also carry a hid
 **IMPLEMENTING, conversation underway (future):**
 - "Design audit" — switch to design review mode
 - "Security audit" — switch to security review mode
-- "Review code" — general code review (only available after implementation work has been done; reviews code against spec, not the spec changes themselves)
+- "Review code" — general code review (only after implementation work; reviews code against spec)
 
 ### System prompts behind pills
 
@@ -194,13 +257,12 @@ Track which quality steps have been completed for each card, surfaced as soft ga
 ## What this replaces
 
 - [ ] The Card / Chat / Spec tab strip in the topbar is removed
-- [ ] The topbar shows: back arrow, card title + identifier on the left; Collaborate button on the right (when in SPECIFYING or IMPLEMENTING)
+- [ ] The topbar shows: back arrow (context-aware), card title + identifier on the left; Collaborate button on the right
 - [ ] `CardDetailShell.tsx` no longer renders a view toggle
-- [ ] `InterviewView.tsx` becomes the full-screen chat state
-- [ ] `SpecTab.tsx` becomes what opens when you click a spec, with the floating chat at the bottom instead of a chat sidebar on the left
-- [ ] `SpecListSidebar.tsx` is replaced by the right panel (same data, different position and always-present)
-- [ ] `CardTab.tsx` becomes the card view (home state)
-- [ ] URL routing changes: `/cards/[cardId]` is the only route; view state (card/chat/spec/mockup) is client-side state, not URL segments
+- [ ] The floating chat panel (previous iteration) is removed entirely — chat is always column-based
+- [ ] `SpecListSidebar.tsx` is replaced by the specs panel (chat mode) and spec rail (focus mode)
+- [ ] `RightPanel.tsx` (previous iteration with search + project specs explorer) is replaced by the specs panel + spec dropdown
+- [ ] URL routing changes: `/cards/[cardId]` is the only route; view state is client-side
 
 ## Open questions
 
@@ -208,6 +270,9 @@ Track which quality steps have been completed for each card, surfaced as soft ga
 
 ## Resolved decisions
 
-- **URL routing vs client state:** Client-side state. View state (card/chat/spec/mockup) is managed via React state in `CardWorkspace`, not URL segments. Simpler implementation, no deep-linking needed since users always enter via the card view.
-- **Floating chat height in card view:** Overlay, not push. The floating chat sits on top of card content. Card content remains fully scrollable underneath.
-- **Pill system prompt injection:** Option (a) — the frontend sends a `mode` parameter alongside the message, and the interview API maps mode to a system prompt fragment server-side. Keeps prompt logic server-side.
+- **URL routing vs client state:** Client-side state. View state is managed via React state in `CardWorkspace`, not URL segments.
+- **Pill system prompt injection:** The frontend sends a `mode` parameter alongside the message, and the interview API maps mode to a system prompt fragment server-side.
+- **Chat positioning:** Chat is column-based (left side in artifact mode, centred when no artifact), never floating. Follows the Claude/ChatGPT artifact convention.
+- **File navigation:** No dedicated navigation panel. Specs panel (thin right-side list in chat mode) for quick access, spec dropdown (⌄ in header bar) with search for finding any spec, spec rail (left column in focus mode) for flipping during review/edit.
+- **Spec browsing vs chatting:** They compete for time, not space. The left content column shows either chat or the spec rail, never both. Focus mode replaces chat with the rail; exiting focus mode brings chat back.
+- **Edit save model:** Edits are saved explicitly via "Done editing". Flipping to another file while editing prompts save/discard. No auto-save on navigation.

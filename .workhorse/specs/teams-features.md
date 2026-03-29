@@ -22,5 +22,5 @@ The home view of Workhorse. Each team has a board — a list of open cards group
 - [ ] Teams are configurable (name, colour)
 - [ ] Each team belongs to a single project
 - [ ] Cards belong to a team and appear on that team's board
-- [ ] Users can join any team linked to a project they have write access to, or create a new one (see WH-021)
-- [ ] Team management (join, leave, create) is available in the sidebar Teams section (see `navigation/product-navigation.md`)
+- [ ] All users with access to a project can interact with any team in that project — there is no team membership
+- [ ] Team management (create, edit, delete) is available in settings

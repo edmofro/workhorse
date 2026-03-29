@@ -21,15 +21,13 @@ Within the active project, the sidebar shows three sections:
 
 - [ ] **Specs** — links to the spec explorer (`/:projectSlug/specs`), the navigable hierarchy of merged specs from the main branch
 - [ ] **Design** — links to the design browser (`/:projectSlug/design`), the project's design library
-- [ ] **Teams** — lists the teams the user belongs to within this project, each linking to that team's board
+- [ ] **Teams** — lists all teams in the project, each linking to that team's board
 
 ## Teams section
 
-- [ ] Teams the user has joined are listed under the Teams heading
+- [ ] All teams in the project are listed under the Teams heading
 - [ ] Clicking a team navigates to its board (a list of open cards grouped by status)
-- [ ] Below the user's teams, a "Join or create team" action opens a panel showing other teams in the project that the user can join, plus a "Create team" option
 - [ ] Each team is shown with its colour dot and name
-- [ ] Creating a team is inline — name and colour — and the user automatically joins the new team
 
 ## Empty project onboarding
 

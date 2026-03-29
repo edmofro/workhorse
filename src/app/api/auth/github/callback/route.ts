@@ -25,6 +25,7 @@ export async function GET(request: Request) {
 
   // Validate state to prevent CSRF
   if (!code || !state || state !== savedState) {
+    console.error('[OAuth] State mismatch', { hasCode: !!code, hasState: !!state, hasSavedState: !!savedState })
     return NextResponse.redirect(`${baseUrl}/sign-in?error=invalid_state`)
   }
 
@@ -53,7 +54,8 @@ export async function GET(request: Request) {
     await setSessionUserId(user.id)
 
     return NextResponse.redirect(`${baseUrl}${returnTo}`)
-  } catch {
+  } catch (error) {
+    console.error('[OAuth] Authentication failed:', error)
     return NextResponse.redirect(`${baseUrl}/sign-in?error=auth_failed`)
   }
 }

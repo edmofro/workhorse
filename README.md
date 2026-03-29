@@ -46,6 +46,7 @@ npm run dev           # Start the dev server at http://localhost:3000
 | `GITHUB_CLIENT_SECRET` | Yes | GitHub OAuth app client secret |
 | `NEXTAUTH_URL` | Yes | Base URL of the application (e.g. `https://yourdomain.com`) |
 | `REPOS_BASE_PATH` | No | Path for git repository storage (default: `/data/repos`) |
+| `CLAUDE_CONFIG_DIR` | No | Path for Claude Agent SDK session storage (default: `/data/repos/.claude`) |
 | `GITHUB_SERVICE_TOKEN` | No | GitHub token for automatic worktree recovery on restart |
 
 ## Deploying on Railway
@@ -74,11 +75,12 @@ Use Railway's variable reference (`${{Postgres.DATABASE_URL}}`) to automatically
 
 ### 3. Attach a persistent volume
 
-The app stores git bare clones and worktrees on disk. Without a volume, these are lost on each deploy.
+The app stores git bare clones, worktrees, and Claude Agent SDK sessions on disk. Without a volume, these are lost on each deploy (stale session IDs will cause errors when resuming conversations).
 
 - Go to your service → **Settings → Volumes**
 - Add a volume mounted at `/data/repos`
 - This matches the default `REPOS_BASE_PATH`; if you use a different mount path, set `REPOS_BASE_PATH` accordingly
+- Claude SDK sessions are stored at `$REPOS_BASE_PATH/.claude` by default (override with `CLAUDE_CONFIG_DIR`)
 
 ### 4. Build and deploy settings
 

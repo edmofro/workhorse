@@ -1,3 +1,4 @@
+import '../../../lib/ai/ensureSessionStorage'
 import { NextRequest } from 'next/server'
 import { query } from '@anthropic-ai/claude-agent-sdk'
 import { prisma } from '../../../lib/prisma'

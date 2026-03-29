@@ -10,10 +10,12 @@ interface Props {
 export default async function ProjectSpecsPage({ params }: Props) {
   const { projectSlug } = await params
 
-  const allProjects = await prisma.project.findMany()
-  const project = allProjects.find(
-    (p) => p.name.toLowerCase() === projectSlug.toLowerCase(),
-  )
+  const projects = await prisma.project.findMany({
+    where: { name: { equals: decodeURIComponent(projectSlug), mode: 'insensitive' } },
+    include: { teams: true },
+    take: 1,
+  })
+  const project = projects[0]
   if (!project) notFound()
 
   return (
@@ -25,6 +27,8 @@ export default async function ProjectSpecsPage({ params }: Props) {
         owner={project.owner}
         repoName={project.repoName}
         defaultBranch={project.defaultBranch}
+        projectName={project.name}
+        teams={project.teams.map((t) => ({ id: t.id, name: t.name }))}
       />
     </>
   )

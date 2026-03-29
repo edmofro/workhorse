@@ -86,7 +86,7 @@ export async function POST(request: NextRequest) {
 
   // Validate actual file content matches claimed MIME type
   const detectedMime = detectMimeType(buffer)
-  if (detectedMime && detectedMime !== file.type) {
+  if (!detectedMime || detectedMime !== file.type) {
     return NextResponse.json(
       { error: 'File content does not match declared type' },
       { status: 400 },

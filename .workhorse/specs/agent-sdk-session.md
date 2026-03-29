@@ -1,16 +1,16 @@
 ---
-title: Agent SDK interview architecture
-area: interview
+title: Agent SDK session architecture
+area: agent
 card: WH-001
 status: draft
 ---
 
-The AI interviewer runs on the Claude Agent SDK, giving it full codebase access, automatic context window management, and the ability to write spec and mockup files directly to disk. Workhorse is an orchestration and approval UI — the Agent SDK handles the agentic loop, file tools (Read, Glob, Grep, Write, Edit), context window compaction, and session persistence.
+The AI agent runs on the Claude Agent SDK, giving it full codebase access, automatic context window management, and the ability to write spec and mockup files directly to disk. Workhorse is an orchestration and approval UI — the Agent SDK handles the agentic loop, file tools (Read, Glob, Grep, Write, Edit), context window compaction, and session persistence.
 
 ## Architecture overview
 
 ```
-User ↔ Workhorse UI ↔ /api/interview ↔ Claude Agent SDK session
+User ↔ Workhorse UI ↔ /api/agent-session ↔ Claude Agent SDK session
                                             ↕
                                  Target repo worktree on disk
                                  (Read, Glob, Grep, Write, Edit)
@@ -56,11 +56,11 @@ Each product in Workhorse maps to a GitHub repo. The target repo must be availab
 
 - [ ] On product registration, create a bare mirror clone of the target repo
 - [ ] Before each session starts, `git fetch` the bare clone to ensure freshness
-- [ ] On first spec activity for a card (interview or manual edit), create a branch (`workhorse/{identifier}-spec`) and a worktree checked out at that branch
-- [ ] All spec activity on the card (interview turns, manual edits) operates on the same worktree
+- [ ] On first spec activity for a card (agent session or manual edit), create a branch (`workhorse/{identifier}-spec`) and a worktree checked out at that branch
+- [ ] All spec activity on the card (agent turns, manual edits) operates on the same worktree
 - [ ] On commit, `git add` + `commit` + `push` from the worktree using the acting user's OAuth token
 - [ ] On card close or timeout (no activity for 24h), remove the worktree via `git worktree remove`
-- [ ] One worktree per card, not per user or per interview session
+- [ ] One worktree per card, not per user or per session
 
 ### Authentication
 
@@ -78,13 +78,13 @@ Each product in Workhorse maps to a GitHub repo. The target repo must be availab
 
 ## Agent SDK integration
 
-### Interview agent
+### Agent configuration
 
-- [ ] Use `query()` from `@anthropic-ai/claude-agent-sdk` to run interview sessions
+- [ ] Use `query()` from `@anthropic-ai/claude-agent-sdk` to run agent sessions
 - [ ] Grant tools: `Read`, `Glob`, `Grep`, `Write`, `Edit` — no `Bash` (agent cannot run arbitrary commands)
 - [ ] Set `workingDirectory` to the card's worktree path
 - [ ] Use `permissionMode: "acceptEdits"` — auto-approve file writes within the worktree
-- [ ] Use system prompt preset `claude_code` with `append` for interview-specific instructions
+- [ ] Use system prompt preset `claude_code` with `append` for session-specific instructions
 - [ ] Enable `settingSources: ["project"]` so the agent picks up the target repo's `CLAUDE.md`
 - [ ] Enable `includePartialMessages: true` for streaming to the UI
 - [ ] Store the Agent SDK `session_id` on the Feature record for session resumption
@@ -122,12 +122,12 @@ This context means the agent never needs to explore the codebase to understand h
 - **Security audit mode**: review implementation for OWASP top 10, injection, auth/authz issues
 - **Default (no mode)**: follow the user's lead
 
-The mode parameter flows from the action pill UI → `useInterview` hook → `/api/interview` POST body → `buildInterviewInstructions()`. Each mode maps to a system prompt fragment that shapes the agent's behaviour without the user needing to write detailed instructions.
+The mode parameter flows from the action pill UI → `useAgentSession` hook → `/api/agent-session` POST body → `buildSessionInstructions()`. Each mode maps to a system prompt fragment that shapes the agent's behaviour without the user needing to write detailed instructions.
 
 ### Context window management
 
 - [ ] The Agent SDK handles context window compaction automatically
-- [ ] Long interviews that exceed the context window are compacted by the SDK, preserving the most relevant context
+- [ ] Long sessions that exceed the context window are compacted by the SDK, preserving the most relevant context
 
 ### Session persistence and resumption
 
@@ -151,7 +151,7 @@ The mode parameter flows from the action pill UI → `useInterview` hook → `/a
 - [ ] Text responses stream in real-time (character by character)
 - [ ] Tool calls are visible: "Reading `src/patient/search.ts`...", "Searching for `allergy`...", "Updated `specs/patient/allergies.md`"
 - [ ] File write/edit events highlighted as notifications (e.g. "Updated specs/patient/allergies.md")
-- [ ] Soft-lock on the spec editor during active turns ("Interviewer is working...")
+- [ ] Soft-lock on the spec editor during active turns ("Agent is working...")
 
 ### What the user does NOT see
 
@@ -161,9 +161,9 @@ Trade-off: streaming UX (seeing text arrive in real-time, seeing tool calls happ
 
 ### API route
 
-- [ ] `POST /api/interview` streams Agent SDK events to the client via Server-Sent Events (SSE)
+- [ ] `POST /api/agent-session` streams Agent SDK events to the client via Server-Sent Events (SSE)
 - [ ] Captures `session_id` on init, stores on Feature record
-- [ ] Frontend `useInterview` hook consumes SSE and updates UI state
+- [ ] Frontend `useAgentSession` hook consumes SSE and updates UI state
 
 ## Spec and mockup files
 
@@ -206,7 +206,7 @@ Each spec and mockup file has at most one active editor (user or AI) at a time.
 A `FileLock` record tracks who is editing each file:
 
 - `featureId` + `filePath` (unique constraint)
-- `lockedBy`: user ID or `"ai-interviewer"`
+- `lockedBy`: user ID or `"ai-agent"`
 - `lockedAt`: timestamp
 - `expiresAt`: auto-expire stale locks (10 minutes for humans, 2 minutes for AI)
 
@@ -227,7 +227,7 @@ Every change to spec and mockup files is committed and pushed to the card's bran
 - [ ] At the end of each agent turn, auto-commit all changed files and push to the branch
 - [ ] The agent generates a descriptive commit message summarising what it did (e.g. "initial draft with 5 acceptance criteria for allergies", "added edge case for expired allergies")
 - [ ] If the server dies mid-turn, at most one turn's work is lost. The agent session can be restarted and asked to redo its last step
-- [ ] Commit is attributed to the card's assignee (or the user who started the interview), with a trailer indicating the AI authored the content
+- [ ] Commit is attributed to the card's assignee (or the user who started the session), with a trailer indicating the AI authored the content
 
 ### User edits
 
@@ -243,8 +243,8 @@ Commit messages are AI-generated and descriptive, not mechanical. They describe 
 ```
 allergies.md history:
   3 min ago    Felix — added edge case for expired allergies
-  12 min ago   Interviewer — initial draft with 5 criteria
-  15 min ago   Interviewer — created file
+  12 min ago   Workhorse — initial draft with 5 criteria
+  15 min ago   Workhorse — created file
 ```
 
 The version history displays the commit message as the description, the author, and the relative timestamp. Users never see SHAs or branch names — just a clean edit history per file.
@@ -264,7 +264,7 @@ Work is always saved to git — there is no manual save/commit action. The "Mark
 Since every change is committed with a descriptive message, `git log -- {filepath}` gives a full edit history per file:
 
 - [ ] Spec view shows a "History" affordance per file
-- [ ] Each version shows: relative timestamp, author (user name or "Interviewer"), and the commit message as a description
+- [ ] Each version shows: relative timestamp, author (user name or "Workhorse"), and the commit message as a description
 - [ ] Clicking a version shows the file content at that point (`git show {sha}:{path}`)
 - [ ] Diff between versions available via `git diff {sha1} {sha2} -- {path}`
 
@@ -286,7 +286,7 @@ If the server restarts (redeploy, crash, Railway restart), worktrees are recreat
 
 ## Naming conventions
 
-"Spec" refers to the spec document itself. "Card" refers to the unit of work (feature card). "Interview" refers to the AI chat session.
+"Spec" refers to the spec document itself. "Card" refers to the unit of work (feature card). "Session" refers to the AI agent session. "Interview" is one mode the agent can operate in (alongside draft, review, directed, etc.).
 
 ### Feature model fields
 
@@ -296,8 +296,8 @@ If the server restarts (redeploy, crash, Railway restart), worktrees are recreat
 
 ### Routes and hooks
 
-- `/api/interview` — the interview SSE endpoint
-- `useInterview` — frontend hook for the interview chat
+- `/api/agent-session` — the agent session SSE endpoint
+- `useAgentSession` — frontend hook for the agent session chat
 - `CardWorkspace` — the main card workspace orchestrator
 - `FloatingChat` — the ever-present chat component (overlay, fullscreen, docked modes)
 
@@ -310,7 +310,7 @@ If the server restarts (redeploy, crash, Railway restart), worktrees are recreat
 ## Card statuses
 
 - `NOT_STARTED` — card created, no spec activity yet
-- `SPECIFYING` — interview or manual spec editing in progress
+- `SPECIFYING` — agent session or manual spec editing in progress
 - `IMPLEMENTING` — specs are ready, implementation in progress
 - `COMPLETE` — implementation done (PR merged, or manually marked)
 
@@ -391,18 +391,18 @@ Read the specs and mockups, then implement all acceptance criteria.
 
 ## External agent collaboration
 
-The worktree-on-disk architecture means that any agent with access to the same worktree can participate — not just the built-in interviewer. The collaborate button described above is the primary entry point, but the architecture is open by design.
+The worktree-on-disk architecture means that any agent with access to the same worktree can participate — not just the built-in agent. The collaborate button described above is the primary entry point, but the architecture is open by design.
 
 ### How it works
 
 - [ ] The external Claude Code session operates on the same branch as the card
-- [ ] It reads/writes the same spec and mockup files the built-in interviewer does
+- [ ] It reads/writes the same spec and mockup files the built-in agent does
 - [ ] On return to Workhorse, the UI reflects any changes (it reads from disk)
 - [ ] File locking applies — the external session should acquire locks, or if that's impractical, Workhorse detects changed files on focus and refreshes
 
 ### Implementation from within Workhorse
 
-- [ ] The same Agent SDK infrastructure can run an implementation agent, not just an interviewer
+- [ ] The same Agent SDK infrastructure can run an implementation agent — just a different mode and system prompt
 - [ ] The agent reads specs from `.workhorse/specs/`, diffs against main, and implements
 - [ ] This is a future capability but the architecture supports it with no changes — just a different system prompt appended to the same SDK setup
 - [ ] When ready, could replace the "Launch Claude Code" external flow with an in-app implementation experience
@@ -411,7 +411,7 @@ The worktree-on-disk architecture means that any agent with access to the same w
 
 > **Worktree disk pressure:** For very large monorepos, even with partial clone, working tree checkout could be slow or large. Should we support sparse checkout (only materialise relevant directories)? Probably premature — try full checkout first.
 
-> **Concurrent interviews on the same card:** Current design is one Agent SDK session per card. If two users want to interview simultaneously, they'd need to take turns or the session would need to be shared. Is this acceptable for v1?
+> **Concurrent sessions on the same card:** Current design is one Agent SDK session per card. If two users want to use the agent simultaneously, they'd need to take turns or the session would need to be shared. Is this acceptable for v1?
 
 > **Session transcript display:** Should the UI show the full Agent SDK session transcript (including tool calls), or just the text messages? The full transcript is richer but noisier. Could offer a toggle.
 

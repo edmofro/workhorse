@@ -24,7 +24,7 @@ export async function acquireFileLock(
   lockedBy: string,
   userId: string | null,
 ): Promise<{ acquired: boolean; holder?: LockHolder }> {
-  const isAI = lockedBy === 'ai-interviewer'
+  const isAI = lockedBy === 'ai-agent'
   const durationMs = isAI ? AI_LOCK_DURATION_MS : HUMAN_LOCK_DURATION_MS
   const expiresAt = new Date(Date.now() + durationMs)
 
@@ -46,9 +46,9 @@ export async function acquireFileLock(
             holder: {
               lockedBy: existing.lockedBy,
               userId: existing.userId,
-              isAI: existing.lockedBy === 'ai-interviewer',
-              displayName: existing.lockedBy === 'ai-interviewer'
-                ? 'Interviewer'
+              isAI: existing.lockedBy === 'ai-agent',
+              displayName: existing.lockedBy === 'ai-agent'
+                ? 'Workhorse'
                 : existing.user?.displayName ?? 'Unknown',
             },
           }
@@ -89,9 +89,9 @@ export async function acquireFileLock(
             ? {
                 lockedBy: winner.lockedBy,
                 userId: winner.userId,
-                isAI: winner.lockedBy === 'ai-interviewer',
-                displayName: winner.lockedBy === 'ai-interviewer'
-                  ? 'Interviewer'
+                isAI: winner.lockedBy === 'ai-agent',
+                displayName: winner.lockedBy === 'ai-agent'
+                  ? 'Workhorse'
                   : winner.user?.displayName ?? 'Unknown',
               }
             : undefined,
@@ -150,9 +150,9 @@ export async function getFileLockStatus(
   return {
     lockedBy: lock.lockedBy,
     userId: lock.userId,
-    isAI: lock.lockedBy === 'ai-interviewer',
-    displayName: lock.lockedBy === 'ai-interviewer'
-      ? 'Interviewer'
+    isAI: lock.lockedBy === 'ai-agent',
+    displayName: lock.lockedBy === 'ai-agent'
+      ? 'Workhorse'
       : lock.user?.displayName ?? 'Unknown',
   }
 }
@@ -182,9 +182,9 @@ export async function getCardLocks(
       holder: {
         lockedBy: lock.lockedBy,
         userId: lock.userId,
-        isAI: lock.lockedBy === 'ai-interviewer',
-        displayName: lock.lockedBy === 'ai-interviewer'
-          ? 'Interviewer'
+        isAI: lock.lockedBy === 'ai-agent',
+        displayName: lock.lockedBy === 'ai-agent'
+          ? 'Workhorse'
           : lock.user?.displayName ?? 'Unknown',
       },
     })

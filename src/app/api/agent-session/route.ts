@@ -7,8 +7,8 @@ import { existsSync } from 'fs'
 import path from 'path'
 import { prisma } from '../../../lib/prisma'
 import { requireUser, requireCardAccess } from '../../../lib/auth/session'
-import { buildInterviewInstructions } from '../../../lib/ai/interviewPrompt'
-import type { InterviewMode } from '../../../lib/ai/workhorseContext'
+import { buildSessionInstructions } from '../../../lib/ai/sessionPrompt'
+import type { AgentMode } from '../../../lib/ai/workhorseContext'
 import {
   ensureBareClone,
   createWorktree,
@@ -103,8 +103,8 @@ export async function POST(request: NextRequest) {
   // Build deduplicated attachment file list for the prompt context
   const allAttachmentFiles = [...new Set(allAttachments.map((a) => a.fileName))]
 
-  // Build interview instructions with mode-specific context
-  const interviewInstructions = buildInterviewInstructions({
+  // Build session instructions with mode-specific context
+  const sessionInstructions = buildSessionInstructions({
     cardTitle: card.title,
     cardDescription: card.description,
     cardIdentifier: card.identifier,
@@ -112,7 +112,7 @@ export async function POST(request: NextRequest) {
     repoOwner: owner,
     repoName,
     attachmentFiles: allAttachmentFiles.length > 0 ? allAttachmentFiles : undefined,
-    mode: mode as InterviewMode | undefined,
+    mode: mode as AgentMode | undefined,
   })
 
   // Build multimodal prompt if there are raster image attachments (exclude SVG — not a valid
@@ -170,7 +170,7 @@ export async function POST(request: NextRequest) {
     systemPrompt: {
       type: 'preset' as const,
       preset: 'claude_code' as const,
-      append: interviewInstructions,
+      append: sessionInstructions,
     },
     settingSources: ['project' as const],
     includePartialMessages: true,
@@ -242,7 +242,7 @@ export async function POST(request: NextRequest) {
         }
 
         // Release AI locks
-        await releaseAllLocks(cardId, 'ai-interviewer')
+        await releaseAllLocks(cardId, 'ai-agent')
 
         controller.enqueue(encoder.encode('data: [DONE]\n\n'))
         controller.close()

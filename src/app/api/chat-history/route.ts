@@ -62,7 +62,7 @@ export async function GET(request: NextRequest) {
           id: `history-${idx}`,
           role: msg.role as 'user' | 'assistant',
           content,
-          userName: msg.role === 'user' ? 'You' : 'Interviewer',
+          userName: msg.role === 'user' ? 'You' : 'Workhorse',
           createdAt: (msg.timestamp as string) ?? null,
         }
       })

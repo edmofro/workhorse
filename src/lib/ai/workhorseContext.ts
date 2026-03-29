@@ -104,9 +104,9 @@ Use the design system palette: warm stone greys (\`#f8f7f4\` page, \`#ffffff\` s
  * Mode-specific instructions appended to the system prompt based on which
  * action pill the user clicked (or what they typed).
  */
-export type InterviewMode = 'interview' | 'draft' | 'review' | 'directed' | 'implement' | 'design_audit' | 'security_audit'
+export type AgentMode = 'interview' | 'draft' | 'review' | 'directed' | 'implement' | 'design_audit' | 'security_audit'
 
-export function buildModeInstructions(mode: InterviewMode | undefined, cardTitle: string, cardDescription: string | null): string {
+export function buildModeInstructions(mode: AgentMode | undefined, cardTitle: string, cardDescription: string | null): string {
   switch (mode) {
     case 'draft':
       return `## Your task: Draft specs immediately

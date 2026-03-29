@@ -1,10 +1,11 @@
 /**
- * Interview-specific instructions appended to the claude_code system prompt preset.
+ * Session instructions appended to the claude_code system prompt preset.
+ * Provides rich Workhorse context, card context, and mode-specific instructions.
  */
 
-import { buildWorkhorseContext, buildModeInstructions, type InterviewMode } from './workhorseContext'
+import { buildWorkhorseContext, buildModeInstructions, type AgentMode } from './workhorseContext'
 
-interface InterviewContext {
+interface SessionContext {
   cardTitle: string
   cardDescription: string | null
   cardIdentifier: string
@@ -12,10 +13,10 @@ interface InterviewContext {
   repoOwner: string
   repoName: string
   attachmentFiles?: string[]
-  mode?: InterviewMode
+  mode?: AgentMode
 }
 
-export function buildInterviewInstructions(ctx: InterviewContext): string {
+export function buildSessionInstructions(ctx: SessionContext): string {
   const parts: string[] = []
 
   // Rich Workhorse domain context — so the agent never needs to "explore"

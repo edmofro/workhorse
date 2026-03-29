@@ -171,7 +171,7 @@ Each pill maps to a system prompt fragment that is prepended to the message when
 Chat messages are currently ephemeral (React state only). Implement retrieval from the Agent SDK session transcript so that returning users see their conversation history.
 
 - [ ] New API endpoint that calls `getSessionMessages(sessionId)` and returns the transcript
-- [ ] `useInterview` hook fetches history on mount if `agentSessionId` exists on the card
+- [ ] `useAgentSession` hook fetches history on mount if `agentSessionId` exists on the card
 - [ ] Messages render in the chat above the pills on load
 - [ ] Graceful degradation: if retrieval fails or no session exists, show the cold-start pills without history
 - [ ] Chat history is read-only context — new messages append below
@@ -196,7 +196,7 @@ Track which quality steps have been completed for each card, surfaced as soft ga
 - [ ] The Card / Chat / Spec tab strip in the topbar is removed
 - [ ] The topbar shows: back arrow, card title + identifier on the left; Collaborate button on the right (when in SPECIFYING or IMPLEMENTING)
 - [ ] `CardDetailShell.tsx` no longer renders a view toggle
-- [ ] `InterviewView.tsx` becomes the full-screen chat state
+- [ ] `ChatSessionView.tsx` becomes the full-screen chat state
 - [ ] `SpecTab.tsx` becomes what opens when you click a spec, with the floating chat at the bottom instead of a chat sidebar on the left
 - [ ] `SpecListSidebar.tsx` is replaced by the right panel (same data, different position and always-present)
 - [ ] `CardTab.tsx` becomes the card view (home state)

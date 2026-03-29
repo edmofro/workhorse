@@ -3,7 +3,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import type { AttachmentData } from '../attachments'
 
-export interface InterviewMessage {
+export interface SessionMessage {
   id: string
   role: 'user' | 'assistant'
   content: string
@@ -24,8 +24,8 @@ export interface FileWriteNotification {
   timestamp: string
 }
 
-export function useInterview(cardId: string) {
-  const [messages, setMessages] = useState<InterviewMessage[]>([])
+export function useAgentSession(cardId: string) {
+  const [messages, setMessages] = useState<SessionMessage[]>([])
   const [isStreaming, setIsStreaming] = useState(false)
   const isStreamingRef = useRef(false)
   const [activeToolCalls, setActiveToolCalls] = useState<ToolCallInfo[]>([])
@@ -61,7 +61,7 @@ export function useInterview(cardId: string) {
       if ((!content.trim() && (!attachments || attachments.length === 0)) || isStreamingRef.current) return
 
       // Add user message
-      const userMsg: InterviewMessage = {
+      const userMsg: SessionMessage = {
         id: `temp-${Date.now()}`,
         role: 'user',
         content,
@@ -75,7 +75,7 @@ export function useInterview(cardId: string) {
       const assistantId = `temp-${Date.now()}-assistant`
       setMessages((prev) => [
         ...prev,
-        { id: assistantId, role: 'assistant', content: '', userName: 'Interviewer' },
+        { id: assistantId, role: 'assistant', content: '', userName: 'Workhorse' },
       ])
 
       setIsStreaming(true)
@@ -85,14 +85,14 @@ export function useInterview(cardId: string) {
 
       try {
         const attachmentIds = attachments?.map((a) => a.id) ?? []
-        const res = await fetch('/api/interview', {
+        const res = await fetch('/api/agent-session', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ cardId, message: content, attachmentIds, mode }),
           signal: abortRef.current.signal,
         })
 
-        if (!res.ok || !res.body) throw new Error('Interview request failed')
+        if (!res.ok || !res.body) throw new Error('Agent session request failed')
 
         const reader = res.body.getReader()
         const decoder = new TextDecoder()

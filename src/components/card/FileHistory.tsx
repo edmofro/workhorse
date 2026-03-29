@@ -165,7 +165,7 @@ export function FileHistory({ cardId, filePath }: FileHistoryProps) {
                   {entry.message}
                 </div>
                 <div className="text-[11px] text-[var(--text-muted)] mt-1">
-                  {entry.author === 'Workhorse' ? 'Interviewer' : entry.author}
+                  {entry.author === 'Workhorse' ? 'Workhorse' : entry.author}
                 </div>
               </div>
               <span className="text-[11px] text-[var(--text-faint)] shrink-0 mt-1">

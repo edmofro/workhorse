@@ -22,7 +22,7 @@ For developers picking up the work, Workhorse generates an implementation prompt
 Each file has a navigable edit history powered by descriptive commit messages:
 
 - [ ] "History" affordance per file in the spec view
-- [ ] Shows: relative timestamp, author (user name or "Interviewer"), change description
+- [ ] Shows: relative timestamp, author (user name or "Workhorse"), change description
 - [ ] Click a version to see the file at that point
 - [ ] Diff between any two versions
 - [ ] Powered by `git log -- {filepath}` under the hood

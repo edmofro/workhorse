@@ -27,22 +27,31 @@ export async function POST(request: NextRequest) {
         where: { id: { in: attachmentIds.slice(0, 5) } },
       })
 
-      for (const att of attachments) {
-        if (att.mimeType.startsWith('image/') && att.mimeType !== 'image/svg+xml') {
+      const imageAtts = attachments.filter(
+        (a) => a.mimeType.startsWith('image/') && a.mimeType !== 'image/svg+xml',
+      )
+
+      // Load images concurrently to reduce latency
+      const imageBlocks = await Promise.all(
+        imageAtts.map(async (att) => {
           try {
             const data = await readFile(att.storagePath)
-            content.push({
-              type: 'image',
+            return {
+              type: 'image' as const,
               source: {
-                type: 'base64',
+                type: 'base64' as const,
                 media_type: att.mimeType as 'image/png' | 'image/jpeg' | 'image/gif' | 'image/webp',
                 data: data.toString('base64'),
               },
-            })
+            }
           } catch {
-            // Skip unreadable files
+            return null
           }
-        }
+        }),
+      )
+
+      for (const block of imageBlocks) {
+        if (block) content.push(block)
       }
     }
 

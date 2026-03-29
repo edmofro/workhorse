@@ -43,9 +43,9 @@ function detectMimeType(buffer: Buffer): string | null {
     }
   }
 
-  // SVG: check if starts with XML declaration or SVG tag
-  const head = buffer.subarray(0, 256).toString('utf8').trim()
-  if (head.startsWith('<?xml') || head.startsWith('<svg')) {
+  // SVG: check for XML declaration or SVG tag, tolerating BOM and whitespace
+  const head = buffer.subarray(0, 512).toString('utf8')
+  if (/^(\xef\xbb\xbf)?\s*(<?xml\b|<svg\b)/i.test(head)) {
     return 'image/svg+xml'
   }
 
@@ -86,7 +86,13 @@ export async function POST(request: NextRequest) {
 
   // Validate actual file content matches claimed MIME type
   const detectedMime = detectMimeType(buffer)
-  if (!detectedMime || detectedMime !== file.type) {
+  if (!detectedMime) {
+    return NextResponse.json(
+      { error: 'Could not verify file content — upload rejected' },
+      { status: 400 },
+    )
+  }
+  if (detectedMime !== file.type) {
     return NextResponse.json(
       { error: 'File content does not match declared type' },
       { status: 400 },

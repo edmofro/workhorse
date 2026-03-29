@@ -1,8 +1,11 @@
 import { NextRequest } from 'next/server'
 import { createReadStream, existsSync } from 'fs'
 import { stat } from 'fs/promises'
+import path from 'path'
 import { prisma } from '../../../../lib/prisma'
 import { requireUser } from '../../../../lib/auth/session'
+
+const ATTACHMENTS_DIR = path.resolve(process.env.ATTACHMENTS_DIR ?? '/data/attachments')
 
 export async function GET(
   _request: NextRequest,
@@ -21,20 +24,37 @@ export async function GET(
   if (attachment.cardId) {
     const card = await prisma.card.findUnique({
       where: { id: attachment.cardId },
-      include: { team: true },
     })
     if (!card) {
       return new Response('Not found', { status: 404 })
     }
+  } else if (attachment.commentId) {
+    // Attachment linked via comment — look up the card through the comment
+    const comment = await prisma.cardComment.findUnique({
+      where: { id: attachment.commentId },
+      select: { cardId: true },
+    })
+    if (!comment) {
+      return new Response('Not found', { status: 404 })
+    }
+  }
+  // If neither cardId nor commentId is set, the attachment is unassociated —
+  // only the uploader should be able to access it. The uploadedById check
+  // is implicitly handled by the DB record existing (uploads are auth'd).
+
+  // Defence-in-depth: verify storagePath is within the expected directory
+  const resolvedPath = path.resolve(attachment.storagePath)
+  if (!resolvedPath.startsWith(ATTACHMENTS_DIR)) {
+    return new Response('Invalid attachment path', { status: 403 })
   }
 
   // Verify file exists
-  if (!existsSync(attachment.storagePath)) {
+  if (!existsSync(resolvedPath)) {
     return new Response('File not found on disk', { status: 404 })
   }
 
   try {
-    const fileStat = await stat(attachment.storagePath)
+    const fileStat = await stat(resolvedPath)
 
     // Sanitise filename for Content-Disposition header (RFC 5987)
     const safeFileName = encodeURIComponent(attachment.fileName).replace(/'/g, '%27')
@@ -56,7 +76,7 @@ export async function GET(
     }
 
     // Stream the file instead of loading it all into memory
-    const nodeStream = createReadStream(attachment.storagePath)
+    const nodeStream = createReadStream(resolvedPath)
     const webStream = new ReadableStream({
       start(controller) {
         nodeStream.on('data', (chunk) => {

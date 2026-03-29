@@ -3,6 +3,7 @@ import { query } from '@anthropic-ai/claude-agent-sdk'
 import type { SDKUserMessage } from '@anthropic-ai/claude-agent-sdk'
 import type { ImageBlockParam, TextBlockParam } from '@anthropic-ai/sdk/resources/messages/messages'
 import { readFile, mkdir, copyFile } from 'fs/promises'
+import { existsSync } from 'fs'
 import path from 'path'
 import { prisma } from '../../../lib/prisma'
 import { requireUser, requireCardAccess } from '../../../lib/auth/session'
@@ -82,15 +83,17 @@ export async function POST(request: NextRequest) {
     ? allAttachments.filter((a) => attachmentIds.includes(a.id))
     : []
 
-  // Copy image attachments to worktree for persistence
+  // Copy attachments to worktree for persistence, skipping already-copied files
   if (allAttachments.length > 0) {
     const attachDir = path.join(wtPath, '.workhorse', 'attachments', card.identifier.toLowerCase())
     await mkdir(attachDir, { recursive: true })
     for (const att of allAttachments) {
+      const dest = path.join(attachDir, att.fileName)
+      if (existsSync(dest)) continue
       try {
-        await copyFile(att.storagePath, path.join(attachDir, att.fileName))
+        await copyFile(att.storagePath, dest)
       } catch {
-        // File may already exist or source missing — continue
+        // Source missing — continue
       }
     }
   }
@@ -109,10 +112,11 @@ export async function POST(request: NextRequest) {
     attachmentFiles: allAttachmentFiles.length > 0 ? allAttachmentFiles : undefined,
   })
 
-  // Build multimodal prompt if there are image attachments
-  const imageAttachments = messageAttachments.filter(
-    (a) => a.mimeType.startsWith('image/') && a.mimeType !== 'image/svg+xml',
-  )
+  // Build multimodal prompt if there are raster image attachments (exclude SVG — not a valid
+  // Claude API image media_type, and can contain scripts). Cap at 5 to limit memory usage.
+  const imageAttachments = messageAttachments
+    .filter((a) => a.mimeType.startsWith('image/') && a.mimeType !== 'image/svg+xml')
+    .slice(0, 5)
 
   let promptInput: string | AsyncIterable<SDKUserMessage>
 

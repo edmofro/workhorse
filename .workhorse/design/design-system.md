@@ -216,7 +216,7 @@ The app uses a fixed sidebar (216px) with a main content area. The topbar (52px)
 
 ### Navigation
 
-The sidebar contains product names and team names with coloured dots. No icons on product nav items. The view toggle (Chat/Spec) lives in the topbar, right-aligned.
+The sidebar contains product names and team names with coloured dots. Functional nav items (Specs, Design) may use subtle muted icons for warmth — these are decorative, not informational, and should be used sparingly. Product names and team names rely on text alone. The view toggle (Chat/Spec) lives in the topbar, right-aligned.
 
 ---
 

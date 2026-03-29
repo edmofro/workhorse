@@ -34,7 +34,7 @@ Authentication via GitHub SSO. No org hierarchy or admin roles — just individu
 
 ## Projects and GitHub repos
 
-- [ ] Adding a new project still means linking a GitHub repo URL (see WH-010)
+- [ ] Users add projects by selecting from their GitHub repositories (see `multi-product.md`)
 - [ ] Any authenticated user with write access to that repo can see and work within the project
 - [ ] If a user loses write access to a repo (e.g., removed from the GitHub org), they lose access to that project's teams and cards on next permission refresh
 - [ ] Projects with no accessible users are still visible in the system but not to anyone without access

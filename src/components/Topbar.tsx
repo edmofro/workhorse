@@ -31,7 +31,7 @@ export function TopbarCardTitle({
   identifier: string
 }) {
   return (
-    <div className="flex items-center">
+    <div className="flex items-baseline">
       <span className="text-[15px] font-semibold tracking-[-0.01em] leading-[1.3]">
         {title}
       </span>

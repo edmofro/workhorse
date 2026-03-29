@@ -20,7 +20,7 @@ export function StatusDot({ state, className }: StatusDotProps) {
         state === 'not-started' &&
           'border border-[var(--border-default)] bg-transparent',
         state === 'specifying' && 'bg-[var(--amber)]',
-        state === 'implementing' && 'bg-[var(--blue,#3b82f6)]',
+        state === 'implementing' && 'bg-[var(--blue,#2563eb)]',
         state === 'complete' && 'bg-[var(--green)]',
         className,
       )}

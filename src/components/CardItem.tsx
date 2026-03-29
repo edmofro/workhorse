@@ -45,7 +45,7 @@ export function CardItem({ card, projectName }: CardItemProps) {
       <div className="text-[14px] font-medium leading-[1.4]">{card.title}</div>
       {card.description && (
         <div
-          className="text-[13px] text-[var(--text-muted)] leading-[1.5]"
+          className="text-[13px] text-[var(--text-secondary)] leading-[1.5]"
           style={{ marginTop: '4px' }}
         >
           {card.description.length > 120

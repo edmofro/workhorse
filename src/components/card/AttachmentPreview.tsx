@@ -54,7 +54,7 @@ export function AttachmentPreview({
             <button
               type="button"
               onClick={() => onRemovePending(att.id)}
-              className="absolute -top-1.5 -right-1.5 w-[18px] h-[18px] bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-100 cursor-pointer hover:border-[var(--accent)]"
+              className="absolute -top-1 -right-1 w-4 h-4 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-100 cursor-pointer hover:border-[var(--accent)]"
             >
               <X size={10} className="text-[var(--text-muted)]" />
             </button>

@@ -4,14 +4,9 @@
 
 import { execFile } from 'child_process'
 import { promisify } from 'util'
-import * as fs from 'fs/promises'
-import { bareClonePath, createBareClone, fetchBareClone } from './worktree'
+import { ensureBareClone } from './worktree'
 
 const execFileAsync = promisify(execFile)
-
-/** Throttle fetches to at most once per 30 seconds per repo */
-const lastFetchTime = new Map<string, number>()
-const FETCH_INTERVAL_MS = 30_000
 
 export interface DesignFile {
   path: string
@@ -26,33 +21,11 @@ export async function fetchDesignLibrary(
   repo: string,
   branch: string,
 ): Promise<DesignFile[]> {
-  const barePath = bareClonePath(owner, repo)
-
-  const repoKey = `${owner}/${repo}`
-  let clonedJustNow = false
-
-  // Ensure bare clone exists; create if missing
+  let barePath: string
   try {
-    await fs.access(barePath)
+    barePath = await ensureBareClone(owner, repo, token)
   } catch {
-    try {
-      await createBareClone(owner, repo, token)
-      clonedJustNow = true
-      lastFetchTime.set(repoKey, Date.now())
-    } catch {
-      return []
-    }
-  }
-
-  // Fetch latest refs, throttled to avoid hammering on every page load
-  const lastFetch = lastFetchTime.get(repoKey) ?? 0
-  if (!clonedJustNow && Date.now() - lastFetch > FETCH_INTERVAL_MS) {
-    try {
-      await fetchBareClone(owner, repo, token)
-      lastFetchTime.set(repoKey, Date.now())
-    } catch {
-      // Continue with potentially stale data rather than failing
-    }
+    return []
   }
 
   // List all files under .workhorse/design/ on this branch

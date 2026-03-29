@@ -1,19 +1,13 @@
 /**
  * Read spec tree from the local bare clone via git commands.
- * Falls back to GitHub API if the bare clone doesn't exist yet.
  */
 
 import { execFile } from 'child_process'
 import { promisify } from 'util'
-import * as fs from 'fs/promises'
-import { bareClonePath, createBareClone, fetchBareClone } from './worktree'
+import { ensureBareClone } from './worktree'
 import { buildSpecTree, type SpecTreeNode } from '../specs/specTree'
 
 const execFileAsync = promisify(execFile)
-
-/** Throttle fetches to at most once per 30 seconds per repo */
-const lastFetchTime = new Map<string, number>()
-const FETCH_INTERVAL_MS = 30_000
 
 export interface RepoSpecFile {
   path: string
@@ -29,33 +23,11 @@ export async function fetchRepoSpecTree(
   repo: string,
   branch: string,
 ): Promise<{ tree: SpecTreeNode[]; files: RepoSpecFile[] }> {
-  const barePath = bareClonePath(owner, repo)
-
-  const repoKey = `${owner}/${repo}`
-  let clonedJustNow = false
-
-  // Ensure bare clone exists; create if missing
+  let barePath: string
   try {
-    await fs.access(barePath)
+    barePath = await ensureBareClone(owner, repo, token)
   } catch {
-    try {
-      await createBareClone(owner, repo, token)
-      clonedJustNow = true
-      lastFetchTime.set(repoKey, Date.now())
-    } catch {
-      return { tree: [], files: [] }
-    }
-  }
-
-  // Fetch latest refs, throttled to avoid hammering on every page load
-  const lastFetch = lastFetchTime.get(repoKey) ?? 0
-  if (!clonedJustNow && Date.now() - lastFetch > FETCH_INTERVAL_MS) {
-    try {
-      await fetchBareClone(owner, repo, token)
-      lastFetchTime.set(repoKey, Date.now())
-    } catch {
-      // Continue with potentially stale data rather than failing
-    }
+    return { tree: [], files: [] }
   }
 
   // List all .md files under .workhorse/specs/ on this branch

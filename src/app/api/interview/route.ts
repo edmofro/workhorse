@@ -4,8 +4,7 @@ import { prisma } from '../../../lib/prisma'
 import { requireUser, requireCardAccess } from '../../../lib/auth/session'
 import { buildInterviewInstructions } from '../../../lib/ai/interviewPrompt'
 import {
-  createBareClone,
-  fetchBareClone,
+  ensureBareClone,
   createWorktree,
   worktreePath,
   autoCommit,
@@ -38,8 +37,7 @@ export async function POST(request: NextRequest) {
   const { owner, repoName, defaultBranch } = project
 
   // Ensure bare clone exists and is fresh
-  await createBareClone(owner, repoName, user.accessToken)
-  await fetchBareClone(owner, repoName, user.accessToken)
+  await ensureBareClone(owner, repoName, user.accessToken)
 
   // Ensure worktree exists
   const branchName = card.cardBranch ?? branchNameFromCard(card.identifier)

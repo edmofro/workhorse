@@ -175,7 +175,7 @@ export async function POST(request: NextRequest) {
     settingSources: ['project' as const],
     includePartialMessages: true,
     model: 'claude-sonnet-4-6',
-    maxTurns: 3,
+    maxTurns: 10,
     persistSession: true,
     ...(card.agentSessionId ? { resume: card.agentSessionId } : {}),
   }

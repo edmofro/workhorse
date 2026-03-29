@@ -31,6 +31,9 @@ export function useAgentSession(cardId: string) {
   const [activeToolCalls, setActiveToolCalls] = useState<ToolCallInfo[]>([])
   const [fileWrites, setFileWrites] = useState<FileWriteNotification[]>([])
   const [committedFiles, setCommittedFiles] = useState<string[]>([])
+  const [thinkingSnippet, setThinkingSnippet] = useState<string | null>(null)
+  const thinkingBufferRef = useRef('')
+  const thinkingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const historyCardIdRef = useRef<string | null>(null)
   const abortRef = useRef<AbortController | null>(null)
 
@@ -81,7 +84,21 @@ export function useAgentSession(cardId: string) {
       setIsStreaming(true)
       isStreamingRef.current = true
       setActiveToolCalls([])
+      setThinkingSnippet(null)
+      thinkingBufferRef.current = ''
       abortRef.current = new AbortController()
+
+      // Sample thinking snippets every 1.5s from the buffer
+      thinkingTimerRef.current = setInterval(() => {
+        const buf = thinkingBufferRef.current
+        if (!buf) return
+        // Take the last ~80 chars, find a word boundary
+        const tail = buf.slice(-120)
+        const lastNewline = tail.lastIndexOf('\n')
+        const line = lastNewline >= 0 ? tail.slice(lastNewline + 1) : tail
+        const snippet = line.trim().slice(0, 80)
+        if (snippet) setThinkingSnippet(snippet)
+      }, 1500)
 
       try {
         const attachmentIds = attachments?.map((a) => a.id) ?? []
@@ -98,6 +115,10 @@ export function useAgentSession(cardId: string) {
         const decoder = new TextDecoder()
         let buffer = ''
         let assistantContent = ''
+        // Track the stable ID separately from the message's display ID,
+        // so we can always find the message to update even after the
+        // assistant event swaps in the real uuid.
+        const stableId = assistantId
 
         while (true) {
           const { done, value } = await reader.read()
@@ -117,7 +138,7 @@ export function useAgentSession(cardId: string) {
 
             try {
               const event = JSON.parse(data)
-              processEvent(event, assistantId, assistantContent, (newContent) => {
+              processEvent(event, stableId, assistantContent, (newContent) => {
                 assistantContent = newContent
               })
             } catch {
@@ -138,6 +159,12 @@ export function useAgentSession(cardId: string) {
         setIsStreaming(false)
         isStreamingRef.current = false
         setActiveToolCalls([])
+        setThinkingSnippet(null)
+        thinkingBufferRef.current = ''
+        if (thinkingTimerRef.current) {
+          clearInterval(thinkingTimerRef.current)
+          thinkingTimerRef.current = null
+        }
         abortRef.current = null
       }
     },
@@ -150,12 +177,16 @@ export function useAgentSession(cardId: string) {
     currentContent: string,
     setContent: (c: string) => void,
   ) {
-    // Handle streaming text events
+    // Handle streaming text and thinking events
     if (event.type === 'stream_event') {
       const streamEvent = event.event as Record<string, unknown> | undefined
       if (streamEvent?.type === 'content_block_delta') {
         const delta = streamEvent.delta as Record<string, unknown> | undefined
+
+        // Text deltas — append to the assistant message
         if (delta?.type === 'text_delta' && typeof delta.text === 'string') {
+          setThinkingSnippet(null)
+          thinkingBufferRef.current = ''
           const newContent = currentContent + delta.text
           setContent(newContent)
           setMessages((prev) =>
@@ -164,10 +195,16 @@ export function useAgentSession(cardId: string) {
             ),
           )
         }
+
+        // Thinking deltas — accumulate into buffer for periodic sampling
+        if (delta?.type === 'thinking_delta' && typeof delta.thinking === 'string') {
+          thinkingBufferRef.current += delta.thinking as string
+        }
       }
     }
 
-    // Handle complete assistant messages
+    // Handle complete assistant messages — update content but keep the
+    // stable ID so subsequent events in later turns can still find it.
     if (event.type === 'assistant') {
       const msg = event.message as Record<string, unknown> | undefined
       if (msg?.content && Array.isArray(msg.content)) {
@@ -180,12 +217,36 @@ export function useAgentSession(cardId: string) {
           setContent(textParts)
           setMessages((prev) =>
             prev.map((m) =>
-              m.id === assistantId
-                ? { ...m, content: textParts, id: (event.uuid as string) ?? m.id }
-                : m,
+              m.id === assistantId ? { ...m, content: textParts } : m,
             ),
           )
         }
+      }
+    }
+
+    // Handle result events (end of agent query)
+    if (event.type === 'result') {
+      const subtype = event.subtype as string | undefined
+      const stopReason = event.stop_reason as string | undefined
+
+      if (subtype === 'error_max_turns' && stopReason === 'tool_use') {
+        // Agent was cut off mid-work — append a friendly continuation message
+        const continuationMsg = 'I had more to explore but ran out of steps — send another message and I\u2019ll continue where I left off.'
+        setMessages((prev) => {
+          const lastMsg = prev.find((m) => m.id === assistantId)
+          if (lastMsg && lastMsg.content) {
+            // Already has content — append continuation note
+            return prev.map((m) =>
+              m.id === assistantId
+                ? { ...m, content: m.content + '\n\n' + continuationMsg }
+                : m,
+            )
+          }
+          // No content yet — use as the message
+          return prev.map((m) =>
+            m.id === assistantId ? { ...m, content: continuationMsg } : m,
+          )
+        })
       }
     }
 
@@ -230,6 +291,7 @@ export function useAgentSession(cardId: string) {
     activeToolCalls,
     fileWrites,
     committedFiles,
+    thinkingSnippet,
     sendMessage,
     interrupt,
   }

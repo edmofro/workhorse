@@ -6,6 +6,7 @@ import { useAgentSession } from '../../lib/hooks/useAgentSession'
 import { useAttachments } from '../../lib/hooks/useAttachments'
 import { ChatMessage } from './ChatMessage'
 import { ChatInput } from './ChatInput'
+import { ThinkingIndicator } from './ThinkingIndicator'
 import { FileText } from 'lucide-react'
 
 interface ChatSessionViewProps {
@@ -18,6 +19,7 @@ export function ChatSessionView({ cardId }: ChatSessionViewProps) {
     messages,
     isStreaming,
     fileWrites,
+    thinkingSnippet,
     sendMessage,
   } = useAgentSession(cardId)
   const {
@@ -88,9 +90,7 @@ export function ChatSessionView({ cardId }: ChatSessionViewProps) {
           )}
 
           {isStreaming && messages[messages.length - 1]?.content === '' && (
-            <div className="flex items-center gap-2 pl-[34px] text-[13px] text-[var(--text-muted)]">
-              <span className="animate-pulse">Agent is working…</span>
-            </div>
+            <ThinkingIndicator snippet={thinkingSnippet} />
           )}
         </div>
       </div>

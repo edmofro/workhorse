@@ -10,6 +10,7 @@ import { FloatingChat } from './FloatingChat'
 import { ActionPills, getPillsForContext, type ActionPill } from './ActionPills'
 import { ChatMessage } from './ChatMessage'
 import { ChatInput } from './ChatInput'
+import { ThinkingIndicator } from './ThinkingIndicator'
 import { SpecEditor } from './SpecEditor'
 import { FileHistory } from './FileHistory'
 import { NewSpecDialog } from './NewSpecDialog'
@@ -111,6 +112,7 @@ export function CardWorkspace({
     messages,
     isStreaming,
     fileWrites,
+    thinkingSnippet,
     sendMessage: rawSendMessage,
   } = useAgentSession(card.id)
 
@@ -428,9 +430,7 @@ export function CardWorkspace({
                 )}
 
                 {isStreaming && messages[messages.length - 1]?.content === '' && (
-                  <div className="flex items-center gap-2 pl-[34px] text-[13px] text-[var(--text-muted)]">
-                    <span className="animate-pulse">Agent is working…</span>
-                  </div>
+                  <ThinkingIndicator snippet={thinkingSnippet} />
                 )}
               </div>
             </div>
@@ -493,6 +493,7 @@ export function CardWorkspace({
             <FloatingChat
               messages={messages}
               isStreaming={isStreaming}
+              thinkingSnippet={thinkingSnippet}
               pills={getPillsForContext(card.status, messages.length > 0, 'spec')}
               onSend={(content) => handleSendMessage(content)}
               onPillSelect={handlePillSelect}
@@ -522,6 +523,7 @@ export function CardWorkspace({
           <FloatingChat
             messages={messages}
             isStreaming={isStreaming}
+            thinkingSnippet={thinkingSnippet}
             pills={pills}
             onSend={(content) => handleSendMessage(content)}
             onPillSelect={handlePillSelect}

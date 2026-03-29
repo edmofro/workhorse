@@ -231,7 +231,15 @@ export function CardWorkspace({
             }),
           )
 
-          const validFiles = refreshed.filter((f): f is SpecFileData => f !== null)
+          const validFiles = refreshed.filter((f): f is SpecFileData => {
+            if (f === null) return false
+            // Only include specs belonging to this card (or with no card set)
+            if (f.filePath.startsWith('.workhorse/specs/')) {
+              const parsed = parseSpec(f.content)
+              if (parsed.frontmatter.card && parsed.frontmatter.card !== card.identifier) return false
+            }
+            return true
+          })
           if (validFiles.length > 0) {
             setFiles((prev) => {
               const refreshedPaths = new Set(validFiles.map((f) => f.filePath))

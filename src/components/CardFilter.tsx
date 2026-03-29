@@ -31,7 +31,7 @@ export function CardFilter({ teams, users, basePath }: CardFilterProps) {
   const currentStatus = searchParams.get('status')
   const currentAssignee = searchParams.get('assignee')
 
-  const hasFilters = currentTeam || currentStatus || currentAssignee
+  const hasFilters = (currentTeam && teams.length > 1) || currentStatus || currentAssignee
 
   function applyFilter(key: string, value: string | null) {
     const params = new URLSearchParams(searchParams.toString())

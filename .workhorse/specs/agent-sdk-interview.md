@@ -89,18 +89,40 @@ Each product in Workhorse maps to a GitHub repo. The target repo must be availab
 - [ ] Enable `includePartialMessages: true` for streaming to the UI
 - [ ] Store the Agent SDK `session_id` on the Feature record for session resumption
 
-### Interview instructions (appended to claude_code preset)
+### Session instructions (appended to claude_code preset)
 
-The appended instructions tell the agent:
+The appended instructions have three layers, all injected server-side so the agent starts every session with full context:
 
-- Its role (spec interviewer for a specific card)
-- Where to write specs (`.workhorse/specs/{area}/{slug}.md`) and mockups (`.workhorse/design/mockups/{card-id}/{slug}.html`)
+**1. Workhorse domain context** (`workhorseContext.ts`) — rich, static knowledge about how Workhorse works:
+
+- What Workhorse is and its key concepts (project, team, card, spec, mockup, design library)
+- The v1 flow from card creation through to spec merge
+- Where files live (specs in `.workhorse/specs/`, mockups in `.workhorse/design/mockups/`, design system in `.workhorse/design/`)
 - The spec file format (markdown with YAML frontmatter, checkbox criteria, blockquote open questions)
-- Conversation style (concise, probing, 1-2 questions at a time, Australian/NZ English)
-- Interview methodology (understand goal, probe details, surface decisions, track questions, extract criteria, signal completeness)
-- To read existing specs and codebase proactively to inform questions
-- To edit spec files in place rather than reproducing them in chat
-- To acquire file locks before writing (see file locking section)
+- Writing conventions (describe system as it should be, no implementation details, Australian/NZ English)
+- Mockup format (standalone HTML/CSS, design system palette, HTML comment header linking to spec)
+- Conversation style (concise, professional, 1-2 questions at a time, don't reproduce files in chat)
+
+This context means the agent never needs to explore the codebase to understand how Workhorse itself works — it already knows.
+
+**2. Card context** — dynamic, per-session:
+
+- Card title, identifier, and description
+- Project name, repository owner and name
+- File path guidance for this card's specs and mockups
+- Attachment file list (if any)
+
+**3. Mode-specific instructions** — driven by the `mode` parameter from action pills:
+
+- **Interview mode**: structured interview — ask probing questions, surface edge cases, challenge assumptions
+- **Draft spec mode**: read card description, generate spec files immediately without interviewing
+- **Review mode**: fresh-eyes review — look for gaps, contradictions, ambiguities, missing edge cases
+- **Directed editing mode**: follow user's specific instructions to edit spec files
+- **Design audit mode**: review implementation against `.workhorse/design/` system docs
+- **Security audit mode**: review implementation for OWASP top 10, injection, auth/authz issues
+- **Default (no mode)**: follow the user's lead
+
+The mode parameter flows from the action pill UI → `useInterview` hook → `/api/interview` POST body → `buildInterviewInstructions()`. Each mode maps to a system prompt fragment that shapes the agent's behaviour without the user needing to write detailed instructions.
 
 ### Context window management
 

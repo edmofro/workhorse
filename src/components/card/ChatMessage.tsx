@@ -30,7 +30,7 @@ export function ChatMessage({
           size="chat"
           initial={userName ?? 'U'}
         />
-        <span className="text-[13px] font-semibold">
+        <span className="text-[13px] font-medium">
           {isAI ? 'Workhorse' : userName ?? 'You'}
         </span>
         {timestamp && (
@@ -43,10 +43,10 @@ export function ChatMessage({
         className="text-[14px] text-[var(--text-secondary)] leading-[1.7]"
         style={{ paddingLeft: '34px' }}
       >
+        <MarkdownContent content={content} />
         {attachments && attachments.length > 0 && (
           <MessageAttachments attachments={attachments} />
         )}
-        <MarkdownContent content={content} />
       </div>
     </div>
   )

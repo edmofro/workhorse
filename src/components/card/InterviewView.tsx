@@ -89,7 +89,7 @@ export function InterviewView({ cardId }: InterviewViewProps) {
 
           {isStreaming && messages[messages.length - 1]?.content === '' && (
             <div className="flex items-center gap-2 pl-[34px] text-[13px] text-[var(--text-muted)]">
-              <span className="animate-pulse">Interviewer is working...</span>
+              <span>Interviewer is working…</span>
             </div>
           )}
         </div>

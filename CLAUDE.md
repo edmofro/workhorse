@@ -8,7 +8,7 @@ Spec-driven development workbench. Building the machine that builds the machine.
 
 - **Framework:** Next.js 16 (App Router) with TypeScript
 - **Styling:** Tailwind CSS v4
-- **Database:** SQLite via Prisma ORM (may migrate to PostgreSQL later)
+- **Database:** PostgreSQL via Prisma ORM
 - **AI:** Anthropic Claude API (@anthropic-ai/sdk)
 - **Icons:** Lucide React
 - **Utilities:** clsx, tailwind-merge

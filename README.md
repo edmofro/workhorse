@@ -19,18 +19,102 @@ Workhorse helps product owners, testers, and developers collaboratively develop 
 |-------|-----------|
 | Framework | Next.js 16 (App Router) with TypeScript |
 | Styling | Tailwind CSS v4 |
-| Database | SQLite via Prisma ORM |
+| Database | PostgreSQL via Prisma ORM |
 | AI | Anthropic Claude API (`@anthropic-ai/sdk`) |
 | Icons | Lucide React |
 | Utilities | clsx, tailwind-merge |
 
 ## Getting started
 
+1. Copy `.env.example` to `.env` and fill in the values (see [Environment variables](#environment-variables))
+2. Set up a PostgreSQL database and add the connection string to `DATABASE_URL`
+3. Create a [GitHub OAuth app](https://github.com/settings/developers) with callback URL `http://localhost:3000/api/auth/github/callback`
+
 ```bash
 npm install
-npx prisma db push    # Set up the database
+npx prisma db push    # Apply schema to your database
 npm run dev           # Start the dev server at http://localhost:3000
 ```
+
+## Environment variables
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `DATABASE_URL` | Yes | PostgreSQL connection string (`postgresql://user:pass@host:5432/workhorse`) |
+| `ANTHROPIC_API_KEY` | Yes | Anthropic API key for AI chat and review features |
+| `GITHUB_CLIENT_ID` | Yes | GitHub OAuth app client ID |
+| `GITHUB_CLIENT_SECRET` | Yes | GitHub OAuth app client secret |
+| `NEXTAUTH_URL` | Yes | Base URL of the application (e.g. `https://yourdomain.com`) |
+| `REPOS_BASE_PATH` | No | Path for git repository storage (default: `/data/repos`) |
+| `GITHUB_SERVICE_TOKEN` | No | GitHub token for automatic worktree recovery on restart |
+
+## Deploying on Railway
+
+Railway is a good fit because it supports persistent volumes (needed for git worktree storage) and managed PostgreSQL.
+
+### 1. Create the project
+
+- Create a new project on [Railway](https://railway.com)
+- Add a **PostgreSQL** service from the Railway dashboard
+- Add a **New Service → GitHub Repo** and connect your fork of this repo
+
+### 2. Configure environment variables
+
+In the service settings, add:
+
+```
+DATABASE_URL=${{Postgres.DATABASE_URL}}
+ANTHROPIC_API_KEY=sk-ant-...
+GITHUB_CLIENT_ID=Ov23li...
+GITHUB_CLIENT_SECRET=...
+NEXTAUTH_URL=https://your-app.up.railway.app
+```
+
+Use Railway's variable reference (`${{Postgres.DATABASE_URL}}`) to automatically inject the database URL from the PostgreSQL service.
+
+### 3. Attach a persistent volume
+
+The app stores git bare clones and worktrees on disk. Without a volume, these are lost on each deploy.
+
+- Go to your service → **Settings → Volumes**
+- Add a volume mounted at `/data/repos`
+- This matches the default `REPOS_BASE_PATH`; if you use a different mount path, set `REPOS_BASE_PATH` accordingly
+
+### 4. Build and deploy settings
+
+Railway auto-detects Node.js. The defaults should work, but verify:
+
+| Setting | Value |
+|---------|-------|
+| Build command | `npm run build` |
+| Start command | `npm start` |
+| Watch paths | `/` (default) |
+
+The build command runs `prisma generate && next build` automatically.
+
+After the first deploy, apply the database schema:
+
+```bash
+railway run npx prisma db push
+```
+
+Or enable auto-migration by adding a release command in Railway:
+
+```
+npx prisma db push
+```
+
+### 5. Set up GitHub OAuth callback
+
+Update your GitHub OAuth app's callback URL to:
+
+```
+https://your-app.up.railway.app/api/auth/github/callback
+```
+
+### 6. Verify
+
+Visit your Railway URL. You should see the sign-in page. Authenticate with GitHub and you're running.
 
 ## Project structure
 

@@ -2,6 +2,7 @@
 
 import { FileText, Image as ImageIcon } from 'lucide-react'
 import { cn } from '../../lib/cn'
+import { deriveLabel } from '../../lib/labels'
 import type { SpecFileItem, MockupFileItem } from './types'
 
 interface SpecRailProps {
@@ -30,7 +31,7 @@ export function SpecRail({
       </div>
 
       {specs.map((spec) => {
-        const fileName = spec.filePath.split('/').pop()?.replace(/\.md$/, '') ?? spec.filePath
+        const fileName = deriveLabel(spec.filePath, spec.content)
         const isActive = spec.filePath === activeFilePath
         return (
           <button
@@ -60,7 +61,7 @@ export function SpecRail({
             </span>
           </div>
           {mockups.map((mockup) => {
-            const fileName = mockup.filePath.split('/').pop()?.replace(/\.html$/, '') ?? mockup.filePath
+            const fileName = deriveLabel(mockup.filePath, mockup.content)
             return (
               <button
                 key={mockup.filePath}

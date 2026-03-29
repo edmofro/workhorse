@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { FileText, Component, Layout, Image } from 'lucide-react'
 import { cn } from '../../lib/cn'
+import { deriveLabel } from '../../lib/labels'
 import { DesignPreview } from './DesignPreview'
 
 interface DesignFile {
@@ -138,7 +139,7 @@ export function DesignBrowser({ owner, repoName, defaultBranch }: DesignBrowserP
                 )}
               >
                 <Icon size={13} className="shrink-0 text-[var(--text-muted)]" />
-                <span className="text-[12px] truncate">{file.name}</span>
+                <span className="text-[12px] truncate">{deriveLabel(file.name, file.content)}</span>
               </button>
             )
           })}

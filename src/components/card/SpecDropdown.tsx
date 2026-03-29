@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { FileText, Search } from 'lucide-react'
+import { deriveLabel, matchesSearch } from '../../lib/labels'
 import type { SpecFileItem, ProjectSpecItem } from './types'
 
 interface SpecDropdownProps {
@@ -63,19 +64,17 @@ export function SpecDropdown({
 
   const filteredSpecs = lowerQuery
     ? specs.filter((s) => {
-        const name = s.filePath.split('/').pop() ?? s.filePath
-        return name.toLowerCase().includes(lowerQuery)
+        const label = deriveLabel(s.filePath, s.content)
+        return matchesSearch(lowerQuery, s.filePath, label)
       })
     : specs
 
   const filteredProjectSpecs = projectSpecs.filter((ps) => {
     if (attachedPaths.has(ps.filePath)) return false
     if (!lowerQuery) return true
-    const name = ps.filePath.split('/').pop() ?? ps.filePath
-    const title = extractTitle(ps.content)
+    const label = deriveLabel(ps.filePath, ps.content)
     return (
-      name.toLowerCase().includes(lowerQuery) ||
-      title.toLowerCase().includes(lowerQuery) ||
+      matchesSearch(lowerQuery, ps.filePath, label) ||
       ps.content.toLowerCase().includes(lowerQuery)
     )
   })
@@ -117,7 +116,7 @@ export function SpecDropdown({
               </span>
             </div>
             {filteredSpecs.map((spec) => {
-              const fileName = spec.filePath.split('/').pop()?.replace(/\.md$/, '') ?? spec.filePath
+              const fileName = deriveLabel(spec.filePath, spec.content)
               return (
                 <button
                   key={spec.filePath}
@@ -144,7 +143,7 @@ export function SpecDropdown({
               </span>
             </div>
             {filteredProjectSpecs.map((ps) => {
-              const fileName = ps.filePath.split('/').pop()?.replace(/\.md$/, '') ?? ps.filePath
+              const fileName = deriveLabel(ps.filePath, ps.content)
               return (
                 <button
                   key={ps.filePath}
@@ -169,7 +168,3 @@ export function SpecDropdown({
   )
 }
 
-function extractTitle(content: string): string {
-  const match = content.match(/^title:\s*(.+)$/m)
-  return match?.[1] ?? ''
-}

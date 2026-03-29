@@ -53,7 +53,7 @@ export function CardItem({ card, projectName }: CardItemProps) {
             : card.description}
         </div>
       )}
-      <div className="flex items-center gap-2" style={{ marginTop: '10px' }}>
+      <div className="flex items-center gap-2" style={{ marginTop: '12px' }}>
         {tags.map((tag) => (
           <Tag
             key={tag}

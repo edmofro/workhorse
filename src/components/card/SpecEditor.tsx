@@ -128,7 +128,7 @@ export function SpecEditor({
         </div>
 
         {isInterviewerWorking && (
-          <div className="mt-6 px-3 py-2 rounded-[var(--radius-default)] bg-[rgba(59,130,246,0.06)] border border-[rgba(59,130,246,0.15)] text-[12px] text-[var(--text-muted)]">
+          <div className="mt-6 px-3 py-2 rounded-[var(--radius-default)] bg-[var(--amber-alpha)] border border-[rgba(180,83,9,0.15)] text-[12px] text-[var(--text-muted)]">
             Interviewer is working... spec may update automatically.
           </div>
         )}

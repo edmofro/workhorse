@@ -1,12 +1,13 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { FileText, Search } from 'lucide-react'
+import { FileText, Image as ImageIcon, Search } from 'lucide-react'
 import { deriveLabel, matchesSearch } from '../../lib/labels'
-import type { SpecFileItem, ProjectSpecItem } from './types'
+import type { SpecFileItem, MockupFileItem, ProjectSpecItem } from './types'
 
 interface SpecDropdownProps {
   specs: SpecFileItem[]
+  mockups: MockupFileItem[]
   projectSpecs: ProjectSpecItem[]
   onSelectSpec: (filePath: string) => void
   onSelectProjectSpec: (filePath: string, content: string) => void
@@ -17,6 +18,7 @@ interface SpecDropdownProps {
 /** Dropdown file browser with search, shown from the spec header bar chevron. */
 export function SpecDropdown({
   specs,
+  mockups,
   projectSpecs,
   onSelectSpec,
   onSelectProjectSpec,
@@ -69,6 +71,13 @@ export function SpecDropdown({
       })
     : specs
 
+  const filteredMockups = lowerQuery
+    ? mockups.filter((m) => {
+        const label = deriveLabel(m.filePath, m.content)
+        return matchesSearch(lowerQuery, m.filePath, label)
+      })
+    : mockups
+
   const filteredProjectSpecs = projectSpecs.filter((ps) => {
     if (attachedPaths.has(ps.filePath)) return false
     if (!lowerQuery) return true
@@ -100,15 +109,15 @@ export function SpecDropdown({
             onKeyDown={(e) => {
               if (e.key === 'Escape') onClose()
             }}
-            placeholder="Search specs..."
+            placeholder="Search files..."
             className="w-full pl-[26px] pr-2 py-1 text-[12px] bg-[var(--bg-page)] border border-[var(--border-subtle)] rounded-[var(--radius-default)] outline-none focus:border-[var(--accent)] transition-[border-color] duration-100 placeholder:text-[var(--text-faint)]"
           />
         </div>
       </div>
 
       <div className="flex-1 overflow-y-auto">
-        {/* This card */}
-        {filteredSpecs.length > 0 && (
+        {/* This card — specs and mockups */}
+        {(filteredSpecs.length > 0 || filteredMockups.length > 0) && (
           <div className="px-1 pb-1">
             <div className="px-2 pt-2 pb-1">
               <span className="text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-[0.06em]">
@@ -124,6 +133,19 @@ export function SpecDropdown({
                   className="flex items-center gap-1 w-full px-2 py-1 rounded-[var(--radius-md)] text-left text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer"
                 >
                   <FileText size={11} className="shrink-0 text-[var(--text-muted)]" />
+                  <span className="text-[11px] font-medium truncate flex-1">{fileName}</span>
+                </button>
+              )
+            })}
+            {filteredMockups.map((mockup) => {
+              const fileName = deriveLabel(mockup.filePath, mockup.content)
+              return (
+                <button
+                  key={mockup.filePath}
+                  onClick={() => handleSelect(mockup.filePath)}
+                  className="flex items-center gap-1 w-full px-2 py-1 rounded-[var(--radius-md)] text-left text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer"
+                >
+                  <ImageIcon size={11} className="shrink-0 text-[var(--text-muted)]" />
                   <span className="text-[11px] font-medium truncate flex-1">{fileName}</span>
                 </button>
               )
@@ -155,9 +177,9 @@ export function SpecDropdown({
           </div>
         )}
 
-        {filteredSpecs.length === 0 && filteredProjectSpecs.length === 0 && (
+        {filteredSpecs.length === 0 && filteredMockups.length === 0 && filteredProjectSpecs.length === 0 && (
           <p className="px-3 py-4 text-[11px] text-[var(--text-faint)] text-center">
-            No matching specs
+            No matching files
           </p>
         )}
       </div>

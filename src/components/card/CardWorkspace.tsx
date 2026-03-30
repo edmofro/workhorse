@@ -590,7 +590,7 @@ export function CardWorkspace({
         onSelectSpec={(fp) => navigateToFile(fp)}
         onSelectProjectSpec={handleSelectProjectSpec}
         onClose={() => { setExpanded(false); closeArtifact() }}
-        onEdit={() => { setShowChanges(false); enterEdit() }}
+        onEdit={enterEdit}
         showChanges={showChanges}
         onToggleChanges={() => setShowChanges(!showChanges)}
         expanded={expanded}

@@ -175,6 +175,16 @@ export async function createBareClone(
     maxBuffer: 50 * 1024 * 1024,
   })
 
+  // --bare doesn't set up remote tracking refs. Configure the fetch refspec
+  // so that `git fetch origin` populates refs/remotes/origin/* and
+  // `origin/main` resolves correctly. This also ensures card branches at
+  // refs/heads/* are never touched by fetch.
+  await git(
+    ['config', 'remote.origin.fetch', '+refs/heads/*:refs/remotes/origin/*'],
+    barePath,
+  )
+  await git(['fetch', 'origin'], barePath, { GIT_TERMINAL_PROMPT: '0' })
+
   return barePath
 }
 

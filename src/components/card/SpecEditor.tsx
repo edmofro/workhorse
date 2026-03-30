@@ -40,6 +40,11 @@ export function SpecEditor({
   const [lastSaved, setLastSaved] = useState<string | null>(null)
   const [editing, setEditing] = useState(isEditing)
 
+  // Sync local editing state when parent prop changes (e.g. header bar Edit button)
+  useEffect(() => {
+    setEditing(isEditing)
+  }, [isEditing])
+
   const isAgentWorking = cardStatus === 'SPECIFYING'
 
   const save = useCallback(

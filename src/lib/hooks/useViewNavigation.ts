@@ -62,7 +62,6 @@ interface UseViewNavigationOptions {
   initialView?: ViewState
   onStartEditing: (filePath: string) => Promise<boolean>
   onDoneEditing: (filePath: string) => Promise<void>
-  onReleaseLock: (filePath: string) => Promise<void>
   onRestoreContent: (filePath: string) => Promise<void>
 }
 
@@ -71,7 +70,6 @@ export function useViewNavigation({
   initialView,
   onStartEditing,
   onDoneEditing,
-  onReleaseLock,
   onRestoreContent,
 }: UseViewNavigationOptions) {
   const [viewNav, dispatchView] = useReducer(viewReducer, {
@@ -175,17 +173,16 @@ export function useViewNavigation({
     setSavePrompt(null)
   }, [savePrompt, onDoneEditing])
 
-  // Save prompt: discard and continue (restores content, releases lock)
+  // Save prompt: discard and continue (restores content)
   const discardAndFlip = useCallback(async () => {
     if (!savePrompt) return
     await onRestoreContent(savePrompt.fromPath)
-    await onReleaseLock(savePrompt.fromPath)
     dispatchView({
       type: 'navigate',
       to: { type: 'artifact', filePath: savePrompt.toPath, editing: false },
     })
     setSavePrompt(null)
-  }, [savePrompt, onReleaseLock, onRestoreContent])
+  }, [savePrompt, onRestoreContent])
 
   return {
     view,

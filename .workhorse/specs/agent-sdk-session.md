@@ -214,27 +214,6 @@ The git branch is the source of truth for spec and mockup content. No database t
 
 If a lightweight cache of touched files is needed (e.g. for listing cards that touch a given spec), the `Feature.touchedFiles` JSON field stores file paths, updated on each auto-commit.
 
-## File locking
-
-Each spec and mockup file has at most one active editor (user or AI) at a time.
-
-### Lock model
-
-A `FileLock` record tracks who is editing each file:
-
-- `featureId` + `filePath` (unique constraint)
-- `lockedBy`: user ID or `"ai-agent"`
-- `lockedAt`: timestamp
-- `expiresAt`: auto-expire stale locks (10 minutes for humans, 2 minutes for AI)
-
-### Lock behaviour
-
-- [ ] User clicks "Edit" on a spec file → acquire lock. If already locked, show "Being edited by {name}" in view-only mode
-- [ ] Agent needs to write a file → acquire lock. If locked by a user, the agent describes its intended changes in chat instead of writing the file
-- [ ] Lock released when: user clicks "Done editing", user navigates away, agent turn completes, or lock expires
-- [ ] Stale lock cleanup: on-access check against `expiresAt`, plus periodic sweep
-- [ ] Lock status visible in the files panel (unlocked / locked by {name} / locked by AI)
-
 ## Auto-commit model
 
 Every change to spec and mockup files is committed and pushed to the card's branch automatically. The branch is always up to date — there is no "uncommitted work."

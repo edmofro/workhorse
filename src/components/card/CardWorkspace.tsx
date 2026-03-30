@@ -165,28 +165,14 @@ export function CardWorkspace({
 
   // Spec editing operations
   const handleStartEditing = useCallback(
-    async (filePath: string) => {
-      const res = await fetch('/api/file-lock', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cardId: card.id, filePath }),
-      })
-      if (res.status === 409) {
-        const data = await res.json()
-        alert(`File is being edited by ${data.holder?.displayName ?? 'someone else'}`)
-        return false
-      }
+    async () => {
       return true
     },
-    [card.id],
+    [],
   )
 
   const handleDoneEditing = useCallback(
     async (filePath: string) => {
-      await fetch(
-        `/api/file-lock?cardId=${card.id}&filePath=${encodeURIComponent(filePath)}`,
-        { method: 'DELETE' },
-      )
       await fetch('/api/auto-commit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -204,16 +190,6 @@ export function CardWorkspace({
       }
     },
     [card.id, card.title, files, router],
-  )
-
-  const handleReleaseLock = useCallback(
-    async (filePath: string) => {
-      await fetch(
-        `/api/file-lock?cardId=${card.id}&filePath=${encodeURIComponent(filePath)}`,
-        { method: 'DELETE' },
-      )
-    },
-    [card.id],
   )
 
   // Restore file content from worktree (used on discard)
@@ -266,7 +242,6 @@ export function CardWorkspace({
     initialView: initialViewForNav,
     onStartEditing: handleStartEditing,
     onDoneEditing: handleDoneEditing,
-    onReleaseLock: handleReleaseLock,
     onRestoreContent: handleRestoreContent,
   })
 
@@ -621,7 +596,7 @@ export function CardWorkspace({
                 handleSpecUpdate(activeFile.filePath, content)
               }
               isEditing={isEditing}
-              onStartEditing={() => handleStartEditing(activeFile.filePath)}
+              onStartEditing={() => handleStartEditing()}
               onDoneEditing={finishEditing}
               cardStatus={card.status}
               hideEditButton

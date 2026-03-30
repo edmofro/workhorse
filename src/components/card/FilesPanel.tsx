@@ -12,6 +12,9 @@ interface FilesPanelProps {
   activeFilePath?: string | null
   onSelectFile: (filePath: string) => void
   onCreateSpec: () => void
+  /** Display mode: 'sidebar' renders inline in layout flow, 'overlay' renders as
+   *  an absolutely-positioned panel that hovers over adjacent content. */
+  mode?: 'sidebar' | 'overlay'
   /** Whether the panel starts open (card home, chat) or collapsed (artifact mode) */
   defaultOpen?: boolean
 }
@@ -25,13 +28,14 @@ export function FilesPanel({
   activeFilePath,
   onSelectFile,
   onCreateSpec,
+  mode = 'sidebar',
   defaultOpen = true,
 }: FilesPanelProps) {
   const [pinned, setPinned] = useState(defaultOpen)
   const [hovering, setHovering] = useState(false)
   const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // Clean up timeout on unmount
+  // Clear pending hover timeout on unmount
   useEffect(() => {
     return () => {
       if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current)
@@ -65,7 +69,11 @@ export function FilesPanel({
   if (!isVisible) {
     return (
       <aside
-        className="shrink-0 border-l border-[var(--border-subtle)] bg-[var(--bg-page)] flex flex-col items-center pt-3 gap-3 relative"
+        className={cn(
+          'shrink-0 border-l border-[var(--border-subtle)] bg-[var(--bg-page)] flex flex-col items-center pt-3 gap-3',
+          mode === 'overlay' && 'absolute right-0 top-0 bottom-0 z-20',
+          mode === 'sidebar' && 'relative',
+        )}
         style={{ width: '36px' }}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
@@ -170,23 +178,23 @@ export function FilesPanel({
   // Overlay mode (hover-to-peek, not pinned)
   if (!pinned && hovering) {
     return (
-      <>
-        {/* Invisible hover target area on the right edge */}
-        <div
-          className="shrink-0 relative"
-          style={{ width: '36px' }}
-          onMouseEnter={handleMouseEnter}
-          onMouseLeave={handleMouseLeave}
+      <div
+        className={cn(
+          'shrink-0 relative',
+          mode === 'overlay' && 'absolute right-0 top-0 bottom-0 z-20',
+        )}
+        style={{ width: '36px' }}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+      >
+        {/* Overlay panel floating on top of content */}
+        <aside
+          className="absolute right-0 top-0 bottom-0 z-30 border-l border-[var(--border-subtle)] bg-[var(--bg-page)] flex flex-col overflow-y-auto shadow-[var(--shadow-lg)]"
+          style={{ width: '180px' }}
         >
-          {/* Overlay panel floating on top of content */}
-          <aside
-            className="absolute right-0 top-0 bottom-0 z-30 border-l border-[var(--border-subtle)] bg-[var(--bg-page)] flex flex-col overflow-y-auto shadow-[var(--shadow-lg)]"
-            style={{ width: '180px' }}
-          >
-            {panelContent}
-          </aside>
-        </div>
-      </>
+          {panelContent}
+        </aside>
+      </div>
     )
   }
 

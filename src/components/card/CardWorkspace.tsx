@@ -770,11 +770,11 @@ export function CardWorkspace({
           <div className="flex flex-col overflow-hidden" style={{ width: '40%', minWidth: '320px' }}>
             {chatColumn}
           </div>
-          <div className="flex flex-col overflow-hidden border-l border-[var(--border-subtle)]" style={{ flex: '1 1 60%' }}>
+          <div className="flex flex-col overflow-hidden border-l border-[var(--border-subtle)] relative" style={{ flex: '1 1 60%' }}>
             {artifactColumn}
+            {/* Files panel — collapsed by default in artifact mode, hover to peek */}
+            <FilesPanel {...filesPanelProps} mode="overlay" defaultOpen={false} />
           </div>
-          {/* Files panel — collapsed by default in artifact mode, hover to peek */}
-          <FilesPanel {...filesPanelProps} defaultOpen={false} />
         </>
       )}
 

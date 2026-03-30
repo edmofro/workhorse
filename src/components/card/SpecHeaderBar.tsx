@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useCallback } from 'react'
-import { ChevronLeft, ChevronRight, ChevronDown, X, Pencil } from 'lucide-react'
+import { ChevronLeft, ChevronRight, ChevronDown, X, Pencil, Monitor, Tablet, Smartphone } from 'lucide-react'
 import { SpecDropdown } from './SpecDropdown'
 import { FileHistory } from './FileHistory'
 import { deriveLabel } from '../../lib/labels'
@@ -9,9 +9,9 @@ import type { SpecFileItem, ProjectSpecItem } from './types'
 import { cn } from '../../lib/cn'
 
 const DEVICES = [
-  { key: 'desktop', label: 'Desktop' },
-  { key: 'tablet', label: 'Tablet' },
-  { key: 'mobile', label: 'Mobile' },
+  { key: 'desktop', label: 'Desktop', icon: Monitor },
+  { key: 'tablet', label: 'Tablet', icon: Tablet },
+  { key: 'mobile', label: 'Mobile', icon: Smartphone },
 ] as const
 
 export type DeviceKey = (typeof DEVICES)[number]['key']
@@ -119,18 +119,19 @@ export function SpecHeaderBar({
 
       {/* Device toggle (mockups only) */}
       {isMockup && onDeviceChange && (
-        <div className="inline-flex bg-[var(--bg-page)] border border-[var(--border-subtle)] rounded-[var(--radius-default)] p-[2px] gap-[1px] mr-2">
+        <div className="inline-flex bg-[var(--bg-page)] border border-[var(--border-subtle)] rounded-[var(--radius-default)] p-1 gap-0 mr-2">
           {DEVICES.map((d) => (
             <button
               key={d.key}
               onClick={() => onDeviceChange(d.key)}
               className={cn(
-                'px-[14px] py-[5px] rounded-[var(--radius-md)] text-[12px] font-medium leading-none transition-colors duration-100 cursor-pointer',
+                'inline-flex items-center gap-1 px-2 py-1 rounded-[var(--radius-md)] text-[11px] font-medium leading-none transition-colors duration-100 cursor-pointer',
                 d.key === device
                   ? 'bg-[var(--bg-surface)] text-[var(--text-primary)] shadow-[var(--shadow-sm)]'
                   : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]',
               )}
             >
+              <d.icon size={12} />
               {d.label}
             </button>
           ))}

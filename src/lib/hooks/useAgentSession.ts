@@ -55,10 +55,13 @@ export function useAgentSession(cardId: string, sessionId: string | null) {
   // is already set to that value by processEvent, so we skip the abort.
   useEffect(() => {
     if (sessionId !== currentSessionIdRef.current) {
-      // This is a genuine session switch (user navigated to a different session)
+      // Genuine session switch — abort any in-flight stream and clear messages
+      // so stale cached data from react-query can't leak into the wrong session
       if (abortRef.current) {
         abortRef.current.abort()
       }
+      setMessages([])
+      historySessionIdRef.current = null
     }
     setCurrentSessionId(sessionId)
     currentSessionIdRef.current = sessionId

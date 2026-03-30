@@ -161,12 +161,16 @@ export async function filterAccessibleRepos(
 
 /**
  * Check whether a user has write access to a specific repo (cached).
- * Uses the same underlying hasRepoWriteAccess but with caching via filterAccessibleRepos.
+ * Routes through filterAccessibleRepos to benefit from the in-memory cache.
  */
 export async function requireProjectAccess(
   accessToken: string,
   owner: string,
   repoName: string,
 ): Promise<boolean> {
-  return hasRepoWriteAccess(accessToken, owner, repoName)
+  const accessible = await filterAccessibleRepos(
+    accessToken,
+    [{ owner, repoName }],
+  )
+  return accessible.has(`${owner}/${repoName}`)
 }

@@ -24,6 +24,24 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'cardId param required' }, { status: 400 })
   }
 
+  // Lightweight lookup to get project info for auth check before expensive query
+  const cardBasic = await prisma.card.findUnique({
+    where: { identifier: cardId },
+    select: { team: { select: { project: { select: { owner: true, repoName: true } } } } },
+  })
+
+  if (!cardBasic) {
+    return NextResponse.json({ error: 'Card not found' }, { status: 404 })
+  }
+
+  // Verify user has write access before running the expensive query
+  const hasAccess = await requireProjectAccess(
+    user.accessToken, cardBasic.team.project.owner, cardBasic.team.project.repoName,
+  )
+  if (!hasAccess) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
   const card = await prisma.card.findUnique({
     where: { identifier: cardId },
     include: {
@@ -51,12 +69,6 @@ export async function GET(request: NextRequest) {
   }
 
   const { owner, repoName, defaultBranch } = card.team.project
-
-  // Verify user has write access to the project's repo
-  const hasAccess = await requireProjectAccess(user.accessToken, owner, repoName)
-  if (!hasAccess) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-  }
 
   const [users, teams, hasWorktree, sessions, projectSpecs] = await Promise.all([
     prisma.user.findMany({
@@ -98,7 +110,7 @@ export async function GET(request: NextRequest) {
     const specFiles = workhorseFiles.filter((f) =>
       f.filePath.startsWith('.workhorse/specs/') ||
       isMockupPath(f.filePath),
-    )
+    ).slice(0, 20) // Cap concurrent file reads
     initialFiles = await Promise.all(
       specFiles.map(async (f) => {
         const content = await readWorktreeFile(

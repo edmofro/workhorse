@@ -16,6 +16,21 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'project param required' }, { status: 400 })
   }
 
+  // Lightweight lookup for auth check before expensive query
+  const projectBasic = await prisma.project.findFirst({
+    where: { name: { equals: decodeURIComponent(projectSlug), mode: 'insensitive' } },
+    select: { owner: true, repoName: true },
+  })
+
+  if (!projectBasic) {
+    return NextResponse.json({ error: 'Project not found' }, { status: 404 })
+  }
+
+  const hasAccess = await requireProjectAccess(user.accessToken, projectBasic.owner, projectBasic.repoName)
+  if (!hasAccess) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
   const [project, users] = await Promise.all([
     prisma.project.findFirst({
       where: { name: { equals: decodeURIComponent(projectSlug), mode: 'insensitive' } },
@@ -23,7 +38,17 @@ export async function GET(request: NextRequest) {
         teams: {
           include: {
             cards: {
-              include: { assignee: true, team: true },
+              select: {
+                id: true,
+                identifier: true,
+                title: true,
+                description: true,
+                status: true,
+                priority: true,
+                tags: true,
+                assignee: { select: { id: true, displayName: true } },
+                team: { select: { id: true, name: true, colour: true } },
+              },
               orderBy: { createdAt: 'desc' },
               take: 200,
             },
@@ -39,12 +64,6 @@ export async function GET(request: NextRequest) {
 
   if (!project) {
     return NextResponse.json({ error: 'Project not found' }, { status: 404 })
-  }
-
-  // Verify user has write access to the project's repo
-  const hasAccess = await requireProjectAccess(user.accessToken, project.owner, project.repoName)
-  if (!hasAccess) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
   const cards = project.teams.flatMap((t) =>

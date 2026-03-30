@@ -1,6 +1,7 @@
 'use client'
 
-import { useCardDetail } from '../../lib/hooks/queries'
+import { notFound } from 'next/navigation'
+import { useCardDetail, NotFoundError } from '../../lib/hooks/queries'
 import { CardDetailShell } from './CardDetailShell'
 import { Topbar } from '../Topbar'
 import { Skeleton } from '../Skeleton'
@@ -12,7 +13,12 @@ interface Props {
 }
 
 export function CardDetailLayout({ projectSlug, cardId, children }: Props) {
-  const { data } = useCardDetail(cardId)
+  const { data, error } = useCardDetail(cardId)
+
+  if (error) {
+    if (error instanceof NotFoundError) notFound()
+    throw error
+  }
 
   if (!data) {
     // Show skeleton topbar so layout doesn't shift when data arrives

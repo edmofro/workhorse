@@ -49,7 +49,7 @@ export function DesignBrowser({ owner, repoName, defaultBranch }: DesignBrowserP
     if (files.length > 0 && selectedFile === null) {
       setSelectedFile(files[0])
     }
-  }, [files, selectedFile])
+  }, [files.length, selectedFile])
 
   if (loading) {
     return (

@@ -6,7 +6,7 @@ import { SpecDropdown } from './SpecDropdown'
 import { deriveLabel } from '../../lib/labels'
 import type { SpecFileItem, MockupFileItem, ProjectSpecItem } from './types'
 import type { CodeFileItem } from './ArtifactsSidebar'
-import { cn } from '../../lib/cn'
+import { SegmentedToggle } from './SegmentedToggle'
 
 const DEVICES = [
   { key: 'desktop', label: 'Desktop' },
@@ -15,6 +15,11 @@ const DEVICES = [
 ] as const
 
 export type DeviceKey = (typeof DEVICES)[number]['key']
+
+const CHANGES_OPTIONS = [
+  { key: 'file', label: 'File' },
+  { key: 'changes', label: 'Changes' },
+] as const
 
 interface SpecHeaderBarProps {
   filePath: string
@@ -135,51 +140,25 @@ export function SpecHeaderBar({
       <div className="flex-1" />
 
       {/* Device toggle (mockups only) */}
-      {isMockup && onDeviceChange && (
-        <div className="inline-flex bg-[var(--bg-page)] border border-[var(--border-subtle)] rounded-[var(--radius-default)] p-[2px] gap-[1px] mr-2">
-          {DEVICES.map((d) => (
-            <button
-              key={d.key}
-              onClick={() => onDeviceChange(d.key)}
-              className={cn(
-                'px-[14px] py-[5px] rounded-[var(--radius-md)] text-[12px] font-medium leading-none transition-colors duration-100 cursor-pointer',
-                d.key === device
-                  ? 'bg-[var(--bg-surface)] text-[var(--text-primary)] shadow-[var(--shadow-sm)]'
-                  : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]',
-              )}
-            >
-              {d.label}
-            </button>
-          ))}
-        </div>
+      {isMockup && device && onDeviceChange && (
+        <SegmentedToggle
+          options={DEVICES}
+          value={device}
+          onChange={onDeviceChange}
+          className="mr-2"
+        />
       )}
 
       {/* Changes toggle (specs and code, not mockups) */}
       {!isMockup && onToggleChanges && (
-        <div className="inline-flex bg-[var(--bg-page)] border border-[var(--border-subtle)] rounded-[var(--radius-default)] p-[2px] gap-[1px] mr-1">
-          <button
-            onClick={showChanges ? onToggleChanges : undefined}
-            className={cn(
-              'px-[10px] py-[4px] rounded-[var(--radius-md)] text-[11px] font-medium leading-none transition-colors duration-100 cursor-pointer',
-              !showChanges
-                ? 'bg-[var(--bg-surface)] text-[var(--text-primary)] shadow-[var(--shadow-sm)]'
-                : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]',
-            )}
-          >
-            File
-          </button>
-          <button
-            onClick={showChanges ? undefined : onToggleChanges}
-            className={cn(
-              'px-[10px] py-[4px] rounded-[var(--radius-md)] text-[11px] font-medium leading-none transition-colors duration-100 cursor-pointer',
-              showChanges
-                ? 'bg-[var(--bg-surface)] text-[var(--text-primary)] shadow-[var(--shadow-sm)]'
-                : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]',
-            )}
-          >
-            Changes
-          </button>
-        </div>
+        <SegmentedToggle
+          options={CHANGES_OPTIONS}
+          value={showChanges ? 'changes' : 'file'}
+          onChange={(key) => {
+            if ((key === 'changes') !== showChanges) onToggleChanges()
+          }}
+          className="mr-1"
+        />
       )}
 
       {/* Edit button */}

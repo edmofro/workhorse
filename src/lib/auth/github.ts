@@ -112,9 +112,11 @@ export async function hasRepoWriteAccess(
 const repoAccessCache = new Map<string, { result: Set<string>; expiresAt: number }>()
 const REPO_ACCESS_CACHE_TTL = 5 * 60 * 1000 // 5 minutes
 const REPO_ACCESS_CACHE_MAX_SIZE = 100
+let lastEvictionTime = 0
+const EVICTION_INTERVAL = 60 * 1000 // Run eviction at most once per minute
 
 function tokenHash(accessToken: string): string {
-  return createHash('sha256').update(accessToken).digest('hex').slice(0, 16)
+  return createHash('sha256').update(accessToken).digest('hex')
 }
 
 function evictExpiredEntries() {
@@ -145,9 +147,11 @@ export async function filterAccessibleRepos(
 
   const result = new Set(results.filter((r): r is string => r !== null))
 
-  // Evict expired entries and enforce size cap
-  if (repoAccessCache.size >= REPO_ACCESS_CACHE_MAX_SIZE) {
+  // Evict expired entries periodically (not on every insert) and enforce size cap
+  const now = Date.now()
+  if (repoAccessCache.size >= REPO_ACCESS_CACHE_MAX_SIZE || now - lastEvictionTime > EVICTION_INTERVAL) {
     evictExpiredEntries()
+    lastEvictionTime = now
   }
   if (repoAccessCache.size >= REPO_ACCESS_CACHE_MAX_SIZE) {
     // Still full — drop oldest entry
@@ -160,10 +164,11 @@ export async function filterAccessibleRepos(
 }
 
 /**
- * Check whether a user has write access to a specific repo (cached).
+ * Check whether a user has write access to a specific repo.
  * Routes through filterAccessibleRepos to benefit from the in-memory cache.
+ * Returns true/false — callers must check the result and return 403 if false.
  */
-export async function requireProjectAccess(
+export async function hasProjectAccess(
   accessToken: string,
   owner: string,
   repoName: string,

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireUser } from '../../../lib/auth/session'
-import { requireProjectAccess } from '../../../lib/auth/github'
+import { hasProjectAccess } from '../../../lib/auth/github'
 import { prisma } from '../../../lib/prisma'
 
 /**
@@ -10,7 +10,13 @@ import { prisma } from '../../../lib/prisma'
  * that only need basic project info (not the full board with cards).
  */
 export async function GET(request: NextRequest) {
-  const user = await requireUser()
+  let user
+  try {
+    user = await requireUser()
+  } catch {
+    return NextResponse.json({ error: 'Unauthorised' }, { status: 401 })
+  }
+
   const { searchParams } = new URL(request.url)
   const slug = searchParams.get('slug')
   if (!slug) {
@@ -26,9 +32,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Project not found' }, { status: 404 })
   }
 
-  // Verify user has write access to the project's repo
-  const hasAccess = await requireProjectAccess(user.accessToken, project.owner, project.repoName)
-  if (!hasAccess) {
+  if (!await hasProjectAccess(user.accessToken, project.owner, project.repoName)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 

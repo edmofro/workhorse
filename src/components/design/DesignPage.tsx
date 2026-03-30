@@ -1,52 +1,22 @@
 'use client'
 
-import { notFound } from 'next/navigation'
-import { useProjectLookup, NotFoundError } from '../../lib/hooks/queries'
-import { Topbar, TopbarTitle } from '../Topbar'
+import { ProjectPageShell } from '../ProjectPageShell'
 import { DesignBrowser } from './DesignBrowser'
-import { Skeleton } from '../Skeleton'
 
 interface Props {
   projectSlug: string
 }
 
 export function DesignPage({ projectSlug }: Props) {
-  const { data, isLoading, error } = useProjectLookup(projectSlug)
-
-  if (error instanceof NotFoundError) notFound()
-
-  if (isLoading || !data) {
-    return (
-      <>
-        <Topbar>
-          <TopbarTitle>Design</TopbarTitle>
-        </Topbar>
-        <div className="flex-1 flex">
-          <div className="w-[200px] border-r border-[var(--border-subtle)] p-4 space-y-2">
-            <Skeleton className="h-4 w-3/4" />
-            <Skeleton className="h-4 w-1/2" />
-            <Skeleton className="h-4 w-2/3" />
-          </div>
-          <div className="flex-1 p-8">
-            <Skeleton className="h-6 w-48 mb-4" />
-            <Skeleton className="h-4 w-full mb-2" />
-            <Skeleton className="h-4 w-5/6" />
-          </div>
-        </div>
-      </>
-    )
-  }
-
   return (
-    <>
-      <Topbar>
-        <TopbarTitle>Design — {data.name}</TopbarTitle>
-      </Topbar>
-      <DesignBrowser
-        owner={data.owner}
-        repoName={data.repoName}
-        defaultBranch={data.defaultBranch}
-      />
-    </>
+    <ProjectPageShell projectSlug={projectSlug} title="Design">
+      {(project) => (
+        <DesignBrowser
+          owner={project.owner}
+          repoName={project.repoName}
+          defaultBranch={project.defaultBranch}
+        />
+      )}
+    </ProjectPageShell>
   )
 }

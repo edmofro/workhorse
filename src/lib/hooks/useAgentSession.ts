@@ -69,7 +69,7 @@ export function useAgentSession(cardId: string, sessionId: string | null) {
 
   // Load chat history from Agent SDK session — cached by react-query so switching
   // back to a previously-viewed session is instant
-  const { data: historyData } = useQuery({
+  const { data: historyData, isFetching: isHistoryFetching } = useQuery({
     queryKey: ['chat-history', sessionId],
     queryFn: async () => {
       const res = await fetch(`/api/chat-history?sessionId=${sessionId}`)
@@ -90,15 +90,14 @@ export function useAgentSession(cardId: string, sessionId: string | null) {
       return
     }
     if (historySessionIdRef.current === sessionId) return
-    // historyData is undefined while loading a new session — wait for it.
-    // Guard: historyData may be a stale cached value from a previous queryKey
-    // during rapid session switches. Only apply it if it corresponds to the
-    // current sessionId by checking the queryKey hasn't changed underneath us.
-    if (historyData !== undefined && currentSessionIdRef.current === sessionId) {
+    // Wait for fresh data — if react-query is still fetching for this key,
+    // the current historyData may be stale cached data from a previous view.
+    // Only apply once the fetch has settled to avoid showing wrong session's messages.
+    if (historyData !== undefined && !isHistoryFetching && currentSessionIdRef.current === sessionId) {
       historySessionIdRef.current = sessionId
       setMessages(historyData?.messages?.length > 0 ? historyData.messages : [])
     }
-  }, [sessionId, historyData])
+  }, [sessionId, historyData, isHistoryFetching])
 
   // Clean up timers on unmount
   useEffect(() => {

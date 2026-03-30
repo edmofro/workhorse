@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireUser } from '../../../lib/auth/session'
-import { requireProjectAccess } from '../../../lib/auth/github'
+import { hasProjectAccess } from '../../../lib/auth/github'
 import { prisma } from '../../../lib/prisma'
 import { worktreeExists, getChangedFiles, readWorktreeFile } from '../../../lib/git/worktree'
 import { fetchRepoSpecTree } from '../../../lib/git/specTree'
@@ -17,29 +17,17 @@ import { isMockupPath } from '../../../lib/paths'
  * - Project specs
  */
 export async function GET(request: NextRequest) {
-  const user = await requireUser()
+  let user
+  try {
+    user = await requireUser()
+  } catch {
+    return NextResponse.json({ error: 'Unauthorised' }, { status: 401 })
+  }
+
   const { searchParams } = new URL(request.url)
   const cardId = searchParams.get('cardId')
   if (!cardId) {
     return NextResponse.json({ error: 'cardId param required' }, { status: 400 })
-  }
-
-  // Lightweight lookup to get project info for auth check before expensive query
-  const cardBasic = await prisma.card.findUnique({
-    where: { identifier: cardId },
-    select: { team: { select: { project: { select: { owner: true, repoName: true } } } } },
-  })
-
-  if (!cardBasic) {
-    return NextResponse.json({ error: 'Card not found' }, { status: 404 })
-  }
-
-  // Verify user has write access before running the expensive query
-  const hasAccess = await requireProjectAccess(
-    user.accessToken, cardBasic.team.project.owner, cardBasic.team.project.repoName,
-  )
-  if (!hasAccess) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
   const card = await prisma.card.findUnique({
@@ -69,6 +57,10 @@ export async function GET(request: NextRequest) {
   }
 
   const { owner, repoName, defaultBranch } = card.team.project
+
+  if (!await hasProjectAccess(user.accessToken, owner, repoName)) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
 
   const [users, teams, hasWorktree, sessions, projectSpecs] = await Promise.all([
     prisma.user.findMany({
@@ -101,7 +93,7 @@ export async function GET(request: NextRequest) {
   ])
 
   // Load spec files and code files from worktree if it exists
-  let initialFiles: { filePath: string; isNew: boolean; content: string }[] = []
+  const initialFiles: { filePath: string; isNew: boolean; content: string }[] = []
   let initialCodeFiles: { filePath: string; isNew: boolean }[] = []
   if (hasWorktree) {
     const { workhorseFiles, codeFiles } = await getChangedFiles(
@@ -110,15 +102,20 @@ export async function GET(request: NextRequest) {
     const specFiles = workhorseFiles.filter((f) =>
       f.filePath.startsWith('.workhorse/specs/') ||
       isMockupPath(f.filePath),
-    ).slice(0, 20) // Cap concurrent file reads
-    initialFiles = await Promise.all(
-      specFiles.map(async (f) => {
-        const content = await readWorktreeFile(
-          owner, repoName, card.identifier, f.filePath,
-        ) ?? ''
-        return { ...f, content }
-      }),
-    )
+    ).slice(0, 20)
+    // Read files in batches of 5 to avoid spawning too many concurrent subprocesses
+    for (let i = 0; i < specFiles.length; i += 5) {
+      const batch = specFiles.slice(i, i + 5)
+      const results = await Promise.all(
+        batch.map(async (f) => {
+          const content = await readWorktreeFile(
+            owner, repoName, card.identifier, f.filePath,
+          ) ?? ''
+          return { ...f, content }
+        }),
+      )
+      initialFiles.push(...results)
+    }
     initialCodeFiles = codeFiles
   }
 

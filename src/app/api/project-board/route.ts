@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireUser } from '../../../lib/auth/session'
-import { requireProjectAccess } from '../../../lib/auth/github'
+import { hasProjectAccess } from '../../../lib/auth/github'
 import { prisma } from '../../../lib/prisma'
 
 /**
@@ -9,26 +9,17 @@ import { prisma } from '../../../lib/prisma'
  * Returns project with teams, cards, and all users for the board view.
  */
 export async function GET(request: NextRequest) {
-  const user = await requireUser()
+  let user
+  try {
+    user = await requireUser()
+  } catch {
+    return NextResponse.json({ error: 'Unauthorised' }, { status: 401 })
+  }
+
   const { searchParams } = new URL(request.url)
   const projectSlug = searchParams.get('project')
   if (!projectSlug) {
     return NextResponse.json({ error: 'project param required' }, { status: 400 })
-  }
-
-  // Lightweight lookup for auth check before expensive query
-  const projectBasic = await prisma.project.findFirst({
-    where: { name: { equals: decodeURIComponent(projectSlug), mode: 'insensitive' } },
-    select: { owner: true, repoName: true },
-  })
-
-  if (!projectBasic) {
-    return NextResponse.json({ error: 'Project not found' }, { status: 404 })
-  }
-
-  const hasAccess = await requireProjectAccess(user.accessToken, projectBasic.owner, projectBasic.repoName)
-  if (!hasAccess) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
   const [project, users] = await Promise.all([
@@ -64,6 +55,10 @@ export async function GET(request: NextRequest) {
 
   if (!project) {
     return NextResponse.json({ error: 'Project not found' }, { status: 404 })
+  }
+
+  if (!await hasProjectAccess(user.accessToken, project.owner, project.repoName)) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
   const cards = project.teams.flatMap((t) =>

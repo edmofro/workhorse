@@ -11,7 +11,12 @@ import { getRecentSessions, mapRecentSession } from '../../../lib/sessions'
  * This replaces the server-side data fetching that was blocking layout rendering.
  */
 export async function GET() {
-  const user = await requireUser()
+  let user
+  try {
+    user = await requireUser()
+  } catch {
+    return NextResponse.json({ error: 'Unauthorised' }, { status: 401 })
+  }
 
   const [allProjects, recentSessions] = await Promise.all([
     getProjects(),

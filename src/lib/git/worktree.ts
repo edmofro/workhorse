@@ -461,6 +461,27 @@ export async function getFileDiffFromBase(
 }
 
 /**
+ * Read a file's content from the base branch (origin/defaultBranch).
+ * Returns null if the file doesn't exist on the base branch.
+ */
+export async function getBaseFileContent(
+  owner: string,
+  repo: string,
+  cardIdentifier: string,
+  defaultBranch: string,
+  filePath: string,
+): Promise<string | null> {
+  const wtPath = worktreePath(owner, repo, cardIdentifier)
+  safeResolvePath(wtPath, filePath)
+
+  try {
+    return await git(['show', `origin/${defaultBranch}:${filePath}`], wtPath)
+  } catch {
+    return null
+  }
+}
+
+/**
  * Read a file from the worktree.
  */
 export async function readWorktreeFile(

@@ -621,7 +621,7 @@ export function CardWorkspace({
         />
       ) : activeFile ? (
         showChanges && !isEditing ? (
-          <SpecDiffView cardId={card.id} filePath={activeFilePath} />
+          <SpecDiffView cardId={card.id} filePath={activeFile.filePath} currentContent={activeFile.content} />
         ) : (
           <div className="flex-1 overflow-y-auto flex justify-center">
             <div className="w-full" style={{ maxWidth: '720px', padding: '48px 40px 80px' }}>

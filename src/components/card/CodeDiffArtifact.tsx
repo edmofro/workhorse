@@ -29,10 +29,12 @@ export function CodeDiffArtifact({ cardId, filePath }: CodeDiffArtifactProps) {
   const cachedCardIdRef = useRef(cardId)
 
   // Clear cache when card changes to avoid unbounded growth
-  if (cachedCardIdRef.current !== cardId) {
-    cacheRef.current.clear()
-    cachedCardIdRef.current = cardId
-  }
+  useEffect(() => {
+    if (cachedCardIdRef.current !== cardId) {
+      cacheRef.current.clear()
+      cachedCardIdRef.current = cardId
+    }
+  }, [cardId])
 
   useEffect(() => {
     const cacheKey = filePath

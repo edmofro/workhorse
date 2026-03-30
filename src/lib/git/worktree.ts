@@ -371,9 +371,12 @@ export async function autoCommit(
 /**
  * Get the list of spec/mockup files changed on a branch vs main.
  */
+const MAX_CODE_FILES = 200
+
 interface ChangedFilesResult {
   workhorseFiles: { filePath: string; isNew: boolean }[]
   codeFiles: { filePath: string; isNew: boolean }[]
+  codeFilesTruncated: boolean
 }
 
 export async function getChangedFiles(
@@ -385,6 +388,7 @@ export async function getChangedFiles(
   const wtPath = worktreePath(owner, repo, cardIdentifier)
   const workhorseMap = new Map<string, boolean>()
   const codeFiles: { filePath: string; isNew: boolean }[] = []
+  let codeFilesTruncated = false
 
   // Committed changes: files changed on the card branch vs the default branch.
   try {
@@ -401,6 +405,8 @@ export async function getChangedFiles(
         workhorseMap.set(filePath, status === 'A')
       } else if (codeFiles.length < MAX_CODE_FILES) {
         codeFiles.push({ filePath, isNew: status === 'A' })
+      } else {
+        codeFilesTruncated = true
       }
     }
   } catch {
@@ -430,6 +436,7 @@ export async function getChangedFiles(
       isNew,
     })),
     codeFiles,
+    codeFilesTruncated,
   }
 }
 
@@ -452,8 +459,6 @@ export async function getFileDiffFromBase(
     return null
   }
 }
-
-const MAX_CODE_FILES = 200
 
 /**
  * Read a file from the worktree.

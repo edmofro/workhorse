@@ -32,7 +32,7 @@ export function ArtifactsSidebar({
   if (!hasContent) return null
 
   return (
-    <aside className="shrink-0 border-l border-[var(--border-subtle)] bg-[var(--bg-page)] flex flex-col overflow-y-auto" style={{ width: '216px' }}>
+    <aside className="shrink-0 w-[216px] border-l border-[var(--border-subtle)] bg-[var(--bg-page)] flex flex-col overflow-y-auto">
       {/* Specs */}
       {specs.length > 0 && (
         <Section label="Specs">

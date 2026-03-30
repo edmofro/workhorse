@@ -58,15 +58,16 @@ export default async function CardPage({ params, searchParams }: Props) {
     }),
   ])
 
-  // Load spec files from worktree if it exists
+  // Load spec files and code files from worktree if it exists
   let initialFiles: { filePath: string; isNew: boolean; content: string }[] = []
+  let initialCodeFiles: { filePath: string; isNew: boolean }[] = []
 
   if (hasWorktree) {
-    const changedFiles = await getChangedFiles(
+    const { workhorseFiles, codeFiles } = await getChangedFiles(
       owner, repoName, card.identifier, defaultBranch,
     )
 
-    const specFiles = changedFiles.filter((f) =>
+    const specFiles = workhorseFiles.filter((f) =>
       f.filePath.startsWith('.workhorse/specs/') ||
       isMockupPath(f.filePath),
     )
@@ -79,6 +80,8 @@ export default async function CardPage({ params, searchParams }: Props) {
         return { ...f, content }
       }),
     )
+
+    initialCodeFiles = codeFiles
   }
 
   // Load project specs
@@ -166,6 +169,7 @@ export default async function CardPage({ params, searchParams }: Props) {
       }}
       cardTabContent={cardTabContent}
       initialFiles={initialFiles}
+      initialCodeFiles={initialCodeFiles}
       mockups={mockupData}
       projectSpecs={projectSpecs}
       sessions={sessions.map((s) => ({

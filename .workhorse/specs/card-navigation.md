@@ -9,53 +9,46 @@ The card detail experience is built around a chat-first workflow following the C
 
 ## Mental model
 
-A card is a workspace. The chat is how you interact with the AI about it. Specs and mockups are artifacts that open alongside the chat — chat on the left, artifact on the right, exactly like Claude's artifact panel or ChatGPT's canvas. When no artifact is open, the chat is centred and the files panel on the right lists what's been created.
+A card is a workspace. The chat is how you interact with the AI about it. Specs and mockups are artifacts that open alongside the chat — chat on the left, artifact on the right, exactly like Claude's artifact panel or ChatGPT's canvas. When no artifact is open, the chat is centred and the artifacts sidebar on the right lists what's been created.
 
 The workspace has three states, each using the full content area (no floating panels):
 
-1. **Card home** — card details centred, files panel on the right, input bar + pills at the bottom
-2. **Chat** — centred conversation (~680px), files panel on the right
-3. **Chat + artifact** — chat left (~40%), artifact right (~60%), files panel collapsed on the right edge
+1. **Card home** — card details centred with inline specs/mockups list, input bar + pills at the bottom. No sidebar.
+2. **Chat** — centred conversation (~680px), artifacts sidebar on the right
+3. **Chat + artifact** — chat left (~40%), artifact right (~60%). No sidebar — navigation is via the dropdown, search, and prev/next arrows in the artifact header bar.
 
-Specs and mockups share the same artifact layout. The artifact area renders differently based on file type (rendered markdown vs rendered HTML), but the surrounding chrome — header bar, files panel, chat column — is identical.
+Specs and mockups share the same artifact layout. The artifact area renders differently based on file type (rendered markdown vs rendered HTML), but the surrounding chrome — header bar, chat column — is identical.
 
-## Files panel
+## Artifacts sidebar
 
-A thin panel (~180px) on the right edge listing this card's specs and mockups. Present in every view state, with different default visibility. Uses human-readable labels (see `labels.md`).
+A compact panel (216px, matching the main sidebar width) on the right side of the chat view. Clean and minimal — file names only, grouped by section. No type labels, no badges. Only appears in the **chat** view — not on card home, not in artifact mode.
 
-### Behaviour by view state
+### Visibility by view state
 
-- [ ] **Card home:** open by default, can be collapsed
-- [ ] **Chat (no artifact):** open by default, can be collapsed
-- [ ] **Artifact (spec or mockup open):** collapsed by default, hover to peek
-- [ ] Consistent position and appearance across all states — same panel, same content, same interactions
+- [ ] **Card home:** no sidebar — specs and mockups are listed inline within the card details
+- [ ] **Chat (no artifact):** sidebar open on the right (216px)
+- [ ] **Artifact mode (spec, mockup, or code open):** no sidebar — navigation uses the dropdown, search, and ◀ ▶ arrows in the artifact header bar
 
-### Collapsed state (artifact mode)
+### Sidebar sections
 
-- [ ] A narrow collapsed indicator on the right edge of the artifact area (subtle, not intrusive)
-- [ ] Hovering over the indicator pops the panel out as an **overlay** on top of the artifact content, from the right edge
-- [ ] The overlay has a solid background (not transparent) so file names are readable over the artifact
-- [ ] Clicking a file in the hover panel opens that file (see "File switching" below) and the panel returns to collapsed
-- [ ] Moving the mouse away from the panel collapses it back
-- [ ] No pinning — hover and select is sufficient. No content shifts when the panel appears or disappears
+The sidebar is divided into three sections with uppercase section labels (following the design system section label style). No heading above the sections — the section labels are self-explanatory.
 
-### Open state (card home and chat)
+**Specs**
+- [ ] Lists this card's spec files by human-readable label (see `labels.md`)
+- [ ] Clicking a spec opens it as an artifact (chat slides left)
 
-- [ ] Panel is visible by default alongside the content area
-- [ ] Collapsible via a small toggle (e.g. a chevron or sidebar icon in the panel header)
-- [ ] When collapsed in these views, the panel becomes the same hover-to-peek indicator as in artifact mode
+**Mockups**
+- [ ] Lists this card's mockup files by human-readable label
+- [ ] Clicking a mockup opens it as an artifact (chat slides left)
 
-### Panel contents
-
-- [ ] Lists this card's specs and mockups together, grouped by type (specs first, mockups below)
-- [ ] Each item shows: human-readable label (see `labels.md`), new/updated indicator
-- [ ] Active file is visually highlighted when an artifact is open
-- [ ] "+" button at the top or within each section for creating new specs (new mockups are created via chat)
-- [ ] Clicking a spec or mockup opens it as an artifact
+**Code**
+- [ ] Lists any changed files that aren't specs or mockups — code files changed during implementation
+- [ ] Clicking a code file opens it as an artifact
+- [ ] Only appears when there are code changes to show (hidden when empty)
 
 ## Card home (landing state)
 
-The default when opening a card. Card details fill the content area, centred. The files panel is open on the right.
+The default when opening a card. Card details fill the content area, centred. No sidebar — specs and mockups are listed inline.
 
 - [ ] Card details (title, description, metadata, comments, activity) fill the content area, centred
 - [ ] Specs and mockups listed inline within the card details with new/updated labels
@@ -64,7 +57,6 @@ The default when opening a card. Card details fill the content area, centred. Th
 - [ ] No chat messages shown — just the input bar and pills as a launchpad
 - [ ] Clicking a spec or mockup opens it in artifact view (chat + artifact)
 - [ ] Sending a message or clicking a pill transitions to full chat
-- [ ] Files panel open on the right by default
 
 ### When returning to a SPECIFYING card
 
@@ -75,45 +67,58 @@ The default when opening a card. Card details fill the content area, centred. Th
 
 ## Chat mode (centred conversation)
 
-Triggered when the user sends a message from card home. The card details slide away and the chat fills the content area (~680px max-width, centred). The files panel remains open on the right.
+Triggered when the user sends a message from card home. The card details slide away and the chat fills the content area (~680px max-width, centred). The artifacts sidebar is open on the right.
 
 - [ ] Chat messages render at 680px max-width, centred in the content area
-- [ ] Files panel open on the right (same panel as card home, same ~180px width)
-- [ ] Files panel collapses on narrow screens
+- [ ] Artifacts sidebar open on the right (~240px), showing Specs, Mockups, and Code sections
+- [ ] Artifacts sidebar collapses on narrow screens
 - [ ] File write notifications from the AI appear inline in the chat as clickable cards (human-readable label + snippet; see labels.md), like Claude's artifact reference cards
-- [ ] Clicking a file in the files panel or an inline notification opens it as an artifact (chat slides left)
+- [ ] Clicking a file in the artifacts sidebar or an inline notification opens it as an artifact (chat slides left, sidebar disappears)
 - [ ] `←` back arrow returns to card home
 - [ ] Suggested action pills visible above the input bar
 - [ ] Chat scroll position preserved across view transitions
 
 ## Chat + artifact mode (unified spec/mockup view)
 
-Triggered when the user clicks a spec or mockup from the chat, the files panel, or an inline notification. The chat slides left (~40% width), and the artifact opens on the right (~60% width). The files panel collapses to its hover-to-peek state on the right edge of the artifact.
+Triggered when the user clicks a spec, mockup, or code file from the chat, the artifacts sidebar, or an inline notification. The chat slides left (~40% width), and the artifact opens on the right (~60% width). The artifacts sidebar is not shown — navigation uses the dropdown, search, and ◀ ▶ arrows in the artifact header bar.
 
-Specs and mockups use this same layout. The artifact area renders differently based on file type, but the surrounding chrome is identical.
+Specs, mockups, and code files use this same layout. The artifact area renders differently based on file type, but the surrounding chrome is identical.
 
 - [ ] Chat on the left, artifact on the right — follows the Claude/ChatGPT artifact convention
-- [ ] Files panel collapses to its hover indicator on the right edge
-- [ ] Artifacts are read-only by default (both specs and mockups)
+- [ ] No sidebar in artifact mode — use the header bar controls (dropdown, search, ◀ ▶) for navigation
+- [ ] Artifacts are read-only by default (specs, mockups, and code)
 - [ ] AI edits to the artifact appear in real time on the right while the user chats on the left
 
 ### Spec artifact
 
 When a spec (.md) is open:
 
-- [ ] Rendered markdown view (read-only by default)
-- [ ] Edit button makes it editable in-place — no layout change, chat stays visible
-- [ ] Toggle between rich view and raw markdown view
+- [ ] **Changes toggle** (File / Changes) in the header bar, defaults to **Changes**
+- [ ] **Changes view:** inline tracked-changes diff (like Google Docs / Slab) — additions highlighted in green, removals struck through in red. Uses diff colours from the design system. Intended for product people, not developers — no line numbers, no code diff layout.
+- [ ] **File view:** rendered markdown view (read-only by default)
+- [ ] Edit button makes it editable in-place (switches to File view if in Changes view) — no layout change, chat stays visible
+- [ ] Toggle between rich view and raw markdown view when in File view
 - [ ] "Done editing" button returns to read-only and triggers auto-commit (see `commit-specs.md`)
 
 ### Mockup artifact
 
 When a mockup (.html) is open:
 
-- [ ] Rendered HTML preview (read-only by default)
+- [ ] Rendered HTML preview (read-only by default) — no changes toggle for mockups
 - [ ] Device toggle in the header bar (Desktop, Tablet, Mobile) to switch aspect ratios
 - [ ] Edit button enters split view: preview on top, editor panel on bottom (see `visual-mockups.md` for detail)
 - [ ] "Done editing" returns to preview-only and triggers auto-commit
+
+### Code artifact
+
+When a code file (.tsx, .ts, .py, etc.) is open:
+
+- [ ] **Changes toggle** (File / Changes) in the header bar, defaults to **Changes**
+- [ ] **Changes view:** unified diff view (like GitHub) with line numbers, colour-coded additions/deletions, and sticky hunk headers. Uses diff colours from the design system.
+- [ ] **File view:** plain code view with line numbers (read-only by default)
+- [ ] Edit button makes it editable in-place (switches to File view if in Changes view) — provides a plain textarea code editor
+- [ ] "Done editing" triggers auto-commit
+- [ ] File path shown in the header bar
 
 ### Expanding the artifact (mockups)
 
@@ -122,23 +127,23 @@ Mockups sometimes need more screen space than specs. The chat column can collaps
 - [ ] An expand icon in the artifact header bar collapses the chat column to a single icon on the left edge
 - [ ] The artifact fills the full content width (minus the icon strip)
 - [ ] Clicking the icon restores the chat column to its normal ~40% width
-- [ ] The files panel hover-to-peek continues to work in expanded mode
 - [ ] This is available for both specs and mockups, but primarily useful for mockups at desktop aspect ratios
 
 ### Artifact header bar
 
-The header sits at the top of the artifact area. Identical chrome for specs and mockups, with type-specific additions:
+The header sits at the top of the artifact area. Identical chrome for specs, mockups, and code, with type-specific additions:
 
-- [ ] **◀ ▶ arrows**: flip sequentially between this card's specs and mockups
+- [ ] **◀ ▶ arrows**: flip sequentially between this card's specs, mockups, and code files
 - [ ] **⌄ dropdown**: file browser (see "File dropdown" section below)
-- [ ] **Edit button**: makes the artifact editable in-place (no layout change)
+- [ ] **File / Changes toggle** (specs and code only): switches between the file content view and the changes diff view. Defaults to Changes. Not shown for mockups.
+- [ ] **Edit button**: makes the artifact editable in-place (no layout change). Switches to File view if currently in Changes view.
 - [ ] **✕ close**: closes the artifact, returns to centred chat
 - [ ] **Device toggle** (mockups only): Desktop, Tablet, Mobile
 - [ ] **Expand icon** (optional): collapses chat to icon, giving the artifact full width
 
 ### File switching
 
-When the user opens a different file (via ◀ ▶, files panel, or dropdown):
+When the user opens a different file (via ◀ ▶, dropdown, or artifacts sidebar):
 
 - [ ] If not editing: the new file opens immediately, replacing the current artifact (read-only)
 - [ ] If editing: a save prompt appears — "Save changes to {filename}?" with Save / Discard options. After resolving, the new file opens in read-only mode
@@ -147,7 +152,7 @@ When the user opens a different file (via ◀ ▶, files panel, or dropdown):
 
 ### Transitions from artifact mode
 
-- [ ] ✕ close → centred chat (files panel reopens)
+- [ ] ✕ close → centred chat (artifacts sidebar reappears)
 - [ ] Edit → same layout, artifact becomes editable
 - [ ] Done editing → same layout, artifact returns to read-only
 - [ ] ◀ ▶ → same mode, different file (with save prompt if editing)
@@ -159,26 +164,26 @@ When the user opens a different file (via ◀ ▶, files panel, or dropdown):
 ## State transitions
 
 ```
-Card home ──(send message / pill)──────────→ Chat (centred)
-Card home ──(click spec or mockup)─────────→ Chat + artifact
+Card home ──(send message / pill)──────────→ Chat (centred, artifacts sidebar appears)
+Card home ──(click spec or mockup)─────────→ Chat + artifact (no sidebar)
 Card home ──(← back)───────────────────────→ Team board
 
-Chat ──(click file in panel/notification)──→ Chat + artifact
+Chat ──(click file in sidebar/notification)→ Chat + artifact (sidebar disappears)
 Chat ──(← back)────────────────────────────→ Card home
 
-Chat + artifact ──(✕ close / Escape)───────→ Chat (centred, files panel reopens)
+Chat + artifact ──(✕ close / Escape)───────→ Chat (centred, artifacts sidebar reappears)
 Chat + artifact ──(Edit)───────────────────→ Chat + artifact (editable)
 Chat + artifact ──(Done editing)───────────→ Chat + artifact (read-only)
 Chat + artifact ──(◀ ▶ / file switch)──────→ Chat + artifact (different file, save prompt if editing)
 Chat + artifact ──(Expand)─────────────────→ Expanded artifact (chat as icon)
 
 Expanded artifact ──(Collapse)─────────────→ Chat + artifact
-Expanded artifact ──(✕ close / Escape)─────→ Chat (centred)
+Expanded artifact ──(✕ close / Escape)─────→ Chat (centred, artifacts sidebar reappears)
 ```
 
 ## File dropdown (file browser)
 
-Available via the ⌄ chevron in the artifact header bar. The primary way to find and open any spec or mockup beyond what's listed in the files panel.
+Available via the ⌄ chevron in the artifact header bar. The primary way to find and open any spec or mockup while in artifact mode (where the artifacts sidebar is not visible).
 
 - [ ] Search bar at the top, always focused on open
 - [ ] Typing instantly filters card files below by name
@@ -292,8 +297,8 @@ Track which quality steps have been completed for each card, surfaced as soft ga
 - [ ] The topbar shows: back arrow (context-aware), card title + identifier on the left; Collaborate button on the right
 - [ ] `CardDetailShell.tsx` no longer renders a view toggle
 - [ ] The floating chat panel (previous iteration) is removed entirely — chat is always column-based
-- [ ] `SpecListSidebar.tsx` is replaced by the files panel
-- [ ] `RightPanel.tsx` (previous iteration with search + project specs explorer, 240px wide) is replaced by the files panel + file dropdown
+- [ ] `SpecListSidebar.tsx` is replaced by the artifacts sidebar
+- [ ] `RightPanel.tsx` (previous iteration with search + project specs explorer, 240px wide) is replaced by the artifacts sidebar + file dropdown
 - [ ] Focus mode, spec rail, and the ⤢ toggle are removed entirely
 - [ ] Mockup full-screen overlay is removed — mockups use the same artifact layout as specs
 - [ ] URL routing changes: `/cards/[cardId]` is the only route; view state is client-side
@@ -302,14 +307,14 @@ Track which quality steps have been completed for each card, surfaced as soft ga
 
 > **Interview complexity threshold:** What determines whether a card is "complex enough" to warrant the interview soft-gate? Number of spec sections? Word count? Presence of open questions? AI-assessed complexity score? This needs definition.
 
-> **Files panel naming:** The thin right-side panel listing specs and mockups needs a good name. "Files panel" is a placeholder — it's functional but uninspired. Candidates: working set, attachments, card files, artifacts. TBD.
+> **Artifacts sidebar naming:** Resolved — now called "Artifacts sidebar", inspired by Claude's artifacts panel.
 
 ## Resolved decisions
 
 - **URL routing vs client state:** Client-side state. View state is managed via React state in `CardWorkspace`, not URL segments.
 - **Pill system prompt injection:** The frontend sends a `mode` parameter alongside the message, and the interview API maps mode to a system prompt fragment server-side.
 - **Chat positioning:** Chat is column-based (left side in artifact mode, centred when no artifact), never floating. Follows the Claude/ChatGPT artifact convention.
-- **File navigation:** Files panel (hover-to-peek in artifact mode, open in chat/home) for quick access, file dropdown (⌄ in header bar) with search for finding any file. No dedicated rail or focus mode.
+- **File navigation:** Artifacts sidebar (open in chat view only, ~240px) for quick access, file dropdown (⌄ in header bar) with search for finding any file in artifact mode. No dedicated rail or focus mode.
 - **Unified artifact model:** Specs and mockups share the same chat + artifact layout. No separate full-screen mockup overlay. The artifact area renders differently by file type but the chrome is identical.
 - **Edit in-place:** Edit makes the artifact editable without any layout change. Chat stays visible. No focus mode, no mode switch. The user stays in artifact mode and the spec or mockup becomes editable.
 - **Focus mode removed:** The ⤢ focus toggle, spec rail, and the concept of a mode that hides chat and shows a navigation rail are removed. Editing and file navigation work within the standard artifact layout.

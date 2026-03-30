@@ -15,7 +15,7 @@ User ↔ Workhorse UI ↔ /api/agent-session ↔ Claude Agent SDK session
                                  Target repo worktree on disk
                                  (Read, Glob, Grep, Write, Edit)
                             ↕
-                    DB stores: session ID, card linkage, file locks
+                    DB stores: session ID, card linkage
 ```
 
 The Agent SDK session runs against a git worktree of the target repo. The agent reads the codebase freely and writes spec/mockup files directly. Workhorse streams the agent's output to the UI.
@@ -214,27 +214,6 @@ The git branch is the source of truth for spec and mockup content. No database t
 
 If a lightweight cache of touched files is needed (e.g. for listing cards that touch a given spec), the `Feature.touchedFiles` JSON field stores file paths, updated on each auto-commit.
 
-## File locking
-
-Each spec and mockup file has at most one active editor (user or AI) at a time.
-
-### Lock model
-
-A `FileLock` record tracks who is editing each file:
-
-- `featureId` + `filePath` (unique constraint)
-- `lockedBy`: user ID or `"ai-agent"`
-- `lockedAt`: timestamp
-- `expiresAt`: auto-expire stale locks (10 minutes for humans, 2 minutes for AI)
-
-### Lock behaviour
-
-- [ ] User clicks "Edit" on a spec file → acquire lock. If already locked, show "Being edited by {name}" in view-only mode
-- [ ] Agent needs to write a file → acquire lock. If locked by a user, the agent describes its intended changes in chat instead of writing the file
-- [ ] Lock released when: user clicks "Done editing", user navigates away, agent turn completes, or lock expires
-- [ ] Stale lock cleanup: on-access check against `expiresAt`, plus periodic sweep
-- [ ] Lock status visible in the files panel (unlocked / locked by {name} / locked by AI)
-
 ## Auto-commit model
 
 Every change to spec and mockup files is committed and pushed to the card's branch automatically. The branch is always up to date — there is no "uncommitted work."
@@ -255,16 +234,16 @@ Every change to spec and mockup files is committed and pushed to the card's bran
 
 ### Commit messages
 
-Commit messages are AI-generated and descriptive, not mechanical. They describe **what changed and why**, because these messages power the per-file version history UI:
+Commit messages are AI-generated and descriptive, not mechanical. They describe **what changed and why**:
 
 ```
-allergies.md history:
+allergies.md:
   3 min ago    Felix — added edge case for expired allergies
   12 min ago   Workhorse — initial draft with 5 criteria
   15 min ago   Workhorse — created file
 ```
 
-The version history displays the commit message as the description, the author, and the relative timestamp. Users never see SHAs or branch names — just a clean edit history per file.
+Users never see SHAs or branch names. The Changes view in the artifact header shows what's different from the base branch — this is the primary way users understand changes in this card.
 
 ### Marking specs ready
 
@@ -275,15 +254,6 @@ Work is always saved to git — there is no manual save/commit action. The "Mark
 - [ ] No PR is created at this point. The implementation phase creates PRs when the developer is ready
 - [ ] The AI pushes back if areas remain uncovered
 - [ ] Presented as a secondary action (status dropdown or subtle button), not a prominent CTA — the normal flow is iterating until the spec is solid
-
-### Per-file version history
-
-Since every change is committed with a descriptive message, `git log -- {filepath}` gives a full edit history per file:
-
-- [ ] Spec view shows a "History" affordance per file
-- [ ] Each version shows: relative timestamp, author (user name or "Workhorse"), and the commit message as a description
-- [ ] Clicking a version shows the file content at that point (`git show {sha}:{path}`)
-- [ ] Diff between versions available via `git diff {sha1} {sha2} -- {path}`
 
 ## Worktree recovery
 
@@ -415,7 +385,7 @@ The worktree-on-disk architecture means that any agent with access to the same w
 - [ ] The external Claude Code session operates on the same branch as the card
 - [ ] It reads/writes the same spec and mockup files the built-in agent does
 - [ ] On return to Workhorse, the UI reflects any changes (it reads from disk)
-- [ ] File locking applies — the external session should acquire locks, or if that's impractical, Workhorse detects changed files on focus and refreshes
+- [ ] Workhorse detects changed files on focus and refreshes (last-write-wins)
 
 ### Implementation from within Workhorse
 
@@ -428,7 +398,7 @@ The worktree-on-disk architecture means that any agent with access to the same w
 
 > **Worktree disk pressure:** For very large monorepos, even with partial clone, working tree checkout could be slow or large. Should we support sparse checkout (only materialise relevant directories)? Probably premature — try full checkout first.
 
-> **Concurrent sessions on the same card:** ~~Current design is one Agent SDK session per card.~~ Resolved: multiple conversation sessions per card (see `conversation-sessions.md`). Each session is an independent Agent SDK session. Two users can have separate sessions on the same card. File locking still applies to prevent conflicting writes.
+> **Concurrent sessions on the same card:** ~~Current design is one Agent SDK session per card.~~ Resolved: multiple conversation sessions per card (see `conversation-sessions.md`). Each session is an independent Agent SDK session. Two users can have separate sessions on the same card. Last-write-wins for file conflicts.
 
 > **Session transcript display:** Should the UI show the full Agent SDK session transcript (including tool calls), or just the text messages? The full transcript is richer but noisier. Could offer a toggle.
 

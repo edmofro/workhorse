@@ -17,7 +17,7 @@ import {
   autoCommit,
 } from '../../../lib/git/worktree'
 import { branchNameFromCard } from '../../../lib/git/branchNaming'
-import { releaseAllLocks, AI_LOCK_AGENT } from '../../../lib/fileLock'
+
 import { safeParseTouchedFiles } from '../../../lib/safeParseTouchedFiles'
 
 class StaleSessionError extends Error {
@@ -398,8 +398,6 @@ async function finaliseSessionAfterExchange(
   } catch (commitErr) {
     console.error('Auto-commit failed:', commitErr)
   }
-
-  await releaseAllLocks(ctx.cardId, AI_LOCK_AGENT)
 
   // Update conversation session metadata
   const now = new Date()

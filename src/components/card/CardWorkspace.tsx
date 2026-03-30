@@ -17,6 +17,10 @@ import { ThinkingIndicator } from './ThinkingIndicator'
 import { SpecEditor } from './SpecEditor'
 import { MockupArtifact } from './MockupArtifact'
 import { NewSpecDialog } from './NewSpecDialog'
+import { ArtifactsSidebar, type CodeFileItem } from './ArtifactsSidebar'
+import { CodeDiffArtifact } from './CodeDiffArtifact'
+import { CodeEditorView } from './CodeEditorView'
+import { SpecDiffView } from './SpecDiffView'
 import { FileText, MessageCircle } from 'lucide-react'
 import { parseSpec, buildDefaultSpec, generateSpecPath } from '../../lib/specs/format'
 import { deriveLabel } from '../../lib/labels'
@@ -60,6 +64,7 @@ interface CardWorkspaceProps {
   }
   cardTabContent: React.ReactNode
   initialFiles: SpecFileData[]
+  initialCodeFiles?: { filePath: string; isNew: boolean }[]
   mockups: MockupData[]
   projectSpecs: ProjectSpecData[]
   sessions: ConversationSessionData[]
@@ -70,6 +75,7 @@ export function CardWorkspace({
   card,
   cardTabContent,
   initialFiles,
+  initialCodeFiles = [],
   mockups,
   projectSpecs,
   sessions: initialSessions,
@@ -88,6 +94,7 @@ export function CardWorkspace({
 
   // Spec files state
   const [files, setFiles] = useState(initialFiles)
+  const [codeFiles, setCodeFiles] = useState(initialCodeFiles)
   const [showNewSpecDialog, setShowNewSpecDialog] = useState(false)
   const [isEnsuring, setIsEnsuring] = useState(false)
   const chatScrollRef = useRef<HTMLDivElement>(null)
@@ -96,6 +103,7 @@ export function CardWorkspace({
   // Mockup device state
   const [mockupDevice, setMockupDevice] = useState<DeviceKey>('desktop')
   const [expanded, setExpanded] = useState(false)
+  const [showChanges, setShowChanges] = useState(true)
 
   // Agent session state — uses activeSessionId for history loading
   const {
@@ -157,36 +165,29 @@ export function CardWorkspace({
       .map((m) => ({ filePath: m.filePath, content: m.html })),
   ]
 
-  // All navigable files (specs + mockups) for prev/next
+  // Code file items for the sidebar
+  const codeFileItems: CodeFileItem[] = codeFiles.map((f) => ({
+    filePath: f.filePath,
+    ext: f.filePath.split('.').pop() ?? '',
+  }))
+
+  // All navigable files (specs + mockups + code) for prev/next
   const allNavigableFiles = [
     ...specFiles.map((f) => f.filePath),
     ...allMockupFiles.map((f) => f.filePath),
+    ...codeFiles.map((f) => f.filePath),
   ]
 
   // Spec editing operations
   const handleStartEditing = useCallback(
-    async (filePath: string) => {
-      const res = await fetch('/api/file-lock', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cardId: card.id, filePath }),
-      })
-      if (res.status === 409) {
-        const data = await res.json()
-        alert(`File is being edited by ${data.holder?.displayName ?? 'someone else'}`)
-        return false
-      }
+    async () => {
       return true
     },
-    [card.id],
+    [],
   )
 
   const handleDoneEditing = useCallback(
     async (filePath: string) => {
-      await fetch(
-        `/api/file-lock?cardId=${card.id}&filePath=${encodeURIComponent(filePath)}`,
-        { method: 'DELETE' },
-      )
       await fetch('/api/auto-commit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -204,16 +205,6 @@ export function CardWorkspace({
       }
     },
     [card.id, card.title, files, router],
-  )
-
-  const handleReleaseLock = useCallback(
-    async (filePath: string) => {
-      await fetch(
-        `/api/file-lock?cardId=${card.id}&filePath=${encodeURIComponent(filePath)}`,
-        { method: 'DELETE' },
-      )
-    },
-    [card.id],
   )
 
   // Restore file content from worktree (used on discard)
@@ -266,7 +257,6 @@ export function CardWorkspace({
     initialView: initialViewForNav,
     onStartEditing: handleStartEditing,
     onDoneEditing: handleDoneEditing,
-    onReleaseLock: handleReleaseLock,
     onRestoreContent: handleRestoreContent,
   })
 
@@ -323,6 +313,12 @@ export function CardWorkspace({
         setFiles((prev) => {
           if (prev.some((f) => f.filePath === fw.filePath)) return prev
           return [...prev, { filePath: fw.filePath, isNew: true, content: '' }]
+        })
+      } else {
+        // Track code file changes
+        setCodeFiles((prev) => {
+          if (prev.some((f) => f.filePath === fw.filePath)) return prev
+          return [...prev, { filePath: fw.filePath, isNew: true }]
         })
       }
     }
@@ -461,6 +457,9 @@ export function CardWorkspace({
     ? files.find((f) => f.filePath === activeFilePath) ?? null
     : null
   const isMockupFile = activeFilePath ? isMockupPath(activeFilePath) : false
+  const isCodeFile = activeFilePath
+    ? !activeFilePath.startsWith('.workhorse/') && !isMockupFile
+    : false
 
   // Find mockup data (either from files or from mockups prop)
   const activeMockupHtml = isMockupFile && activeFilePath
@@ -576,13 +575,14 @@ export function CardWorkspace({
       <SpecHeaderBar
         filePath={activeFilePath}
         fileContent={activeFile?.content}
-        cardId={card.id}
         allNavigableFiles={allNavigableFiles}
         specs={specFiles.map((f) => ({ filePath: f.filePath, isNew: f.isNew, content: f.content }))}
         mockups={allMockupFiles}
+        codeFiles={codeFileItems}
         projectSpecs={projectSpecs}
         isEditing={isEditing}
         isMockup={isMockupFile}
+        isCode={isCodeFile}
         device={mockupDevice}
         onDeviceChange={setMockupDevice}
         onPrev={navigatePrev}
@@ -591,11 +591,24 @@ export function CardWorkspace({
         onSelectProjectSpec={handleSelectProjectSpec}
         onClose={() => { setExpanded(false); closeArtifact() }}
         onEdit={enterEdit}
+        showChanges={showChanges}
+        onToggleChanges={() => setShowChanges(!showChanges)}
         expanded={expanded}
         onToggleExpand={() => setExpanded(!expanded)}
       />
-      {/* Render spec or mockup content based on file type */}
-      {isMockupFile ? (
+      {/* Render content based on file type and changes toggle */}
+      {isCodeFile ? (
+        showChanges && !isEditing ? (
+          <CodeDiffArtifact cardId={card.id} filePath={activeFilePath} />
+        ) : (
+          <CodeEditorView
+            cardId={card.id}
+            filePath={activeFilePath}
+            isEditing={isEditing}
+            onContentChange={(content) => handleSpecUpdate(activeFilePath, content)}
+          />
+        )
+      ) : isMockupFile ? (
         <MockupArtifact
           html={activeMockupHtml}
           title={activeMockupTitle}
@@ -607,27 +620,31 @@ export function CardWorkspace({
           onDoneEditing={finishEditing}
         />
       ) : activeFile ? (
-        <div className="flex-1 overflow-y-auto flex justify-center">
-          <div className="w-full" style={{ maxWidth: '720px', padding: '48px 40px 80px' }}>
-            <SpecEditor
-              key={activeFile.filePath}
-              spec={{
-                id: activeFile.filePath,
-                filePath: activeFile.filePath,
-                content: activeFile.content,
-                isNew: activeFile.isNew,
-              }}
-              onContentChange={(_, content) =>
-                handleSpecUpdate(activeFile.filePath, content)
-              }
-              isEditing={isEditing}
-              onStartEditing={() => handleStartEditing(activeFile.filePath)}
-              onDoneEditing={finishEditing}
-              cardStatus={card.status}
-              hideEditButton
-            />
+        showChanges && !isEditing ? (
+          <SpecDiffView cardId={card.id} filePath={activeFilePath} />
+        ) : (
+          <div className="flex-1 overflow-y-auto flex justify-center">
+            <div className="w-full" style={{ maxWidth: '720px', padding: '48px 40px 80px' }}>
+              <SpecEditor
+                key={activeFile.filePath}
+                spec={{
+                  id: activeFile.filePath,
+                  filePath: activeFile.filePath,
+                  content: activeFile.content,
+                  isNew: activeFile.isNew,
+                }}
+                onContentChange={(_, content) =>
+                  handleSpecUpdate(activeFile.filePath, content)
+                }
+                isEditing={isEditing}
+                onStartEditing={() => handleStartEditing()}
+                onDoneEditing={finishEditing}
+                cardStatus={card.status}
+                hideEditButton
+              />
+            </div>
           </div>
-        </div>
+        )
       ) : null}
     </div>
   ) : null
@@ -751,7 +768,18 @@ export function CardWorkspace({
       )}
 
       {/* ===== Centred chat ===== */}
-      {view.type === 'chat' && chatColumn}
+      {view.type === 'chat' && (
+        <>
+          {chatColumn}
+          <ArtifactsSidebar
+            specs={specFiles.map((f) => ({ filePath: f.filePath, isNew: f.isNew, content: f.content }))}
+            mockups={allMockupFiles}
+            codeFiles={codeFileItems}
+            activeFilePath={activeFilePath}
+            onSelectFile={(fp) => openFile(fp)}
+          />
+        </>
+      )}
 
       {/* ===== Chat + artifact (spec or mockup open) ===== */}
       {view.type === 'artifact' && (
@@ -765,7 +793,7 @@ export function CardWorkspace({
             <div className="shrink-0 flex flex-col items-center py-3 border-r border-[var(--border-subtle)] bg-[var(--bg-page)]" style={{ width: '40px' }}>
               <button
                 onClick={() => setExpanded(false)}
-                className="p-1.5 rounded-[var(--radius-default)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer"
+                className="p-2 rounded-[var(--radius-default)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer"
                 title="Show chat"
               >
                 <MessageCircle size={16} />

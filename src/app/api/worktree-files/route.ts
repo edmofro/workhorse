@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
   }
 
   // List changed files
-  const files = await getChangedFiles(owner, repoName, card.identifier, defaultBranch)
+  const { workhorseFiles: files } = await getChangedFiles(owner, repoName, card.identifier, defaultBranch)
   return NextResponse.json({ files })
 }
 

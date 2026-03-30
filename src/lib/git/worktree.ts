@@ -527,6 +527,8 @@ export async function getFileDiffFromBase(
 /**
  * Get code files (non-.workhorse/) that have changed on the card branch vs the default branch.
  */
+const MAX_CODE_FILES = 200
+
 export async function getChangedCodeFiles(
   owner: string,
   repo: string,
@@ -549,6 +551,7 @@ export async function getChangedCodeFiles(
       // Only include non-.workhorse files
       if (!filePath.startsWith('.workhorse/')) {
         codeFiles.push({ filePath, isNew: status === 'A' })
+        if (codeFiles.length >= MAX_CODE_FILES) break
       }
     }
   } catch {

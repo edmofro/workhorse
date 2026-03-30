@@ -105,7 +105,7 @@ function Section({ label, children }: { label: string; children: React.ReactNode
   return (
     <div className="px-3 pb-2">
       <div className="px-1 pt-3 pb-1.5">
-        <span className="text-[11px] font-medium text-[var(--text-faint)] uppercase tracking-[0.04em]">
+        <span className="text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-[0.06em]">
           {label}
         </span>
       </div>

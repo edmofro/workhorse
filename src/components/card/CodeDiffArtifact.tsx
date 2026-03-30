@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { cn } from '../../lib/cn'
 
 interface CodeDiffArtifactProps {
@@ -25,8 +25,17 @@ export function CodeDiffArtifact({ cardId, filePath }: CodeDiffArtifactProps) {
   const [diff, setDiff] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const cacheRef = useRef<Map<string, string>>(new Map())
 
   useEffect(() => {
+    const cacheKey = `${cardId}:${filePath}`
+    const cached = cacheRef.current.get(cacheKey)
+    if (cached !== undefined) {
+      setDiff(cached)
+      setLoading(false)
+      return
+    }
+
     let cancelled = false
     setLoading(true)
     setError(null)
@@ -41,7 +50,9 @@ export function CodeDiffArtifact({ cardId, filePath }: CodeDiffArtifactProps) {
       })
       .then((data) => {
         if (!cancelled) {
-          setDiff(data.diff ?? '')
+          const diffText = data.diff ?? ''
+          cacheRef.current.set(cacheKey, diffText)
+          setDiff(diffText)
           setLoading(false)
         }
       })
@@ -87,7 +98,7 @@ export function CodeDiffArtifact({ cardId, filePath }: CodeDiffArtifactProps) {
         {hunks.map((hunk, i) => (
           <div key={i}>
             {/* Hunk header */}
-            <div className="px-4 py-1 bg-[rgba(56,118,220,0.08)] text-[var(--text-muted)] text-[11px] border-y border-[var(--border-subtle)] sticky top-0">
+            <div className="px-4 py-1 bg-[rgba(37,99,235,0.08)] text-[var(--text-muted)] text-[11px] border-y border-[var(--border-subtle)] sticky top-0">
               {hunk.header}
             </div>
             {/* Diff lines */}
@@ -96,8 +107,8 @@ export function CodeDiffArtifact({ cardId, filePath }: CodeDiffArtifactProps) {
                 key={j}
                 className={cn(
                   'flex',
-                  line.type === 'add' && 'bg-[rgba(22,163,74,0.08)]',
-                  line.type === 'remove' && 'bg-[rgba(220,38,38,0.08)]',
+                  line.type === 'add' && 'bg-[rgba(22,163,74,0.07)]',
+                  line.type === 'remove' && 'bg-[rgba(220,38,38,0.07)]',
                 )}
               >
                 {/* Line numbers */}
@@ -111,7 +122,7 @@ export function CodeDiffArtifact({ cardId, filePath }: CodeDiffArtifactProps) {
                 <span className={cn(
                   'shrink-0 w-[20px] text-center select-none',
                   line.type === 'add' && 'text-[var(--green)]',
-                  line.type === 'remove' && 'text-[var(--red,#dc2626)]',
+                  line.type === 'remove' && 'text-[#dc2626]', // Diff-specific semantic colour (not in design system palette)
                   line.type === 'context' && 'text-[var(--text-faint)]',
                 )}>
                   {line.type === 'add' ? '+' : line.type === 'remove' ? '−' : ' '}

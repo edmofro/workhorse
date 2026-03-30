@@ -87,9 +87,11 @@ export function useAgentSession(cardId: string, sessionId: string | null) {
       return
     }
     if (historySessionIdRef.current === sessionId) return
-    if (historyData?.messages?.length > 0) {
+    // historyData is undefined while loading a new session — wait for it.
+    // Once it resolves, set messages (even if empty, to clear the previous session).
+    if (historyData !== undefined) {
       historySessionIdRef.current = sessionId
-      setMessages(historyData.messages)
+      setMessages(historyData?.messages?.length > 0 ? historyData.messages : [])
     }
   }, [sessionId, historyData])
 

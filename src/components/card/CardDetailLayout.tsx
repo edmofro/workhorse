@@ -2,6 +2,15 @@
 
 import { useCardDetail } from '../../lib/hooks/queries'
 import { CardDetailShell } from './CardDetailShell'
+import { Topbar } from '../Topbar'
+
+function Skeleton({ className }: { className?: string }) {
+  return (
+    <div
+      className={`animate-pulse rounded-[8px] bg-[var(--bg-inset)] ${className ?? ''}`}
+    />
+  )
+}
 
 interface Props {
   projectSlug: string
@@ -13,8 +22,16 @@ export function CardDetailLayout({ projectSlug, cardId, children }: Props) {
   const { data } = useCardDetail(cardId)
 
   if (!data) {
-    // Still loading — children will show their own loading state
-    return <>{children}</>
+    // Show skeleton topbar so layout doesn't shift when data arrives
+    return (
+      <>
+        <Topbar>
+          <Skeleton className="h-4 w-4 rounded-full" />
+          <Skeleton className="h-4 w-48" />
+        </Topbar>
+        {children}
+      </>
+    )
   }
 
   const { card } = data

@@ -17,6 +17,8 @@ import { ThinkingIndicator } from './ThinkingIndicator'
 import { SpecEditor } from './SpecEditor'
 import { MockupArtifact } from './MockupArtifact'
 import { NewSpecDialog } from './NewSpecDialog'
+import { ArtifactsSidebar, type CodeFileItem } from './ArtifactsSidebar'
+import { CodeDiffArtifact } from './CodeDiffArtifact'
 import { FileText, MessageCircle } from 'lucide-react'
 import { parseSpec, buildDefaultSpec, generateSpecPath } from '../../lib/specs/format'
 import { deriveLabel } from '../../lib/labels'
@@ -60,6 +62,7 @@ interface CardWorkspaceProps {
   }
   cardTabContent: React.ReactNode
   initialFiles: SpecFileData[]
+  initialCodeFiles?: { filePath: string; isNew: boolean }[]
   mockups: MockupData[]
   projectSpecs: ProjectSpecData[]
   sessions: ConversationSessionData[]
@@ -70,6 +73,7 @@ export function CardWorkspace({
   card,
   cardTabContent,
   initialFiles,
+  initialCodeFiles = [],
   mockups,
   projectSpecs,
   sessions: initialSessions,
@@ -88,6 +92,7 @@ export function CardWorkspace({
 
   // Spec files state
   const [files, setFiles] = useState(initialFiles)
+  const [codeFiles, setCodeFiles] = useState(initialCodeFiles)
   const [showNewSpecDialog, setShowNewSpecDialog] = useState(false)
   const [isEnsuring, setIsEnsuring] = useState(false)
   const chatScrollRef = useRef<HTMLDivElement>(null)
@@ -157,10 +162,17 @@ export function CardWorkspace({
       .map((m) => ({ filePath: m.filePath, content: m.html })),
   ]
 
-  // All navigable files (specs + mockups) for prev/next
+  // Code file items for the sidebar
+  const codeFileItems: CodeFileItem[] = codeFiles.map((f) => ({
+    filePath: f.filePath,
+    ext: f.filePath.split('.').pop() ?? '',
+  }))
+
+  // All navigable files (specs + mockups + code) for prev/next
   const allNavigableFiles = [
     ...specFiles.map((f) => f.filePath),
     ...allMockupFiles.map((f) => f.filePath),
+    ...codeFiles.map((f) => f.filePath),
   ]
 
   // Spec editing operations
@@ -299,6 +311,12 @@ export function CardWorkspace({
           if (prev.some((f) => f.filePath === fw.filePath)) return prev
           return [...prev, { filePath: fw.filePath, isNew: true, content: '' }]
         })
+      } else {
+        // Track code file changes
+        setCodeFiles((prev) => {
+          if (prev.some((f) => f.filePath === fw.filePath)) return prev
+          return [...prev, { filePath: fw.filePath, isNew: true }]
+        })
       }
     }
   }, [fileWrites])
@@ -436,6 +454,9 @@ export function CardWorkspace({
     ? files.find((f) => f.filePath === activeFilePath) ?? null
     : null
   const isMockupFile = activeFilePath ? isMockupPath(activeFilePath) : false
+  const isCodeFile = activeFilePath
+    ? !activeFilePath.startsWith('.workhorse/') && !isMockupFile
+    : false
 
   // Find mockup data (either from files or from mockups prop)
   const activeMockupHtml = isMockupFile && activeFilePath
@@ -555,9 +576,11 @@ export function CardWorkspace({
         allNavigableFiles={allNavigableFiles}
         specs={specFiles.map((f) => ({ filePath: f.filePath, isNew: f.isNew, content: f.content }))}
         mockups={allMockupFiles}
+        codeFiles={codeFileItems}
         projectSpecs={projectSpecs}
         isEditing={isEditing}
         isMockup={isMockupFile}
+        isCode={isCodeFile}
         device={mockupDevice}
         onDeviceChange={setMockupDevice}
         onPrev={navigatePrev}
@@ -569,8 +592,10 @@ export function CardWorkspace({
         expanded={expanded}
         onToggleExpand={() => setExpanded(!expanded)}
       />
-      {/* Render spec or mockup content based on file type */}
-      {isMockupFile ? (
+      {/* Render spec, mockup, or code diff based on file type */}
+      {isCodeFile ? (
+        <CodeDiffArtifact cardId={card.id} filePath={activeFilePath} />
+      ) : isMockupFile ? (
         <MockupArtifact
           html={activeMockupHtml}
           title={activeMockupTitle}
@@ -726,7 +751,18 @@ export function CardWorkspace({
       )}
 
       {/* ===== Centred chat ===== */}
-      {view.type === 'chat' && chatColumn}
+      {view.type === 'chat' && (
+        <>
+          {chatColumn}
+          <ArtifactsSidebar
+            specs={specFiles.map((f) => ({ filePath: f.filePath, isNew: f.isNew, content: f.content }))}
+            mockups={allMockupFiles}
+            codeFiles={codeFileItems}
+            activeFilePath={activeFilePath}
+            onSelectFile={(fp) => openFile(fp)}
+          />
+        </>
+      )}
 
       {/* ===== Chat + artifact (spec or mockup open) ===== */}
       {view.type === 'artifact' && (

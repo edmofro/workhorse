@@ -6,6 +6,7 @@ import { SpecDropdown } from './SpecDropdown'
 import { FileHistory } from './FileHistory'
 import { deriveLabel } from '../../lib/labels'
 import type { SpecFileItem, MockupFileItem, ProjectSpecItem } from './types'
+import type { CodeFileItem } from './ArtifactsSidebar'
 import { cn } from '../../lib/cn'
 
 const DEVICES = [
@@ -25,10 +26,13 @@ interface SpecHeaderBarProps {
   allNavigableFiles: string[]
   specs: SpecFileItem[]
   mockups: MockupFileItem[]
+  codeFiles?: CodeFileItem[]
   projectSpecs: ProjectSpecItem[]
   isEditing: boolean
   /** Whether this is a mockup file (shows device toggle) */
   isMockup?: boolean
+  /** Whether this is a code file (read-only diff, no edit) */
+  isCode?: boolean
   /** Current device selection for mockups */
   device?: DeviceKey
   /** Callback for device change */
@@ -52,9 +56,11 @@ export function SpecHeaderBar({
   allNavigableFiles,
   specs,
   mockups,
+  codeFiles = [],
   projectSpecs,
   isEditing,
   isMockup = false,
+  isCode = false,
   device,
   onDeviceChange,
   onPrev,
@@ -115,6 +121,7 @@ export function SpecHeaderBar({
         <SpecDropdown
           specs={specs}
           mockups={mockups}
+          codeFiles={codeFiles}
           projectSpecs={projectSpecs}
           onSelectSpec={handleDropdownSelect}
           onSelectProjectSpec={handleDropdownSelectProject}
@@ -146,10 +153,10 @@ export function SpecHeaderBar({
       )}
 
       {/* History (specs only) */}
-      {!isMockup && <FileHistory cardId={cardId} filePath={filePath} />}
+      {!isMockup && !isCode && <FileHistory cardId={cardId} filePath={filePath} />}
 
-      {/* Edit button */}
-      {!isEditing && (
+      {/* Edit button (not for code files — those are read-only diffs) */}
+      {!isEditing && !isCode && (
         <button
           onClick={onEdit}
           className="inline-flex items-center gap-1 px-2 py-1 rounded-[var(--radius-default)] text-[12px] font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer"

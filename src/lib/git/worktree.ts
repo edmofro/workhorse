@@ -505,6 +505,60 @@ export async function getFileDiff(
 }
 
 /**
+ * Get the unified diff for a file against the base branch (origin/defaultBranch).
+ */
+export async function getFileDiffFromBase(
+  owner: string,
+  repo: string,
+  cardIdentifier: string,
+  defaultBranch: string,
+  filePath: string,
+): Promise<string> {
+  const wtPath = worktreePath(owner, repo, cardIdentifier)
+  safeResolvePath(wtPath, filePath)
+
+  try {
+    return await git(['diff', `origin/${defaultBranch}...HEAD`, '--', filePath], wtPath)
+  } catch {
+    return ''
+  }
+}
+
+/**
+ * Get code files (non-.workhorse/) that have changed on the card branch vs the default branch.
+ */
+export async function getChangedCodeFiles(
+  owner: string,
+  repo: string,
+  cardIdentifier: string,
+  defaultBranch: string,
+): Promise<{ filePath: string; isNew: boolean }[]> {
+  const wtPath = worktreePath(owner, repo, cardIdentifier)
+  const codeFiles: { filePath: string; isNew: boolean }[] = []
+
+  try {
+    const diff = await git(
+      ['diff', '--name-status', `origin/${defaultBranch}...HEAD`],
+      wtPath,
+    )
+
+    for (const line of diff.split('\n').filter(Boolean)) {
+      const parts = line.split('\t')
+      const status = parts[0]!
+      const filePath = status.startsWith('R') ? parts[2]! : parts[1]!
+      // Only include non-.workhorse files
+      if (!filePath.startsWith('.workhorse/')) {
+        codeFiles.push({ filePath, isNew: status === 'A' })
+      }
+    }
+  } catch {
+    // Diff may fail if the default branch ref doesn't exist yet
+  }
+
+  return codeFiles
+}
+
+/**
  * Read a file from the worktree.
  */
 export async function readWorktreeFile(

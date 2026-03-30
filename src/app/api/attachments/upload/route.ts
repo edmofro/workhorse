@@ -104,8 +104,8 @@ export async function POST(request: NextRequest) {
 
   // Generate ID upfront so we can compute the storage path before creating the record
   const id = crypto.randomUUID()
-  const dir = path.join(ATTACHMENTS_DIR, id)
-  const filePath = path.join(dir, safeName)
+  const dir = path.join(/* turbopackIgnore: true */ ATTACHMENTS_DIR, id)
+  const filePath = path.join(/* turbopackIgnore: true */ dir, safeName)
 
   // Write file to disk first — only create DB record on success
   try {

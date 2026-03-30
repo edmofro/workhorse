@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useEffect, useRef } from 'react'
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
 import type { ViewState } from '../../lib/hooks/useViewNavigation'
 import { useRouter } from 'next/navigation'
 import { cn } from '../../lib/cn'
@@ -472,31 +472,36 @@ export function CardWorkspace({
 
   const extractedAreas = extractAreas(projectSpecs)
 
-  // Determine pill context. isMockupFile is only meaningful when pillView is
-  // 'artifact' — getPillsForContext ignores it for 'card' and 'chat' views.
-  const pillView =
-    view.type === 'artifact' ? 'artifact' as const :
-    view.type === 'chat' ? 'chat' as const :
-    'card' as const
-  const pills = getPillsForContext(card.status, messages.length > 0, pillView, isMockupFile)
+  // Determine pill context using discriminated union so isMockup is only
+  // expressible when the view is 'artifact'.
+  const pillView = view.type === 'artifact'
+    ? { type: 'artifact' as const, isMockup: isMockupFile }
+    : { type: view.type as 'card' | 'chat' }
+  const pills = getPillsForContext(card.status, messages.length > 0, pillView)
 
   // Session title for the chat zone header
   const chatSessionTitle = view.type === 'chat' ? view.sessionTitle : null
 
   // --- Shared files panel props ---
-  const filesPanelProps = {
+  const handleFilesPanelSelect = useCallback((fp: string) => {
+    if (view.type === 'artifact') {
+      navigateToFile(fp)
+    } else {
+      openFile(fp)
+    }
+  }, [view.type, navigateToFile, openFile])
+
+  const handleFilesPanelCreate = useCallback(() => {
+    setShowNewSpecDialog(true)
+  }, [])
+
+  const filesPanelProps = useMemo(() => ({
     specs: specFiles.map((f) => ({ filePath: f.filePath, isNew: f.isNew, content: f.content })),
     mockups: allMockupFiles,
     activeFilePath,
-    onSelectFile: (fp: string) => {
-      if (view.type === 'artifact') {
-        navigateToFile(fp)
-      } else {
-        openFile(fp)
-      }
-    },
-    onCreateSpec: () => setShowNewSpecDialog(true),
-  }
+    onSelectFile: handleFilesPanelSelect,
+    onCreateSpec: handleFilesPanelCreate,
+  }), [specFiles, allMockupFiles, activeFilePath, handleFilesPanelSelect, handleFilesPanelCreate])
 
   // --- Chat column (shared between chat mode and artifact mode) ---
   const chatColumn = (
@@ -707,7 +712,12 @@ export function CardWorkspace({
                             className="flex items-center gap-2 w-full px-3 py-2 rounded-[var(--radius-default)] text-left text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer"
                           >
                             <FileText size={13} className="shrink-0 text-[var(--text-muted)]" />
-                            <span className="text-[13px] font-medium">{label}</span>
+                            <span className="text-[13px] font-medium flex-1">{label}</span>
+                            {spec.isNew ? (
+                              <span className="text-[10px] text-[var(--green)] font-medium shrink-0">new</span>
+                            ) : (
+                              <span className="text-[10px] text-[var(--amber)] font-medium shrink-0">updated</span>
+                            )}
                           </button>
                         )
                       })}

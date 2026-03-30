@@ -26,7 +26,7 @@ export function MockupArtifact({ html, title, device }: MockupArtifactProps) {
       <div className="flex items-start justify-center p-6 min-h-full">
         <div
           className={cn(
-            'bg-white rounded-[var(--radius-lg)] shadow-[var(--shadow-md)] overflow-hidden transition-[width] duration-300',
+            'bg-white rounded-[var(--radius-lg)] shadow-[var(--shadow-md)] overflow-hidden transition-[width] duration-300 ease-out',
           )}
           style={{
             width: DEVICE_WIDTHS[device],

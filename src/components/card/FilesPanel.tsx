@@ -34,6 +34,7 @@ export function FilesPanel({
   const [pinned, setPinned] = useState(defaultOpen)
   const [hovering, setHovering] = useState(false)
   const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const userToggledRef = useRef(false)
 
   // Clear pending hover timeout on unmount
   useEffect(() => {
@@ -42,10 +43,18 @@ export function FilesPanel({
     }
   }, [])
 
-  // Sync pinned state when parent changes defaultOpen (e.g. switching view modes)
+  // Sync pinned state when parent changes defaultOpen (e.g. switching view modes),
+  // but only if the user hasn't manually toggled the panel in this mount cycle.
   useEffect(() => {
-    setPinned(defaultOpen)
+    if (!userToggledRef.current) {
+      setPinned(defaultOpen)
+    }
   }, [defaultOpen])
+
+  const togglePinned = useCallback((value: boolean) => {
+    userToggledRef.current = true
+    setPinned(value)
+  }, [])
 
   const hasFiles = specs.length > 0 || mockups.length > 0
   const isVisible = pinned || hovering
@@ -84,7 +93,7 @@ export function FilesPanel({
         onMouseLeave={handleMouseLeave}
       >
         <button
-          onClick={() => setPinned(true)}
+          onClick={() => togglePinned(true)}
           className="p-1.5 rounded-[var(--radius-default)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer"
           title="Show files"
         >
@@ -115,7 +124,7 @@ export function FilesPanel({
             <Plus size={14} />
           </button>
           <button
-            onClick={() => setPinned(false)}
+            onClick={() => togglePinned(false)}
             className="p-1.5 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors duration-100 cursor-pointer"
             title="Collapse files panel"
           >

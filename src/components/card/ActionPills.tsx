@@ -42,15 +42,19 @@ export function ActionPills({ pills, onSelect, disabled }: ActionPillsProps) {
   )
 }
 
+export type PillViewContext =
+  | { type: 'card' }
+  | { type: 'chat' }
+  | { type: 'artifact'; isMockup: boolean }
+
 /** Returns the appropriate pills based on card status and conversation state */
 export function getPillsForContext(
   status: string,
   hasMessages: boolean,
-  view: 'card' | 'chat' | 'artifact',
-  isMockupOpen?: boolean,
+  view: PillViewContext,
 ): ActionPill[] {
-  if (view === 'artifact') {
-    if (isMockupOpen) {
+  if (view.type === 'artifact') {
+    if (view.isMockup) {
       return [
         { label: 'Review this mockup', message: 'Review this mockup', mode: 'review' },
         { label: 'Make changes', message: 'Make changes to this mockup', mode: 'directed' },

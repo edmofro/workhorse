@@ -14,5 +14,5 @@ agents:
     name: "Project Conventions"
     description: "Workhorse conventions — Australian/NZ English, design system, component patterns, Prisma schema"
   performance:
-    name: "Performance & Responsiveness"
-    description: "Snappy UI — no waterfall queries, missing loading states, redundant fetches, or blocking layout renders"
+    name: "Frontend Snappiness"
+    description: "Snappy UI — react-query caching, loading skeletons, no waterfall queries, no redundant fetches, DB indexes"

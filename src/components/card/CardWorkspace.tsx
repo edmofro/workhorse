@@ -129,8 +129,10 @@ export function CardWorkspace({
           ...prev,
         ]
       })
+      // Refresh sidebar so the new session appears immediately (with placeholder title)
+      router.refresh()
     }
-  }, [currentSessionId])
+  }, [currentSessionId, router])
 
   // When a session title is received from the server, update the local list and refresh sidebar
   useEffect(() => {

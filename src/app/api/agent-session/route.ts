@@ -220,6 +220,14 @@ export async function POST(request: NextRequest) {
   const stream = new ReadableStream({
     async start(controller) {
       try {
+        // Send session ID to client immediately so it can track the session
+        // before the agent stream completes (prevents duplicate session creation)
+        controller.enqueue(
+          encoder.encode(
+            `data: ${JSON.stringify({ type: 'session', sessionId: convSessionId })}\n\n`,
+          ),
+        )
+
         let agentQuery: ReturnType<typeof query>
 
         try {
@@ -271,6 +279,8 @@ export async function POST(request: NextRequest) {
           }
         }
 
+        let assistantText = ''
+
         for await (const event of agentQuery) {
           // Capture agent SDK session ID from first message
           if (!agentSdkSessionId && 'session_id' in event && event.session_id) {
@@ -279,6 +289,18 @@ export async function POST(request: NextRequest) {
               where: { id: convSessionId },
               data: { agentSessionId: agentSdkSessionId },
             })
+          }
+
+          // Capture assistant text for title refinement
+          if (event.type === 'assistant') {
+            const msg = (event as unknown as Record<string, unknown>).message as Record<string, unknown> | undefined
+            if (msg?.content && Array.isArray(msg.content)) {
+              const text = (msg.content as Array<Record<string, unknown>>)
+                .filter((c) => c.type === 'text')
+                .map((c) => c.text as string)
+                .join('')
+              if (text) assistantText += text
+            }
           }
 
           // Stream event as SSE
@@ -299,6 +321,8 @@ export async function POST(request: NextRequest) {
           isFirstMessage,
           convSessionTitle: convSession.title,
           message,
+          cardTitle: card.title,
+          assistantText,
         })
 
         controller.enqueue(encoder.encode('data: [DONE]\n\n'))
@@ -341,6 +365,8 @@ async function finaliseSessionAfterExchange(
     isFirstMessage: boolean
     convSessionTitle: string | null
     message: string
+    cardTitle: string
+    assistantText: string
   },
 ) {
   try {
@@ -383,35 +409,98 @@ async function finaliseSessionAfterExchange(
   }
 
   if (ctx.isFirstMessage && !ctx.convSessionTitle) {
-    updateData.title = generateSessionTitle(ctx.message)
+    updateData.title = generateSessionTitle(ctx.message, ctx.cardTitle, ctx.assistantText)
   }
 
-  await prisma.conversationSession.update({
+  const updatedSession = await prisma.conversationSession.update({
     where: { id: ctx.convSessionId },
     data: updateData,
+    select: { title: true },
   })
 
-  // Send conversation session info to client
-  controller.enqueue(
-    encoder.encode(
-      `data: ${JSON.stringify({ type: 'session', sessionId: ctx.convSessionId })}\n\n`,
-    ),
-  )
+  // Send title update to client for sidebar refresh
+  if (updatedSession.title) {
+    controller.enqueue(
+      encoder.encode(
+        `data: ${JSON.stringify({
+          type: 'session_update',
+          sessionId: ctx.convSessionId,
+          title: updatedSession.title,
+        })}\n\n`,
+      ),
+    )
+  }
 }
 
+/** Known action pill messages that make poor session titles. */
+const PILL_MESSAGES = new Set([
+  'Interview me on this card',
+  'Draft a spec from the card description',
+  'Where were we up to? Summarise what we have so far and what remains.',
+  'Continue the spec interview',
+  'Review the current specs',
+  'Switch to interview mode — ask me probing questions',
+  'Review the current specs for gaps and contradictions',
+  'Make specific changes to the specs',
+  'Review this spec',
+  'Make changes to the spec',
+  'Start implementing from the specs',
+  'Audit the implementation against the design system',
+  'Audit the implementation for security concerns',
+])
+
 /**
- * Generate a short session title from the user's first message.
- * Simple heuristic: take the first sentence/clause, truncate to ~50 chars.
+ * Generate a session title from the exchange context.
+ *
+ * Priority:
+ * 1. If the user message is a known pill, try to derive a title from the assistant's response
+ * 2. If the user message is substantive, use it
+ * 3. Fall back to the card title
  */
-function generateSessionTitle(message: string): string {
-  // Strip leading whitespace and take the first line
-  const firstLine = message.trim().split('\n')[0]
-  // Take first sentence (end at period, question mark, or exclamation)
+function generateSessionTitle(message: string, cardTitle: string, assistantText: string): string {
+  const isPillMessage = PILL_MESSAGES.has(message.trim())
+
+  // If not a pill message, use the user's message
+  if (!isPillMessage) {
+    const title = truncateTitle(message)
+    if (title) return title
+  }
+
+  // Try to extract a meaningful title from the assistant's response
+  if (assistantText) {
+    const title = extractTitleFromAssistant(assistantText)
+    if (title) return title
+  }
+
+  // Fall back to the card title
+  if (cardTitle && cardTitle !== 'Untitled spec') {
+    return truncateTitle(cardTitle) || 'New conversation'
+  }
+
+  return 'New conversation'
+}
+
+/** Extract a title from the first meaningful sentence of the assistant's response. */
+function extractTitleFromAssistant(text: string): string | null {
+  // Skip common greetings/preamble
+  const lines = text.trim().split('\n').filter((l) => l.trim().length > 0)
+  for (const line of lines.slice(0, 5)) {
+    const clean = line.replace(/^#+\s*/, '').replace(/^\*\*(.+?)\*\*/, '$1').trim()
+    // Skip very short lines (headings like "Summary") or lines that are just markdown
+    if (clean.length < 10) continue
+    if (clean.startsWith('```') || clean.startsWith('|') || clean.startsWith('- [')) continue
+    return truncateTitle(clean)
+  }
+  return null
+}
+
+/** Truncate text to a clean ~60 char title at a word boundary. */
+function truncateTitle(text: string): string {
+  const firstLine = text.trim().split('\n')[0]
   const sentenceMatch = firstLine.match(/^[^.!?]+[.!?]?/)
   const sentence = sentenceMatch?.[0] ?? firstLine
-  // Truncate to ~50 chars at a word boundary
-  if (sentence.length <= 50) return sentence.trim()
-  const truncated = sentence.slice(0, 50)
+  if (sentence.length <= 60) return sentence.trim()
+  const truncated = sentence.slice(0, 60)
   const lastSpace = truncated.lastIndexOf(' ')
   return (lastSpace > 20 ? truncated.slice(0, lastSpace) : truncated).trim() + '…'
 }

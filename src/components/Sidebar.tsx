@@ -19,6 +19,7 @@ export interface RecentSession {
   title: string | null
   cardId: string | null
   cardIdentifier: string | null
+  cardTitle: string | null
   teamColour: string | null
   projectName: string | null
   lastMessageAt: string
@@ -156,9 +157,10 @@ export function Sidebar({ projects, recentSessions = [] }: SidebarProps) {
                       : session.projectName
                         ? `/${encodeURIComponent(session.projectName.toLowerCase())}/sessions/${session.id}`
                         : '#'
+                    const sessionLabel = session.title ?? session.cardTitle ?? 'New conversation'
                     const label = session.cardIdentifier
-                      ? `${session.cardIdentifier} ${session.title ?? 'Untitled'}`
-                      : session.title ?? 'New conversation'
+                      ? `${session.cardIdentifier}: ${sessionLabel}`
+                      : sessionLabel
                     const isActive = searchParams.get('session') === session.id
                       || pathname.includes(`/sessions/${session.id}`)
                     return (

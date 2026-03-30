@@ -59,26 +59,6 @@ npx prisma db push  # Apply schema changes
 npx prisma studio   # Database browser
 ```
 
-## Review Hero
-
-[Review Hero](https://github.com/beyondessential/review-hero) is the AI-powered PR review system used on this repo. It runs parallel Claude review agents on every PR and posts inline comments.
-
-### How it works
-
-1. When a PR is opened, tick the **Run Review Hero** checkbox in the PR description (the `<!-- #ai-review -->` marker triggers the workflow)
-2. Review Hero triages the diff, runs specialised review agents (bugs, performance, design, security, plus custom agents), deduplicates findings, and posts inline comments
-3. Optionally tick **Auto-fix review suggestions** (`<!-- #auto-fix -->`) or **Auto-fix CI failures** (`<!-- #auto-fix-ci -->`) to let it commit fixes directly
-
-### Rules
-
-- Always keep the Review Hero checkboxes in the PR template — do not remove them
-- The PR template at `.github/pull_request_template.md` is the source of truth for the checkbox format
-- Custom review agents live in `.github/review-hero/prompts/` as `.md` files — add domain-specific reviewers there
-- Suppression rules for known false positives go in `.github/review-hero/suppressions.yml`
-- Review Hero configuration is in `.github/review-hero/config.yml` — update the `ignore_patterns` when adding generated or non-reviewable paths
-- If a reviewer reacts with 👎 to a Review Hero comment, it automatically learns to suppress similar findings in future
-- Do not remove or modify the Review Hero workflow files (`.github/workflows/ai-review.yml`, `.github/workflows/ai-auto-fix.yml`) without understanding the implications
-
 ## Related projects
 
 - **Tamanu** (beyondessential/tamanu) — Primary target repo, healthcare EMR

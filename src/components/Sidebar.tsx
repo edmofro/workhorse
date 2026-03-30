@@ -6,6 +6,7 @@ import { Settings, LogOut, FileText, Palette, ChevronDown, Ellipsis } from 'luci
 import { cn } from '../lib/cn'
 import { Avatar } from './Avatar'
 import { useUser } from './UserProvider'
+import { useSidebarData } from '../lib/hooks/queries'
 import { useState, useRef, useEffect } from 'react'
 
 interface SidebarProject {
@@ -26,11 +27,15 @@ export interface RecentSession {
 }
 
 interface SidebarProps {
-  projects: SidebarProject[]
-  recentSessions?: RecentSession[]
+  initialProjects: SidebarProject[]
+  initialRecentSessions?: RecentSession[]
 }
 
-export function Sidebar({ projects, recentSessions = [] }: SidebarProps) {
+export function Sidebar({ initialProjects, initialRecentSessions = [] }: SidebarProps) {
+  // Use react-query with initial data — shows instantly, revalidates in background
+  const { data } = useSidebarData()
+  const projects = data?.projects ?? initialProjects
+  const recentSessions = data?.recentSessions ?? initialRecentSessions
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const { user } = useUser()

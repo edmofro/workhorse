@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { FileText, Component, Layout, Image } from 'lucide-react'
 import { cn } from '../../lib/cn'
 import { deriveLabel } from '../../lib/labels'
@@ -27,32 +28,28 @@ const TYPE_CONFIG = {
 } as const
 
 export function DesignBrowser({ owner, repoName, defaultBranch }: DesignBrowserProps) {
-  const [files, setFiles] = useState<DesignFile[]>([])
+  const queryClient = useQueryClient()
   const [selectedFile, setSelectedFile] = useState<DesignFile | null>(null)
-  const [loading, setLoading] = useState(true)
   const [activeType, setActiveType] = useState<string | null>(null)
 
+  const { data: files = [], isLoading: loading } = useQuery({
+    queryKey: ['design-library', owner, repoName, defaultBranch],
+    queryFn: async () => {
+      const res = await fetch(
+        `/api/design-library?owner=${owner}&repo=${repoName}&branch=${defaultBranch}`,
+      )
+      if (!res.ok) return []
+      return res.json() as Promise<DesignFile[]>
+    },
+    staleTime: 60_000,
+  })
+
+  // Auto-select first file when data loads
   useEffect(() => {
-    async function fetchDesign() {
-      try {
-        const res = await fetch(
-          `/api/design-library?owner=${owner}&repo=${repoName}&branch=${defaultBranch}`,
-        )
-        if (res.ok) {
-          const data = await res.json()
-          setFiles(data)
-          if (data.length > 0) {
-            setSelectedFile(data[0])
-          }
-        }
-      } catch {
-        // GitHub token may not be configured
-      } finally {
-        setLoading(false)
-      }
+    if (files.length > 0 && selectedFile === null) {
+      setSelectedFile(files[0])
     }
-    fetchDesign()
-  }, [owner, repoName, defaultBranch])
+  }, [files, selectedFile])
 
   if (loading) {
     return (
@@ -155,8 +152,9 @@ export function DesignBrowser({ owner, repoName, defaultBranch }: DesignBrowserP
             repo={repoName}
             branch={defaultBranch}
             onFileUpdated={(path, newContent) => {
-              setFiles((prev) =>
-                prev.map((f) => (f.path === path ? { ...f, content: newContent } : f)),
+              const cacheKey = ['design-library', owner, repoName, defaultBranch]
+              queryClient.setQueryData<DesignFile[]>(cacheKey, (prev) =>
+                prev?.map((f) => (f.path === path ? { ...f, content: newContent } : f)),
               )
               if (selectedFile.path === path) {
                 setSelectedFile({ ...selectedFile, content: newContent })

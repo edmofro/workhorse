@@ -136,7 +136,10 @@ Guide the user through developing comprehensive acceptance criteria. Use the int
 5. **Extract acceptance criteria** — as the conversation progresses, extract concrete criteria
 6. **Signal completeness** — when the spec has sufficient detail, say so
 
-Ask focused questions — one or two at a time, not long lists.`
+Ask focused questions — one or two at a time, not long lists. **Number your questions** (1., 2., etc.) so the user can reply by number. Example:
+
+1. Where can this action be triggered from — the board, the workspace, or both?
+2. Should there be a confirmation step before it happens?`
 
     case 'review':
       return `## Your task: Review existing specs

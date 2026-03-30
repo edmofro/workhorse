@@ -350,6 +350,7 @@ export async function autoCommit(
   const changedFiles = staged.split('\n').filter(Boolean)
 
   // Commit with author info
+  // Set committer identity via env vars so git doesn't require global config
   await git(
     [
       'commit',
@@ -357,6 +358,10 @@ export async function autoCommit(
       '--author', `${authorName} <${authorEmail}>`,
     ],
     wtPath,
+    {
+      GIT_COMMITTER_NAME: authorName,
+      GIT_COMMITTER_EMAIL: authorEmail,
+    },
   )
 
   // Push to remote using GIT_ASKPASS to avoid persisting token in config

@@ -65,6 +65,18 @@ The palette is warm neutral — stone-based greys with a burnt orange accent. No
 | `--amber` | `#b45309` | In-progress status, warnings, open questions |
 | `--blue` | `#2563eb` | Team dots (secondary), links |
 
+### Diff colours
+
+Used exclusively for code and spec diff views. These sit alongside the warm-neutral palette without clashing — the green is the same `--green` already in the palette, and the red is a warm-leaning red that harmonises with the stone tones.
+
+| Token | Value | Usage |
+|---|---|---|
+| `--diff-green` | `#16a34a` | Diff addition indicator text (same as `--green`) |
+| `--diff-green-bg` | `rgba(22,163,74,0.07)` | Diff addition line background |
+| `--diff-red` | `#dc2626` | Diff removal indicator text |
+| `--diff-red-bg` | `rgba(220,38,38,0.07)` | Diff removal line background |
+| `--diff-hunk-bg` | `rgba(37,99,235,0.06)` | Diff hunk header background (uses palette `--blue`) |
+
 ### Semantic backgrounds (low-opacity tints)
 
 | Colour | Background | Usage |

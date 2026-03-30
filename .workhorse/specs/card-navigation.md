@@ -21,33 +21,29 @@ Specs and mockups share the same artifact layout. The artifact area renders diff
 
 ## Artifacts sidebar
 
-A wider panel (~240px) on the right side of the chat view, inspired by Claude's artifacts panel. Clean and spacious, with file type labels (e.g. "Spec · MD", "Mockup · HTML", "Code · TSX"). Only appears in the **chat** view — not on card home, not in artifact mode.
+A compact panel (216px, matching the main sidebar width) on the right side of the chat view. Clean and minimal — file names only, grouped by section. No type labels, no badges. Only appears in the **chat** view — not on card home, not in artifact mode.
 
 ### Visibility by view state
 
 - [ ] **Card home:** no sidebar — specs and mockups are listed inline within the card details
-- [ ] **Chat (no artifact):** sidebar open on the right (~240px)
+- [ ] **Chat (no artifact):** sidebar open on the right (216px)
 - [ ] **Artifact mode (spec, mockup, or code open):** no sidebar — navigation uses the dropdown, search, and ◀ ▶ arrows in the artifact header bar
 
 ### Sidebar sections
 
-The sidebar is divided into three sections:
+The sidebar is divided into three sections with uppercase section labels (following the design system section label style). No heading above the sections — the section labels are self-explanatory.
 
 **Specs**
-- [ ] Lists this card's spec files with type labels (e.g. "Spec · MD")
-- [ ] Each item shows: human-readable label (see `labels.md`), new/updated indicator
-- [ ] "+" button for creating new specs
+- [ ] Lists this card's spec files by human-readable label (see `labels.md`)
 - [ ] Clicking a spec opens it as an artifact (chat slides left)
 
 **Mockups**
-- [ ] Lists this card's mockup files with type labels (e.g. "Mockup · HTML")
-- [ ] Each item shows: human-readable label (see `labels.md`), new/updated indicator
+- [ ] Lists this card's mockup files by human-readable label
 - [ ] Clicking a mockup opens it as an artifact (chat slides left)
 
 **Code**
 - [ ] Lists any changed files that aren't specs or mockups — code files changed during implementation
-- [ ] Each item shows a type label (e.g. "Code · TSX", "Code · PY")
-- [ ] Clicking a code file opens it as an artifact with a **unified diff view** (like GitHub's diff view), showing changes made during implementation
+- [ ] Clicking a code file opens it as an artifact
 - [ ] Only appears when there are code changes to show (hidden when empty)
 
 ## Card home (landing state)
@@ -97,16 +93,18 @@ Specs, mockups, and code files use this same layout. The artifact area renders d
 
 When a spec (.md) is open:
 
-- [ ] Rendered markdown view (read-only by default)
-- [ ] Edit button makes it editable in-place — no layout change, chat stays visible
-- [ ] Toggle between rich view and raw markdown view
+- [ ] **Changes toggle** (File / Changes) in the header bar, defaults to **Changes**
+- [ ] **Changes view:** inline tracked-changes diff (like Google Docs / Slab) — additions highlighted in green, removals struck through in red. Uses diff colours from the design system. Intended for product people, not developers — no line numbers, no code diff layout.
+- [ ] **File view:** rendered markdown view (read-only by default)
+- [ ] Edit button makes it editable in-place (switches to File view if in Changes view) — no layout change, chat stays visible
+- [ ] Toggle between rich view and raw markdown view when in File view
 - [ ] "Done editing" button returns to read-only and triggers auto-commit (see `commit-specs.md`)
 
 ### Mockup artifact
 
 When a mockup (.html) is open:
 
-- [ ] Rendered HTML preview (read-only by default)
+- [ ] Rendered HTML preview (read-only by default) — no changes toggle for mockups
 - [ ] Device toggle in the header bar (Desktop, Tablet, Mobile) to switch aspect ratios
 - [ ] Edit button enters split view: preview on top, editor panel on bottom (see `visual-mockups.md` for detail)
 - [ ] "Done editing" returns to preview-only and triggers auto-commit
@@ -115,9 +113,11 @@ When a mockup (.html) is open:
 
 When a code file (.tsx, .ts, .py, etc.) is open:
 
-- [ ] Unified diff view (like GitHub) showing changes made during implementation
-- [ ] Read-only — code artifacts are not editable in the artifact view
-- [ ] Syntax-highlighted diff with additions and deletions clearly marked
+- [ ] **Changes toggle** (File / Changes) in the header bar, defaults to **Changes**
+- [ ] **Changes view:** unified diff view (like GitHub) with line numbers, colour-coded additions/deletions, and sticky hunk headers. Uses diff colours from the design system.
+- [ ] **File view:** plain code view with line numbers (read-only by default)
+- [ ] Edit button makes it editable in-place (switches to File view if in Changes view) — provides a plain textarea code editor
+- [ ] "Done editing" triggers auto-commit
 - [ ] File path shown in the header bar
 
 ### Expanding the artifact (mockups)
@@ -131,11 +131,12 @@ Mockups sometimes need more screen space than specs. The chat column can collaps
 
 ### Artifact header bar
 
-The header sits at the top of the artifact area. Identical chrome for specs and mockups, with type-specific additions:
+The header sits at the top of the artifact area. Identical chrome for specs, mockups, and code, with type-specific additions:
 
-- [ ] **◀ ▶ arrows**: flip sequentially between this card's specs and mockups
+- [ ] **◀ ▶ arrows**: flip sequentially between this card's specs, mockups, and code files
 - [ ] **⌄ dropdown**: file browser (see "File dropdown" section below)
-- [ ] **Edit button**: makes the artifact editable in-place (no layout change)
+- [ ] **File / Changes toggle** (specs and code only): switches between the file content view and the changes diff view. Defaults to Changes. Not shown for mockups.
+- [ ] **Edit button**: makes the artifact editable in-place (no layout change). Switches to File view if currently in Changes view.
 - [ ] **✕ close**: closes the artifact, returns to centred chat
 - [ ] **Device toggle** (mockups only): Desktop, Tablet, Mobile
 - [ ] **Expand icon** (optional): collapses chat to icon, giving the artifact full width

@@ -23,8 +23,6 @@ const execFileAsync = promisify(execFile)
 
 const REPOS_BASE = process.env.REPOS_BASE_PATH ?? '/data/repos'
 
-const SHA_RE = /^[a-f0-9]{7,40}$/
-
 /** Validate that a resolved path is within the expected root directory. */
 function assertPathWithin(root: string, resolved: string): void {
   const normalRoot = root.endsWith(path.sep) ? root : root + path.sep
@@ -38,13 +36,6 @@ function safeResolvePath(wtPath: string, filePath: string): string {
   const resolved = path.resolve(wtPath, filePath)
   assertPathWithin(wtPath, resolved)
   return resolved
-}
-
-/** Validate a git SHA. */
-function assertValidSha(sha: string): void {
-  if (!SHA_RE.test(sha)) {
-    throw new Error('Invalid SHA')
-  }
 }
 
 /** Get the bare clone path for a project */
@@ -340,8 +331,8 @@ export async function autoCommit(
   const status = await git(['status', '--porcelain'], wtPath)
   if (!status) return []
 
-  // Stage all changes in .workhorse/ directory
-  await git(['add', '.workhorse/'], wtPath)
+  // Stage all changes (specs, mockups, and code files)
+  await git(['add', '-A'], wtPath)
 
   // Check if there are staged changes
   const staged = await git(['diff', '--cached', '--name-only'], wtPath)
@@ -439,79 +430,6 @@ export async function getChangedFiles(
       isNew,
     })),
     codeFiles,
-  }
-}
-
-/**
- * Get the commit log for a specific file (for per-file version history).
- */
-export async function getFileHistory(
-  owner: string,
-  repo: string,
-  cardIdentifier: string,
-  filePath: string,
-): Promise<{ sha: string; message: string; author: string; date: string }[]> {
-  const wtPath = worktreePath(owner, repo, cardIdentifier)
-
-  try {
-    const log = await git(
-      ['log', '--format=%H\t%s\t%an\t%aI', '--', filePath],
-      wtPath,
-    )
-
-    return log
-      .split('\n')
-      .filter(Boolean)
-      .map((line) => {
-        const [sha, message, author, date] = line.split('\t')
-        return { sha: sha!, message: message!, author: author!, date: date! }
-      })
-  } catch {
-    return []
-  }
-}
-
-/**
- * Get the content of a file at a specific commit.
- */
-export async function getFileAtCommit(
-  owner: string,
-  repo: string,
-  cardIdentifier: string,
-  sha: string,
-  filePath: string,
-): Promise<string | null> {
-  assertValidSha(sha)
-  const wtPath = worktreePath(owner, repo, cardIdentifier)
-  safeResolvePath(wtPath, filePath) // validate path doesn't escape worktree
-
-  try {
-    return await git(['show', `${sha}:${filePath}`], wtPath)
-  } catch {
-    return null
-  }
-}
-
-/**
- * Get the diff between two commits for a specific file.
- */
-export async function getFileDiff(
-  owner: string,
-  repo: string,
-  cardIdentifier: string,
-  sha1: string,
-  sha2: string,
-  filePath: string,
-): Promise<string> {
-  assertValidSha(sha1)
-  assertValidSha(sha2)
-  const wtPath = worktreePath(owner, repo, cardIdentifier)
-  safeResolvePath(wtPath, filePath) // validate path doesn't escape worktree
-
-  try {
-    return await git(['diff', sha1, sha2, '--', filePath], wtPath)
-  } catch {
-    return ''
   }
 }
 

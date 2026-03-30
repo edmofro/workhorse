@@ -19,6 +19,8 @@ import { MockupArtifact } from './MockupArtifact'
 import { NewSpecDialog } from './NewSpecDialog'
 import { ArtifactsSidebar, type CodeFileItem } from './ArtifactsSidebar'
 import { CodeDiffArtifact } from './CodeDiffArtifact'
+import { CodeEditorView } from './CodeEditorView'
+import { SpecDiffView } from './SpecDiffView'
 import { FileText, MessageCircle } from 'lucide-react'
 import { parseSpec, buildDefaultSpec, generateSpecPath } from '../../lib/specs/format'
 import { deriveLabel } from '../../lib/labels'
@@ -101,6 +103,7 @@ export function CardWorkspace({
   // Mockup device state
   const [mockupDevice, setMockupDevice] = useState<DeviceKey>('desktop')
   const [expanded, setExpanded] = useState(false)
+  const [showChanges, setShowChanges] = useState(true)
 
   // Agent session state — uses activeSessionId for history loading
   const {
@@ -572,7 +575,6 @@ export function CardWorkspace({
       <SpecHeaderBar
         filePath={activeFilePath}
         fileContent={activeFile?.content}
-        cardId={card.id}
         allNavigableFiles={allNavigableFiles}
         specs={specFiles.map((f) => ({ filePath: f.filePath, isNew: f.isNew, content: f.content }))}
         mockups={allMockupFiles}
@@ -588,13 +590,24 @@ export function CardWorkspace({
         onSelectSpec={(fp) => navigateToFile(fp)}
         onSelectProjectSpec={handleSelectProjectSpec}
         onClose={() => { setExpanded(false); closeArtifact() }}
-        onEdit={enterEdit}
+        onEdit={() => { setShowChanges(false); enterEdit() }}
+        showChanges={showChanges}
+        onToggleChanges={() => setShowChanges(!showChanges)}
         expanded={expanded}
         onToggleExpand={() => setExpanded(!expanded)}
       />
-      {/* Render spec, mockup, or code diff based on file type */}
+      {/* Render content based on file type and changes toggle */}
       {isCodeFile ? (
-        <CodeDiffArtifact cardId={card.id} filePath={activeFilePath!} />
+        showChanges && !isEditing ? (
+          <CodeDiffArtifact cardId={card.id} filePath={activeFilePath} />
+        ) : (
+          <CodeEditorView
+            cardId={card.id}
+            filePath={activeFilePath}
+            isEditing={isEditing}
+            onContentChange={(content) => handleSpecUpdate(activeFilePath, content)}
+          />
+        )
       ) : isMockupFile ? (
         <MockupArtifact
           html={activeMockupHtml}
@@ -607,27 +620,31 @@ export function CardWorkspace({
           onDoneEditing={finishEditing}
         />
       ) : activeFile ? (
-        <div className="flex-1 overflow-y-auto flex justify-center">
-          <div className="w-full" style={{ maxWidth: '720px', padding: '48px 40px 80px' }}>
-            <SpecEditor
-              key={activeFile.filePath}
-              spec={{
-                id: activeFile.filePath,
-                filePath: activeFile.filePath,
-                content: activeFile.content,
-                isNew: activeFile.isNew,
-              }}
-              onContentChange={(_, content) =>
-                handleSpecUpdate(activeFile.filePath, content)
-              }
-              isEditing={isEditing}
-              onStartEditing={() => handleStartEditing()}
-              onDoneEditing={finishEditing}
-              cardStatus={card.status}
-              hideEditButton
-            />
+        showChanges && !isEditing ? (
+          <SpecDiffView cardId={card.id} filePath={activeFilePath} />
+        ) : (
+          <div className="flex-1 overflow-y-auto flex justify-center">
+            <div className="w-full" style={{ maxWidth: '720px', padding: '48px 40px 80px' }}>
+              <SpecEditor
+                key={activeFile.filePath}
+                spec={{
+                  id: activeFile.filePath,
+                  filePath: activeFile.filePath,
+                  content: activeFile.content,
+                  isNew: activeFile.isNew,
+                }}
+                onContentChange={(_, content) =>
+                  handleSpecUpdate(activeFile.filePath, content)
+                }
+                isEditing={isEditing}
+                onStartEditing={() => handleStartEditing()}
+                onDoneEditing={finishEditing}
+                cardStatus={card.status}
+                hideEditButton
+              />
+            </div>
           </div>
-        </div>
+        )
       ) : null}
     </div>
   ) : null
@@ -776,7 +793,7 @@ export function CardWorkspace({
             <div className="shrink-0 flex flex-col items-center py-3 border-r border-[var(--border-subtle)] bg-[var(--bg-page)]" style={{ width: '40px' }}>
               <button
                 onClick={() => setExpanded(false)}
-                className="p-1.5 rounded-[var(--radius-default)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer"
+                className="p-2 rounded-[var(--radius-default)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer"
                 title="Show chat"
               >
                 <MessageCircle size={16} />

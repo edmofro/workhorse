@@ -105,7 +105,7 @@ export function CodeDiffArtifact({ cardId, filePath }: CodeDiffArtifactProps) {
         {hunks.map((hunk, i) => (
           <div key={i}>
             {/* Hunk header */}
-            <div className="px-4 py-1 bg-[rgba(37,99,235,0.08)] text-[var(--text-muted)] text-[11px] border-y border-[var(--border-subtle)] sticky top-0">
+            <div className="px-4 py-1 bg-[rgba(37,99,235,0.06)] text-[var(--text-muted)] text-[11px] border-b border-[var(--border-subtle)] sticky top-0">
               {hunk.header}
             </div>
             {/* Diff lines */}
@@ -114,22 +114,22 @@ export function CodeDiffArtifact({ cardId, filePath }: CodeDiffArtifactProps) {
                 key={j}
                 className={cn(
                   'flex',
-                  line.type === 'add' && 'bg-[rgba(22,163,74,0.07)]',
-                  line.type === 'remove' && 'bg-[rgba(220,38,38,0.07)]',
+                  line.type === 'add' && 'bg-[var(--diff-green-bg,rgba(22,163,74,0.07))]',
+                  line.type === 'remove' && 'bg-[var(--diff-red-bg,rgba(220,38,38,0.07))]',
                 )}
               >
                 {/* Line numbers */}
-                <span className="shrink-0 w-[48px] text-right pr-2 text-[var(--text-faint)] select-none border-r border-[var(--border-subtle)]">
+                <span className="shrink-0 w-[40px] text-right pr-2 text-[var(--text-faint)] select-none border-r border-[var(--border-subtle)]">
                   {line.oldLineNo ?? ''}
                 </span>
-                <span className="shrink-0 w-[48px] text-right pr-2 text-[var(--text-faint)] select-none border-r border-[var(--border-subtle)]">
+                <span className="shrink-0 w-[40px] text-right pr-2 text-[var(--text-faint)] select-none border-r border-[var(--border-subtle)]">
                   {line.newLineNo ?? ''}
                 </span>
                 {/* +/- indicator */}
                 <span className={cn(
                   'shrink-0 w-[20px] text-center select-none',
-                  line.type === 'add' && 'text-[var(--green)]',
-                  line.type === 'remove' && 'text-[#dc2626]', // Diff-specific semantic colour (not in design system palette)
+                  line.type === 'add' && 'text-[var(--diff-green,#16a34a)]',
+                  line.type === 'remove' && 'text-[var(--diff-red,#dc2626)]',
                   line.type === 'context' && 'text-[var(--text-faint)]',
                 )}>
                   {line.type === 'add' ? '+' : line.type === 'remove' ? '−' : ' '}

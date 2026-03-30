@@ -3,7 +3,6 @@
 import { useState, useCallback } from 'react'
 import { ChevronLeft, ChevronRight, ChevronDown, X, Pencil, Maximize2, Minimize2 } from 'lucide-react'
 import { SpecDropdown } from './SpecDropdown'
-import { FileHistory } from './FileHistory'
 import { deriveLabel } from '../../lib/labels'
 import type { SpecFileItem, MockupFileItem, ProjectSpecItem } from './types'
 import type { CodeFileItem } from './ArtifactsSidebar'
@@ -21,7 +20,6 @@ interface SpecHeaderBarProps {
   filePath: string
   /** Content of the current file (for label derivation) */
   fileContent?: string
-  cardId: string
   /** Full ordered list of navigable files (specs + mockups) for prev/next */
   allNavigableFiles: string[]
   specs: SpecFileItem[]
@@ -31,7 +29,7 @@ interface SpecHeaderBarProps {
   isEditing: boolean
   /** Whether this is a mockup file (shows device toggle) */
   isMockup?: boolean
-  /** Whether this is a code file (read-only diff, no edit) */
+  /** Whether this is a code file */
   isCode?: boolean
   /** Current device selection for mockups */
   device?: DeviceKey
@@ -43,6 +41,9 @@ interface SpecHeaderBarProps {
   onSelectProjectSpec: (filePath: string, content: string) => void
   onClose: () => void
   onEdit: () => void
+  /** Whether changes diff view is active */
+  showChanges?: boolean
+  onToggleChanges?: () => void
   /** Whether the artifact is expanded (chat collapsed) */
   expanded?: boolean
   onToggleExpand?: () => void
@@ -52,7 +53,6 @@ interface SpecHeaderBarProps {
 export function SpecHeaderBar({
   filePath,
   fileContent,
-  cardId,
   allNavigableFiles,
   specs,
   mockups,
@@ -69,6 +69,8 @@ export function SpecHeaderBar({
   onSelectProjectSpec,
   onClose,
   onEdit,
+  showChanges = false,
+  onToggleChanges,
   expanded = false,
   onToggleExpand,
 }: SpecHeaderBarProps) {
@@ -152,11 +154,36 @@ export function SpecHeaderBar({
         </div>
       )}
 
-      {/* History (specs only) */}
-      {!isMockup && !isCode && <FileHistory cardId={cardId} filePath={filePath} />}
+      {/* Changes toggle (specs and code, not mockups) */}
+      {!isMockup && onToggleChanges && (
+        <div className="inline-flex bg-[var(--bg-page)] border border-[var(--border-subtle)] rounded-[var(--radius-default)] p-[2px] gap-[1px] mr-1">
+          <button
+            onClick={showChanges ? onToggleChanges : undefined}
+            className={cn(
+              'px-[10px] py-[4px] rounded-[var(--radius-md)] text-[11px] font-medium leading-none transition-colors duration-100 cursor-pointer',
+              !showChanges
+                ? 'bg-[var(--bg-surface)] text-[var(--text-primary)] shadow-[var(--shadow-sm)]'
+                : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]',
+            )}
+          >
+            File
+          </button>
+          <button
+            onClick={showChanges ? undefined : onToggleChanges}
+            className={cn(
+              'px-[10px] py-[4px] rounded-[var(--radius-md)] text-[11px] font-medium leading-none transition-colors duration-100 cursor-pointer',
+              showChanges
+                ? 'bg-[var(--bg-surface)] text-[var(--text-primary)] shadow-[var(--shadow-sm)]'
+                : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]',
+            )}
+          >
+            Changes
+          </button>
+        </div>
+      )}
 
-      {/* Edit button (not for code files — those are read-only diffs) */}
-      {!isEditing && !isCode && (
+      {/* Edit button */}
+      {!isEditing && (
         <button
           onClick={onEdit}
           className="inline-flex items-center gap-1 px-2 py-1 rounded-[var(--radius-default)] text-[12px] font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer"

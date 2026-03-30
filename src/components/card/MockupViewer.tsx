@@ -2,9 +2,9 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { X } from 'lucide-react'
-import { cn } from '../../lib/cn'
 import { ChatMessage } from './ChatMessage'
 import { ChatInput } from './ChatInput'
+import { SegmentedToggle } from './SegmentedToggle'
 
 interface MockupViewerProps {
   mockup: {
@@ -65,22 +65,11 @@ export function MockupViewer({ mockup, onClose }: MockupViewerProps) {
 
         <div className="ml-auto flex items-center gap-3">
           {/* Device toggle — text labels per mockup */}
-          <div className="inline-flex bg-[var(--bg-page)] border border-[var(--border-subtle)] rounded-[var(--radius-default)] p-[2px] gap-[1px]">
-            {DEVICES.map((d) => (
-              <button
-                key={d.key}
-                onClick={() => setDevice(d.key)}
-                className={cn(
-                  'px-[14px] py-[5px] rounded-[var(--radius-md)] text-xs font-medium leading-none transition-colors duration-100 cursor-pointer',
-                  d.key === device
-                    ? 'bg-[var(--bg-surface)] text-[var(--text-primary)] shadow-[var(--shadow-sm)]'
-                    : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]',
-                )}
-              >
-                {d.label}
-              </button>
-            ))}
-          </div>
+          <SegmentedToggle
+            options={DEVICES}
+            value={device}
+            onChange={setDevice}
+          />
 
           <button
             onClick={onClose}

@@ -4,7 +4,7 @@ status: complete
 ---
 # Workhorse Design System
 
-Workhorse is a spec-driven development workbench.sdfd The interface should feel like a sharp, quiet tool — professional and polished with a touch of warmth and character, in the lineage of Linear, GitHub, and Raycast.
+Workhorse is a spec-driven development workbench. The interface should feel like a sharp, quiet tool — professional and polished with a touch of warmth and character, in the lineage of Linear, GitHub, and Raycast.
 
 ## Design philosophy
 
@@ -186,8 +186,9 @@ Shadows are subtle. Non-floating elements never use anything heavier than `--sha
 - Input focus ring: `0.15s` (slightly slower for smoothness)
 - Maximum transition: `0.2s` — nothing longer
 - Device toggle frame resize: `0.3s ease` (the one exception)
-- No entrance/exit animations, no bounces, no spring physics
-- Subtle continuous animations (e.g. `animate-pulse`, `animate-spin`) are permitted for loading/streaming indicators — keep them small and text-only or icon-only, never on large regions
+- Quick, subtle transitions (opacity fades, gentle cross-fades) are fine for content swaps and state changes — keep them ≤ 0.15s so they feel instant but smooth
+- No bounces, spring physics, slide-ins, or scale animations on layout elements
+- Continuous animations (`animate-pulse`, `animate-spin`) are permitted for loading/streaming indicators — keep them small and text-only or icon-only, never on large regions
 
 ---
 
@@ -358,7 +359,7 @@ These aren't just a checklist — they reflect the philosophy above. When review
 - Borders heavier than 1px
 - Shadows heavier than `--shadow-md` on non-floating elements
 - Any animation longer than 0.3s
-- Entrance/exit animations (fade-in, slide-in, etc.) — elements appear and disappear instantly. Subtle continuous animations (`animate-pulse`, `animate-spin`) on small loading indicators are fine
+- Heavy entrance/exit animations (slide-in, scale-up, bounces, spring physics) — quick opacity fades ≤ 0.15s are fine for content swaps
 - Monospace font for anything other than identifiers and file paths
 - Cool greys or blue-greys — the palette is warm throughout, including overlays and backdrops (use `rgba(28,25,23,...)` not `rgba(0,0,0,...)`)
 - Colours outside the defined palette — don't invent new tints or use similar-but-different values (e.g. emerald `#10b981` when the design green is `#16a34a`)

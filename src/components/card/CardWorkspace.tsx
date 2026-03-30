@@ -705,12 +705,6 @@ export function CardWorkspace({
                           >
                             <FileText size={13} className="shrink-0 text-[var(--text-muted)]" />
                             <span className="text-[13px] font-medium">{label}</span>
-                            {spec.isNew && (
-                              <span className="text-[10px] text-[var(--green)] font-medium">new</span>
-                            )}
-                            {!spec.isNew && (
-                              <span className="text-[10px] text-[var(--amber)] font-medium">updated</span>
-                            )}
                           </button>
                         )
                       })}
@@ -815,13 +809,13 @@ export function CardWorkspace({
               <div className="flex justify-end gap-2">
                 <button
                   onClick={discardAndFlip}
-                  className="px-3 py-[6px] rounded-[var(--radius-default)] text-xs font-medium text-[var(--text-secondary)] bg-[var(--bg-surface)] border border-[var(--border-default)] shadow-[var(--shadow-sm)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer"
+                  className="px-[14px] py-[7px] rounded-[var(--radius-default)] text-xs font-medium text-[var(--text-secondary)] bg-[var(--bg-surface)] border border-[var(--border-default)] shadow-[var(--shadow-sm)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer"
                 >
                   Discard
                 </button>
                 <button
                   onClick={saveAndFlip}
-                  className="px-3 py-[6px] rounded-[var(--radius-default)] text-xs font-medium bg-[var(--accent)] text-white hover:bg-[var(--accent-hover)] transition-colors duration-100 cursor-pointer"
+                  className="px-[14px] py-[7px] rounded-[var(--radius-default)] text-xs font-medium bg-[var(--accent)] text-white hover:bg-[var(--accent-hover)] transition-colors duration-100 cursor-pointer"
                 >
                   Save
                 </button>

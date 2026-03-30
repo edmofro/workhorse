@@ -36,12 +36,12 @@ export async function fetchRepoSpecTree(
   try {
     const { stdout } = await execFileAsync(
       'git',
-      ['ls-tree', '-r', '--name-only', `refs/heads/${branch}`, '--', '.workhorse/specs/'],
+      ['ls-tree', '-r', '--name-only', `origin/${branch}`, '--', '.workhorse/specs/'],
       { cwd: barePath },
     )
     lsOutput = stdout.trim()
   } catch (err) {
-    console.error(`[specs] ls-tree failed in ${barePath} for refs/heads/${branch}:`, err)
+    console.error(`[specs] ls-tree failed for origin/${branch} in ${barePath}:`, err)
     return { tree: [], files: [] }
   }
 
@@ -61,7 +61,7 @@ export async function fetchRepoSpecTree(
     try {
       const { stdout } = await execFileAsync(
         'git',
-        ['show', `refs/heads/${branch}:${filePath}`],
+        ['show', `origin/${branch}:${filePath}`],
         { cwd: barePath },
       )
       files.push({ path: filePath, content: stdout })

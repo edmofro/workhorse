@@ -326,7 +326,7 @@ export function CardWorkspace({
     async (title: string, area: string) => {
       await ensureWorktree()
       const filePath = generateSpecPath(area, title)
-      const content = buildDefaultSpec(title, card.identifier, area)
+      const content = buildDefaultSpec(title, area)
       await fetch('/api/worktree-files', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },

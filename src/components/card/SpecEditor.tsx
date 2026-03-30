@@ -123,9 +123,6 @@ export function SpecEditor({
         </h1>
 
         <div className="text-[14px] text-[var(--text-muted)] mb-8">
-          {parsed.frontmatter.card && (
-            <span className="font-mono text-[12px] mr-2">{parsed.frontmatter.card}</span>
-          )}
           <span className="capitalize">{parsed.frontmatter.status ?? 'draft'}</span>
         </div>
 
@@ -212,9 +209,6 @@ export function SpecEditor({
       />
 
       <div className="text-[14px] text-[var(--text-muted)] mb-8">
-        {parsed.frontmatter.card && (
-          <span className="font-mono text-[12px] mr-2">{parsed.frontmatter.card}</span>
-        )}
         <span className="capitalize">{parsed.frontmatter.status ?? 'draft'}</span>
       </div>
 

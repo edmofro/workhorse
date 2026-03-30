@@ -181,7 +181,7 @@ export function SpecTab({ card, initialFiles, projectSpecs = [] }: SpecTabProps)
       await ensureWorktree()
 
       const filePath = generateSpecPath(area, title)
-      const content = buildDefaultSpec(title, card.identifier, area)
+      const content = buildDefaultSpec(title, area)
 
       // Write file to worktree
       await fetch('/api/worktree-files', {

@@ -138,11 +138,6 @@ function parseDiff(diff: string): DiffHunk[] {
   let newLine = 0
 
   for (const raw of lines) {
-    // Skip diff metadata lines
-    if (raw.startsWith('diff --git') || raw.startsWith('index ') || raw.startsWith('---') || raw.startsWith('+++')) {
-      continue
-    }
-
     // Hunk header
     const hunkMatch = raw.match(/^@@\s+-(\d+)(?:,\d+)?\s+\+(\d+)(?:,\d+)?\s+@@(.*)/)
     if (hunkMatch) {
@@ -153,6 +148,7 @@ function parseDiff(diff: string): DiffHunk[] {
       continue
     }
 
+    // Skip diff metadata lines (only before the first hunk)
     if (!currentHunk) continue
 
     if (raw.startsWith('+')) {

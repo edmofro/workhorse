@@ -60,7 +60,7 @@ export interface SavePrompt {
 interface UseViewNavigationOptions {
   allNavigableFiles: string[]
   initialView?: ViewState
-  onStartEditing: (filePath: string) => Promise<boolean>
+  onStartEditing: () => Promise<boolean>
   onDoneEditing: (filePath: string) => Promise<void>
   onRestoreContent: (filePath: string) => Promise<void>
 }
@@ -141,7 +141,7 @@ export function useViewNavigation({
   const enterEdit = useCallback(async () => {
     if (view.type !== 'artifact') return
     try {
-      const ok = await onStartEditing(view.filePath)
+      const ok = await onStartEditing()
       if (!ok) return
     } catch {
       return

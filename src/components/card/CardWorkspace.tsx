@@ -594,7 +594,7 @@ export function CardWorkspace({
       />
       {/* Render spec, mockup, or code diff based on file type */}
       {isCodeFile ? (
-        <CodeDiffArtifact cardId={card.id} filePath={activeFilePath} />
+        <CodeDiffArtifact cardId={card.id} filePath={activeFilePath!} />
       ) : isMockupFile ? (
         <MockupArtifact
           html={activeMockupHtml}

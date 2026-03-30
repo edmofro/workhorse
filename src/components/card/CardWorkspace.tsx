@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import type { ViewState } from '../../lib/hooks/useViewNavigation'
 import { useRouter } from 'next/navigation'
 import { cn } from '../../lib/cn'
@@ -8,7 +8,6 @@ import { useUser } from '../UserProvider'
 import { useAgentSession } from '../../lib/hooks/useAgentSession'
 import { useAttachments } from '../../lib/hooks/useAttachments'
 import { useViewNavigation } from '../../lib/hooks/useViewNavigation'
-import { FilesPanel } from './FilesPanel'
 import { SpecHeaderBar } from './SpecHeaderBar'
 import type { DeviceKey } from './SpecHeaderBar'
 import { ActionPills, getPillsForContext, type ActionPill } from './ActionPills'
@@ -96,6 +95,7 @@ export function CardWorkspace({
 
   // Mockup device state
   const [mockupDevice, setMockupDevice] = useState<DeviceKey>('desktop')
+  const [expanded, setExpanded] = useState(false)
 
   // Agent session state — uses activeSessionId for history loading
   const {
@@ -129,10 +129,8 @@ export function CardWorkspace({
           ...prev,
         ]
       })
-      // Refresh sidebar so the new session appears immediately (with placeholder title)
-      router.refresh()
     }
-  }, [currentSessionId, router])
+  }, [currentSessionId])
 
   // When a session title is received from the server, update the local list and refresh sidebar
   useEffect(() => {
@@ -484,27 +482,6 @@ export function CardWorkspace({
   // Session title for the chat zone header
   const chatSessionTitle = view.type === 'chat' ? view.sessionTitle : null
 
-  // --- Shared files panel props ---
-  const handleFilesPanelSelect = useCallback((fp: string) => {
-    if (view.type === 'artifact') {
-      navigateToFile(fp)
-    } else {
-      openFile(fp)
-    }
-  }, [view.type, navigateToFile, openFile])
-
-  const handleFilesPanelCreate = useCallback(() => {
-    setShowNewSpecDialog(true)
-  }, [])
-
-  const filesPanelProps = useMemo(() => ({
-    specs: specFiles.map((f) => ({ filePath: f.filePath, isNew: f.isNew, content: f.content })),
-    mockups: allMockupFiles,
-    activeFilePath,
-    onSelectFile: handleFilesPanelSelect,
-    onCreateSpec: handleFilesPanelCreate,
-  }), [specFiles, allMockupFiles, activeFilePath, handleFilesPanelSelect, handleFilesPanelCreate])
-
   // --- Chat column (shared between chat mode and artifact mode) ---
   const chatColumn = (
     <div className="flex-1 flex flex-col overflow-hidden">
@@ -602,6 +579,7 @@ export function CardWorkspace({
         cardId={card.id}
         allNavigableFiles={allNavigableFiles}
         specs={specFiles.map((f) => ({ filePath: f.filePath, isNew: f.isNew, content: f.content }))}
+        mockups={allMockupFiles}
         projectSpecs={projectSpecs}
         isEditing={isEditing}
         isMockup={isMockupFile}
@@ -611,8 +589,10 @@ export function CardWorkspace({
         onNext={navigateNext}
         onSelectSpec={(fp) => navigateToFile(fp)}
         onSelectProjectSpec={handleSelectProjectSpec}
-        onClose={closeArtifact}
+        onClose={() => { setExpanded(false); closeArtifact() }}
         onEdit={enterEdit}
+        expanded={expanded}
+        onToggleExpand={() => setExpanded(!expanded)}
       />
       {/* Render spec or mockup content based on file type */}
       {isMockupFile ? (
@@ -620,6 +600,11 @@ export function CardWorkspace({
           html={activeMockupHtml}
           title={activeMockupTitle}
           device={mockupDevice}
+          isEditing={isEditing}
+          onContentChange={(newHtml) => {
+            if (activeFilePath) handleSpecUpdate(activeFilePath, newHtml)
+          }}
+          onDoneEditing={finishEditing}
         />
       ) : activeFile ? (
         <div className="flex-1 overflow-y-auto flex justify-center">
@@ -651,7 +636,6 @@ export function CardWorkspace({
     <div className="flex-1 flex overflow-hidden">
       {/* ===== Card home ===== */}
       {view.type === 'card' && (
-        <>
           <div className="flex-1 flex flex-col overflow-hidden">
             <div className="flex-1 overflow-y-auto">
               {cardTabContent}
@@ -764,30 +748,32 @@ export function CardWorkspace({
               />
             </div>
           </div>
-          {/* Files panel — open by default on card home */}
-          <FilesPanel {...filesPanelProps} defaultOpen={true} />
-        </>
       )}
 
       {/* ===== Centred chat ===== */}
-      {view.type === 'chat' && (
-        <>
-          {chatColumn}
-          {/* Files panel — open by default in chat mode */}
-          <FilesPanel {...filesPanelProps} defaultOpen={true} />
-        </>
-      )}
+      {view.type === 'chat' && chatColumn}
 
       {/* ===== Chat + artifact (spec or mockup open) ===== */}
       {view.type === 'artifact' && (
         <>
-          <div className="flex flex-col overflow-hidden" style={{ width: '40%', minWidth: '320px' }}>
-            {chatColumn}
-          </div>
-          <div className="flex flex-col overflow-hidden border-l border-[var(--border-subtle)] relative" style={{ flex: '1 1 60%' }}>
+          {!expanded && (
+            <div className="flex flex-col overflow-hidden" style={{ width: '40%', minWidth: '320px' }}>
+              {chatColumn}
+            </div>
+          )}
+          {expanded && (
+            <div className="shrink-0 flex flex-col items-center py-3 border-r border-[var(--border-subtle)] bg-[var(--bg-page)]" style={{ width: '40px' }}>
+              <button
+                onClick={() => setExpanded(false)}
+                className="p-1.5 rounded-[var(--radius-default)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer"
+                title="Show chat"
+              >
+                <MessageCircle size={16} />
+              </button>
+            </div>
+          )}
+          <div className="flex-1 flex flex-col overflow-hidden border-l border-[var(--border-subtle)]">
             {artifactColumn}
-            {/* Files panel — collapsed by default in artifact mode, hover to peek */}
-            <FilesPanel {...filesPanelProps} mode="overlay" defaultOpen={false} />
           </div>
         </>
       )}

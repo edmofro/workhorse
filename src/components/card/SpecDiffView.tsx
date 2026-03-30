@@ -94,6 +94,11 @@ export function SpecDiffView({ cardId, filePath, currentContent }: SpecDiffViewP
     return <NewSpecView content={currentContent} />
   }
 
+  // Still loading initial value (shouldn't reach here due to loading guard, but satisfies TS)
+  if (baseContent === undefined) {
+    return null
+  }
+
   // No changes
   if (baseContent === currentContent) {
     return (

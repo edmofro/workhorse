@@ -116,7 +116,7 @@ export function ChatInput({
   }
 
   return (
-    <div className="w-full shrink-0" style={{ maxWidth: '680px', padding: '0 24px 24px' }}>
+    <div className="w-full shrink-0" style={{ maxWidth: '680px', padding: '12px 24px 24px' }}>
       {hasAttachments && (
         <div className="mb-3">
           <AttachmentPreview

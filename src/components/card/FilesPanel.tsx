@@ -125,9 +125,6 @@ export function FilesPanel({
           >
             <FileText size={11} className="shrink-0 text-[var(--text-muted)]" />
             <span className="text-[11px] font-medium truncate flex-1">{fileName}</span>
-            {spec.isNew && (
-              <span className="text-[10px] text-[var(--green)] font-medium shrink-0">new</span>
-            )}
           </button>
         )
       })}

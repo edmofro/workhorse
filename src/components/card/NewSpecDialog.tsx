@@ -106,7 +106,7 @@ export function NewSpecDialog({
               <button
                 type="button"
                 onClick={onCancel}
-                className="px-3 py-[6px] rounded-[var(--radius-default)] text-xs font-medium text-[var(--text-secondary)] bg-[var(--bg-surface)] border border-[var(--border-default)] shadow-[var(--shadow-sm)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer"
+                className="px-[14px] py-[7px] rounded-[var(--radius-default)] text-xs font-medium text-[var(--text-secondary)] bg-[var(--bg-surface)] border border-[var(--border-default)] shadow-[var(--shadow-sm)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer"
               >
                 Cancel
               </button>
@@ -117,7 +117,7 @@ export function NewSpecDialog({
                   (!useCustomArea ? !area : !customArea.trim()) ||
                   isCreating
                 }
-                className="px-3 py-[6px] rounded-[var(--radius-default)] text-xs font-medium bg-[var(--accent)] text-white hover:bg-[var(--accent-hover)] transition-colors duration-100 cursor-pointer disabled:opacity-50"
+                className="px-[14px] py-[7px] rounded-[var(--radius-default)] text-xs font-medium bg-[var(--accent)] text-white hover:bg-[var(--accent-hover)] transition-colors duration-100 cursor-pointer disabled:opacity-50"
               >
                 {isCreating ? 'Creating...' : 'Create spec'}
               </button>

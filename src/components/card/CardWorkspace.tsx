@@ -23,6 +23,7 @@ import { parseSpec, buildDefaultSpec, generateSpecPath } from '../../lib/specs/f
 import { deriveLabel } from '../../lib/labels'
 import { updateCardTitleFromSpec } from '../../lib/actions/cards'
 import { formatRelativeTime } from '../../lib/formatRelativeTime'
+import { isMockupPath } from '../../lib/paths'
 
 interface SpecFileData {
   filePath: string
@@ -147,7 +148,7 @@ export function CardWorkspace({
   // Separate specs and mockup files
   const specFiles = files.filter((f) => f.filePath.startsWith('.workhorse/specs/'))
   const mockupFiles = files
-    .filter((f) => f.filePath.startsWith('.workhorse/design/mockups/'))
+    .filter((f) => isMockupPath(f.filePath))
     .map((f) => ({ filePath: f.filePath, content: f.content }))
   const allMockupFiles = [
     ...mockupFiles,
@@ -318,7 +319,7 @@ export function CardWorkspace({
   // Track file writes from the agent — add new files to the list
   useEffect(() => {
     for (const fw of fileWrites) {
-      if (fw.filePath.startsWith('.workhorse/specs/') || fw.filePath.startsWith('.workhorse/design/mockups/')) {
+      if (fw.filePath.startsWith('.workhorse/specs/') || isMockupPath(fw.filePath)) {
         setFiles((prev) => {
           if (prev.some((f) => f.filePath === fw.filePath)) return prev
           return [...prev, { filePath: fw.filePath, isNew: true, content: '' }]
@@ -459,7 +460,7 @@ export function CardWorkspace({
   const activeFile = activeFilePath
     ? files.find((f) => f.filePath === activeFilePath) ?? null
     : null
-  const isMockupFile = activeFilePath?.startsWith('.workhorse/design/mockups/') ?? false
+  const isMockupFile = activeFilePath ? isMockupPath(activeFilePath) : false
 
   // Find mockup data (either from files or from mockups prop)
   const activeMockupHtml = isMockupFile && activeFilePath
@@ -471,7 +472,8 @@ export function CardWorkspace({
 
   const extractedAreas = extractAreas(projectSpecs)
 
-  // Determine pill context
+  // Determine pill context. isMockupFile is only meaningful when pillView is
+  // 'artifact' — getPillsForContext ignores it for 'card' and 'chat' views.
   const pillView =
     view.type === 'artifact' ? 'artifact' as const :
     view.type === 'chat' ? 'chat' as const :

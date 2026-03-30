@@ -5,6 +5,7 @@ import { CardWorkspace } from '../../../../../components/card/CardWorkspace'
 import { getChangedFiles, readWorktreeFile, worktreeExists } from '../../../../../lib/git/worktree'
 import { getCurrentUser } from '../../../../../lib/auth/session'
 import { fetchRepoSpecTree } from '../../../../../lib/git/specTree'
+import { isMockupPath } from '../../../../../lib/paths'
 
 interface Props {
   params: Promise<{ cardId: string }>
@@ -67,7 +68,7 @@ export default async function CardPage({ params, searchParams }: Props) {
 
     const specFiles = changedFiles.filter((f) =>
       f.filePath.startsWith('.workhorse/specs/') ||
-      f.filePath.startsWith('.workhorse/design/mockups/'),
+      isMockupPath(f.filePath),
     )
 
     initialFiles = await Promise.all(

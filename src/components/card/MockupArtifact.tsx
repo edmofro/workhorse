@@ -34,6 +34,9 @@ export function MockupArtifact({ html, title, device }: MockupArtifactProps) {
             minHeight: '400px',
           }}
         >
+          {/* sandbox: allow-scripts enables JS; allow-same-origin is intentionally
+             omitted so mockup HTML cannot access parent page storage/cookies.
+             Trade-off: external font links and relative asset URLs won't load. */}
           <iframe
             ref={iframeRef}
             srcDoc={html}

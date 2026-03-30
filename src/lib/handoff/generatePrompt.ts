@@ -3,6 +3,8 @@
  * Points the AI at file paths and a diff command — doesn't inline content.
  */
 
+import { isMockupPath } from '../paths'
+
 interface HandoffContext {
   cardIdentifier: string
   cardTitle: string
@@ -21,7 +23,7 @@ export function generateHandoffPrompt(ctx: HandoffContext): string {
   lines.push('')
 
   const specFiles = ctx.touchedFiles.filter((f) => f.startsWith('.workhorse/specs/'))
-  const mockupFiles = ctx.touchedFiles.filter((f) => f.startsWith('.workhorse/design/mockups/'))
+  const mockupFiles = ctx.touchedFiles.filter((f) => isMockupPath(f))
   const attachmentFiles = ctx.attachmentFiles ?? ctx.touchedFiles.filter((f) => f.startsWith('.workhorse/attachments/'))
 
   if (ctx.status === 'SPECIFYING') {

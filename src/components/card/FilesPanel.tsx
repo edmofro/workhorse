@@ -42,6 +42,11 @@ export function FilesPanel({
     }
   }, [])
 
+  // Sync pinned state when parent changes defaultOpen (e.g. switching view modes)
+  useEffect(() => {
+    setPinned(defaultOpen)
+  }, [defaultOpen])
+
   const hasFiles = specs.length > 0 || mockups.length > 0
   const isVisible = pinned || hovering
 

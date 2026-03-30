@@ -6,7 +6,6 @@
 export interface SpecFrontmatter {
   title: string
   area?: string
-  card?: string
   status?: 'draft' | 'complete' | 'superseded'
 }
 
@@ -42,7 +41,6 @@ export function parseSpec(raw: string): ParsedSpec {
       const value = match[2].trim().replace(/^["']|["']$/g, '')
       if (key === 'title') frontmatter.title = value
       else if (key === 'area') frontmatter.area = value
-      else if (key === 'card') frontmatter.card = value
       else if (key === 'status') frontmatter.status = value as SpecFrontmatter['status']
     }
   }
@@ -58,7 +56,6 @@ export function serializeSpec(frontmatter: SpecFrontmatter, content: string): st
 
   lines.push(`title: "${frontmatter.title}"`)
   if (frontmatter.area) lines.push(`area: "${frontmatter.area}"`)
-  if (frontmatter.card) lines.push(`card: "${frontmatter.card}"`)
   if (frontmatter.status) lines.push(`status: "${frontmatter.status}"`)
 
   lines.push('---')
@@ -90,13 +87,11 @@ export function generateSpecPath(area: string, title: string): string {
  */
 export function buildDefaultSpec(
   title: string,
-  card: string,
   area?: string,
 ): string {
   return serializeSpec(
     {
       title,
-      card,
       area: area ?? 'general',
       status: 'draft',
     },

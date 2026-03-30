@@ -5,7 +5,6 @@ import { CardWorkspace } from '../../../../../components/card/CardWorkspace'
 import { getChangedFiles, readWorktreeFile, worktreeExists } from '../../../../../lib/git/worktree'
 import { getCurrentUser } from '../../../../../lib/auth/session'
 import { fetchRepoSpecTree } from '../../../../../lib/git/specTree'
-import { parseSpec } from '../../../../../lib/specs/format'
 
 interface Props {
   params: Promise<{ cardId: string }>
@@ -64,7 +63,7 @@ export default async function CardPage({ params }: Props) {
       f.filePath.startsWith('.workhorse/design/mockups/'),
     )
 
-    const allFiles = await Promise.all(
+    initialFiles = await Promise.all(
       specFiles.map(async (f) => {
         const content = await readWorktreeFile(
           owner, repoName, card.identifier, f.filePath,
@@ -72,16 +71,6 @@ export default async function CardPage({ params }: Props) {
         return { ...f, content }
       }),
     )
-
-    // Only show specs belonging to this card (matching card field in
-    // frontmatter, or no card field set). Specs for other cards that
-    // happen to be on this branch are excluded — they're visible via
-    // the project specs dropdown instead.
-    initialFiles = allFiles.filter((f) => {
-      if (!f.filePath.startsWith('.workhorse/specs/')) return true
-      const parsed = parseSpec(f.content)
-      return !parsed.frontmatter.card || parsed.frontmatter.card === card.identifier
-    })
   }
 
   // Load project specs

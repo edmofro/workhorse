@@ -231,15 +231,7 @@ export function CardWorkspace({
             }),
           )
 
-          const validFiles = refreshed.filter((f): f is SpecFileData => {
-            if (f === null) return false
-            // Only include specs belonging to this card (or with no card set)
-            if (f.filePath.startsWith('.workhorse/specs/')) {
-              const parsed = parseSpec(f.content)
-              if (parsed.frontmatter.card && parsed.frontmatter.card !== card.identifier) return false
-            }
-            return true
-          })
+          const validFiles = refreshed.filter((f): f is SpecFileData => f !== null)
           if (validFiles.length > 0) {
             setFiles((prev) => {
               const refreshedPaths = new Set(validFiles.map((f) => f.filePath))
@@ -333,7 +325,7 @@ export function CardWorkspace({
     async (title: string, area: string) => {
       await ensureWorktree()
       const filePath = generateSpecPath(area, title)
-      const content = buildDefaultSpec(title, card.identifier, area)
+      const content = buildDefaultSpec(title, area)
       await fetch('/api/worktree-files', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },

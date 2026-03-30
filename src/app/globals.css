@@ -184,6 +184,34 @@ body {
   border-bottom: none;
 }
 
+/* Checklist items in prose */
+.prose-workhorse .checklist { list-style: none; padding-left: 0; margin-bottom: 12px; }
+.prose-workhorse .check-item { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 8px; }
+.prose-workhorse .check-box {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 16px; height: 16px; min-width: 16px; margin-top: 2px;
+  border: 1.5px solid var(--border-default); border-radius: 3px;
+  font-size: 10px; color: transparent;
+}
+.prose-workhorse .check-box.done {
+  background: var(--green); border-color: var(--green); color: white;
+}
+
+/* Inline diff annotations (tracked changes) */
+.diff-added {
+  background: rgba(22, 163, 74, 0.07);
+  color: #16a34a;
+  border-radius: 2px;
+  padding: 0 2px;
+}
+.diff-removed {
+  background: rgba(220, 38, 38, 0.07);
+  color: #dc2626;
+  text-decoration: line-through;
+  border-radius: 2px;
+  padding: 0 2px;
+}
+
 /* Spec extract block in chat */
 .spec-extract-block {
   padding: 14px 16px;

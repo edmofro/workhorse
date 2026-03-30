@@ -1,11 +1,11 @@
 'use client'
 
 import { useState, useCallback } from 'react'
-import { ChevronLeft, ChevronRight, ChevronDown, X, Pencil } from 'lucide-react'
+import { ChevronLeft, ChevronRight, ChevronDown, X, Pencil, Maximize2, Minimize2 } from 'lucide-react'
 import { SpecDropdown } from './SpecDropdown'
 import { FileHistory } from './FileHistory'
 import { deriveLabel } from '../../lib/labels'
-import type { SpecFileItem, ProjectSpecItem } from './types'
+import type { SpecFileItem, MockupFileItem, ProjectSpecItem } from './types'
 import { cn } from '../../lib/cn'
 
 const DEVICES = [
@@ -24,6 +24,7 @@ interface SpecHeaderBarProps {
   /** Full ordered list of navigable files (specs + mockups) for prev/next */
   allNavigableFiles: string[]
   specs: SpecFileItem[]
+  mockups: MockupFileItem[]
   projectSpecs: ProjectSpecItem[]
   isEditing: boolean
   /** Whether this is a mockup file (shows device toggle) */
@@ -38,6 +39,9 @@ interface SpecHeaderBarProps {
   onSelectProjectSpec: (filePath: string, content: string) => void
   onClose: () => void
   onEdit: () => void
+  /** Whether the artifact is expanded (chat collapsed) */
+  expanded?: boolean
+  onToggleExpand?: () => void
 }
 
 /** Header bar at the top of the artifact area with navigation controls. */
@@ -47,6 +51,7 @@ export function SpecHeaderBar({
   cardId,
   allNavigableFiles,
   specs,
+  mockups,
   projectSpecs,
   isEditing,
   isMockup = false,
@@ -58,6 +63,8 @@ export function SpecHeaderBar({
   onSelectProjectSpec,
   onClose,
   onEdit,
+  expanded = false,
+  onToggleExpand,
 }: SpecHeaderBarProps) {
   const [dropdownOpen, setDropdownOpen] = useState(false)
 
@@ -107,6 +114,7 @@ export function SpecHeaderBar({
         </button>
         <SpecDropdown
           specs={specs}
+          mockups={mockups}
           projectSpecs={projectSpecs}
           onSelectSpec={handleDropdownSelect}
           onSelectProjectSpec={handleDropdownSelectProject}
@@ -140,8 +148,8 @@ export function SpecHeaderBar({
       {/* History (specs only) */}
       {!isMockup && <FileHistory cardId={cardId} filePath={filePath} />}
 
-      {/* Edit button — only for specs, and only when not already editing */}
-      {!isMockup && !isEditing && (
+      {/* Edit button */}
+      {!isEditing && (
         <button
           onClick={onEdit}
           className="inline-flex items-center gap-1 px-2 py-1 rounded-[var(--radius-default)] text-[12px] font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer"
@@ -149,6 +157,17 @@ export function SpecHeaderBar({
         >
           <Pencil size={11} />
           Edit
+        </button>
+      )}
+
+      {/* Expand/collapse chat */}
+      {onToggleExpand && (
+        <button
+          onClick={onToggleExpand}
+          className="p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors duration-100 cursor-pointer"
+          title={expanded ? 'Show chat' : 'Expand'}
+        >
+          {expanded ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
         </button>
       )}
 

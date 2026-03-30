@@ -13,3 +13,6 @@ agents:
   project-conventions:
     name: "Project Conventions"
     description: "Workhorse conventions — Australian/NZ English, design system, component patterns, Prisma schema"
+  performance:
+    name: "Frontend Snappiness"
+    description: "Snappy UI — react-query caching, loading skeletons, no waterfall queries, no redundant fetches, DB indexes"

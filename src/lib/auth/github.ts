@@ -5,6 +5,8 @@
  * and querying the GitHub API for user profile and repo permissions.
  */
 
+import { createHash } from 'crypto'
+
 const GITHUB_API = 'https://api.github.com'
 
 export function getGitHubAuthorizeUrl(state: string): string {
@@ -104,11 +106,38 @@ export async function hasRepoWriteAccess(
 
 /**
  * Given a list of owner/repo pairs, return the ones the user has write access to.
+ * Results are cached per token+repos combination for 5 minutes.
  */
+
+const repoAccessCache = new Map<string, { result: Set<string>; expiresAt: number }>()
+const REPO_ACCESS_CACHE_TTL = 5 * 60 * 1000 // 5 minutes
+const REPO_ACCESS_CACHE_MAX_SIZE = 100
+let lastEvictionTime = 0
+const EVICTION_INTERVAL = 60 * 1000 // Run eviction at most once per minute
+
+function tokenHash(accessToken: string): string {
+  return createHash('sha256').update(accessToken).digest('hex')
+}
+
+function evictExpiredEntries() {
+  const now = Date.now()
+  for (const [key, entry] of repoAccessCache) {
+    if (entry.expiresAt <= now) repoAccessCache.delete(key)
+  }
+}
+
 export async function filterAccessibleRepos(
   accessToken: string,
   repos: { owner: string; repoName: string }[],
 ): Promise<Set<string>> {
+  // Include repos in cache key so adding a project invalidates the cache
+  const repoFingerprint = repos.map((r) => `${r.owner}/${r.repoName}`).sort().join(',')
+  const cacheKey = `${tokenHash(accessToken)}:${repoFingerprint}`
+  const cached = repoAccessCache.get(cacheKey)
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.result
+  }
+
   const results = await Promise.all(
     repos.map(async ({ owner, repoName }) => {
       const canWrite = await hasRepoWriteAccess(accessToken, owner, repoName)
@@ -116,5 +145,37 @@ export async function filterAccessibleRepos(
     }),
   )
 
-  return new Set(results.filter((r): r is string => r !== null))
+  const result = new Set(results.filter((r): r is string => r !== null))
+
+  // Evict expired entries periodically (not on every insert) and enforce size cap
+  const now = Date.now()
+  if (repoAccessCache.size >= REPO_ACCESS_CACHE_MAX_SIZE || now - lastEvictionTime > EVICTION_INTERVAL) {
+    evictExpiredEntries()
+    lastEvictionTime = now
+  }
+  if (repoAccessCache.size >= REPO_ACCESS_CACHE_MAX_SIZE) {
+    // Still full — drop oldest entry
+    const firstKey = repoAccessCache.keys().next().value
+    if (firstKey) repoAccessCache.delete(firstKey)
+  }
+
+  repoAccessCache.set(cacheKey, { result, expiresAt: Date.now() + REPO_ACCESS_CACHE_TTL })
+  return result
+}
+
+/**
+ * Check whether a user has write access to a specific repo.
+ * Routes through filterAccessibleRepos to benefit from the in-memory cache.
+ * Returns true/false — callers must check the result and return 403 if false.
+ */
+export async function hasProjectAccess(
+  accessToken: string,
+  owner: string,
+  repoName: string,
+): Promise<boolean> {
+  const accessible = await filterAccessibleRepos(
+    accessToken,
+    [{ owner, repoName }],
+  )
+  return accessible.has(`${owner}/${repoName}`)
 }

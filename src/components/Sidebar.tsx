@@ -6,6 +6,7 @@ import { Settings, LogOut, FileText, Palette, ChevronDown, Ellipsis } from 'luci
 import { cn } from '../lib/cn'
 import { Avatar } from './Avatar'
 import { useUser } from './UserProvider'
+import { useSidebarData, type SidebarData } from '../lib/hooks/queries'
 import { useState, useRef, useEffect } from 'react'
 
 interface SidebarProject {
@@ -26,11 +27,19 @@ export interface RecentSession {
 }
 
 interface SidebarProps {
-  projects: SidebarProject[]
-  recentSessions?: RecentSession[]
+  initialProjects: SidebarProject[]
+  initialRecentSessions?: RecentSession[]
 }
 
-export function Sidebar({ projects, recentSessions = [] }: SidebarProps) {
+export function Sidebar({ initialProjects, initialRecentSessions = [] }: SidebarProps) {
+  // Pass server-provided data as initialData so react-query serves it instantly
+  // without a redundant fetch, then revalidates in the background
+  const initialData = initialProjects.length > 0
+    ? { projects: initialProjects, recentSessions: initialRecentSessions } as SidebarData
+    : undefined
+  const { data } = useSidebarData(initialData)
+  const projects = data?.projects ?? initialProjects
+  const recentSessions = data?.recentSessions ?? initialRecentSessions
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const { user } = useUser()

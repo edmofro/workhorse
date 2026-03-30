@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useCallback, useRef, useEffect } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import type { AttachmentData } from '../attachments'
 
 export interface SessionMessage {
@@ -54,19 +55,34 @@ export function useAgentSession(cardId: string, sessionId: string | null) {
   // is already set to that value by processEvent, so we skip the abort.
   useEffect(() => {
     if (sessionId !== currentSessionIdRef.current) {
-      // This is a genuine session switch (user navigated to a different session)
+      // Genuine session switch — abort any in-flight stream and clear messages
+      // so stale cached data from react-query can't leak into the wrong session
       if (abortRef.current) {
         abortRef.current.abort()
       }
+      setMessages([])
+      historySessionIdRef.current = null
     }
     setCurrentSessionId(sessionId)
     currentSessionIdRef.current = sessionId
   }, [sessionId])
 
-  // Load chat history from Agent SDK session on mount or when sessionId changes
+  // Load chat history from Agent SDK session — cached by react-query so switching
+  // back to a previously-viewed session is instant
+  const { data: historyData, isFetching: isHistoryFetching } = useQuery({
+    queryKey: ['chat-history', sessionId],
+    queryFn: async () => {
+      const res = await fetch(`/api/chat-history?sessionId=${sessionId}`)
+      if (!res.ok) return { messages: [] }
+      return res.json()
+    },
+    enabled: !!sessionId,
+    staleTime: 30_000,
+    gcTime: 10 * 60_000, // Keep chat history cached for 10 minutes
+  })
+
   useEffect(() => {
     if (!sessionId) {
-      // No session yet — clear messages
       if (historySessionIdRef.current !== null) {
         setMessages([])
         historySessionIdRef.current = null
@@ -74,31 +90,14 @@ export function useAgentSession(cardId: string, sessionId: string | null) {
       return
     }
     if (historySessionIdRef.current === sessionId) return
-    historySessionIdRef.current = sessionId
-
-    const controller = new AbortController()
-
-    async function loadHistory() {
-      try {
-        const res = await fetch(`/api/chat-history?sessionId=${sessionId}`, {
-          signal: controller.signal,
-        })
-        if (res.ok) {
-          const data = await res.json()
-          // Guard against stale response — only apply if this sessionId is still current
-          if (historySessionIdRef.current === sessionId && data.messages && data.messages.length > 0) {
-            setMessages(data.messages)
-          }
-        }
-      } catch {
-        // Ignore — history retrieval is best-effort (includes AbortError)
-      }
+    // Wait for fresh data — if react-query is still fetching for this key,
+    // the current historyData may be stale cached data from a previous view.
+    // Only apply once the fetch has settled to avoid showing wrong session's messages.
+    if (historyData !== undefined && !isHistoryFetching && currentSessionIdRef.current === sessionId) {
+      historySessionIdRef.current = sessionId
+      setMessages(historyData?.messages?.length > 0 ? historyData.messages : [])
     }
-
-    loadHistory()
-
-    return () => controller.abort()
-  }, [sessionId])
+  }, [sessionId, historyData, isHistoryFetching])
 
   // Clean up timers on unmount
   useEffect(() => {

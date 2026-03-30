@@ -149,9 +149,7 @@ Base unit: **4px**. All spacing values are multiples of 4.
 | Topbar height | 52px |
 | Conversation max-width | 680px |
 | Spec document max-width | 720px |
-| Chat sidebar width (spec view) | 320px |
-| Floating chat panel width | 640px |
-| Floating chat panel max-height | 60vh |
+| Files panel width | ~180px |
 
 ---
 
@@ -216,11 +214,11 @@ The app uses a fixed sidebar (216px) with a main content area. The topbar (52px)
 
 **Chat view** — Full-width scrollable conversation centred at 680px max-width. Input fixed at the bottom, also centred.
 
-**Spec view** — Split layout: 320px chat sidebar on the left, spec editor filling the remaining width (max 720px, centred).
+**Artifact view** — Chat column on the left (~40%), artifact (spec or mockup) on the right (~60%). Files panel collapsed on right edge, hover to peek. Specs and mockups share this layout.
 
 ### Navigation
 
-The sidebar contains product names and team names with coloured dots. Functional nav items (Specs, Design) may use subtle muted icons for warmth — these are decorative, not informational, and should be used sparingly. Product names and team names rely on text alone. The view toggle (Chat/Spec) lives in the topbar, right-aligned.
+The sidebar contains product names and team names with coloured dots. Functional nav items (Specs, Design) may use subtle muted icons for warmth — these are decorative, not informational, and should be used sparingly. Product names and team names rely on text alone. No view toggle in the topbar — view state transitions happen through interactions (clicking files, sending messages, closing artifacts).
 
 ---
 
@@ -320,9 +318,9 @@ Green-tinted background (`rgba(22,163,74,0.07)`), 8px radius, 14px 16px padding.
 
 Amber-tinted background (`rgba(180,83,9,0.06)`), 8px radius, 14px 16px padding. Label is uppercase amber, 11px, 600 weight.
 
-### Mockup viewer
+### Mockup artifact
 
-Full-screen overlay with the standard topbar. Device toggle uses text labels ("Desktop", "Tablet", "Mobile") not icons, styled as a segmented control. Stage area uses `--bg-mockup-stage`. Floating chat pill at bottom centre; floating chat panel is 640px wide, 60vh max height, 16px border radius.
+Mockups open in the same chat + artifact layout as specs (no full-screen overlay). Device toggle uses text labels ("Desktop", "Tablet", "Mobile") not icons, styled as a segmented control in the artifact header bar. Stage area within the artifact uses `--bg-mockup-stage`. In edit mode, the artifact splits: preview on top, editor panel (Properties/Source tabs) on bottom.
 
 ---
 

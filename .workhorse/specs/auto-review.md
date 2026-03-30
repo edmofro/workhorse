@@ -8,7 +8,7 @@ A fresh-context AI agent reviews the draft specs and posts its findings into the
 
 ## Triggering a review
 
-- [ ] An "Auto-review" button is available via an action pill in the floating chat (see `card-navigation.md` for pill sets) and in the spec editor toolbar
+- [ ] An "Auto-review" button is available via an action pill in the chat (see `card-navigation.md` for pill sets) and in the artifact header toolbar
 - [ ] The button label communicates that this is an automated process, not a screen the user has to fill in — something like "Auto-review" or "Check spec"
 - [ ] The button is disabled until at least one spec exists on the card
 - [ ] Clicking it spins up a fresh AI context with no access to the conversation history

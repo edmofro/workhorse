@@ -83,11 +83,10 @@ Design library files use the same editing interfaces as specs within a card, but
 
 ### HTML files (components, views, mockups)
 
-- [x] HTML files use the same full-screen viewer interface as mockups within a card
+- [x] HTML files use the same artifact viewer as mockups within a card (rendered preview, not full-screen overlay)
 - [x] Device toggle (Desktop / Tablet / Mobile) for responsive preview
-- [x] Floating chat panel for AI conversational edits (same pattern as card mockup chat)
-- [x] Inspector panel for selecting elements and tweaking CSS properties
-- [x] Source editor overlay for direct HTML editing
+- [x] Chat column for AI conversational edits (same layout as card artifact mode)
+- [x] Edit mode: split view with preview on top, editor panel (Properties/Source tabs) on bottom — same as mockup editing within a card (see `visual-mockups.md`)
 - [x] Auto-save with debounce commits directly to the default branch
 - [ ] AI chat is wired to an agent endpoint for live design edits (placeholder for now)
 

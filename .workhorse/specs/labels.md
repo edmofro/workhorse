@@ -5,7 +5,7 @@ card: WH-014
 status: draft
 ---
 
-Wherever Workhorse displays a reference to a spec, mockup, or design library file, it shows a clean human-readable label rather than a raw file path or filename. This applies consistently across all surfaces: the right panel, spec explorer, design library browser, and chat notifications.
+Wherever Workhorse displays a reference to a spec, mockup, or design library file, it shows a clean human-readable label rather than a raw file path or filename. This applies consistently across all surfaces: the files panel, spec explorer, design library browser, and chat notifications.
 
 ## Label derivation
 
@@ -27,12 +27,12 @@ When no explicit title is available, the filename is converted to a readable lab
 
 Files are always shown within their directory hierarchy. The treatment differs by surface:
 
-### Right panel
+### Files panel
 
-- [ ] Specs are grouped under area headings derived from their directory path, using the same label derivation rule
-- [ ] Items are indented beneath their area heading
-- [ ] The hierarchy is static — no expand/collapse interaction
-- [ ] Area headings and indentation make the structure visible without requiring navigation
+- [ ] Specs and mockups are listed with their derived labels
+- [ ] Items are grouped by type (specs, mockups) with section headers
+- [ ] The list is flat within each group — no deep hierarchy (the files panel is narrow)
+- [ ] Active file is visually highlighted when an artifact is open
 
 ### Spec explorer
 
@@ -56,7 +56,7 @@ When the AI creates or updates a spec or mockup during an interview:
 
 ## Search
 
-When the user searches in the right panel or spec explorer:
+When the user searches in the file dropdown or spec explorer:
 
 - [ ] Search matches against both the derived label and the underlying filename
 - [ ] Both must be searched so users can find files by either the human-readable name or the slug they may have seen elsewhere

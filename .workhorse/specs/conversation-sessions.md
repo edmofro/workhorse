@@ -141,7 +141,7 @@ Navigating into a session (from card home or sidebar) enters the chat zone — a
 - [ ] The header shows the card identifier + session title. The back arrow returns to card home
 - [ ] The input bar continues this session — messages are sent to the existing Agent SDK session
 - [ ] If the Agent SDK session is stale (expired, storage cleared), the next message starts a fresh Agent SDK session under the same `ConversationSession` record. The user doesn't notice — their history is still there, the agent just has fresh context
-- [ ] Specs panel, artifact view, and focus mode all work as before within the chat zone
+- [ ] Files panel, artifact view, and editing all work as before within the chat zone
 
 ## URL structure
 

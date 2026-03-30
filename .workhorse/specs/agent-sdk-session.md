@@ -186,11 +186,11 @@ The Agent SDK returns a `result` event at the end of every query. This is not ne
 
 ### Specs written directly to disk
 
-The agent writes spec files in the standard format to `.workhorse/specs/` within the worktree. The right panel and spec view read files from the worktree via `fs.readFile()`.
+The agent writes spec files in the standard format to `.workhorse/specs/` within the worktree. The files panel and artifact view read files from the worktree via `fs.readFile()`.
 
 - [ ] Agent creates new spec files at paths it determines based on codebase structure
 - [ ] Agent edits existing spec files in place when refining criteria
-- [ ] Right panel lists files from `git diff --name-only main` filtered to `.workhorse/specs/`
+- [ ] Files panel lists files from `git diff --name-only main` filtered to `.workhorse/specs/` and `.workhorse/design/mockups/`
 - [ ] New vs existing detection: file doesn't exist on `main` branch = new
 
 ### Mockups written directly to disk
@@ -199,7 +199,7 @@ The agent writes mockup HTML files to `.workhorse/design/mockups/{card-id}/` wit
 
 - [ ] Each mockup is a standalone HTML file with inline CSS
 - [ ] Mockup files include an HTML comment header referencing their spec: `<!-- spec: patient/allergies.md -->`
-- [ ] Mockup viewer reads files from disk (same as spec view)
+- [ ] Mockup artifact reads files from disk (same as spec artifact)
 - [ ] Agent can revise mockups when asked — just edits the file
 - [ ] Mockups are auto-committed alongside specs
 
@@ -233,7 +233,7 @@ A `FileLock` record tracks who is editing each file:
 - [ ] Agent needs to write a file → acquire lock. If locked by a user, the agent describes its intended changes in chat instead of writing the file
 - [ ] Lock released when: user clicks "Done editing", user navigates away, agent turn completes, or lock expires
 - [ ] Stale lock cleanup: on-access check against `expiresAt`, plus periodic sweep
-- [ ] Lock status visible in the right panel file list (unlocked / locked by {name} / locked by AI)
+- [ ] Lock status visible in the files panel (unlocked / locked by {name} / locked by AI)
 
 ## Auto-commit model
 
@@ -316,11 +316,11 @@ If the server restarts (redeploy, crash, Railway restart), worktrees are recreat
 - `/api/agent-session` — the agent session SSE endpoint
 - `useAgentSession` — frontend hook for the agent session chat
 - `CardWorkspace` — the main card workspace orchestrator
-- `FloatingChat` — the ever-present chat component (overlay, fullscreen, docked modes)
+- Chat column — column-based chat (left side in artifact mode, centred when no artifact)
 
 ### Components that reference "spec" (correct — they deal with spec documents)
 
-- `SpecEditor`, `SpecDocument`, `SpecExplorer`, `SpecTree`, `RightPanel`
+- `SpecEditor`, `SpecDocument`, `SpecExplorer`, `SpecTree`, `FilesPanel`
 - `src/lib/specs/`, `src/lib/git/commitSpecs.ts`, `src/lib/git/specTree.ts`
 - `spec_updated` activity type
 

@@ -7,17 +7,24 @@ status: draft
 
 A rich editor for viewing and editing specs within Workhorse. Product owners and testers work with specs without touching markdown. Developers can also toggle to the underlying format.
 
-## File navigation via right panel
+## File navigation
 
-File navigation for specs has moved from a left sidebar to the persistent right panel (see `card-navigation.md`). The right panel is visible across all views (card, chat, spec) and has the same two-layer structure: card specs at the top, project specs below a separator.
+Specs and mockups are listed in the files panel — a persistent thin panel on the right edge (see `card-navigation.md` for full files panel behaviour). The panel shows this card's files with human-readable labels, and the ⌄ dropdown in the artifact header provides search across all project specs.
 
-- [ ] Clicking a spec in the right panel opens it in the spec view (720px centred, with floating chat at the bottom)
-- [ ] Clicking a project spec opens it for reading; editing it adds it to the card's working set
-- [ ] The right panel is always present — no separate sidebar within the spec editor
-- [ ] Search in the right panel filters both card specs and project specs by label and filename (see labels.md)
+- [ ] Clicking a spec in the files panel opens it as an artifact (chat left, spec right)
+- [ ] Clicking a project spec (via dropdown) opens it for reading; editing it adds it to the card's working set
+- [ ] The files panel is always available — hover to peek in artifact mode, open in chat/home mode
+- [ ] Search in the file dropdown filters both card specs and project specs by label and filename (see `labels.md`)
+
+## Viewing
+
+- [ ] Specs open in the artifact area as rendered markdown (read-only by default)
+- [ ] Chat remains visible on the left — the user can discuss the spec while reading it
+- [ ] ◀ ▶ arrows in the header bar flip between this card's files (specs and mockups)
 
 ## Editing
 
+- [ ] **Edit button** in the artifact header makes the spec editable in-place — no layout change, chat stays visible
 - [ ] Rich text editor for spec content (not raw markdown for non-technical users)
 - [ ] Supports the spec format defined in WH-006
 - [ ] Structured editing: add/remove/reorder acceptance criteria
@@ -25,6 +32,8 @@ File navigation for specs has moved from a left sidebar to the persistent right 
 - [ ] Changes attributed to the user who made them
 - [ ] Toggle between rich view and raw markdown view
 - [ ] Collaboratively editable by multiple users
+- [ ] **"Done editing"** returns to read-only and triggers auto-commit (see `commit-specs.md`)
+- [ ] Switching to another file while editing prompts "Save changes to {filename}?" with Save / Discard options
 
 ## Tracked-changes view
 
@@ -40,24 +49,12 @@ When editing an existing spec, the user can see what they've changed relative to
 - [ ] The comparison baseline is the content from the main branch at the time the spec was attached to the card
 - [ ] The toggle is not shown for new specs (nothing to compare against)
 
-## Saving and committing
-
-Two layers: auto-save writes to the Workhorse database continuously (the user never loses work, no manual save needed), and commit pushes the current state to the project's codebase (branch and PR) — intentional and explicit.
-
-The Commit button is dormant when the codebase is up to date. When the user makes changes that haven't been committed, the button becomes enabled and visually draws attention. After committing, it returns to dormant. Auto-save does not create git commits. Commits are meaningful, intentional checkpoints.
-
 ## Saving
+
+Auto-save writes to the Workhorse database continuously — the user never loses work. Git commits happen automatically when the user leaves edit mode or the agent finishes a turn (see `commit-specs.md` for full details). There is no manual commit button.
 
 - [ ] Auto-save to Workhorse database — continuous, invisible, no data loss
 - [ ] Change history available (who changed what, when)
-
-## Committing
-
-- [ ] Commit button is dormant when no uncommitted changes exist
-- [ ] Commit button becomes enabled and visually prominent when there are uncommitted changes
-- [ ] Clicking Commit pushes current state to the project's codebase
-- [ ] After committing, button returns to dormant state
-- [ ] First commit creates the branch and PR; subsequent commits update them
 
 ## Open questions
 

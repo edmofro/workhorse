@@ -17,13 +17,13 @@ A card isn't "one spec" — it's a set of changes to the spec tree. A card may c
 
 The AI identifies which specs are needed based on the conversation and its codebase analysis. For new work, the AI suggests which area and filename to use. When the AI detects interactions with existing functionality, it proposes pulling in the relevant existing spec for editing. The user can also browse the project's spec tree and manually add existing specs to the card.
 
-## Right panel and spec view
+## Files panel and artifact view
 
-- [ ] The right panel shows this card's specs at the top (the working set), with the full project spec tree available below via search or disclosure (see `card-navigation.md` for right panel layout)
+- [ ] The files panel shows this card's specs and mockups (the working set), with the full project spec tree available via the ⌄ dropdown search (see `card-navigation.md` for files panel and file dropdown behaviour)
 - [ ] Each card spec is tagged: "new" or "editing existing"
-- [ ] Clicking a spec opens it in the spec view (with floating chat at the bottom)
+- [ ] Clicking a spec opens it as an artifact (chat left, spec right)
 - [ ] For edits to existing specs, the current version from main is the starting point
-- [ ] Browsing the project tree and clicking a spec opens it for reading; editing it adds it to the card
+- [ ] Browsing the project specs via the file dropdown and clicking a spec opens it for reading; editing it adds it to the card
 - [ ] User can create additional new specs and choose their area/filename
 
 ## During the interview
@@ -35,9 +35,8 @@ The AI identifies which specs are needed based on the conversation and its codeb
 
 ## Committing
 
-- [ ] "Commit" saves all spec documents to the project's codebase together
+- [ ] All spec documents auto-commit to the card's branch when the user leaves edit mode or the agent finishes a turn (see `commit-specs.md`)
 - [ ] New specs are added, existing specs are modified in place
-- [ ] Subsequent edits are saved automatically
 - [ ] All git operations (branching, committing, PRs) are invisible to the user
 
 ## Visibility in the spec explorer

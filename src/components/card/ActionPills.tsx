@@ -42,27 +42,35 @@ export function ActionPills({ pills, onSelect, disabled }: ActionPillsProps) {
   )
 }
 
+export type PillViewContext =
+  | { type: 'card' }
+  | { type: 'chat' }
+  | { type: 'artifact'; isMockup: boolean }
+
 /** Returns the appropriate pills based on card status and conversation state */
 export function getPillsForContext(
   status: string,
   hasMessages: boolean,
-  view: 'card' | 'chat' | 'artifact' | 'spec' | 'mockup',
+  view: PillViewContext,
 ): ActionPill[] {
-  if (view === 'artifact' || view === 'spec') {
+  if (view.type === 'artifact') {
+    if (view.isMockup) {
+      return [
+        { label: 'Review this mockup', message: 'Review this mockup', mode: 'review' },
+        { label: 'Make changes', message: 'Make changes to this mockup', mode: 'directed' },
+      ]
+    }
     return [
       { label: 'Review this spec', message: 'Review this spec', mode: 'review' },
       { label: 'Make changes', message: 'Make changes to the spec', mode: 'directed' },
     ]
   }
 
-  if (view === 'mockup') {
-    return []
-  }
-
   if (status === 'NOT_STARTED') {
     return [
       { label: 'Interview me', message: 'Interview me on this card', mode: 'interview' },
       { label: 'Draft a spec', message: 'Draft a spec from the card description', mode: 'draft' },
+      { label: 'Add a mockup', message: 'I want to create a mockup for this card. Help me describe what I need or I can paste HTML.', mode: 'mockup' },
     ]
   }
 
@@ -72,6 +80,7 @@ export function getPillsForContext(
         { label: 'Where were we up to?', message: 'Where were we up to? Summarise what we have so far and what remains.', mode: 'interview' },
         { label: 'Continue interview', message: 'Continue the spec interview', mode: 'interview' },
         { label: 'Review specs', message: 'Review the current specs', mode: 'review' },
+        { label: 'Add a mockup', message: 'I want to create a mockup for this card.', mode: 'mockup' },
       ]
     }
     return [

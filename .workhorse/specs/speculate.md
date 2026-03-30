@@ -32,20 +32,19 @@ Product owners refining requirements, testers bringing attention to edge cases a
 
 ## Visual mockups
 
-- [ ] AI can generate HTML/CSS mockups inline during the chat to illustrate concepts
+- [ ] AI proactively generates HTML/CSS mockups during the chat whenever a visual would help illustrate the concept being discussed
 - [ ] Mockups help visual people understand what the AI is asking about
-- [ ] Mockups are not a required step — used when helpful
-- [ ] Mockups appear as preview cards in the chat and are listed in a persistent mockups panel
-- [ ] Mockups panel is always accessible regardless of chat scroll position
+- [ ] Mockups are not a required step — generated when helpful, without waiting to be asked
+- [ ] Mockups appear as preview cards in the chat and are listed in the files panel
+- [ ] Files panel is always accessible regardless of chat scroll position
 - [ ] Multiple mockups accumulate over the course of a conversation
-- [ ] Clicking a mockup opens the full-screen viewer with floating chat and device toggle
-- [ ] Inspector-style component selection for commenting on specific elements
+- [ ] Clicking a mockup opens it as an artifact (chat left, mockup right) — same layout as specs
 
 ## Spec generation
 
 - [ ] AI automatically drafts a spec document when it has gathered enough information
 - [ ] User can also manually trigger spec generation at any time
-- [ ] Spec appears in the right panel and can be opened in the spec view as an editable document
+- [ ] Spec appears in the files panel and can be opened as an artifact (chat left, spec right) for editing
 - [ ] AI sees the user's direct edits on the next chat turn
 - [ ] AI can suggest revisions to previously extracted criteria based on new information
 - [ ] The spec document is collaboratively editable (multiple users can edit, like Google Docs)

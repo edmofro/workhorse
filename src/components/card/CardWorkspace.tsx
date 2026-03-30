@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useEffect, useRef } from 'react'
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
 import type { ViewState } from '../../lib/hooks/useViewNavigation'
 import { useRouter } from 'next/navigation'
 import { cn } from '../../lib/cn'
@@ -8,21 +8,22 @@ import { useUser } from '../UserProvider'
 import { useAgentSession } from '../../lib/hooks/useAgentSession'
 import { useAttachments } from '../../lib/hooks/useAttachments'
 import { useViewNavigation } from '../../lib/hooks/useViewNavigation'
-import { SpecsPanel } from './SpecsPanel'
-import { SpecRail } from './SpecRail'
+import { FilesPanel } from './FilesPanel'
 import { SpecHeaderBar } from './SpecHeaderBar'
+import type { DeviceKey } from './SpecHeaderBar'
 import { ActionPills, getPillsForContext, type ActionPill } from './ActionPills'
 import { ChatMessage } from './ChatMessage'
 import { ChatInput } from './ChatInput'
 import { ThinkingIndicator } from './ThinkingIndicator'
 import { SpecEditor } from './SpecEditor'
+import { MockupArtifact } from './MockupArtifact'
 import { NewSpecDialog } from './NewSpecDialog'
-import { MockupViewer } from './MockupViewer'
 import { FileText, MessageCircle } from 'lucide-react'
 import { parseSpec, buildDefaultSpec, generateSpecPath } from '../../lib/specs/format'
 import { deriveLabel } from '../../lib/labels'
 import { updateCardTitleFromSpec } from '../../lib/actions/cards'
 import { formatRelativeTime } from '../../lib/formatRelativeTime'
+import { isMockupPath } from '../../lib/paths'
 
 interface SpecFileData {
   filePath: string
@@ -90,9 +91,11 @@ export function CardWorkspace({
   const [files, setFiles] = useState(initialFiles)
   const [showNewSpecDialog, setShowNewSpecDialog] = useState(false)
   const [isEnsuring, setIsEnsuring] = useState(false)
-  const [specsPanelOpen, setSpecsPanelOpen] = useState(false)
   const chatScrollRef = useRef<HTMLDivElement>(null)
   const isEditingRef = useRef(false)
+
+  // Mockup device state
+  const [mockupDevice, setMockupDevice] = useState<DeviceKey>('desktop')
 
   // Agent session state — uses activeSessionId for history loading
   const {
@@ -145,7 +148,7 @@ export function CardWorkspace({
   // Separate specs and mockup files
   const specFiles = files.filter((f) => f.filePath.startsWith('.workhorse/specs/'))
   const mockupFiles = files
-    .filter((f) => f.filePath.startsWith('.workhorse/design/mockups/'))
+    .filter((f) => isMockupPath(f.filePath))
     .map((f) => ({ filePath: f.filePath, content: f.content }))
   const allMockupFiles = [
     ...mockupFiles,
@@ -242,7 +245,7 @@ export function CardWorkspace({
       }
     : undefined
 
-  // View navigation (extracted hook — isEditing derived from view state)
+  // View navigation
   const {
     view,
     isEditing,
@@ -250,13 +253,11 @@ export function CardWorkspace({
     goBack,
     closeArtifact,
     openFile,
-    focusNavigate,
+    navigateToFile,
     navigatePrev,
     navigateNext,
-    enterFocus,
     enterEdit,
     finishEditing,
-    exitFocus,
     savePrompt,
     saveAndFlip,
     discardAndFlip,
@@ -276,8 +277,6 @@ export function CardWorkspace({
 
   // Refresh files from worktree periodically
   useEffect(() => {
-    if (view.type === 'mockup') return
-
     const interval = setInterval(async () => {
       if (isEditingRef.current) return
       if (document.hidden) return
@@ -315,22 +314,17 @@ export function CardWorkspace({
     }, 10000)
 
     return () => clearInterval(interval)
-  }, [card.id, view.type])
+  }, [card.id])
 
-  // Track file writes from the agent — auto-expand specs panel when specs are written
+  // Track file writes from the agent — add new files to the list
   useEffect(() => {
-    let hasNewSpec = false
     for (const fw of fileWrites) {
-      if (fw.filePath.startsWith('.workhorse/specs/')) {
-        hasNewSpec = true
+      if (fw.filePath.startsWith('.workhorse/specs/') || isMockupPath(fw.filePath)) {
         setFiles((prev) => {
           if (prev.some((f) => f.filePath === fw.filePath)) return prev
           return [...prev, { filePath: fw.filePath, isNew: true, content: '' }]
         })
       }
-    }
-    if (hasNewSpec) {
-      setSpecsPanelOpen(true)
     }
   }, [fileWrites])
 
@@ -357,8 +351,7 @@ export function CardWorkspace({
 
       if (view.type === 'card') {
         // Starting a new conversation from card home — navigate to chat zone
-        // The session will be created by the API and synced back via currentSessionId
-        setActiveSessionId(null) // Will be set when server responds
+        setActiveSessionId(null)
         navigateTo({ type: 'chat', sessionId: null, sessionTitle: null })
       }
     },
@@ -420,9 +413,9 @@ export function CardWorkspace({
       const newFile: SpecFileData = { filePath, isNew: true, content }
       setFiles((prev) => [...prev, newFile])
       setShowNewSpecDialog(false)
-      navigateTo({ type: 'artifact', filePath })
+      openFile(filePath)
     },
-    [card.id, card.identifier, ensureWorktree, navigateTo],
+    [card.id, ensureWorktree, openFile],
   )
 
   const handleSelectProjectSpec = useCallback(
@@ -431,9 +424,9 @@ export function CardWorkspace({
         if (prev.some((f) => f.filePath === filePath)) return prev
         return [...prev, { filePath, isNew: false, content }]
       })
-      navigateTo({ type: 'artifact', filePath })
+      openFile(filePath)
     },
-    [navigateTo],
+    [openFile],
   )
 
   // Keyboard shortcuts
@@ -444,19 +437,16 @@ export function CardWorkspace({
       if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA')) return
 
       e.preventDefault()
-      if (view.type === 'focus') {
-        exitFocus()
-      } else if (view.type === 'artifact') {
+      if (view.type === 'artifact') {
+        if (isEditing) return // Don't close while editing — user must save/discard first
         closeArtifact()
       } else if (view.type === 'chat') {
-        goBack()
-      } else if (view.type === 'mockup') {
         goBack()
       }
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [view.type, exitFocus, closeArtifact, goBack])
+  }, [view.type, isEditing, closeArtifact, goBack])
 
   // Scroll chat to bottom on new messages
   useEffect(() => {
@@ -465,33 +455,55 @@ export function CardWorkspace({
     }
   }, [messages])
 
-  // Active spec for artifact/focus views
-  const activeFilePath =
-    view.type === 'artifact' ? view.filePath :
-    view.type === 'focus' ? view.filePath : null
-  const activeSpec = activeFilePath
+  // Active file for artifact view
+  const activeFilePath = view.type === 'artifact' ? view.filePath : null
+  const activeFile = activeFilePath
     ? files.find((f) => f.filePath === activeFilePath) ?? null
     : null
+  const isMockupFile = activeFilePath ? isMockupPath(activeFilePath) : false
 
-  // Active mockup
-  const activeMockup = view.type === 'mockup'
-    ? mockups.find((m) => m.filePath === view.filePath) ?? null
-    : null
+  // Find mockup data (either from files or from mockups prop)
+  const activeMockupHtml = isMockupFile && activeFilePath
+    ? (files.find((f) => f.filePath === activeFilePath)?.content ||
+       mockups.find((m) => m.filePath === activeFilePath)?.html ||
+       '')
+    : ''
+  const activeMockupTitle = activeFilePath ? deriveLabel(activeFilePath, activeMockupHtml) : ''
 
   const extractedAreas = extractAreas(projectSpecs)
 
-  // Determine pill context
-  const pillView =
-    view.type === 'artifact' ? 'artifact' as const :
-    view.type === 'chat' ? 'chat' as const :
-    'card' as const
+  // Determine pill context using discriminated union so isMockup is only
+  // expressible when the view is 'artifact'.
+  const pillView = view.type === 'artifact'
+    ? { type: 'artifact' as const, isMockup: isMockupFile }
+    : { type: view.type as 'card' | 'chat' }
   const pills = getPillsForContext(card.status, messages.length > 0, pillView)
-
-  // --- Chat column (shared between chat mode and artifact mode) ---
 
   // Session title for the chat zone header
   const chatSessionTitle = view.type === 'chat' ? view.sessionTitle : null
 
+  // --- Shared files panel props ---
+  const handleFilesPanelSelect = useCallback((fp: string) => {
+    if (view.type === 'artifact') {
+      navigateToFile(fp)
+    } else {
+      openFile(fp)
+    }
+  }, [view.type, navigateToFile, openFile])
+
+  const handleFilesPanelCreate = useCallback(() => {
+    setShowNewSpecDialog(true)
+  }, [])
+
+  const filesPanelProps = useMemo(() => ({
+    specs: specFiles.map((f) => ({ filePath: f.filePath, isNew: f.isNew, content: f.content })),
+    mockups: allMockupFiles,
+    activeFilePath,
+    onSelectFile: handleFilesPanelSelect,
+    onCreateSpec: handleFilesPanelCreate,
+  }), [specFiles, allMockupFiles, activeFilePath, handleFilesPanelSelect, handleFilesPanelCreate])
+
+  // --- Chat column (shared between chat mode and artifact mode) ---
   const chatColumn = (
     <div className="flex-1 flex flex-col overflow-hidden">
       {/* Session header bar in chat zone */}
@@ -579,51 +591,57 @@ export function CardWorkspace({
     </div>
   )
 
-  // --- Artifact column (spec editor) ---
-
-  const artifactColumn = activeSpec ? (
+  // --- Artifact column (spec or mockup) ---
+  const artifactColumn = activeFilePath ? (
     <div className="flex-1 flex flex-col overflow-hidden bg-[var(--bg-surface)]">
       <SpecHeaderBar
-        filePath={activeSpec.filePath}
-        fileContent={activeSpec.content}
+        filePath={activeFilePath}
+        fileContent={activeFile?.content}
         cardId={card.id}
         allNavigableFiles={allNavigableFiles}
         specs={specFiles.map((f) => ({ filePath: f.filePath, isNew: f.isNew, content: f.content }))}
         projectSpecs={projectSpecs}
-        isFocusMode={view.type === 'focus'}
-        isEditing={view.type === 'focus' && view.editing}
+        isEditing={isEditing}
+        isMockup={isMockupFile}
+        device={mockupDevice}
+        onDeviceChange={setMockupDevice}
         onPrev={navigatePrev}
         onNext={navigateNext}
-        onSelectSpec={(fp) => {
-          if (view.type === 'focus') focusNavigate(fp)
-          else navigateTo({ type: 'artifact', filePath: fp } as ViewState)
-        }}
+        onSelectSpec={(fp) => navigateToFile(fp)}
         onSelectProjectSpec={handleSelectProjectSpec}
-        onToggleFocus={view.type === 'focus' ? exitFocus : enterFocus}
-        onClose={view.type === 'focus' ? exitFocus : closeArtifact}
+        onClose={closeArtifact}
         onEdit={enterEdit}
       />
-      <div className="flex-1 overflow-y-auto flex justify-center">
-        <div className="w-full" style={{ maxWidth: '720px', padding: '48px 40px 80px' }}>
-          <SpecEditor
-            key={activeSpec.filePath}
-            spec={{
-              id: activeSpec.filePath,
-              filePath: activeSpec.filePath,
-              content: activeSpec.content,
-              isNew: activeSpec.isNew,
-            }}
-            onContentChange={(_, content) =>
-              handleSpecUpdate(activeSpec.filePath, content)
-            }
-            isEditing={view.type === 'focus' && view.editing}
-            onStartEditing={() => handleStartEditing(activeSpec.filePath)}
-            onDoneEditing={finishEditing}
-            cardStatus={card.status}
-            hideEditButton
-          />
+      {/* Render spec or mockup content based on file type */}
+      {isMockupFile ? (
+        <MockupArtifact
+          html={activeMockupHtml}
+          title={activeMockupTitle}
+          device={mockupDevice}
+        />
+      ) : activeFile ? (
+        <div className="flex-1 overflow-y-auto flex justify-center">
+          <div className="w-full" style={{ maxWidth: '720px', padding: '48px 40px 80px' }}>
+            <SpecEditor
+              key={activeFile.filePath}
+              spec={{
+                id: activeFile.filePath,
+                filePath: activeFile.filePath,
+                content: activeFile.content,
+                isNew: activeFile.isNew,
+              }}
+              onContentChange={(_, content) =>
+                handleSpecUpdate(activeFile.filePath, content)
+              }
+              isEditing={isEditing}
+              onStartEditing={() => handleStartEditing(activeFile.filePath)}
+              onDoneEditing={finishEditing}
+              cardStatus={card.status}
+              hideEditButton
+            />
+          </div>
         </div>
-      </div>
+      ) : null}
     </div>
   ) : null
 
@@ -631,170 +649,145 @@ export function CardWorkspace({
     <div className="flex-1 flex overflow-hidden">
       {/* ===== Card home ===== */}
       {view.type === 'card' && (
-        <div className="flex-1 flex flex-col overflow-hidden">
-          <div className="flex-1 overflow-y-auto">
-            {cardTabContent}
+        <>
+          <div className="flex-1 flex flex-col overflow-hidden">
+            <div className="flex-1 overflow-y-auto">
+              {cardTabContent}
 
-            {/* Conversations and specs/mockups sections */}
-            <div className="max-w-[720px] mx-auto px-10 pb-8">
-              {/* Conversations section */}
-              {sessions.length > 0 && (
-                <div className="border-t border-[var(--border-subtle)] pt-6">
-                  <h3 className="text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-[0.06em] mb-3">
-                    Conversations
-                  </h3>
-                  <div className="space-y-1">
-                    {sessions.map((session) => {
-                      const isSessionStreaming = isStreaming && activeSessionId === session.id
-                      return (
-                        <button
-                          key={session.id}
-                          onClick={() => openSession(session.id)}
-                          className="flex items-center gap-2 w-full px-3 py-2 rounded-[var(--radius-default)] text-left text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer"
-                        >
-                          <MessageCircle size={13} className="shrink-0 text-[var(--text-muted)]" />
-                          <span className={cn(
-                            'text-[13px] font-medium truncate flex-1',
-                            isSessionStreaming && 'animate-pulse',
-                          )}>
-                            {session.title ?? 'New conversation'}
-                          </span>
-                          <span className="text-[11px] text-[var(--text-muted)] shrink-0">
-                            {isSessionStreaming ? 'Working…' : formatRelativeTime(session.lastMessageAt)}
-                          </span>
-                        </button>
-                      )
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {/* Inline specs and mockups */}
-              {(specFiles.length > 0 || allMockupFiles.length > 0) && (
-                <div className="border-t border-[var(--border-subtle)] pt-6 mt-2">
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-[0.06em]">
-                      Specs &amp; Mockups
+              {/* Conversations and specs/mockups sections */}
+              <div className="max-w-[720px] mx-auto px-10 pb-8">
+                {/* Conversations section */}
+                {sessions.length > 0 && (
+                  <div className="border-t border-[var(--border-subtle)] pt-6">
+                    <h3 className="text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-[0.06em] mb-3">
+                      Conversations
                     </h3>
-                    <button
-                      onClick={() => setShowNewSpecDialog(true)}
-                      className="text-[11px] font-medium text-[var(--accent)] hover:text-[var(--accent-hover)] cursor-pointer transition-colors duration-100"
-                    >
-                      + New spec
-                    </button>
+                    <div className="space-y-1">
+                      {sessions.map((session) => {
+                        const isSessionStreaming = isStreaming && activeSessionId === session.id
+                        return (
+                          <button
+                            key={session.id}
+                            onClick={() => openSession(session.id)}
+                            className="flex items-center gap-2 w-full px-3 py-2 rounded-[var(--radius-default)] text-left text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer"
+                          >
+                            <MessageCircle size={13} className="shrink-0 text-[var(--text-muted)]" />
+                            <span className={cn(
+                              'text-[13px] font-medium truncate flex-1',
+                              isSessionStreaming && 'animate-pulse',
+                            )}>
+                              {session.title ?? 'New conversation'}
+                            </span>
+                            <span className="text-[11px] text-[var(--text-muted)] shrink-0">
+                              {isSessionStreaming ? 'Working…' : formatRelativeTime(session.lastMessageAt)}
+                            </span>
+                          </button>
+                        )
+                      })}
+                    </div>
                   </div>
-                  <div className="space-y-1">
-                    {specFiles.map((spec) => {
-                      const label = deriveLabel(spec.filePath, spec.content)
-                      return (
-                        <button
-                          key={spec.filePath}
-                          onClick={() => navigateTo({ type: 'artifact', filePath: spec.filePath })}
-                          className="flex items-center gap-2 w-full px-3 py-2 rounded-[var(--radius-default)] text-left text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer"
-                        >
-                          <FileText size={13} className="shrink-0 text-[var(--text-muted)]" />
-                          <span className="text-[13px] font-medium">{label}</span>
-                          {spec.isNew && (
-                            <span className="text-[10px] text-[var(--green)] font-medium">new</span>
-                          )}
-                          {!spec.isNew && (
-                            <span className="text-[10px] text-[var(--amber)] font-medium">updated</span>
-                          )}
-                        </button>
-                      )
-                    })}
-                    {allMockupFiles.map((mockup) => {
-                      const label = deriveLabel(mockup.filePath, mockup.content)
-                      return (
-                        <button
-                          key={mockup.filePath}
-                          onClick={() => navigateTo({ type: 'mockup', filePath: mockup.filePath })}
-                          className="flex items-center gap-2 w-full px-3 py-2 rounded-[var(--radius-default)] text-left text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer"
-                        >
-                          <FileText size={13} className="shrink-0 text-[var(--text-muted)]" />
-                          <span className="text-[13px] font-medium">{label}</span>
-                        </button>
-                      )
-                    })}
+                )}
+
+                {/* Inline specs and mockups */}
+                {(specFiles.length > 0 || allMockupFiles.length > 0) && (
+                  <div className="border-t border-[var(--border-subtle)] pt-6 mt-2">
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-[0.06em]">
+                        Specs &amp; Mockups
+                      </h3>
+                      <button
+                        onClick={() => setShowNewSpecDialog(true)}
+                        className="text-[11px] font-medium text-[var(--accent)] hover:text-[var(--accent-hover)] cursor-pointer transition-colors duration-100"
+                      >
+                        + New spec
+                      </button>
+                    </div>
+                    <div className="space-y-1">
+                      {specFiles.map((spec) => {
+                        const label = deriveLabel(spec.filePath, spec.content)
+                        return (
+                          <button
+                            key={spec.filePath}
+                            onClick={() => openFile(spec.filePath)}
+                            className="flex items-center gap-2 w-full px-3 py-2 rounded-[var(--radius-default)] text-left text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer"
+                          >
+                            <FileText size={13} className="shrink-0 text-[var(--text-muted)]" />
+                            <span className="text-[13px] font-medium flex-1">{label}</span>
+                            {spec.isNew ? (
+                              <span className="text-[10px] text-[var(--green)] font-medium shrink-0">new</span>
+                            ) : (
+                              <span className="text-[10px] text-[var(--amber)] font-medium shrink-0">updated</span>
+                            )}
+                          </button>
+                        )
+                      })}
+                      {allMockupFiles.map((mockup) => {
+                        const label = deriveLabel(mockup.filePath, mockup.content)
+                        return (
+                          <button
+                            key={mockup.filePath}
+                            onClick={() => openFile(mockup.filePath)}
+                            className="flex items-center gap-2 w-full px-3 py-2 rounded-[var(--radius-default)] text-left text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer"
+                          >
+                            <FileText size={13} className="shrink-0 text-[var(--text-muted)]" />
+                            <span className="text-[13px] font-medium">{label}</span>
+                          </button>
+                        )
+                      })}
+                    </div>
                   </div>
+                )}
+              </div>
+            </div>
+
+            {/* Input bar + pills at bottom */}
+            <div className="w-full flex flex-col items-center shrink-0">
+              {pills.length > 0 && (
+                <div style={{ maxWidth: '680px', padding: '0 24px' }} className="w-full mb-2">
+                  <ActionPills
+                    pills={pills}
+                    onSelect={handlePillSelect}
+                    disabled={isStreaming}
+                  />
                 </div>
               )}
+              <ChatInput
+                onSend={(content) => handleSendMessage(content)}
+                disabled={isStreaming}
+                placeholder="Start a new conversation..."
+                pendingAttachments={chatAttachments.pending}
+                onAddFiles={chatAttachments.addFiles}
+                onRemoveAttachment={chatAttachments.removeAttachment}
+                isUploading={chatAttachments.isUploading}
+              />
             </div>
           </div>
-
-          {/* Input bar + pills at bottom */}
-          <div className="w-full flex flex-col items-center shrink-0">
-            {pills.length > 0 && (
-              <div style={{ maxWidth: '680px', padding: '0 24px' }} className="w-full mb-2">
-                <ActionPills
-                  pills={pills}
-                  onSelect={handlePillSelect}
-                  disabled={isStreaming}
-                />
-              </div>
-            )}
-            <ChatInput
-              onSend={(content) => handleSendMessage(content)}
-              disabled={isStreaming}
-              placeholder="Start a new conversation..."
-              pendingAttachments={chatAttachments.pending}
-              onAddFiles={chatAttachments.addFiles}
-              onRemoveAttachment={chatAttachments.removeAttachment}
-              isUploading={chatAttachments.isUploading}
-            />
-          </div>
-        </div>
+          {/* Files panel — open by default on card home */}
+          <FilesPanel {...filesPanelProps} defaultOpen={true} />
+        </>
       )}
 
       {/* ===== Centred chat ===== */}
       {view.type === 'chat' && (
         <>
           {chatColumn}
-          <SpecsPanel
-            specs={specFiles.map((f) => ({ filePath: f.filePath, isNew: f.isNew, content: f.content }))}
-            mockups={allMockupFiles}
-            onSelectSpec={(fp) => navigateTo({ type: 'artifact', filePath: fp })}
-            onSelectMockup={(fp) => navigateTo({ type: 'mockup', filePath: fp })}
-            onCreateSpec={() => setShowNewSpecDialog(true)}
-            collapsed={!specsPanelOpen}
-            onToggle={() => setSpecsPanelOpen((prev) => !prev)}
-          />
+          {/* Files panel — open by default in chat mode */}
+          <FilesPanel {...filesPanelProps} defaultOpen={true} />
         </>
       )}
 
-      {/* ===== Chat + artifact (spec open) ===== */}
+      {/* ===== Chat + artifact (spec or mockup open) ===== */}
       {view.type === 'artifact' && (
         <>
           <div className="flex flex-col overflow-hidden" style={{ width: '40%', minWidth: '320px' }}>
             {chatColumn}
           </div>
-          <div className="flex flex-col overflow-hidden border-l border-[var(--border-subtle)]" style={{ flex: '1 1 60%' }}>
+          <div className="flex flex-col overflow-hidden border-l border-[var(--border-subtle)] relative" style={{ flex: '1 1 60%' }}>
             {artifactColumn}
+            {/* Files panel — collapsed by default in artifact mode, hover to peek */}
+            <FilesPanel {...filesPanelProps} mode="overlay" defaultOpen={false} />
           </div>
         </>
-      )}
-
-      {/* ===== Focus mode (spec rail + artifact) ===== */}
-      {view.type === 'focus' && (
-        <>
-          <SpecRail
-            specs={specFiles.map((f) => ({ filePath: f.filePath, isNew: f.isNew, content: f.content }))}
-            mockups={allMockupFiles}
-            activeFilePath={view.filePath}
-            onSelectFile={focusNavigate}
-          />
-          <div className="flex flex-col overflow-hidden flex-1">
-            {artifactColumn}
-          </div>
-        </>
-      )}
-
-      {/* ===== Mockup overlay ===== */}
-      {view.type === 'mockup' && activeMockup && (
-        <MockupViewer
-          mockup={activeMockup}
-          onClose={goBack}
-        />
       )}
 
       {/* New spec dialog */}
@@ -827,13 +820,13 @@ export function CardWorkspace({
               <div className="flex justify-end gap-2">
                 <button
                   onClick={discardAndFlip}
-                  className="px-3 py-[6px] rounded-[var(--radius-default)] text-xs font-medium text-[var(--text-secondary)] bg-[var(--bg-surface)] border border-[var(--border-default)] shadow-[var(--shadow-sm)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer"
+                  className="px-[14px] py-[7px] rounded-[var(--radius-default)] text-xs font-medium text-[var(--text-secondary)] bg-[var(--bg-surface)] border border-[var(--border-default)] shadow-[var(--shadow-sm)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer"
                 >
                   Discard
                 </button>
                 <button
                   onClick={saveAndFlip}
-                  className="px-3 py-[6px] rounded-[var(--radius-default)] text-xs font-medium bg-[var(--accent)] text-white hover:bg-[var(--accent-hover)] transition-colors duration-100 cursor-pointer"
+                  className="px-[14px] py-[7px] rounded-[var(--radius-default)] text-xs font-medium bg-[var(--accent)] text-white hover:bg-[var(--accent-hover)] transition-colors duration-100 cursor-pointer"
                 >
                   Save
                 </button>
@@ -856,4 +849,3 @@ function extractAreas(specs: ProjectSpecData[]): string[] {
   }
   return [...areas].sort()
 }
-

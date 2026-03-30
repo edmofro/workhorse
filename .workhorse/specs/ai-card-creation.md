@@ -4,7 +4,7 @@ area: workflow
 status: draft
 ---
 
-Creating a new card from the board starts with a single free-text prompt describing what the user wants to achieve. The AI generates a title and brief description from this input, then opens the card workspace so the user can begin the spec interview immediately via the floating chat.
+Creating a new card from the board starts with a single free-text prompt describing what the user wants to achieve. The AI generates a title and brief description from this input, then opens the card workspace so the user can begin the spec interview immediately via the chat input bar.
 
 This covers the primary "New card" button on the board. The spec explorer has its own quick-start flow (see `spec-explorer.md`) where cards are created with a placeholder title and the user goes straight to spec editing.
 

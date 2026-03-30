@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation'
 import { prisma } from '../../../../../lib/prisma'
 import { CardTab } from '../../../../../components/card/CardTab'
 import { CardWorkspace } from '../../../../../components/card/CardWorkspace'
-import { getChangedFiles, getChangedCodeFiles, readWorktreeFile, worktreeExists } from '../../../../../lib/git/worktree'
+import { getChangedFiles, readWorktreeFile, worktreeExists } from '../../../../../lib/git/worktree'
 import { getCurrentUser } from '../../../../../lib/auth/session'
 import { fetchRepoSpecTree } from '../../../../../lib/git/specTree'
 import { isMockupPath } from '../../../../../lib/paths'
@@ -63,12 +63,11 @@ export default async function CardPage({ params, searchParams }: Props) {
   let initialCodeFiles: { filePath: string; isNew: boolean }[] = []
 
   if (hasWorktree) {
-    const [changedFiles, codeFiles] = await Promise.all([
-      getChangedFiles(owner, repoName, card.identifier, defaultBranch),
-      getChangedCodeFiles(owner, repoName, card.identifier, defaultBranch),
-    ])
+    const { workhorseFiles, codeFiles } = await getChangedFiles(
+      owner, repoName, card.identifier, defaultBranch,
+    )
 
-    const specFiles = changedFiles.filter((f) =>
+    const specFiles = workhorseFiles.filter((f) =>
       f.filePath.startsWith('.workhorse/specs/') ||
       isMockupPath(f.filePath),
     )

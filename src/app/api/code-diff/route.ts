@@ -26,5 +26,9 @@ export async function GET(request: NextRequest) {
     owner, repoName, card.identifier, defaultBranch, filePath,
   )
 
+  if (diff === null) {
+    return NextResponse.json({ error: 'Failed to compute diff' }, { status: 500 })
+  }
+
   return NextResponse.json({ diff })
 }

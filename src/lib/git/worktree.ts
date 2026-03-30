@@ -380,14 +380,20 @@ export async function autoCommit(
 /**
  * Get the list of spec/mockup files changed on a branch vs main.
  */
+interface ChangedFilesResult {
+  workhorseFiles: { filePath: string; isNew: boolean }[]
+  codeFiles: { filePath: string; isNew: boolean }[]
+}
+
 export async function getChangedFiles(
   owner: string,
   repo: string,
   cardIdentifier: string,
   defaultBranch: string,
-): Promise<{ filePath: string; isNew: boolean }[]> {
+): Promise<ChangedFilesResult> {
   const wtPath = worktreePath(owner, repo, cardIdentifier)
-  const changedFiles = new Map<string, boolean>()
+  const workhorseMap = new Map<string, boolean>()
+  const codeFiles: { filePath: string; isNew: boolean }[] = []
 
   // Committed changes: files changed on the card branch vs the default branch.
   try {
@@ -401,7 +407,9 @@ export async function getChangedFiles(
       const status = parts[0]!
       const filePath = status.startsWith('R') ? parts[2]! : parts[1]!
       if (filePath.startsWith('.workhorse/')) {
-        changedFiles.set(filePath, status === 'A')
+        workhorseMap.set(filePath, status === 'A')
+      } else if (codeFiles.length < MAX_CODE_FILES) {
+        codeFiles.push({ filePath, isNew: status === 'A' })
       }
     }
   } catch {
@@ -417,18 +425,21 @@ export async function getChangedFiles(
       const statusCodes = line.slice(0, 2)
       const filePath = line.slice(3)
       if (!filePath.startsWith('.workhorse/')) continue
-      if (changedFiles.has(filePath)) continue
+      if (workhorseMap.has(filePath)) continue
       const isNew = statusCodes === '??' || statusCodes.startsWith('A')
-      changedFiles.set(filePath, isNew)
+      workhorseMap.set(filePath, isNew)
     }
   } catch {
     // Fall through
   }
 
-  return [...changedFiles.entries()].map(([filePath, isNew]) => ({
-    filePath,
-    isNew,
-  }))
+  return {
+    workhorseFiles: [...workhorseMap.entries()].map(([filePath, isNew]) => ({
+      filePath,
+      isNew,
+    })),
+    codeFiles,
+  }
 }
 
 /**
@@ -513,53 +524,18 @@ export async function getFileDiffFromBase(
   cardIdentifier: string,
   defaultBranch: string,
   filePath: string,
-): Promise<string> {
+): Promise<string | null> {
   const wtPath = worktreePath(owner, repo, cardIdentifier)
   safeResolvePath(wtPath, filePath)
 
   try {
     return await git(['diff', `origin/${defaultBranch}...HEAD`, '--', filePath], wtPath)
   } catch {
-    return ''
+    return null
   }
 }
 
-/**
- * Get code files (non-.workhorse/) that have changed on the card branch vs the default branch.
- */
 const MAX_CODE_FILES = 200
-
-export async function getChangedCodeFiles(
-  owner: string,
-  repo: string,
-  cardIdentifier: string,
-  defaultBranch: string,
-): Promise<{ filePath: string; isNew: boolean }[]> {
-  const wtPath = worktreePath(owner, repo, cardIdentifier)
-  const codeFiles: { filePath: string; isNew: boolean }[] = []
-
-  try {
-    const diff = await git(
-      ['diff', '--name-status', `origin/${defaultBranch}...HEAD`],
-      wtPath,
-    )
-
-    for (const line of diff.split('\n').filter(Boolean)) {
-      const parts = line.split('\t')
-      const status = parts[0]!
-      const filePath = status.startsWith('R') ? parts[2]! : parts[1]!
-      // Only include non-.workhorse files
-      if (!filePath.startsWith('.workhorse/')) {
-        codeFiles.push({ filePath, isNew: status === 'A' })
-        if (codeFiles.length >= MAX_CODE_FILES) break
-      }
-    }
-  } catch {
-    // Diff may fail if the default branch ref doesn't exist yet
-  }
-
-  return codeFiles
-}
 
 /**
  * Read a file from the worktree.

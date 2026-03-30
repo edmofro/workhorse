@@ -26,9 +26,16 @@ export function CodeDiffArtifact({ cardId, filePath }: CodeDiffArtifactProps) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const cacheRef = useRef<Map<string, string>>(new Map())
+  const cachedCardIdRef = useRef(cardId)
+
+  // Clear cache when card changes to avoid unbounded growth
+  if (cachedCardIdRef.current !== cardId) {
+    cacheRef.current.clear()
+    cachedCardIdRef.current = cardId
+  }
 
   useEffect(() => {
-    const cacheKey = `${cardId}:${filePath}`
+    const cacheKey = filePath
     const cached = cacheRef.current.get(cacheKey)
     if (cached !== undefined) {
       setDiff(cached)
@@ -51,7 +58,7 @@ export function CodeDiffArtifact({ cardId, filePath }: CodeDiffArtifactProps) {
       .then((data) => {
         if (!cancelled) {
           const diffText = data.diff ?? ''
-          cacheRef.current.set(cacheKey, diffText)
+          cacheRef.current.set(filePath, diffText)
           setDiff(diffText)
           setLoading(false)
         }

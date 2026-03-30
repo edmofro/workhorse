@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import { FileText, Image as ImageIcon, Plus, PanelRightOpen, PanelRightClose } from 'lucide-react'
 import { cn } from '../../lib/cn'
 import { deriveLabel } from '../../lib/labels'
@@ -30,6 +30,13 @@ export function FilesPanel({
   const [pinned, setPinned] = useState(defaultOpen)
   const [hovering, setHovering] = useState(false)
   const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Clean up timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current)
+    }
+  }, [])
 
   const hasFiles = specs.length > 0 || mockups.length > 0
   const isVisible = pinned || hovering

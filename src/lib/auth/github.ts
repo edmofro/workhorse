@@ -104,11 +104,23 @@ export async function hasRepoWriteAccess(
 
 /**
  * Given a list of owner/repo pairs, return the ones the user has write access to.
+ * Results are cached per-token for 5 minutes to avoid blocking every navigation
+ * with GitHub API calls.
  */
+
+const repoAccessCache = new Map<string, { result: Set<string>; expiresAt: number }>()
+const REPO_ACCESS_CACHE_TTL = 5 * 60 * 1000 // 5 minutes
+
 export async function filterAccessibleRepos(
   accessToken: string,
   repos: { owner: string; repoName: string }[],
 ): Promise<Set<string>> {
+  const cacheKey = accessToken.slice(-8) // Use token suffix as key (safe, non-secret)
+  const cached = repoAccessCache.get(cacheKey)
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.result
+  }
+
   const results = await Promise.all(
     repos.map(async ({ owner, repoName }) => {
       const canWrite = await hasRepoWriteAccess(accessToken, owner, repoName)
@@ -116,5 +128,7 @@ export async function filterAccessibleRepos(
     }),
   )
 
-  return new Set(results.filter((r): r is string => r !== null))
+  const result = new Set(results.filter((r): r is string => r !== null))
+  repoAccessCache.set(cacheKey, { result, expiresAt: Date.now() + REPO_ACCESS_CACHE_TTL })
+  return result
 }

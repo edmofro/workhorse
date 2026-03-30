@@ -49,6 +49,8 @@ model Team {
   project              Project              @relation(fields: [projectId], references: [id], onDelete: Cascade)
   cards                Card[]
   conversationSessions ConversationSession[]
+
+  @@index([projectId])
 }
 
 model Card {
@@ -86,6 +88,11 @@ model Card {
   dependsOn    CardDependency[] @relation("dependent")
   dependedOnBy CardDependency[] @relation("parent")
   sessions     ConversationSession[]
+
+  @@index([teamId])
+  @@index([assigneeId])
+  @@index([status])
+  @@index([createdAt(sort: Desc)])
 }
 
 model Mockup {
@@ -97,6 +104,8 @@ model Mockup {
   updatedAt DateTime @updatedAt
 
   card Card @relation(fields: [cardId], references: [id], onDelete: Cascade)
+
+  @@index([cardId])
 }
 
 model CardDependency {
@@ -107,6 +116,7 @@ model CardDependency {
   parent    Card @relation("parent", fields: [parentId], references: [id], onDelete: Cascade)
 
   @@id([dependentId, parentId])
+  @@index([parentId])
 }
 
 model FileLock {
@@ -122,6 +132,8 @@ model FileLock {
   user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@unique([cardId, filePath])
+  @@index([cardId])
+  @@index([expiresAt])
 }
 
 model CardActivity {
@@ -134,6 +146,10 @@ model CardActivity {
 
   card Card @relation(fields: [cardId], references: [id], onDelete: Cascade)
   user User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([cardId])
+  @@index([userId])
+  @@index([createdAt(sort: Desc)])
 }
 
 model CardComment {
@@ -147,6 +163,10 @@ model CardComment {
   card        Card         @relation(fields: [cardId], references: [id], onDelete: Cascade)
   user        User         @relation(fields: [userId], references: [id])
   attachments Attachment[]
+
+  @@index([cardId])
+  @@index([userId])
+  @@index([createdAt(sort: Desc)])
 }
 
 model Attachment {
@@ -163,6 +183,10 @@ model Attachment {
   card       Card?        @relation(fields: [cardId], references: [id], onDelete: Cascade)
   comment    CardComment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
   uploadedBy User         @relation(fields: [uploadedById], references: [id])
+
+  @@index([cardId])
+  @@index([commentId])
+  @@index([uploadedById])
 }
 
 model ConversationSession {

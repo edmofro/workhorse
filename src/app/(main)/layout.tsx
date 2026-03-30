@@ -14,8 +14,13 @@ export default async function MainLayout({
   const user = await getCurrentUser()
   if (!user) redirect('/sign-in')
 
-  const allProjects = await getProjects()
+  // Fetch projects and recent sessions in parallel — both only need user info
+  const [allProjects, recentSessions] = await Promise.all([
+    getProjects(),
+    getRecentSessions(user.id, 8),
+  ])
 
+  // Check repo access (cached for 5 min, so usually instant after first load)
   const accessibleRepoKeys = await filterAccessibleRepos(
     user.accessToken,
     allProjects.map((p) => ({ owner: p.owner, repoName: p.repoName })),
@@ -31,7 +36,6 @@ export default async function MainLayout({
     teams: p.teams.map((t) => ({ id: t.id, name: t.name, colour: t.colour })),
   }))
 
-  const recentSessions = await getRecentSessions(user.id, 8)
   const recentSessionData = recentSessions.map(mapRecentSession)
 
   return (

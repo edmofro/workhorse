@@ -13,16 +13,19 @@ interface Props {
 }
 
 export default async function CardPage({ params, searchParams }: Props) {
-  const { cardId } = await params
-  const { session: sessionParam } = await searchParams
+  const [{ cardId }, { session: sessionParam }, currentUser] = await Promise.all([
+    params,
+    searchParams,
+    getCurrentUser(),
+  ])
 
   const card = await prisma.card.findUnique({
     where: { identifier: cardId },
     include: {
       team: { include: { project: true } },
       assignee: true,
-      dependsOn: { include: { parent: true } },
-      dependedOnBy: { include: { dependent: true } },
+      dependsOn: { include: { parent: { select: { identifier: true, title: true } } } },
+      dependedOnBy: { include: { dependent: { select: { identifier: true, title: true } } } },
       attachments: { where: { commentId: null }, orderBy: { createdAt: 'asc' } },
       mockups: true,
       activities: {
@@ -42,20 +45,34 @@ export default async function CardPage({ params, searchParams }: Props) {
 
   const { owner, repoName, defaultBranch } = card.team.project
 
-  // Parallelise independent fetches
-  const [users, teams, hasWorktree, currentUser, sessions] = await Promise.all([
+  // Parallelise all independent fetches — nothing here depends on another
+  const [users, teams, hasWorktree, sessions, projectSpecs] = await Promise.all([
     prisma.user.findMany({ orderBy: { displayName: 'asc' } }),
     prisma.team.findMany({
       where: { projectId: card.team.projectId },
       orderBy: { name: 'asc' },
     }),
     worktreeExists(owner, repoName, card.identifier),
-    getCurrentUser(),
     prisma.conversationSession.findMany({
       where: { cardId: card.id },
       orderBy: { lastMessageAt: 'desc' },
       take: 20,
     }),
+    // Load project specs in parallel instead of after everything else
+    (async (): Promise<{ filePath: string; content: string }[]> => {
+      if (!currentUser) return []
+      try {
+        const specTree = await fetchRepoSpecTree(
+          currentUser.accessToken, owner, repoName, defaultBranch,
+        )
+        return specTree.files.map((f) => ({
+          filePath: f.path,
+          content: f.content,
+        }))
+      } catch {
+        return []
+      }
+    })(),
   ])
 
   // Load spec files from worktree if it exists
@@ -79,22 +96,6 @@ export default async function CardPage({ params, searchParams }: Props) {
         return { ...f, content }
       }),
     )
-  }
-
-  // Load project specs
-  let projectSpecs: { filePath: string; content: string }[] = []
-  if (currentUser) {
-    try {
-      const specTree = await fetchRepoSpecTree(
-        currentUser.accessToken, owner, repoName, defaultBranch,
-      )
-      projectSpecs = specTree.files.map((f) => ({
-        filePath: f.path,
-        content: f.content,
-      }))
-    } catch {
-      // If we can't load project specs, continue without them
-    }
   }
 
   // Map mockups for the workspace

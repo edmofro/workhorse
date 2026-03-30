@@ -10,10 +10,9 @@ interface Props {
 export default async function DesignPage({ params }: Props) {
   const { projectSlug } = await params
 
-  const allProjects = await prisma.project.findMany()
-  const project = allProjects.find(
-    (p) => p.name.toLowerCase() === projectSlug.toLowerCase(),
-  )
+  const project = await prisma.project.findFirst({
+    where: { name: { equals: decodeURIComponent(projectSlug), mode: 'insensitive' } },
+  })
   if (!project) notFound()
 
   return (

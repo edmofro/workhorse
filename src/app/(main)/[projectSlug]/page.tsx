@@ -14,25 +14,26 @@ export default async function ProjectPage({ params, searchParams }: Props) {
   const { projectSlug } = await params
   const { team: teamFilter, status: statusFilter, assignee: assigneeFilter } = await searchParams
 
-  const projects = await prisma.project.findMany({
-    where: { name: { equals: decodeURIComponent(projectSlug), mode: 'insensitive' } },
-    include: {
-      teams: {
-        include: {
-          cards: {
-            include: { assignee: true, team: true },
-            orderBy: { createdAt: 'desc' },
+  // Fetch project and users in parallel — users don't depend on project
+  const [project, users] = await Promise.all([
+    prisma.project.findFirst({
+      where: { name: { equals: decodeURIComponent(projectSlug), mode: 'insensitive' } },
+      include: {
+        teams: {
+          include: {
+            cards: {
+              include: { assignee: true, team: true },
+              orderBy: { createdAt: 'desc' },
+            },
           },
         },
       },
-    },
-    take: 1,
-  })
-  const project = projects[0]
+    }),
+    prisma.user.findMany({ orderBy: { displayName: 'asc' } }),
+  ])
   if (!project) notFound()
 
   const allCards = project.teams.flatMap((t) => t.cards)
-  const users = await prisma.user.findMany({ orderBy: { displayName: 'asc' } })
 
   let cards = allCards
   if (teamFilter) cards = cards.filter((c) => c.team.id === teamFilter)

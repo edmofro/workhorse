@@ -337,6 +337,28 @@ Thin and unobtrusive. Matches the warm neutral palette.
 
 ---
 
+## Responsiveness & perceived performance
+
+**The UI must feel instant.** Interactions like clicking a card or opening a conversation should produce visible feedback within one frame. If data takes time to load, the structural chrome (topbar, sidebar, layout) should appear immediately with skeleton placeholders for the content. The user should never stare at a frozen screen wondering whether their click registered.
+
+### Principles
+
+- **Loading states are not optional.** Every page must have a `loading.tsx` that renders a skeleton matching the page's eventual layout. Skeletons use `animate-pulse` on `bg-[var(--bg-inset)]` blocks shaped to approximate the real content — never a full-page spinner.
+- **Independent data loads independently.** If one query is slow (e.g. fetching specs from a remote repo), it must not block the rest of the page from rendering. Use `Promise.all` for independent server-side fetches. Use Suspense boundaries to stream sections that depend on slower data.
+- **Navigation feels instant.** Clicking a link should immediately show the skeleton for the target page. The layout (sidebar, topbar) should remain stable — only the content area transitions.
+- **No stale data masquerading as fresh.** Caching is encouraged for expensive operations (GitHub API calls, permission checks), but cached data must have a bounded TTL and must not cause the user to see outdated state for important things like card status or conversation messages.
+- **Optimistic updates for user actions.** When a user changes a card's status, adds a tag, or posts a comment, the UI should reflect the change immediately before the server confirms. Roll back gracefully on failure.
+
+### What to avoid
+
+- Full-page loading spinners or blank white screens during navigation
+- Sequential data fetches that could run in parallel (waterfall queries)
+- Blocking the entire page on a single slow operation (e.g. a GitHub API call)
+- Heavy client-side data refetching on every mount with no caching layer
+- Skeleton layouts that don't match the actual page structure (causes layout shift)
+
+---
+
 ## Things to avoid
 
 These aren't just a checklist — they reflect the philosophy above. When reviewing UI, look for the *pattern* behind each rule, not just the literal item.

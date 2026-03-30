@@ -88,6 +88,8 @@ async function git(
  */
 const lastFetchTime = new Map<string, number>()
 const FETCH_INTERVAL_MS = 30_000
+/** Tracks repos already checked for mirror→bare migration this process. */
+const migratedRepos = new Set<string>()
 
 /**
  * Ensure the bare clone exists and is reasonably up to date.
@@ -105,9 +107,28 @@ export async function ensureBareClone(
   const repoKey = `${owner}/${repo}`
   let clonedJustNow = false
 
-  // Create if missing
+  // Create if missing, or replace if it's a legacy mirror clone
   try {
     await fs.access(barePath)
+
+    // One-time migration: mirror clones have destructive fetch refspecs
+    // that overwrite card branch refs. Wipe and recreate as regular bare.
+    if (!migratedRepos.has(repoKey)) {
+      try {
+        const fetchSpec = await git(['config', '--get', 'remote.origin.fetch'], barePath)
+        if (fetchSpec.includes('+refs/*:refs/*')) {
+          console.warn(`[git] Migrating mirror clone for ${repoKey} — wiping bare clone and worktrees`)
+          const repoDir = path.join(REPOS_BASE, owner, repo)
+          await fs.rm(repoDir, { recursive: true, force: true })
+          await createBareClone(owner, repo, token)
+          clonedJustNow = true
+          lastFetchTime.set(repoKey, Date.now())
+        }
+      } catch {
+        // Config read failed — not a mirror, or already migrated
+      }
+      migratedRepos.add(repoKey)
+    }
   } catch {
     await createBareClone(owner, repo, token)
     clonedJustNow = true
@@ -170,27 +191,6 @@ export async function fetchBareClone(
   // Update the remote URL with the current token so fetch uses valid auth
   const authedUrl = `https://x-access-token:${token}@github.com/${owner}/${repo}.git`
   await git(['remote', 'set-url', 'origin', authedUrl], barePath)
-
-  // Migrate legacy mirror clones: mirror refspec +refs/*:refs/* overwrites
-  // local card branch refs on every fetch, destroying worktree state.
-  // Switch to standard remote tracking so only refs/remotes/origin/* is updated.
-  try {
-    const fetchSpec = await git(['config', '--get', 'remote.origin.fetch'], barePath)
-    if (fetchSpec.includes('+refs/*:refs/*')) {
-      await git(
-        ['config', 'remote.origin.fetch', '+refs/heads/*:refs/remotes/origin/*'],
-        barePath,
-      )
-      // Also remove the mirror flag if present
-      try {
-        await git(['config', '--unset', 'remote.origin.mirror'], barePath)
-      } catch {
-        // May not exist
-      }
-    }
-  } catch {
-    // If config read fails, proceed with fetch anyway
-  }
 
   await git(['fetch', '--prune', 'origin'], barePath, {
     GIT_TERMINAL_PROMPT: '0',

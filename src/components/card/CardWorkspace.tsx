@@ -437,6 +437,7 @@ export function CardWorkspace({
 
       e.preventDefault()
       if (view.type === 'artifact') {
+        if (isEditing) return // Don't close while editing — user must save/discard first
         closeArtifact()
       } else if (view.type === 'chat') {
         goBack()
@@ -444,7 +445,7 @@ export function CardWorkspace({
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [view.type, closeArtifact, goBack])
+  }, [view.type, isEditing, closeArtifact, goBack])
 
   // Scroll chat to bottom on new messages
   useEffect(() => {
@@ -769,13 +770,11 @@ export function CardWorkspace({
           <div className="flex flex-col overflow-hidden" style={{ width: '40%', minWidth: '320px' }}>
             {chatColumn}
           </div>
-          <div className="flex flex-col overflow-hidden border-l border-[var(--border-subtle)] relative" style={{ flex: '1 1 60%' }}>
+          <div className="flex flex-col overflow-hidden border-l border-[var(--border-subtle)]" style={{ flex: '1 1 60%' }}>
             {artifactColumn}
-            {/* Files panel — collapsed by default in artifact mode, hover to peek */}
-            <div className="absolute right-0 top-0 bottom-0 z-20">
-              <FilesPanel {...filesPanelProps} defaultOpen={false} />
-            </div>
           </div>
+          {/* Files panel — collapsed by default in artifact mode, hover to peek */}
+          <FilesPanel {...filesPanelProps} defaultOpen={false} />
         </>
       )}
 

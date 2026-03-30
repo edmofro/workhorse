@@ -140,8 +140,8 @@ export function SpecHeaderBar({
       {/* History (specs only) */}
       {!isMockup && <FileHistory cardId={cardId} filePath={filePath} />}
 
-      {/* Edit button — only when not editing */}
-      {!isEditing && (
+      {/* Edit button — only for specs, and only when not already editing */}
+      {!isMockup && !isEditing && (
         <button
           onClick={onEdit}
           className="inline-flex items-center gap-1 px-2 py-1 rounded-[var(--radius-default)] text-[12px] font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer"

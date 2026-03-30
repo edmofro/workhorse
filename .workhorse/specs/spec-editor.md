@@ -40,24 +40,12 @@ When editing an existing spec, the user can see what they've changed relative to
 - [ ] The comparison baseline is the content from the main branch at the time the spec was attached to the card
 - [ ] The toggle is not shown for new specs (nothing to compare against)
 
-## Saving and committing
-
-Two layers: auto-save writes to the Workhorse database continuously (the user never loses work, no manual save needed), and commit pushes the current state to the project's codebase (branch and PR) — intentional and explicit.
-
-The Commit button is dormant when the codebase is up to date. When the user makes changes that haven't been committed, the button becomes enabled and visually draws attention. After committing, it returns to dormant. Auto-save does not create git commits. Commits are meaningful, intentional checkpoints.
-
 ## Saving
+
+Auto-save writes to the Workhorse database continuously — the user never loses work. Git commits happen automatically when the user leaves edit mode or the agent finishes a turn (see `commit-specs.md` for full details). There is no manual commit button.
 
 - [ ] Auto-save to Workhorse database — continuous, invisible, no data loss
 - [ ] Change history available (who changed what, when)
-
-## Committing
-
-- [ ] Commit button is dormant when no uncommitted changes exist
-- [ ] Commit button becomes enabled and visually prominent when there are uncommitted changes
-- [ ] Clicking Commit pushes current state to the project's codebase
-- [ ] After committing, button returns to dormant state
-- [ ] First commit creates the branch and PR; subsequent commits update them
 
 ## Open questions
 

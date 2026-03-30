@@ -46,6 +46,7 @@ export function useAgentSession(cardId: string, sessionId: string | null) {
   const flushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const assistantContentRef = useRef('')
   const assistantIdRef = useRef('')
+  const turnConfirmedRef = useRef(false)
 
   // Update currentSessionId when prop changes — abort any in-flight stream
   // to prevent events from the old session corrupting the new one
@@ -139,6 +140,7 @@ export function useAgentSession(cardId: string, sessionId: string | null) {
       textBufferRef.current = ''
       assistantContentRef.current = ''
       assistantIdRef.current = assistantId
+      turnConfirmedRef.current = false
       abortRef.current = new AbortController()
 
       // Flush buffered text to React state — called on a 60ms throttle
@@ -263,7 +265,7 @@ export function useAgentSession(cardId: string, sessionId: string | null) {
     assistantId: string,
     scheduleFlush: () => void,
   ) {
-    // Handle session ID from server (sent immediately when session is created)
+    // Handle session ID from server (conversation session, not Agent SDK session)
     if (event.type === 'session') {
       const newSessionId = event.sessionId as string
       setCurrentSessionId(newSessionId)
@@ -279,6 +281,7 @@ export function useAgentSession(cardId: string, sessionId: string | null) {
       return
     }
 
+
     // Handle streaming text and thinking events
     if (event.type === 'stream_event') {
       const streamEvent = event.event as Record<string, unknown> | undefined
@@ -289,6 +292,11 @@ export function useAgentSession(cardId: string, sessionId: string | null) {
         if (delta?.type === 'text_delta' && typeof delta.text === 'string') {
           setThinkingSnippet(null)
           thinkingBufferRef.current = ''
+          // If a previous turn was confirmed, add a blank-line separator
+          if (turnConfirmedRef.current && assistantContentRef.current) {
+            textBufferRef.current += '\n\n'
+            turnConfirmedRef.current = false
+          }
           textBufferRef.current += delta.text
           scheduleFlush()
         }
@@ -300,19 +308,19 @@ export function useAgentSession(cardId: string, sessionId: string | null) {
       }
     }
 
-    // Handle complete assistant messages — confirms streamed content or
-    // appends text from a new turn. Keep the stable ID so subsequent
-    // events in later turns can still find the message.
+    // Handle complete assistant messages — confirms the content that was
+    // already streamed via text_delta events. Text from later turns is
+    // handled by text_delta with a newline separator, so we only need to
+    // flush and confirm here (never re-append).
     if (event.type === 'assistant') {
       const msg = event.message as Record<string, unknown> | undefined
       if (msg?.content && Array.isArray(msg.content)) {
-        const textParts = (msg.content as Array<Record<string, unknown>>)
-          .filter((c) => c.type === 'text')
-          .map((c) => c.text as string)
-          .join('')
+        const hasText = (msg.content as Array<Record<string, unknown>>).some(
+          (c) => c.type === 'text',
+        )
 
-        if (textParts) {
-          // Flush any pending buffer first so assistantContentRef is up to date
+        if (hasText) {
+          // Flush any pending buffer so assistantContentRef is up to date
           const currentContent = assistantContentRef.current + textBufferRef.current
           textBufferRef.current = ''
           if (flushTimerRef.current) {
@@ -320,24 +328,13 @@ export function useAgentSession(cardId: string, sessionId: string | null) {
             flushTimerRef.current = null
           }
 
-          if (!currentContent || currentContent === textParts) {
-            // First text, or exact match of already-streamed content — just confirm
-            assistantContentRef.current = textParts
-            setMessages((prev) =>
-              prev.map((m) =>
-                m.id === assistantId ? { ...m, content: textParts } : m,
-              ),
-            )
-          } else {
-            // New text from a later turn — append to what we already have
-            const newContent = currentContent + '\n\n' + textParts
-            assistantContentRef.current = newContent
-            setMessages((prev) =>
-              prev.map((m) =>
-                m.id === assistantId ? { ...m, content: newContent } : m,
-              ),
-            )
-          }
+          assistantContentRef.current = currentContent
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === assistantId ? { ...m, content: currentContent } : m,
+            ),
+          )
+          turnConfirmedRef.current = true
         }
       }
     }

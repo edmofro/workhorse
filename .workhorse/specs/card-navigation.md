@@ -44,9 +44,9 @@ The default when opening a card. Card details fill the content area, centred. Sp
 Triggered when the user sends a message from card home. The card details slide away and the chat fills the content area (~680px max-width, centred). A thin specs panel on the right lists the card's artifacts.
 
 - [ ] Chat messages render at 680px max-width, centred in the content area
-- [ ] Thin specs panel (~160px) on the right edge lists this card's specs and mockups with new/updated labels — like Claude's "Artifacts" sidebar
+- [ ] Thin specs panel (~180px) on the right edge lists this card's specs and mockups with new/updated labels — like Claude's "Artifacts" sidebar
 - [ ] Specs panel collapses on narrow screens
-- [ ] File write notifications from the AI appear inline in the chat as clickable cards (file name + snippet), like Claude's artifact reference cards
+- [ ] File write notifications from the AI appear inline in the chat as clickable cards (human-readable label + snippet; see labels.md), like Claude's artifact reference cards
 - [ ] Clicking a spec in the right panel or an inline notification opens it as an artifact (chat slides left)
 - [ ] `←` back arrow returns to card home
 - [ ] Suggested action pills visible above the input bar
@@ -261,7 +261,7 @@ Track which quality steps have been completed for each card, surfaced as soft ga
 - [ ] `CardDetailShell.tsx` no longer renders a view toggle
 - [ ] The floating chat panel (previous iteration) is removed entirely — chat is always column-based
 - [ ] `SpecListSidebar.tsx` is replaced by the specs panel (chat mode) and spec rail (focus mode)
-- [ ] `RightPanel.tsx` (previous iteration with search + project specs explorer) is replaced by the specs panel + spec dropdown
+- [ ] `RightPanel.tsx` (previous iteration with search + project specs explorer, 240px wide) is replaced by the specs panel + spec dropdown
 - [ ] URL routing changes: `/cards/[cardId]` is the only route; view state is client-side
 
 ## Open questions

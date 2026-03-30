@@ -65,6 +65,7 @@ Session titles should help users distinguish conversations at a glance in the si
 
 - [ ] For card-bound sessions, the default title format is the card title (e.g. "Fix patient search") since most sessions are about the card's topic
 - [ ] After the first full exchange (user message + assistant response), generate a refined title using a lightweight heuristic: extract a meaningful summary from the user's message, ignoring generic pill text
+- [ ] Title generation is a simple heuristic, not an extra AI call — take the first sentence or clause of the user's first message
 - [ ] Known pill messages (exact matches for action pill text) are not used as titles. Instead, fall back to the card title or "New conversation"
 - [ ] After the assistant's first response, if the response contains substantive content, refine the title by extracting the first meaningful sentence from the assistant's reply (truncated to ~60 chars). This replaces the initial title
 - [ ] Title can be manually renamed later (stretch goal, not v1 priority)

@@ -20,6 +20,7 @@ import { NewSpecDialog } from './NewSpecDialog'
 import { MockupViewer } from './MockupViewer'
 import { FileText, MessageCircle } from 'lucide-react'
 import { parseSpec, buildDefaultSpec, generateSpecPath } from '../../lib/specs/format'
+import { deriveLabel } from '../../lib/labels'
 import { updateCardTitleFromSpec } from '../../lib/actions/cards'
 import { formatRelativeTime } from '../../lib/formatRelativeTime'
 
@@ -145,12 +146,12 @@ export function CardWorkspace({
   const specFiles = files.filter((f) => f.filePath.startsWith('.workhorse/specs/'))
   const mockupFiles = files
     .filter((f) => f.filePath.startsWith('.workhorse/design/mockups/'))
-    .map((f) => ({ filePath: f.filePath }))
+    .map((f) => ({ filePath: f.filePath, content: f.content }))
   const allMockupFiles = [
     ...mockupFiles,
     ...mockups
       .filter((m) => !mockupFiles.some((mf) => mf.filePath === m.filePath))
-      .map((m) => ({ filePath: m.filePath })),
+      .map((m) => ({ filePath: m.filePath, content: m.html })),
   ]
 
   // All navigable files (specs + mockups) for prev/next
@@ -410,7 +411,7 @@ export function CardWorkspace({
     async (title: string, area: string) => {
       await ensureWorktree()
       const filePath = generateSpecPath(area, title)
-      const content = buildDefaultSpec(title, card.identifier, area)
+      const content = buildDefaultSpec(title, area)
       await fetch('/api/worktree-files', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -503,7 +504,7 @@ export function CardWorkspace({
         </div>
       )}
       <div ref={chatScrollRef} className="flex-1 overflow-y-auto flex justify-center">
-        <div className="w-full" style={{ maxWidth: '680px', padding: '32px 24px 16px' }}>
+        <div className="w-full" style={{ maxWidth: '680px', padding: '32px 24px 32px' }}>
           {messages.length === 0 && (
             <div className="text-center py-16">
               <p className="text-[14px] text-[var(--text-muted)] mb-1">
@@ -537,9 +538,9 @@ export function CardWorkspace({
                   <FileText size={12} className="text-[var(--green)] shrink-0" />
                   <span>
                     Updated{' '}
-                    <code className="text-[11px] font-mono">
-                      {fw.filePath.split('/').pop()}
-                    </code>
+                    <span className="font-medium">
+                      {deriveLabel(fw.filePath, files.find((f) => f.filePath === fw.filePath)?.content)}
+                    </span>
                   </span>
                   <span className="ml-auto text-[11px] text-[var(--accent)] font-medium">
                     Open →
@@ -584,9 +585,10 @@ export function CardWorkspace({
     <div className="flex-1 flex flex-col overflow-hidden bg-[var(--bg-surface)]">
       <SpecHeaderBar
         filePath={activeSpec.filePath}
+        fileContent={activeSpec.content}
         cardId={card.id}
         allNavigableFiles={allNavigableFiles}
-        specs={specFiles.map((f) => ({ filePath: f.filePath, isNew: f.isNew }))}
+        specs={specFiles.map((f) => ({ filePath: f.filePath, isNew: f.isNew, content: f.content }))}
         projectSpecs={projectSpecs}
         isFocusMode={view.type === 'focus'}
         isEditing={view.type === 'focus' && view.editing}
@@ -683,7 +685,7 @@ export function CardWorkspace({
                   </div>
                   <div className="space-y-1">
                     {specFiles.map((spec) => {
-                      const fileName = spec.filePath.split('/').pop()?.replace(/\.md$/, '') ?? spec.filePath
+                      const label = deriveLabel(spec.filePath, spec.content)
                       return (
                         <button
                           key={spec.filePath}
@@ -691,7 +693,7 @@ export function CardWorkspace({
                           className="flex items-center gap-2 w-full px-3 py-2 rounded-[var(--radius-default)] text-left text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer"
                         >
                           <FileText size={13} className="shrink-0 text-[var(--text-muted)]" />
-                          <span className="text-[13px] font-medium">{fileName}</span>
+                          <span className="text-[13px] font-medium">{label}</span>
                           {spec.isNew && (
                             <span className="text-[10px] text-[var(--green)] font-medium">new</span>
                           )}
@@ -702,7 +704,7 @@ export function CardWorkspace({
                       )
                     })}
                     {allMockupFiles.map((mockup) => {
-                      const fileName = mockup.filePath.split('/').pop()?.replace(/\.html$/, '') ?? mockup.filePath
+                      const label = deriveLabel(mockup.filePath, mockup.content)
                       return (
                         <button
                           key={mockup.filePath}
@@ -710,7 +712,7 @@ export function CardWorkspace({
                           className="flex items-center gap-2 w-full px-3 py-2 rounded-[var(--radius-default)] text-left text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer"
                         >
                           <FileText size={13} className="shrink-0 text-[var(--text-muted)]" />
-                          <span className="text-[13px] font-medium">{fileName}</span>
+                          <span className="text-[13px] font-medium">{label}</span>
                         </button>
                       )
                     })}
@@ -749,7 +751,7 @@ export function CardWorkspace({
         <>
           {chatColumn}
           <SpecsPanel
-            specs={specFiles.map((f) => ({ filePath: f.filePath, isNew: f.isNew }))}
+            specs={specFiles.map((f) => ({ filePath: f.filePath, isNew: f.isNew, content: f.content }))}
             mockups={allMockupFiles}
             onSelectSpec={(fp) => navigateTo({ type: 'artifact', filePath: fp })}
             onSelectMockup={(fp) => navigateTo({ type: 'mockup', filePath: fp })}
@@ -776,7 +778,7 @@ export function CardWorkspace({
       {view.type === 'focus' && (
         <>
           <SpecRail
-            specs={specFiles.map((f) => ({ filePath: f.filePath, isNew: f.isNew }))}
+            specs={specFiles.map((f) => ({ filePath: f.filePath, isNew: f.isNew, content: f.content }))}
             mockups={allMockupFiles}
             activeFilePath={view.filePath}
             onSelectFile={focusNavigate}
@@ -817,9 +819,9 @@ export function CardWorkspace({
               </h2>
               <p className="text-[13px] text-[var(--text-secondary)] mb-5">
                 You have unsaved changes to{' '}
-                <code className="text-[12px] font-mono">
-                  {savePrompt.fromPath.split('/').pop()}
-                </code>
+                <span className="font-medium">
+                  {deriveLabel(savePrompt.fromPath, files.find((f) => f.filePath === savePrompt.fromPath)?.content)}
+                </span>
                 . Save before switching?
               </p>
               <div className="flex justify-end gap-2">

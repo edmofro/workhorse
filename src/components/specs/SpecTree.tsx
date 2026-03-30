@@ -9,10 +9,11 @@ interface SpecTreeProps {
   files: string[]
   selectedPath: string | null
   onSelect: (path: string) => void
+  contentMap?: Map<string, string>
 }
 
-export function SpecTree({ files, selectedPath, onSelect }: SpecTreeProps) {
-  const tree = buildSpecTree(files)
+export function SpecTree({ files, selectedPath, onSelect, contentMap }: SpecTreeProps) {
+  const tree = buildSpecTree(files, contentMap)
 
   return (
     <div>

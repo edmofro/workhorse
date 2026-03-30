@@ -31,11 +31,6 @@ export function SpecDocument({ path, content, onEdit, isCreating }: SpecDocument
         )}
       </div>
       <div className="text-[14px] text-[var(--text-muted)] mb-8">
-        {parsed.frontmatter.card && (
-          <span className="font-mono text-[12px] mr-2">
-            {parsed.frontmatter.card}
-          </span>
-        )}
         {parsed.frontmatter.status && (
           <span className="capitalize">{parsed.frontmatter.status}</span>
         )}

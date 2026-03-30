@@ -109,7 +109,7 @@ export function FloatingChat({
           </p>
         )}
         {recentMessages.map((msg) => (
-          <div key={msg.id} className="mb-2 last:mb-0">
+          <div key={msg.id} className="mb-2 last:mb-3">
             <ChatMessage
               role={msg.role}
               content={msg.content}

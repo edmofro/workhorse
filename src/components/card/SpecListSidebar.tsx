@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { FileText, Plus, ChevronRight, Search } from 'lucide-react'
 import { cn } from '../../lib/cn'
+import { deriveLabel, matchesSearch } from '../../lib/labels'
 
 interface SpecData {
   id: string
@@ -47,8 +48,8 @@ export function SpecListSidebar({
   const filteredProjectSpecs = projectSpecs.filter((ps) => {
     if (attachedPaths.has(ps.filePath)) return false
     if (!query.trim()) return true
-    const name = ps.filePath.split('/').pop() ?? ps.filePath
-    return name.toLowerCase().includes(query.toLowerCase())
+    const label = deriveLabel(ps.filePath, ps.content)
+    return matchesSearch(query, ps.filePath, label)
   })
 
   return (
@@ -70,7 +71,7 @@ export function SpecListSidebar({
       </div>
 
       {specs.map((spec) => {
-        const fileName = spec.filePath.split('/').pop() ?? spec.filePath
+        const fileName = deriveLabel(spec.filePath)
         const isActive = spec.id === activeSpecId
 
         return (
@@ -135,7 +136,7 @@ export function SpecListSidebar({
                 </p>
               )}
               {filteredProjectSpecs.map((ps) => {
-                const fileName = ps.filePath.split('/').pop() ?? ps.filePath
+                const fileName = deriveLabel(ps.filePath, ps.content)
                 return (
                   <div
                     key={ps.id}

@@ -3,14 +3,17 @@
 import { useState, useEffect } from 'react'
 import { FileText, Image as ImageIcon, Plus, ChevronRight, Search, PanelRightClose, PanelRightOpen } from 'lucide-react'
 import { cn } from '../../lib/cn'
+import { deriveLabel, matchesSearch } from '../../lib/labels'
 
 interface SpecFileItem {
   filePath: string
   isNew: boolean
+  content?: string
 }
 
 interface MockupFileItem {
   filePath: string
+  content?: string
 }
 
 interface ProjectSpecItem {
@@ -62,8 +65,8 @@ export function RightPanel({
   const filteredProjectSpecs = projectSpecs.filter((ps) => {
     if (attachedPaths.has(ps.filePath)) return false
     if (!searchQuery.trim()) return true
-    const name = ps.filePath.split('/').pop() ?? ps.filePath
-    return name.toLowerCase().includes(searchQuery.toLowerCase())
+    const label = deriveLabel(ps.filePath, ps.content)
+    return matchesSearch(searchQuery, ps.filePath, label)
   })
 
   // Auto-expand project specs when user starts searching
@@ -77,15 +80,15 @@ export function RightPanel({
   // Filter card specs by search too
   const filteredSpecs = searchQuery.trim()
     ? specs.filter((s) => {
-        const name = s.filePath.split('/').pop() ?? s.filePath
-        return name.toLowerCase().includes(searchQuery.toLowerCase())
+        const label = deriveLabel(s.filePath, s.content)
+        return matchesSearch(searchQuery, s.filePath, label)
       })
     : specs
 
   const filteredMockups = searchQuery.trim()
     ? mockups.filter((m) => {
-        const name = m.filePath.split('/').pop() ?? m.filePath
-        return name.toLowerCase().includes(searchQuery.toLowerCase())
+        const label = deriveLabel(m.filePath, m.content)
+        return matchesSearch(searchQuery, m.filePath, label)
       })
     : mockups
 
@@ -106,7 +109,7 @@ export function RightPanel({
   return (
     <aside
       className="shrink-0 border-l border-[var(--border-subtle)] bg-[var(--bg-page)] flex flex-col overflow-y-auto"
-      style={{ width: '216px' }}
+      style={{ width: '240px' }}
     >
       {/* Collapse toggle */}
       <div className="flex items-center justify-between px-3 pt-3 pb-1">
@@ -119,14 +122,14 @@ export function RightPanel({
             className="p-1 text-[var(--text-muted)] hover:text-[var(--accent)] transition-colors duration-100 cursor-pointer"
             title="New spec"
           >
-            <Plus size={12} />
+            <Plus size={14} />
           </button>
           <button
             onClick={() => setCollapsed(true)}
             className="p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors duration-100 cursor-pointer"
             title="Collapse panel"
           >
-            <PanelRightClose size={12} />
+            <PanelRightClose size={14} />
           </button>
         </div>
       </div>
@@ -138,7 +141,7 @@ export function RightPanel({
         </p>
       )}
       {filteredSpecs.map((spec) => {
-        const fileName = spec.filePath.split('/').pop() ?? spec.filePath
+        const fileName = deriveLabel(spec.filePath, spec.content)
         const isActive = spec.filePath === activeFilePath
         return (
           <button
@@ -169,7 +172,7 @@ export function RightPanel({
             </span>
           </div>
           {filteredMockups.map((mockup) => {
-            const fileName = mockup.filePath.split('/').pop() ?? mockup.filePath
+            const fileName = deriveLabel(mockup.filePath, mockup.content)
             return (
               <button
                 key={mockup.filePath}
@@ -232,7 +235,7 @@ export function RightPanel({
                 </p>
               )}
               {filteredProjectSpecs.map((ps) => {
-                const fileName = ps.filePath.split('/').pop() ?? ps.filePath
+                const fileName = deriveLabel(ps.filePath, ps.content)
                 return (
                   <button
                     key={ps.filePath}

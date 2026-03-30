@@ -34,12 +34,12 @@ export async function fetchDesignLibrary(
   try {
     const { stdout } = await execFileAsync(
       'git',
-      ['ls-tree', '-r', '--name-only', `refs/heads/${branch}`, '--', '.workhorse/design/'],
+      ['ls-tree', '-r', '--name-only', `origin/${branch}`, '--', '.workhorse/design/'],
       { cwd: barePath },
     )
     lsOutput = stdout.trim()
   } catch (err) {
-    console.error(`[design] ls-tree failed in ${barePath} for refs/heads/${branch}:`, err)
+    console.error(`[design] ls-tree failed in ${barePath} for origin/${branch}:`, err)
     return []
   }
 
@@ -56,7 +56,7 @@ export async function fetchDesignLibrary(
     try {
       const { stdout } = await execFileAsync(
         'git',
-        ['show', `refs/heads/${branch}:${filePath}`],
+        ['show', `origin/${branch}:${filePath}`],
         { cwd: barePath },
       )
 

@@ -3,9 +3,15 @@
  *
  * Storage layout:
  *   /data/repos/{owner}/{repo}/
- *     bare.git/                       — bare mirror clone, shared objects
+ *     bare.git/                       — bare clone, shared objects
  *     worktrees/
  *       wh-042--{session-prefix}/     — one worktree per active card
+ *
+ * IMPORTANT: The bare clone must NOT be a mirror (--mirror). Mirror clones
+ * use fetch refspec +refs/*:refs/* which overwrites ALL local refs on fetch,
+ * including card branch refs — destroying worktree state. We use a regular
+ * bare clone where remote refs live at refs/remotes/origin/* and local card
+ * branches at refs/heads/* are safe from fetch.
  */
 
 import { execFile } from 'child_process'
@@ -82,6 +88,8 @@ async function git(
  */
 const lastFetchTime = new Map<string, number>()
 const FETCH_INTERVAL_MS = 30_000
+/** Tracks repos already checked for mirror→bare migration this process. */
+const migratedRepos = new Set<string>()
 
 /**
  * Ensure the bare clone exists and is reasonably up to date.
@@ -99,16 +107,46 @@ export async function ensureBareClone(
   const repoKey = `${owner}/${repo}`
   let clonedJustNow = false
 
-  // Create if missing
+  // Create if missing, or replace if it's a legacy mirror clone
   try {
     await fs.access(barePath)
+
+    // One-time check: ensure the bare clone has the correct fetch refspec.
+    // Mirror clones (+refs/*:refs/*) overwrite card branches — wipe them.
+    // Bare clones without a refspec (from earlier bug) need one configured.
+    if (!migratedRepos.has(repoKey)) {
+      try {
+        const fetchSpec = await git(['config', '--get', 'remote.origin.fetch'], barePath)
+        if (fetchSpec.includes('+refs/*:refs/*')) {
+          console.warn(`[git] Migrating mirror clone for ${repoKey} — wiping bare clone and worktrees`)
+          const repoDir = path.join(REPOS_BASE, owner, repo)
+          await fs.rm(repoDir, { recursive: true, force: true })
+          await createBareClone(owner, repo, token)
+          clonedJustNow = true
+          lastFetchTime.set(repoKey, Date.now())
+        }
+      } catch {
+        // No fetch refspec configured — fix it and fetch
+        console.warn(`[git] Bare clone for ${repoKey} missing fetch refspec, configuring`)
+        await git(
+          ['config', 'remote.origin.fetch', '+refs/heads/*:refs/remotes/origin/*'],
+          barePath,
+        )
+        // Update remote URL with current token before fetching
+        const authedUrl = `https://x-access-token:${token}@github.com/${owner}/${repo}.git`
+        await git(['remote', 'set-url', 'origin', authedUrl], barePath)
+        await git(['fetch', 'origin'], barePath, { GIT_TERMINAL_PROMPT: '0' })
+        lastFetchTime.set(repoKey, Date.now())
+      }
+      migratedRepos.add(repoKey)
+    }
   } catch {
     await createBareClone(owner, repo, token)
     clonedJustNow = true
     lastFetchTime.set(repoKey, Date.now())
   }
 
-  // Fetch if stale (skip if we just cloned — mirror clone already has everything)
+  // Fetch if stale (skip if we just cloned)
   const lastFetch = lastFetchTime.get(repoKey) ?? 0
   if (!clonedJustNow && Date.now() - lastFetch > FETCH_INTERVAL_MS) {
     try {
@@ -123,7 +161,7 @@ export async function ensureBareClone(
 }
 
 /**
- * Create a bare mirror clone of a repo.
+ * Create a bare clone of a repo.
  * Prefer ensureBareClone() which handles creation + refresh in one call.
  */
 export async function createBareClone(
@@ -144,9 +182,19 @@ export async function createBareClone(
   await fs.mkdir(path.dirname(barePath), { recursive: true })
 
   const cloneUrl = `https://x-access-token:${token}@github.com/${owner}/${repo}.git`
-  await execFileAsync('git', ['clone', '--mirror', cloneUrl, barePath], {
+  await execFileAsync('git', ['clone', '--bare', cloneUrl, barePath], {
     maxBuffer: 50 * 1024 * 1024,
   })
+
+  // --bare doesn't set up remote tracking refs. Configure the fetch refspec
+  // so that `git fetch origin` populates refs/remotes/origin/* and
+  // `origin/main` resolves correctly. This also ensures card branches at
+  // refs/heads/* are never touched by fetch.
+  await git(
+    ['config', 'remote.origin.fetch', '+refs/heads/*:refs/remotes/origin/*'],
+    barePath,
+  )
+  await git(['fetch', 'origin'], barePath, { GIT_TERMINAL_PROMPT: '0' })
 
   return barePath
 }
@@ -162,9 +210,9 @@ export async function fetchBareClone(
 ): Promise<void> {
   const barePath = bareClonePath(owner, repo)
   // Update the remote URL with the current token so fetch uses valid auth
-  // (the mirror clone may have been created with an older/different token)
   const authedUrl = `https://x-access-token:${token}@github.com/${owner}/${repo}.git`
   await git(['remote', 'set-url', 'origin', authedUrl], barePath)
+
   await git(['fetch', '--prune', 'origin'], barePath, {
     GIT_TERMINAL_PROMPT: '0',
   })
@@ -194,21 +242,31 @@ export async function createWorktree(
 
   await fs.mkdir(path.dirname(wtPath), { recursive: true })
 
-  // Check if the branch exists in the bare clone
-  let branchExists = false
+  // Check if the branch exists locally (from a previous worktree session)
+  // or on the remote (pushed by a previous deploy)
+  let startPoint: string | null = null
   try {
     await git(['rev-parse', '--verify', `refs/heads/${branchName}`], barePath)
-    branchExists = true
+    startPoint = branchName // local branch exists
   } catch {
-    // Branch doesn't exist yet
+    try {
+      await git(['rev-parse', '--verify', `refs/remotes/origin/${branchName}`], barePath)
+      startPoint = `origin/${branchName}` // remote branch exists
+    } catch {
+      // Branch doesn't exist anywhere — will create from default branch
+    }
   }
 
-  if (branchExists) {
+  if (startPoint === branchName) {
+    // Local branch exists — check it out
     await git(['worktree', 'add', wtPath, branchName], barePath)
+  } else if (startPoint) {
+    // Remote branch exists — create local tracking branch
+    await git(['worktree', 'add', '-b', branchName, wtPath, startPoint], barePath)
   } else {
-    // Create branch from default branch
+    // New branch from default branch
     await git(
-      ['worktree', 'add', '-b', branchName, wtPath, `refs/heads/${defaultBranch}`],
+      ['worktree', 'add', '-b', branchName, wtPath, `origin/${defaultBranch}`],
       barePath,
     )
   }
@@ -324,31 +382,48 @@ export async function getChangedFiles(
   defaultBranch: string,
 ): Promise<{ filePath: string; isNew: boolean }[]> {
   const wtPath = worktreePath(owner, repo, cardIdentifier)
+  const changedFiles = new Map<string, boolean>()
 
+  // Committed changes: files changed on the card branch vs the default branch.
   try {
     const diff = await git(
       ['diff', '--name-status', `origin/${defaultBranch}...HEAD`],
       wtPath,
     )
 
-    return diff
-      .split('\n')
-      .filter(Boolean)
-      .map((line) => {
-        const parts = line.split('\t')
-        const status = parts[0]!
-        // For renames (R100), the new path is the third column
-        const filePath = status.startsWith('R') ? parts[2]! : parts[1]!
-        return { status, filePath }
-      })
-      .filter(({ filePath }) => filePath.startsWith('.workhorse/'))
-      .map(({ status, filePath }) => ({
-        filePath,
-        isNew: status === 'A',
-      }))
+    for (const line of diff.split('\n').filter(Boolean)) {
+      const parts = line.split('\t')
+      const status = parts[0]!
+      const filePath = status.startsWith('R') ? parts[2]! : parts[1]!
+      if (filePath.startsWith('.workhorse/')) {
+        changedFiles.set(filePath, status === 'A')
+      }
+    }
   } catch {
-    return []
+    // Diff may fail if the default branch ref doesn't exist yet — continue
+    // to check working tree below.
   }
+
+  // Uncommitted changes: files the agent has written but not yet committed.
+  // This covers both staged/unstaged modifications and new untracked files.
+  try {
+    const porcelain = await git(['status', '--porcelain', '--', '.workhorse/'], wtPath)
+    for (const line of porcelain.split('\n').filter(Boolean)) {
+      const statusCodes = line.slice(0, 2)
+      const filePath = line.slice(3)
+      if (!filePath.startsWith('.workhorse/')) continue
+      if (changedFiles.has(filePath)) continue
+      const isNew = statusCodes === '??' || statusCodes.startsWith('A')
+      changedFiles.set(filePath, isNew)
+    }
+  } catch {
+    // Fall through
+  }
+
+  return [...changedFiles.entries()].map(([filePath, isNew]) => ({
+    filePath,
+    isNew,
+  }))
 }
 
 /**

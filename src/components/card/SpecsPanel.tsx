@@ -2,6 +2,7 @@
 
 import { FileText, Image as ImageIcon, Plus, PanelRightOpen, PanelRightClose } from 'lucide-react'
 import { cn } from '../../lib/cn'
+import { deriveLabel } from '../../lib/labels'
 import type { SpecFileItem, MockupFileItem } from './types'
 
 interface SpecsPanelProps {
@@ -56,7 +57,7 @@ export function SpecsPanel({
   return (
     <aside
       className="shrink-0 border-l border-[var(--border-subtle)] bg-[var(--bg-page)] flex flex-col overflow-y-auto"
-      style={{ width: '160px' }}
+      style={{ width: '180px' }}
     >
       <div className="flex items-center justify-between px-3 pt-3 pb-1">
         <span className="text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-[0.06em]">
@@ -65,18 +66,18 @@ export function SpecsPanel({
         <div className="flex items-center gap-1">
           <button
             onClick={onCreateSpec}
-            className="p-1 text-[var(--text-muted)] hover:text-[var(--accent)] transition-colors duration-100 cursor-pointer"
+            className="p-1.5 text-[var(--text-muted)] hover:text-[var(--accent)] transition-colors duration-100 cursor-pointer"
             title="New spec"
           >
-            <Plus size={11} />
+            <Plus size={14} />
           </button>
           {onToggle && (
             <button
               onClick={onToggle}
-              className="p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors duration-100 cursor-pointer"
+              className="p-1.5 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors duration-100 cursor-pointer"
               title="Collapse specs panel"
             >
-              <PanelRightClose size={11} />
+              <PanelRightClose size={14} />
             </button>
           )}
         </div>
@@ -88,7 +89,7 @@ export function SpecsPanel({
         </p>
       )}
       {specs.map((spec) => {
-        const fileName = spec.filePath.split('/').pop()?.replace(/\.md$/, '') ?? spec.filePath
+        const fileName = deriveLabel(spec.filePath, spec.content)
         const isActive = spec.filePath === activeFilePath
         return (
           <button
@@ -118,7 +119,7 @@ export function SpecsPanel({
             </span>
           </div>
           {mockups.map((mockup) => {
-            const fileName = mockup.filePath.split('/').pop()?.replace(/\.html$/, '') ?? mockup.filePath
+            const fileName = deriveLabel(mockup.filePath, mockup.content)
             return (
               <button
                 key={mockup.filePath}

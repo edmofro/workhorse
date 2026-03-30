@@ -7,9 +7,7 @@ import { useCallback, useReducer, useState } from 'react'
 export type ViewState =
   | { type: 'card' }
   | { type: 'chat'; sessionId: string | null; sessionTitle: string | null }
-  | { type: 'artifact'; filePath: string }
-  | { type: 'focus'; filePath: string; editing: boolean }
-  | { type: 'mockup'; filePath: string }
+  | { type: 'artifact'; filePath: string; editing: boolean }
 
 type ViewAction =
   | { type: 'navigate'; to: ViewState }
@@ -38,15 +36,15 @@ function viewReducer(state: ViewNavState, action: ViewAction): ViewNavState {
       }
     }
     case 'close_artifact': {
-      // Close artifact -> return to centred chat. Clear history past chat
+      // Close artifact -> return to centred chat. Clear artifact entries from history
       // so back goes to card home, not a stale artifact entry.
-      // Preserve the session context from the most recent chat in history
+      // Preserve the session context from the most recent chat in history.
       const lastChat = [...state.history].reverse().find((v) => v.type === 'chat')
       const sessionId = lastChat?.type === 'chat' ? lastChat.sessionId : null
       const sessionTitle = lastChat?.type === 'chat' ? lastChat.sessionTitle : null
       return {
         current: { type: 'chat', sessionId, sessionTitle },
-        history: state.history.filter((v) => v.type !== 'artifact' && v.type !== 'focus'),
+        history: state.history.filter((v) => v.type !== 'artifact'),
       }
     }
   }
@@ -55,8 +53,8 @@ function viewReducer(state: ViewNavState, action: ViewAction): ViewNavState {
 export interface SavePrompt {
   /** File being edited */
   fromPath: string
-  /** Where to go after save/discard. null = exit to artifact mode */
-  toPath: string | null
+  /** Where to go after save/discard */
+  toPath: string
 }
 
 interface UseViewNavigationOptions {
@@ -83,7 +81,7 @@ export function useViewNavigation({
   const [savePrompt, setSavePrompt] = useState<SavePrompt | null>(null)
 
   /** Whether the view is currently in an editing state */
-  const isEditing = view.type === 'focus' && view.editing
+  const isEditing = view.type === 'artifact' && view.editing
 
   const navigateTo = useCallback((next: ViewState) => {
     dispatchView({ type: 'navigate', to: next })
@@ -97,140 +95,81 @@ export function useViewNavigation({
     dispatchView({ type: 'close_artifact' })
   }, [])
 
-  // Open a spec as an artifact (always navigates to artifact mode)
-  const openSpec = useCallback(
-    (filePath: string) => {
-      navigateTo({ type: 'artifact', filePath })
-    },
-    [navigateTo],
-  )
-
-  // Open a file — routes to mockup or artifact depending on path
+  // Open a file as an artifact (specs and mockups use the same view)
   const openFile = useCallback(
     (filePath: string) => {
-      if (filePath.startsWith('.workhorse/design/mockups/')) {
-        navigateTo({ type: 'mockup', filePath })
-      } else {
-        navigateTo({ type: 'artifact', filePath })
-      }
+      navigateTo({ type: 'artifact', filePath, editing: false })
     },
     [navigateTo],
   )
 
-  // Focus mode: navigate to different file (with save prompt if editing)
-  const focusNavigate = useCallback(
+  // Navigate to a different file while in artifact mode (with save prompt if editing)
+  const navigateToFile = useCallback(
     (filePath: string) => {
-      if (view.type === 'focus' && view.editing && view.filePath !== filePath) {
+      if (view.type === 'artifact' && view.editing && view.filePath !== filePath) {
         setSavePrompt({ fromPath: view.filePath, toPath: filePath })
         return
       }
       dispatchView({
         type: 'navigate',
-        to: { type: 'focus', filePath, editing: false },
+        to: { type: 'artifact', filePath, editing: false },
       })
     },
     [view],
   )
 
-  // Prev/Next spec navigation
+  // Prev/Next file navigation
   const navigatePrev = useCallback(() => {
-    const currentPath = view.type === 'artifact' || view.type === 'focus' ? view.filePath : null
+    const currentPath = view.type === 'artifact' ? view.filePath : null
     if (!currentPath) return
     const idx = allNavigableFiles.indexOf(currentPath)
     if (idx > 0) {
-      const newPath = allNavigableFiles[idx - 1]
-      if (view.type === 'focus') {
-        focusNavigate(newPath)
-      } else {
-        dispatchView({ type: 'navigate', to: { type: 'artifact', filePath: newPath } })
-      }
+      navigateToFile(allNavigableFiles[idx - 1])
     }
-  }, [view, allNavigableFiles, focusNavigate])
+  }, [view, allNavigableFiles, navigateToFile])
 
   const navigateNext = useCallback(() => {
-    const currentPath = view.type === 'artifact' || view.type === 'focus' ? view.filePath : null
+    const currentPath = view.type === 'artifact' ? view.filePath : null
     if (!currentPath) return
     const idx = allNavigableFiles.indexOf(currentPath)
     if (idx < allNavigableFiles.length - 1) {
-      const newPath = allNavigableFiles[idx + 1]
-      if (view.type === 'focus') {
-        focusNavigate(newPath)
-      } else {
-        dispatchView({ type: 'navigate', to: { type: 'artifact', filePath: newPath } })
-      }
+      navigateToFile(allNavigableFiles[idx + 1])
     }
-  }, [view, allNavigableFiles, focusNavigate])
+  }, [view, allNavigableFiles, navigateToFile])
 
-  // Enter focus mode (from artifact)
-  const enterFocus = useCallback(() => {
-    const filePath = view.type === 'artifact' ? view.filePath : null
-    if (!filePath) return
-    dispatchView({
-      type: 'navigate',
-      to: { type: 'focus', filePath, editing: false },
-    })
-  }, [view])
-
-  // Enter focus + editing (from artifact or focus)
+  // Enter editing mode in-place (no layout change)
   const enterEdit = useCallback(async () => {
-    const filePath =
-      view.type === 'artifact' ? view.filePath :
-      view.type === 'focus' ? view.filePath : null
-    if (!filePath) return
+    if (view.type !== 'artifact') return
     try {
-      const ok = await onStartEditing(filePath)
+      const ok = await onStartEditing(view.filePath)
       if (!ok) return
     } catch {
       return
     }
     dispatchView({
       type: 'navigate',
-      to: { type: 'focus', filePath, editing: true },
+      to: { type: 'artifact', filePath: view.filePath, editing: true },
     })
   }, [view, onStartEditing])
 
-  // Done editing -> back to focus read-only
+  // Done editing -> back to read-only artifact
   const finishEditing = useCallback(async () => {
-    const filePath = view.type === 'focus' ? view.filePath : null
-    if (!filePath) return
-    await onDoneEditing(filePath)
+    if (view.type !== 'artifact' || !view.editing) return
+    await onDoneEditing(view.filePath)
     dispatchView({
       type: 'navigate',
-      to: { type: 'focus', filePath, editing: false },
+      to: { type: 'artifact', filePath: view.filePath, editing: false },
     })
   }, [view, onDoneEditing])
 
-  // Exit focus -> back to artifact. Prompts save if editing.
-  const exitFocus = useCallback(() => {
-    if (view.type !== 'focus') return
-    if (view.editing) {
-      // Prompt save — toPath null means "exit to artifact mode"
-      setSavePrompt({ fromPath: view.filePath, toPath: null })
-      return
-    }
-    dispatchView({
-      type: 'navigate',
-      to: { type: 'artifact', filePath: view.filePath },
-    })
-  }, [view])
-
-  // Save prompt: save and continue
+  // Save prompt: save and continue to the target file
   const saveAndFlip = useCallback(async () => {
     if (!savePrompt) return
     await onDoneEditing(savePrompt.fromPath)
-    if (savePrompt.toPath) {
-      // Flipping to another file in focus mode
-      dispatchView({
-        type: 'navigate',
-        to: { type: 'focus', filePath: savePrompt.toPath, editing: false },
-      })
-    } else {
-      // Exiting focus mode to artifact
-      dispatchView({
-        type: 'navigate',
-        to: { type: 'artifact', filePath: savePrompt.fromPath },
-      })
-    }
+    dispatchView({
+      type: 'navigate',
+      to: { type: 'artifact', filePath: savePrompt.toPath, editing: false },
+    })
     setSavePrompt(null)
   }, [savePrompt, onDoneEditing])
 
@@ -239,17 +178,10 @@ export function useViewNavigation({
     if (!savePrompt) return
     await onRestoreContent(savePrompt.fromPath)
     await onReleaseLock(savePrompt.fromPath)
-    if (savePrompt.toPath) {
-      dispatchView({
-        type: 'navigate',
-        to: { type: 'focus', filePath: savePrompt.toPath, editing: false },
-      })
-    } else {
-      dispatchView({
-        type: 'navigate',
-        to: { type: 'artifact', filePath: savePrompt.fromPath },
-      })
-    }
+    dispatchView({
+      type: 'navigate',
+      to: { type: 'artifact', filePath: savePrompt.toPath, editing: false },
+    })
     setSavePrompt(null)
   }, [savePrompt, onReleaseLock, onRestoreContent])
 
@@ -259,15 +191,12 @@ export function useViewNavigation({
     navigateTo,
     goBack,
     closeArtifact,
-    openSpec,
     openFile,
-    focusNavigate,
+    navigateToFile,
     navigatePrev,
     navigateNext,
-    enterFocus,
     enterEdit,
     finishEditing,
-    exitFocus,
     savePrompt,
     saveAndFlip,
     discardAndFlip,

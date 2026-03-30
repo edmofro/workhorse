@@ -1,11 +1,20 @@
 'use client'
 
 import { useState, useCallback } from 'react'
-import { ChevronLeft, ChevronRight, ChevronDown, Maximize2, Minimize2, X, Pencil } from 'lucide-react'
+import { ChevronLeft, ChevronRight, ChevronDown, X, Pencil, Monitor, Tablet, Smartphone } from 'lucide-react'
 import { SpecDropdown } from './SpecDropdown'
 import { FileHistory } from './FileHistory'
 import { deriveLabel } from '../../lib/labels'
 import type { SpecFileItem, ProjectSpecItem } from './types'
+import { cn } from '../../lib/cn'
+
+const DEVICES = [
+  { key: 'desktop', label: 'Desktop', icon: Monitor },
+  { key: 'tablet', label: 'Tablet', icon: Tablet },
+  { key: 'mobile', label: 'Mobile', icon: Smartphone },
+] as const
+
+export type DeviceKey = (typeof DEVICES)[number]['key']
 
 interface SpecHeaderBarProps {
   filePath: string
@@ -16,18 +25,22 @@ interface SpecHeaderBarProps {
   allNavigableFiles: string[]
   specs: SpecFileItem[]
   projectSpecs: ProjectSpecItem[]
-  isFocusMode: boolean
   isEditing: boolean
+  /** Whether this is a mockup file (shows device toggle) */
+  isMockup?: boolean
+  /** Current device selection for mockups */
+  device?: DeviceKey
+  /** Callback for device change */
+  onDeviceChange?: (device: DeviceKey) => void
   onPrev: () => void
   onNext: () => void
   onSelectSpec: (filePath: string) => void
   onSelectProjectSpec: (filePath: string, content: string) => void
-  onToggleFocus: () => void
   onClose: () => void
   onEdit: () => void
 }
 
-/** Header bar at the top of the artifact/spec area with navigation controls. */
+/** Header bar at the top of the artifact area with navigation controls. */
 export function SpecHeaderBar({
   filePath,
   fileContent,
@@ -35,13 +48,14 @@ export function SpecHeaderBar({
   allNavigableFiles,
   specs,
   projectSpecs,
-  isFocusMode,
   isEditing,
+  isMockup = false,
+  device,
+  onDeviceChange,
   onPrev,
   onNext,
   onSelectSpec,
   onSelectProjectSpec,
-  onToggleFocus,
   onClose,
   onEdit,
 }: SpecHeaderBarProps) {
@@ -69,7 +83,7 @@ export function SpecHeaderBar({
         onClick={onPrev}
         disabled={!hasPrev}
         className="p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors duration-100 cursor-pointer disabled:opacity-30 disabled:cursor-default"
-        title="Previous spec"
+        title="Previous file"
       >
         <ChevronLeft size={14} />
       </button>
@@ -77,7 +91,7 @@ export function SpecHeaderBar({
         onClick={onNext}
         disabled={!hasNext}
         className="p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors duration-100 cursor-pointer disabled:opacity-30 disabled:cursor-default"
-        title="Next spec"
+        title="Next file"
       >
         <ChevronRight size={14} />
       </button>
@@ -103,35 +117,46 @@ export function SpecHeaderBar({
 
       <div className="flex-1" />
 
-      {/* History */}
-      <FileHistory cardId={cardId} filePath={filePath} />
+      {/* Device toggle (mockups only) */}
+      {isMockup && onDeviceChange && (
+        <div className="inline-flex bg-[var(--bg-page)] border border-[var(--border-subtle)] rounded-[var(--radius-default)] p-[2px] gap-[1px] mr-2">
+          {DEVICES.map((d) => (
+            <button
+              key={d.key}
+              onClick={() => onDeviceChange(d.key)}
+              className={cn(
+                'px-[10px] py-[4px] rounded-[var(--radius-md)] text-[11px] font-medium leading-none transition-colors duration-100 cursor-pointer',
+                d.key === device
+                  ? 'bg-[var(--bg-surface)] text-[var(--text-primary)] shadow-[var(--shadow-sm)]'
+                  : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]',
+              )}
+            >
+              {d.label}
+            </button>
+          ))}
+        </div>
+      )}
 
-      {/* Edit button — only in non-editing states */}
+      {/* History (specs only) */}
+      {!isMockup && <FileHistory cardId={cardId} filePath={filePath} />}
+
+      {/* Edit button — only when not editing */}
       {!isEditing && (
         <button
           onClick={onEdit}
           className="inline-flex items-center gap-1 px-2 py-1 rounded-[var(--radius-default)] text-[12px] font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer"
-          title="Edit this spec"
+          title="Edit this file"
         >
           <Pencil size={11} />
           Edit
         </button>
       )}
 
-      {/* Focus toggle */}
-      <button
-        onClick={onToggleFocus}
-        className="p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors duration-100 cursor-pointer"
-        title={isFocusMode ? 'Exit focus mode' : 'Focus mode'}
-      >
-        {isFocusMode ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
-      </button>
-
       {/* Close */}
       <button
         onClick={onClose}
         className="p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors duration-100 cursor-pointer"
-        title="Close spec"
+        title="Close"
       >
         <X size={14} />
       </button>

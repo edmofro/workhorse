@@ -3,9 +3,15 @@
  *
  * Storage layout:
  *   /data/repos/{owner}/{repo}/
- *     bare.git/                       — bare mirror clone, shared objects
+ *     bare.git/                       — bare clone, shared objects
  *     worktrees/
  *       wh-042--{session-prefix}/     — one worktree per active card
+ *
+ * IMPORTANT: The bare clone must NOT be a mirror (--mirror). Mirror clones
+ * use fetch refspec +refs/*:refs/* which overwrites ALL local refs on fetch,
+ * including card branch refs — destroying worktree state. We use a regular
+ * bare clone where remote refs live at refs/remotes/origin/* and local card
+ * branches at refs/heads/* are safe from fetch.
  */
 
 import { execFile } from 'child_process'
@@ -108,7 +114,7 @@ export async function ensureBareClone(
     lastFetchTime.set(repoKey, Date.now())
   }
 
-  // Fetch if stale (skip if we just cloned — mirror clone already has everything)
+  // Fetch if stale (skip if we just cloned)
   const lastFetch = lastFetchTime.get(repoKey) ?? 0
   if (!clonedJustNow && Date.now() - lastFetch > FETCH_INTERVAL_MS) {
     try {
@@ -123,7 +129,7 @@ export async function ensureBareClone(
 }
 
 /**
- * Create a bare mirror clone of a repo.
+ * Create a bare clone of a repo.
  * Prefer ensureBareClone() which handles creation + refresh in one call.
  */
 export async function createBareClone(
@@ -144,7 +150,7 @@ export async function createBareClone(
   await fs.mkdir(path.dirname(barePath), { recursive: true })
 
   const cloneUrl = `https://x-access-token:${token}@github.com/${owner}/${repo}.git`
-  await execFileAsync('git', ['clone', '--mirror', cloneUrl, barePath], {
+  await execFileAsync('git', ['clone', '--bare', cloneUrl, barePath], {
     maxBuffer: 50 * 1024 * 1024,
   })
 
@@ -162,9 +168,30 @@ export async function fetchBareClone(
 ): Promise<void> {
   const barePath = bareClonePath(owner, repo)
   // Update the remote URL with the current token so fetch uses valid auth
-  // (the mirror clone may have been created with an older/different token)
   const authedUrl = `https://x-access-token:${token}@github.com/${owner}/${repo}.git`
   await git(['remote', 'set-url', 'origin', authedUrl], barePath)
+
+  // Migrate legacy mirror clones: mirror refspec +refs/*:refs/* overwrites
+  // local card branch refs on every fetch, destroying worktree state.
+  // Switch to standard remote tracking so only refs/remotes/origin/* is updated.
+  try {
+    const fetchSpec = await git(['config', '--get', 'remote.origin.fetch'], barePath)
+    if (fetchSpec.includes('+refs/*:refs/*')) {
+      await git(
+        ['config', 'remote.origin.fetch', '+refs/heads/*:refs/remotes/origin/*'],
+        barePath,
+      )
+      // Also remove the mirror flag if present
+      try {
+        await git(['config', '--unset', 'remote.origin.mirror'], barePath)
+      } catch {
+        // May not exist
+      }
+    }
+  } catch {
+    // If config read fails, proceed with fetch anyway
+  }
+
   await git(['fetch', '--prune', 'origin'], barePath, {
     GIT_TERMINAL_PROMPT: '0',
   })
@@ -194,21 +221,31 @@ export async function createWorktree(
 
   await fs.mkdir(path.dirname(wtPath), { recursive: true })
 
-  // Check if the branch exists in the bare clone
-  let branchExists = false
+  // Check if the branch exists locally (from a previous worktree session)
+  // or on the remote (pushed by a previous deploy)
+  let startPoint: string | null = null
   try {
     await git(['rev-parse', '--verify', `refs/heads/${branchName}`], barePath)
-    branchExists = true
+    startPoint = branchName // local branch exists
   } catch {
-    // Branch doesn't exist yet
+    try {
+      await git(['rev-parse', '--verify', `refs/remotes/origin/${branchName}`], barePath)
+      startPoint = `origin/${branchName}` // remote branch exists
+    } catch {
+      // Branch doesn't exist anywhere — will create from default branch
+    }
   }
 
-  if (branchExists) {
+  if (startPoint === branchName) {
+    // Local branch exists — check it out
     await git(['worktree', 'add', wtPath, branchName], barePath)
+  } else if (startPoint) {
+    // Remote branch exists — create local tracking branch
+    await git(['worktree', 'add', '-b', branchName, wtPath, startPoint], barePath)
   } else {
-    // Create branch from default branch
+    // New branch from default branch
     await git(
-      ['worktree', 'add', '-b', branchName, wtPath, `refs/heads/${defaultBranch}`],
+      ['worktree', 'add', '-b', branchName, wtPath, `origin/${defaultBranch}`],
       barePath,
     )
   }
@@ -326,12 +363,10 @@ export async function getChangedFiles(
   const wtPath = worktreePath(owner, repo, cardIdentifier)
   const changedFiles = new Map<string, boolean>()
 
-  // Committed changes: files changed on the branch vs the default branch.
-  // Use refs/heads/ prefix because the bare clone is a mirror (--mirror)
-  // which stores refs directly, not as remote tracking branches.
+  // Committed changes: files changed on the card branch vs the default branch.
   try {
     const diff = await git(
-      ['diff', '--name-status', `refs/heads/${defaultBranch}...HEAD`],
+      ['diff', '--name-status', `origin/${defaultBranch}...HEAD`],
       wtPath,
     )
 

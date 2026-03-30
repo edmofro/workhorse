@@ -54,7 +54,7 @@ When editing an existing spec, the user can see what they've changed relative to
 Auto-save writes to the Workhorse database continuously — the user never loses work. Git commits happen automatically when the user leaves edit mode or the agent finishes a turn (see `commit-specs.md` for full details). There is no manual commit button.
 
 - [ ] Auto-save to Workhorse database — continuous, invisible, no data loss
-- [ ] Change history available (who changed what, when)
+- [ ] Changes visible via the Changes toggle in the artifact header bar (see `card-navigation.md`)
 
 ## Open questions
 

@@ -61,7 +61,7 @@ export function CardDetailPage({ cardId, initialSessionId }: Props) {
   if (error instanceof NotFoundError) notFound()
   if (error || !data) return <CardSkeleton />
 
-  const { card, users, teams, sessions, initialFiles, projectSpecs } = data
+  const { card, users, teams, sessions, initialFiles, initialCodeFiles, projectSpecs } = data
 
   const cardTabContent = (
     <CardTab
@@ -96,6 +96,7 @@ export function CardDetailPage({ cardId, initialSessionId }: Props) {
       }}
       cardTabContent={cardTabContent}
       initialFiles={initialFiles}
+      initialCodeFiles={initialCodeFiles}
       mockups={card.mockups}
       projectSpecs={projectSpecs}
       sessions={sessions}

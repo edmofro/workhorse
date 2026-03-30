@@ -149,6 +149,7 @@ interface CardDetailData {
     createdAt: string
   }[]
   initialFiles: { filePath: string; isNew: boolean; content: string }[]
+  initialCodeFiles: { filePath: string; isNew: boolean }[]
   projectSpecs: { filePath: string; content: string }[]
 }
 

@@ -78,13 +78,14 @@ export async function GET(request: NextRequest) {
     })(),
   ])
 
-  // Load spec files from worktree if it exists
+  // Load spec files and code files from worktree if it exists
   let initialFiles: { filePath: string; isNew: boolean; content: string }[] = []
+  let initialCodeFiles: { filePath: string; isNew: boolean }[] = []
   if (hasWorktree) {
-    const changedFiles = await getChangedFiles(
+    const { workhorseFiles, codeFiles } = await getChangedFiles(
       owner, repoName, card.identifier, defaultBranch,
     )
-    const specFiles = changedFiles.filter((f) =>
+    const specFiles = workhorseFiles.filter((f) =>
       f.filePath.startsWith('.workhorse/specs/') ||
       isMockupPath(f.filePath),
     )
@@ -96,6 +97,7 @@ export async function GET(request: NextRequest) {
         return { ...f, content }
       }),
     )
+    initialCodeFiles = codeFiles
   }
 
   // Parse touchedFiles
@@ -173,6 +175,7 @@ export async function GET(request: NextRequest) {
       createdAt: s.createdAt.toISOString(),
     })),
     initialFiles,
+    initialCodeFiles,
     projectSpecs,
   })
 }

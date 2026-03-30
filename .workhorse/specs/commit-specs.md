@@ -17,15 +17,16 @@ For developers picking up the work, Workhorse generates an implementation prompt
 - [ ] Committed specs do not include mockup HTML
 - [ ] If the card depends on another card (see WH-019), commits are ordered correctly
 
-## Per-file version history
+## Changes view
 
-Each file has a navigable edit history powered by descriptive commit messages:
+What the user cares about most is changes _in this card_ — what's different from the base branch. Every artifact (spec, code) has a **Changes** toggle that shows the diff:
 
-- [ ] "History" affordance per file in the spec view
-- [ ] Shows: relative timestamp, author (user name or "Workhorse"), change description
-- [ ] Click a version to see the file at that point
-- [ ] Diff between any two versions
-- [ ] Powered by `git log -- {filepath}` under the hood
+- [ ] **Spec changes:** inline tracked-changes view (additions highlighted, removals struck through) — readable by product people, not a code diff
+- [ ] **Code changes:** unified diff view (like GitHub) with line numbers and colour-coded additions/deletions
+- [ ] Changes toggle defaults to **on** when opening any artifact
+- [ ] Switching to edit mode automatically switches to the File view
+
+The per-file version history (git log per file) is available under the hood but not exposed in the UI — the changes view against the base branch is the primary way users understand what's different.
 
 ## Status transitions
 

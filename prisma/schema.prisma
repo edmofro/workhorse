@@ -20,7 +20,7 @@ model User {
   cards                Card[]
   cardActivities       CardActivity[]
   comments             CardComment[]
-  fileLocks            FileLock[]
+
   attachments          Attachment[]
   conversationSessions ConversationSession[]
 }
@@ -84,7 +84,6 @@ model Card {
   mockups      Mockup[]
   comments     CardComment[]
   attachments  Attachment[]
-  fileLocks    FileLock[]
   dependsOn    CardDependency[] @relation("dependent")
   dependedOnBy CardDependency[] @relation("parent")
   sessions     ConversationSession[]
@@ -117,23 +116,6 @@ model CardDependency {
 
   @@id([dependentId, parentId])
   @@index([parentId])
-}
-
-model FileLock {
-  id        String   @id @default(cuid())
-  cardId    String
-  filePath  String
-  lockedBy  String   // user ID or "ai-agent"
-  userId    String?  // null when lockedBy is "ai-agent"
-  lockedAt  DateTime @default(now())
-  expiresAt DateTime // 10 min for humans, 2 min for AI
-
-  card Card  @relation(fields: [cardId], references: [id], onDelete: Cascade)
-  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
-
-  @@unique([cardId, filePath])
-  @@index([cardId])
-  @@index([expiresAt])
 }
 
 model CardActivity {

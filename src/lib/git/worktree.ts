@@ -111,8 +111,9 @@ export async function ensureBareClone(
   try {
     await fs.access(barePath)
 
-    // One-time migration: mirror clones have destructive fetch refspecs
-    // that overwrite card branch refs. Wipe and recreate as regular bare.
+    // One-time check: ensure the bare clone has the correct fetch refspec.
+    // Mirror clones (+refs/*:refs/*) overwrite card branches — wipe them.
+    // Bare clones without a refspec (from earlier bug) need one configured.
     if (!migratedRepos.has(repoKey)) {
       try {
         const fetchSpec = await git(['config', '--get', 'remote.origin.fetch'], barePath)
@@ -125,7 +126,17 @@ export async function ensureBareClone(
           lastFetchTime.set(repoKey, Date.now())
         }
       } catch {
-        // Config read failed — not a mirror, or already migrated
+        // No fetch refspec configured — fix it and fetch
+        console.warn(`[git] Bare clone for ${repoKey} missing fetch refspec, configuring`)
+        await git(
+          ['config', 'remote.origin.fetch', '+refs/heads/*:refs/remotes/origin/*'],
+          barePath,
+        )
+        // Update remote URL with current token before fetching
+        const authedUrl = `https://x-access-token:${token}@github.com/${owner}/${repo}.git`
+        await git(['remote', 'set-url', 'origin', authedUrl], barePath)
+        await git(['fetch', 'origin'], barePath, { GIT_TERMINAL_PROMPT: '0' })
+        lastFetchTime.set(repoKey, Date.now())
       }
       migratedRepos.add(repoKey)
     }

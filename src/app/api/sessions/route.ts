@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireUser } from '../../../lib/auth/session'
+import { requireUser, requireCardAccess } from '../../../lib/auth/session'
 import { prisma } from '../../../lib/prisma'
 import { getRecentSessions, mapRecentSession } from '../../../lib/sessions'
 
@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
     const sessions = await prisma.conversationSession.findMany({
       where: { cardId, userId: user.id },
       orderBy: { lastMessageAt: 'desc' },
-      take: 50,
+      take: Math.min(limit, 20),
     })
 
     return NextResponse.json({
@@ -56,14 +56,14 @@ export async function POST(request: NextRequest) {
   const body = await request.json()
   const { cardId, teamId } = body as { cardId?: string; teamId?: string }
 
-  // If cardId provided, resolve teamId from the card
+  // If cardId provided, verify it exists and user has access
   let resolvedTeamId = teamId ?? null
-  if (cardId && !resolvedTeamId) {
-    const card = await prisma.card.findUnique({
-      where: { id: cardId },
-      select: { teamId: true },
-    })
-    resolvedTeamId = card?.teamId ?? null
+  if (cardId) {
+    const card = await requireCardAccess(user.id, cardId)
+    if (!card) {
+      return NextResponse.json({ error: 'Card not found' }, { status: 404 })
+    }
+    resolvedTeamId = resolvedTeamId ?? card.teamId
   }
 
   const session = await prisma.conversationSession.create({

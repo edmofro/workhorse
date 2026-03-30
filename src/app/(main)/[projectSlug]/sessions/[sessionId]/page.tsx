@@ -1,5 +1,6 @@
 import { redirect, notFound } from 'next/navigation'
 import { prisma } from '../../../../../lib/prisma'
+import { requireUser } from '../../../../../lib/auth/session'
 
 interface Props {
   params: Promise<{ projectSlug: string; sessionId: string }>
@@ -13,6 +14,7 @@ interface Props {
  */
 export default async function SessionPage({ params }: Props) {
   const { projectSlug, sessionId } = await params
+  const user = await requireUser()
 
   const session = await prisma.conversationSession.findUnique({
     where: { id: sessionId },
@@ -22,6 +24,7 @@ export default async function SessionPage({ params }: Props) {
   })
 
   if (!session) notFound()
+  if (session.userId !== user.id) notFound()
 
   // If session has a card, redirect to the card page with session param
   if (session.card) {

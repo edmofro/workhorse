@@ -59,6 +59,9 @@ export async function POST(request: NextRequest) {
     if (convSession.userId !== user.id) {
       return new Response('Forbidden', { status: 403 })
     }
+    if (convSession.cardId !== cardId) {
+      return new Response('Session does not belong to this card', { status: 400 })
+    }
   } else {
     convSession = await prisma.conversationSession.create({
       data: {
@@ -285,66 +288,18 @@ export async function POST(request: NextRequest) {
           )
         }
 
-        // Agent turn complete — auto-commit and release locks
-        try {
-          const changedFiles = await autoCommit(
-            owner,
-            repoName,
-            card.identifier,
-            'Update specs from interview',
-            user.displayName,
-            `${user.githubUsername}@users.noreply.github.com`,
-            user.accessToken,
-          )
-
-          if (changedFiles.length > 0) {
-            // Update touched files on card
-            const freshCard = await prisma.card.findUnique({ where: { id: cardId } })
-            const existingFiles = safeParseTouchedFiles(freshCard?.touchedFiles ?? '[]')
-            const allFiles = [...new Set([...existingFiles, ...changedFiles])]
-            await prisma.card.update({
-              where: { id: cardId },
-              data: { touchedFiles: JSON.stringify(allFiles) },
-            })
-
-            // Send commit notification
-            controller.enqueue(
-              encoder.encode(
-                `data: ${JSON.stringify({ type: 'commit', files: changedFiles })}\n\n`,
-              ),
-            )
-          }
-        } catch (commitErr) {
-          // Log but don't fail the response
-          console.error('Auto-commit failed:', commitErr)
-        }
-
-        // Release AI locks
-        await releaseAllLocks(cardId, AI_LOCK_AGENT)
-
-        // Update conversation session metadata
-        const now = new Date()
-        const updateData: Record<string, unknown> = {
-          messageCount: { increment: 2 }, // user + assistant
-          lastMessageAt: now,
-        }
-
-        // Auto-title from first user message if this is the first exchange
-        if (isFirstMessage && !convSession.title) {
-          updateData.title = generateSessionTitle(message)
-        }
-
-        await prisma.conversationSession.update({
-          where: { id: convSessionId },
-          data: updateData,
+        // Agent turn complete — auto-commit, release locks, update session metadata
+        await finaliseSessionAfterExchange(controller, encoder, {
+          owner,
+          repoName,
+          card,
+          cardId,
+          user,
+          convSessionId,
+          isFirstMessage,
+          convSessionTitle: convSession.title,
+          message,
         })
-
-        // Send conversation session info to client
-        controller.enqueue(
-          encoder.encode(
-            `data: ${JSON.stringify({ type: 'session', sessionId: convSessionId })}\n\n`,
-          ),
-        )
 
         controller.enqueue(encoder.encode('data: [DONE]\n\n'))
         controller.close()
@@ -367,6 +322,81 @@ export async function POST(request: NextRequest) {
       Connection: 'keep-alive',
     },
   })
+}
+
+/**
+ * Post-stream cleanup: auto-commit, release locks, update session metadata.
+ * Only called on the success path (full agent response received).
+ */
+async function finaliseSessionAfterExchange(
+  controller: ReadableStreamDefaultController,
+  encoder: TextEncoder,
+  ctx: {
+    owner: string
+    repoName: string
+    card: { identifier: string }
+    cardId: string
+    user: { displayName: string; githubUsername: string; accessToken: string }
+    convSessionId: string
+    isFirstMessage: boolean
+    convSessionTitle: string | null
+    message: string
+  },
+) {
+  try {
+    const changedFiles = await autoCommit(
+      ctx.owner,
+      ctx.repoName,
+      ctx.card.identifier,
+      'Update specs from interview',
+      ctx.user.displayName,
+      `${ctx.user.githubUsername}@users.noreply.github.com`,
+      ctx.user.accessToken,
+    )
+
+    if (changedFiles.length > 0) {
+      const freshCard = await prisma.card.findUnique({ where: { id: ctx.cardId } })
+      const existingFiles = safeParseTouchedFiles(freshCard?.touchedFiles ?? '[]')
+      const allFiles = [...new Set([...existingFiles, ...changedFiles])]
+      await prisma.card.update({
+        where: { id: ctx.cardId },
+        data: { touchedFiles: JSON.stringify(allFiles) },
+      })
+
+      controller.enqueue(
+        encoder.encode(
+          `data: ${JSON.stringify({ type: 'commit', files: changedFiles })}\n\n`,
+        ),
+      )
+    }
+  } catch (commitErr) {
+    console.error('Auto-commit failed:', commitErr)
+  }
+
+  await releaseAllLocks(ctx.cardId, AI_LOCK_AGENT)
+
+  // Update conversation session metadata
+  const now = new Date()
+  const updateData: Record<string, unknown> = {
+    messageCount: { increment: 2 },
+    lastMessageAt: now,
+  }
+
+  if (ctx.isFirstMessage && !ctx.convSessionTitle) {
+    updateData.title = generateSessionTitle(ctx.message)
+  }
+
+  await prisma.conversationSession.update({
+    where: { id: ctx.convSessionId },
+    data: updateData,
+  })
+
+  // Send conversation session info to client
+  controller.enqueue(
+    encoder.encode(
+      `data: ${JSON.stringify({ type: 'session', sessionId: ctx.convSessionId })}\n\n`,
+    ),
+  )
 }
 
 /**

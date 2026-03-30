@@ -159,12 +159,14 @@ export function Sidebar({ projects, recentSessions = [] }: SidebarProps) {
                     const label = session.cardIdentifier
                       ? `${session.cardIdentifier} ${session.title ?? 'Untitled'}`
                       : session.title ?? 'New conversation'
+                    const isActive = searchParams.get('session') === session.id
+                      || pathname.includes(`/sessions/${session.id}`)
                     return (
                       <NavItem
                         key={session.id}
                         href={href}
                         dot={session.teamColour ?? undefined}
-                        active={false}
+                        active={isActive}
                       >
                         <span className="truncate">{label}</span>
                       </NavItem>

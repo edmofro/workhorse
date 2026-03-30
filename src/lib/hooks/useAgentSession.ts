@@ -46,10 +46,15 @@ export function useAgentSession(cardId: string, sessionId: string | null) {
   const assistantContentRef = useRef('')
   const assistantIdRef = useRef('')
 
-  // Update currentSessionId when prop changes
+  // Update currentSessionId when prop changes — abort any in-flight stream
+  // to prevent events from the old session corrupting the new one
   useEffect(() => {
     setCurrentSessionId(sessionId)
     currentSessionIdRef.current = sessionId
+    // Abort any active stream from the previous session
+    if (abortRef.current) {
+      abortRef.current.abort()
+    }
   }, [sessionId])
 
   // Load chat history from Agent SDK session on mount or when sessionId changes

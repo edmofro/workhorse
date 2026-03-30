@@ -9,7 +9,13 @@ export async function getRecentSessions(userId: string, limit: number = 8) {
     where: { userId },
     orderBy: { lastMessageAt: 'desc' },
     take: limit,
-    include: {
+    select: {
+      id: true,
+      title: true,
+      messageCount: true,
+      cardId: true,
+      lastMessageAt: true,
+      createdAt: true,
       card: {
         select: {
           identifier: true,

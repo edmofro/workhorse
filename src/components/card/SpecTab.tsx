@@ -120,12 +120,6 @@ export function SpecTab({ card, initialFiles, projectSpecs = [] }: SpecTabProps)
   const handleDoneEditing = useCallback(
     async (filePath: string) => {
       try {
-        // Release lock
-        await fetch(
-          `/api/file-lock?cardId=${card.id}&filePath=${encodeURIComponent(filePath)}`,
-          { method: 'DELETE' },
-        )
-
         // Auto-commit
         await fetch('/api/auto-commit', {
           method: 'POST',
@@ -155,24 +149,11 @@ export function SpecTab({ card, initialFiles, projectSpecs = [] }: SpecTabProps)
   )
 
   const handleStartEditing = useCallback(
-    async (filePath: string) => {
-      // Acquire lock
-      const res = await fetch('/api/file-lock', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cardId: card.id, filePath }),
-      })
-
-      if (res.status === 409) {
-        const data = await res.json()
-        alert(`File is being edited by ${data.holder?.displayName ?? 'someone else'}`)
-        return false
-      }
-
+    async () => {
       setIsEditing(true)
       return true
     },
-    [card.id],
+    [],
   )
 
   /** Create a brand-new spec file for this card */
@@ -312,7 +293,7 @@ export function SpecTab({ card, initialFiles, projectSpecs = [] }: SpecTabProps)
                 handleSpecUpdate(activeFile.filePath, content)
               }
               isEditing={isEditing}
-              onStartEditing={() => handleStartEditing(activeFile.filePath)}
+              onStartEditing={() => handleStartEditing()}
               onDoneEditing={() => handleDoneEditing(activeFile.filePath)}
               cardStatus={card.status}
             />

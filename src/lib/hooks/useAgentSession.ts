@@ -36,9 +36,10 @@ export function useAgentSession(cardId: string, sessionId: string | null) {
   const thinkingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const historySessionIdRef = useRef<string | null>(null)
   const abortRef = useRef<AbortController | null>(null)
-  // Track the conversation session ID (may be set after first message)
+  // Track the conversation session ID and title (may be set after first message)
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(sessionId)
   const currentSessionIdRef = useRef<string | null>(sessionId)
+  const [currentSessionTitle, setCurrentSessionTitle] = useState<string | null>(null)
 
   // Text buffering for smooth streaming — accumulate deltas and flush every ~60ms
   const textBufferRef = useRef('')
@@ -71,21 +72,28 @@ export function useAgentSession(cardId: string, sessionId: string | null) {
     if (historySessionIdRef.current === sessionId) return
     historySessionIdRef.current = sessionId
 
+    const controller = new AbortController()
+
     async function loadHistory() {
       try {
-        const res = await fetch(`/api/chat-history?sessionId=${sessionId}`)
+        const res = await fetch(`/api/chat-history?sessionId=${sessionId}`, {
+          signal: controller.signal,
+        })
         if (res.ok) {
           const data = await res.json()
-          if (data.messages && data.messages.length > 0) {
+          // Guard against stale response — only apply if this sessionId is still current
+          if (historySessionIdRef.current === sessionId && data.messages && data.messages.length > 0) {
             setMessages(data.messages)
           }
         }
       } catch {
-        // Ignore — history retrieval is best-effort
+        // Ignore — history retrieval is best-effort (includes AbortError)
       }
     }
 
     loadHistory()
+
+    return () => controller.abort()
   }, [sessionId])
 
   // Clean up timers on unmount
@@ -265,6 +273,15 @@ export function useAgentSession(cardId: string, sessionId: string | null) {
       return
     }
 
+    // Handle session metadata update (sent after exchange completes, includes title)
+    if (event.type === 'session_update') {
+      if (event.title) {
+        setCurrentSessionTitle(event.title as string)
+      }
+      return
+    }
+
+
     // Handle streaming text and thinking events
     if (event.type === 'stream_event') {
       const streamEvent = event.event as Record<string, unknown> | undefined
@@ -391,6 +408,7 @@ export function useAgentSession(cardId: string, sessionId: string | null) {
     committedFiles,
     thinkingSnippet,
     currentSessionId,
+    currentSessionTitle,
     sendMessage,
     interrupt,
   }

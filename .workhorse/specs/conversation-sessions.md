@@ -61,10 +61,16 @@ model ConversationSession {
 
 ### Auto-titling
 
-- [ ] After the first assistant response, generate a title from the first user message (truncated to ~50 chars, cleaned up to read naturally)
+Session titles should help users distinguish conversations at a glance in the sidebar and card home. Pill-based messages ("Where were we up to?", "Draft spec") make poor titles.
+
+- [ ] For card-bound sessions, the default title format is the card title (e.g. "Fix patient search") since most sessions are about the card's topic
+- [ ] After the first full exchange (user message + assistant response), generate a refined title using a lightweight heuristic: extract a meaningful summary from the user's message, ignoring generic pill text
 - [ ] Title generation is a simple heuristic, not an extra AI call — take the first sentence or clause of the user's first message
+- [ ] Known pill messages (exact matches for action pill text) are not used as titles. Instead, fall back to the card title or "New conversation"
+- [ ] After the assistant's first response, if the response contains substantive content, refine the title by extracting the first meaningful sentence from the assistant's reply (truncated to ~60 chars). This replaces the initial title
 - [ ] Title can be manually renamed later (stretch goal, not v1 priority)
 - [ ] Untitled sessions show as "New conversation" in the UI
+- [ ] In the sidebar, card-bound sessions show "{cardIdentifier}: {title}" — the card title provides enough context to distinguish sessions across cards
 
 ### Auto-card creation for standalone sessions
 
@@ -145,7 +151,7 @@ Navigating into a session (from card home or sidebar) enters the chat zone — a
 /tamanu/sessions/clxyz123                → standalone session (no card), or redirects to card if one exists
 ```
 
-- [ ] Query param `?session=` on card pages selects a specific session and sets it as active
+- [ ] Query param `?session=` on card pages selects a specific session, sets it as active, and auto-navigates to the chat zone (not just card home)
 - [ ] Standalone sessions get their own route since they have no card to hang off
 - [ ] If a standalone session acquires a card (via auto-creation), the standalone URL redirects to the card URL with `?session=`
 
@@ -185,7 +191,8 @@ The sidebar gains a "Recent" section showing the most recently active sessions a
 
 - [ ] Each item is a deep link. Card-bound sessions link to `/tamanu/cards/WH-042?session=clxyz123`. Standalone sessions link to `/tamanu/sessions/clxyz123`
 - [ ] Clicking a recent item navigates directly to that session, preserving context
-- [ ] The "Recent" section updates when sessions are created or receive new messages (server component revalidation or client-side refresh)
+- [ ] The "Recent" section updates reactively: when a new session is created or receives messages, the sidebar refreshes via `router.refresh()`. Active/streaming sessions show a subtle pulsing indicator on their title text to signal ongoing work
+- [ ] When navigating to a card via a sidebar session deep link (`?session=`), the card page auto-opens the chat zone for that session (not just the card home)
 
 ### New conversation button
 

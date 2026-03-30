@@ -52,16 +52,19 @@ export async function GET(request: NextRequest) {
     }
 
     // Map SDK transcript to our message format
+    // SDK SessionMessage shape: { type: 'user'|'assistant', message: unknown, uuid, session_id }
     const messages = transcript
       .filter((msg: Record<string, unknown>) =>
-        msg.role === 'user' || msg.role === 'assistant',
+        msg.type === 'user' || msg.type === 'assistant',
       )
       .map((msg: Record<string, unknown>, idx: number) => {
+        // The actual content is in msg.message (an API message object), not msg.content
+        const apiMessage = msg.message as Record<string, unknown> | undefined
         let content = ''
-        if (typeof msg.content === 'string') {
-          content = msg.content
-        } else if (Array.isArray(msg.content)) {
-          content = (msg.content as Array<Record<string, unknown>>)
+        if (typeof apiMessage?.content === 'string') {
+          content = apiMessage.content
+        } else if (Array.isArray(apiMessage?.content)) {
+          content = (apiMessage.content as Array<Record<string, unknown>>)
             .filter((c) => c.type === 'text')
             .map((c) => c.text as string)
             .join('')
@@ -69,9 +72,9 @@ export async function GET(request: NextRequest) {
 
         return {
           id: `history-${idx}`,
-          role: msg.role as 'user' | 'assistant',
+          role: msg.type as 'user' | 'assistant',
           content,
-          userName: msg.role === 'user' ? 'You' : 'Workhorse',
+          userName: msg.type === 'user' ? 'You' : 'Workhorse',
           createdAt: (msg.timestamp as string) ?? null,
         }
       })

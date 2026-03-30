@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import type { ViewState } from '../../lib/hooks/useViewNavigation'
 import { useRouter } from 'next/navigation'
+import { cn } from '../../lib/cn'
 import { useUser } from '../UserProvider'
 import { useAgentSession } from '../../lib/hooks/useAgentSession'
 import { useAttachments } from '../../lib/hooks/useAttachments'
@@ -102,6 +103,7 @@ export function CardWorkspace({
     fileWrites,
     thinkingSnippet,
     currentSessionId,
+    currentSessionTitle,
     sendMessage: rawSendMessage,
   } = useAgentSession(card.id, activeSessionId)
 
@@ -128,6 +130,16 @@ export function CardWorkspace({
       })
     }
   }, [currentSessionId])
+
+  // When a session title is received from the server, update the local list and refresh sidebar
+  useEffect(() => {
+    if (!currentSessionId || !currentSessionTitle) return
+    setSessions((prev) =>
+      prev.map((s) => s.id === currentSessionId ? { ...s, title: currentSessionTitle } : s),
+    )
+    // Refresh server components (sidebar) to pick up the new session
+    router.refresh()
+  }, [currentSessionId, currentSessionTitle, router])
 
   // Attachments for chat
   const chatAttachments = useAttachments(card.id)
@@ -223,6 +235,15 @@ export function CardWorkspace({
     [card.id],
   )
 
+  // Compute initial view: if initialSessionId is provided (deep link), start in chat zone
+  const initialViewForNav = initialSessionId
+    ? {
+        type: 'chat' as const,
+        sessionId: initialSessionId,
+        sessionTitle: initialSessions.find((s) => s.id === initialSessionId)?.title ?? null,
+      }
+    : undefined
+
   // View navigation
   const {
     view,
@@ -241,6 +262,7 @@ export function CardWorkspace({
     discardAndFlip,
   } = useViewNavigation({
     allNavigableFiles,
+    initialView: initialViewForNav,
     onStartEditing: handleStartEditing,
     onDoneEditing: handleDoneEditing,
     onReleaseLock: handleReleaseLock,
@@ -633,21 +655,27 @@ export function CardWorkspace({
                       Conversations
                     </h3>
                     <div className="space-y-1">
-                      {sessions.map((session) => (
-                        <button
-                          key={session.id}
-                          onClick={() => openSession(session.id)}
-                          className="flex items-center gap-2 w-full px-3 py-2 rounded-[var(--radius-default)] text-left text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer"
-                        >
-                          <MessageCircle size={13} className="shrink-0 text-[var(--text-muted)]" />
-                          <span className="text-[13px] font-medium truncate flex-1">
-                            {session.title ?? 'New conversation'}
-                          </span>
-                          <span className="text-[11px] text-[var(--text-muted)] shrink-0">
-                            {formatRelativeTime(session.lastMessageAt)}
-                          </span>
-                        </button>
-                      ))}
+                      {sessions.map((session) => {
+                        const isSessionStreaming = isStreaming && activeSessionId === session.id
+                        return (
+                          <button
+                            key={session.id}
+                            onClick={() => openSession(session.id)}
+                            className="flex items-center gap-2 w-full px-3 py-2 rounded-[var(--radius-default)] text-left text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer"
+                          >
+                            <MessageCircle size={13} className="shrink-0 text-[var(--text-muted)]" />
+                            <span className={cn(
+                              'text-[13px] font-medium truncate flex-1',
+                              isSessionStreaming && 'animate-pulse',
+                            )}>
+                              {session.title ?? 'New conversation'}
+                            </span>
+                            <span className="text-[11px] text-[var(--text-muted)] shrink-0">
+                              {isSessionStreaming ? 'Working…' : formatRelativeTime(session.lastMessageAt)}
+                            </span>
+                          </button>
+                        )
+                      })}
                     </div>
                   </div>
                 )}

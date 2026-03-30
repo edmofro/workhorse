@@ -59,6 +59,7 @@ export interface SavePrompt {
 
 interface UseViewNavigationOptions {
   allNavigableFiles: string[]
+  initialView?: ViewState
   onStartEditing: (filePath: string) => Promise<boolean>
   onDoneEditing: (filePath: string) => Promise<void>
   onReleaseLock: (filePath: string) => Promise<void>
@@ -67,14 +68,15 @@ interface UseViewNavigationOptions {
 
 export function useViewNavigation({
   allNavigableFiles,
+  initialView,
   onStartEditing,
   onDoneEditing,
   onReleaseLock,
   onRestoreContent,
 }: UseViewNavigationOptions) {
   const [viewNav, dispatchView] = useReducer(viewReducer, {
-    current: { type: 'card' } as ViewState,
-    history: [],
+    current: initialView ?? ({ type: 'card' } as ViewState),
+    history: initialView ? [{ type: 'card' } as ViewState] : [],
   })
   const view = viewNav.current
 

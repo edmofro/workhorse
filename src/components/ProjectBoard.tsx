@@ -6,14 +6,7 @@ import { Topbar, TopbarTitle, TopbarRight } from './Topbar'
 import { CardList } from './CardList'
 import { CreateCardDialog } from './CreateCardDialog'
 import { CardFilter } from './CardFilter'
-
-function Skeleton({ className }: { className?: string }) {
-  return (
-    <div
-      className={`animate-pulse rounded-[8px] bg-[var(--bg-inset)] ${className ?? ''}`}
-    />
-  )
-}
+import { Skeleton } from './Skeleton'
 
 function BoardSkeleton() {
   return (

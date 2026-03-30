@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireUser } from '../../../lib/auth/session'
+import { requireProjectAccess } from '../../../lib/auth/github'
 import { prisma } from '../../../lib/prisma'
 
 /**
@@ -8,7 +9,7 @@ import { prisma } from '../../../lib/prisma'
  * Returns project with teams, cards, and all users for the board view.
  */
 export async function GET(request: NextRequest) {
-  await requireUser()
+  const user = await requireUser()
   const { searchParams } = new URL(request.url)
   const projectSlug = searchParams.get('project')
   if (!projectSlug) {
@@ -24,16 +25,26 @@ export async function GET(request: NextRequest) {
             cards: {
               include: { assignee: true, team: true },
               orderBy: { createdAt: 'desc' },
+              take: 200,
             },
           },
         },
       },
     }),
-    prisma.user.findMany({ orderBy: { displayName: 'asc' } }),
+    prisma.user.findMany({
+      select: { id: true, displayName: true },
+      orderBy: { displayName: 'asc' },
+    }),
   ])
 
   if (!project) {
     return NextResponse.json({ error: 'Project not found' }, { status: 404 })
+  }
+
+  // Verify user has write access to the project's repo
+  const hasAccess = await requireProjectAccess(user.accessToken, project.owner, project.repoName)
+  if (!hasAccess) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
   const cards = project.teams.flatMap((t) =>

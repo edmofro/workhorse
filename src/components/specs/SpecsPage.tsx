@@ -4,14 +4,7 @@ import { notFound } from 'next/navigation'
 import { useProjectLookup, NotFoundError } from '../../lib/hooks/queries'
 import { Topbar, TopbarTitle } from '../Topbar'
 import { SpecExplorer } from './SpecExplorer'
-
-function Skeleton({ className }: { className?: string }) {
-  return (
-    <div
-      className={`animate-pulse rounded-[8px] bg-[var(--bg-inset)] ${className ?? ''}`}
-    />
-  )
-}
+import { Skeleton } from '../Skeleton'
 
 interface Props {
   projectSlug: string

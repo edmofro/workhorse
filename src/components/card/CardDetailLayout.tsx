@@ -3,14 +3,7 @@
 import { useCardDetail } from '../../lib/hooks/queries'
 import { CardDetailShell } from './CardDetailShell'
 import { Topbar } from '../Topbar'
-
-function Skeleton({ className }: { className?: string }) {
-  return (
-    <div
-      className={`animate-pulse rounded-[8px] bg-[var(--bg-inset)] ${className ?? ''}`}
-    />
-  )
-}
+import { Skeleton } from '../Skeleton'
 
 interface Props {
   projectSlug: string

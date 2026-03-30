@@ -44,11 +44,12 @@ interface SidebarData {
   recentSessions: SidebarSession[]
 }
 
-export function useSidebarData() {
+export function useSidebarData(initialData?: SidebarData) {
   return useQuery({
     queryKey: ['sidebar-data'],
     queryFn: () => fetchJSON<SidebarData>('/api/sidebar-data'),
     staleTime: 60_000, // Sidebar data is fairly stable, revalidate every minute
+    initialData,
   })
 }
 

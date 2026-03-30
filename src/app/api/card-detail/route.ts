@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireUser } from '../../../lib/auth/session'
+import { requireProjectAccess } from '../../../lib/auth/github'
 import { prisma } from '../../../lib/prisma'
 import { worktreeExists, getChangedFiles, readWorktreeFile } from '../../../lib/git/worktree'
 import { fetchRepoSpecTree } from '../../../lib/git/specTree'
@@ -51,8 +52,17 @@ export async function GET(request: NextRequest) {
 
   const { owner, repoName, defaultBranch } = card.team.project
 
+  // Verify user has write access to the project's repo
+  const hasAccess = await requireProjectAccess(user.accessToken, owner, repoName)
+  if (!hasAccess) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
   const [users, teams, hasWorktree, sessions, projectSpecs] = await Promise.all([
-    prisma.user.findMany({ orderBy: { displayName: 'asc' } }),
+    prisma.user.findMany({
+      select: { id: true, displayName: true },
+      orderBy: { displayName: 'asc' },
+    }),
     prisma.team.findMany({
       where: { projectId: card.team.projectId },
       orderBy: { name: 'asc' },

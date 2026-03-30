@@ -4,14 +4,7 @@ import { notFound } from 'next/navigation'
 import { useCardDetail, NotFoundError } from '../../lib/hooks/queries'
 import { CardTab } from './CardTab'
 import { CardWorkspace } from './CardWorkspace'
-
-function Skeleton({ className }: { className?: string }) {
-  return (
-    <div
-      className={`animate-pulse rounded-[8px] bg-[var(--bg-inset)] ${className ?? ''}`}
-    />
-  )
-}
+import { Skeleton } from '../Skeleton'
 
 function CardSkeleton() {
   return (

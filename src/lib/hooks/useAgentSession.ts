@@ -49,14 +49,18 @@ export function useAgentSession(cardId: string, sessionId: string | null) {
   const turnConfirmedRef = useRef(false)
 
   // Update currentSessionId when prop changes — abort any in-flight stream
-  // to prevent events from the old session corrupting the new one
+  // ONLY if this is an explicit session switch (not a sync-back from the server).
+  // When the server assigns a session ID to a new conversation, currentSessionIdRef
+  // is already set to that value by processEvent, so we skip the abort.
   useEffect(() => {
+    if (sessionId !== currentSessionIdRef.current) {
+      // This is a genuine session switch (user navigated to a different session)
+      if (abortRef.current) {
+        abortRef.current.abort()
+      }
+    }
     setCurrentSessionId(sessionId)
     currentSessionIdRef.current = sessionId
-    // Abort any active stream from the previous session
-    if (abortRef.current) {
-      abortRef.current.abort()
-    }
   }, [sessionId])
 
   // Load chat history from Agent SDK session on mount or when sessionId changes

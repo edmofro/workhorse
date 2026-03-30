@@ -20,9 +20,10 @@ Product owners, testers, and developers — anyone who specifies what software s
 
 ## The v1 flow
 
-- [ ] User creates a card on a team's board — copy-paste from Linear initially, write directly in Workhorse later
+- [ ] User starts a conversation — either from a card or as a standalone session from the sidebar. Standalone sessions auto-create cards when file changes occur (see `conversation-sessions.md`)
+- [ ] Alternatively, user creates a card on a team's board — copy-paste from Linear initially, write directly in Workhorse later
 - [ ] User describes the work on the card view — title, description, metadata, comments
-- [ ] User starts a conversation via floating chat or action pill — AI agent with remote access to the target codebase
+- [ ] User starts a conversation via chat input or action pill — AI agent with remote access to the target codebase. Multiple conversation sessions per card, each a separate thread
 - [ ] Back-and-forth interview — the AI probes for edge cases, identifies interactions, generates mockups when helpful. Supports BA work: flow diagrams, business rule identification, process mapping
 - [ ] AI drafts spec documents — may create new specs and identify existing specs that need updating. Automatic or user-triggered
 - [ ] User edits specs by clicking them in the right panel — opens spec view with floating chat at the bottom. Chat continues alongside

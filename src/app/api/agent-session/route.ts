@@ -30,8 +30,9 @@ export async function POST(request: NextRequest) {
   const user = await requireUser()
 
   const body = await request.json()
-  const { cardId, message, attachmentIds, mode } = body as {
+  const { cardId, sessionId: incomingSessionId, message, attachmentIds, mode } = body as {
     cardId: string
+    sessionId?: string
     message: string
     attachmentIds?: string[]
     mode?: string
@@ -46,6 +47,29 @@ export async function POST(request: NextRequest) {
 
   if (!card) {
     return new Response('Card not found', { status: 404 })
+  }
+
+  // Resolve or create ConversationSession
+  let convSession
+  if (incomingSessionId) {
+    convSession = await prisma.conversationSession.findUnique({ where: { id: incomingSessionId } })
+    if (!convSession) {
+      return new Response('Session not found', { status: 404 })
+    }
+    if (convSession.userId !== user.id) {
+      return new Response('Forbidden', { status: 403 })
+    }
+    if (convSession.cardId !== cardId) {
+      return new Response('Session does not belong to this card', { status: 400 })
+    }
+  } else {
+    convSession = await prisma.conversationSession.create({
+      data: {
+        userId: user.id,
+        cardId,
+        teamId: card.teamId,
+      },
+    })
   }
 
   const { project } = card.team
@@ -184,12 +208,14 @@ export async function POST(request: NextRequest) {
     model: 'claude-sonnet-4-6',
     maxTurns: 10,
     persistSession: true,
-    ...(card.agentSessionId ? { resume: card.agentSessionId } : {}),
+    ...(convSession.agentSessionId ? { resume: convSession.agentSessionId } : {}),
   }
 
   // Stream SSE to the client
   const encoder = new TextEncoder()
-  let sessionId = card.agentSessionId ?? ''
+  let agentSdkSessionId = convSession.agentSessionId ?? ''
+  const convSessionId = convSession.id
+  const isFirstMessage = convSession.messageCount === 0
 
   const stream = new ReadableStream({
     async start(controller) {
@@ -214,11 +240,11 @@ export async function POST(request: NextRequest) {
             }
 
             // Process the first event normally
-            if (!sessionId && 'session_id' in event && event.session_id) {
-              sessionId = event.session_id as string
-              await prisma.card.update({
-                where: { id: cardId },
-                data: { agentSessionId: sessionId },
+            if (!agentSdkSessionId && 'session_id' in event && event.session_id) {
+              agentSdkSessionId = event.session_id as string
+              await prisma.conversationSession.update({
+                where: { id: convSessionId },
+                data: { agentSessionId: agentSdkSessionId },
               })
             }
             controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`))
@@ -229,11 +255,11 @@ export async function POST(request: NextRequest) {
             err instanceof StaleSessionError ||
             (err instanceof Error && err.message.includes('No conversation found with session ID'))
 
-          if (isStaleSession && card.agentSessionId) {
-            console.warn(`Stale session ${card.agentSessionId} for card ${cardId}, starting fresh`)
-            sessionId = ''
-            await prisma.card.update({
-              where: { id: cardId },
+          if (isStaleSession && convSession.agentSessionId) {
+            console.warn(`Stale agent session ${convSession.agentSessionId} for conversation ${convSessionId}, starting fresh`)
+            agentSdkSessionId = ''
+            await prisma.conversationSession.update({
+              where: { id: convSessionId },
               data: { agentSessionId: null },
             })
             // Retry without resume
@@ -246,13 +272,12 @@ export async function POST(request: NextRequest) {
         }
 
         for await (const event of agentQuery) {
-          // Capture session ID from first message
-          if (!sessionId && 'session_id' in event && event.session_id) {
-            sessionId = event.session_id
-            // Save session ID to card
-            await prisma.card.update({
-              where: { id: cardId },
-              data: { agentSessionId: sessionId },
+          // Capture agent SDK session ID from first message
+          if (!agentSdkSessionId && 'session_id' in event && event.session_id) {
+            agentSdkSessionId = event.session_id
+            await prisma.conversationSession.update({
+              where: { id: convSessionId },
+              data: { agentSessionId: agentSdkSessionId },
             })
           }
 
@@ -263,42 +288,18 @@ export async function POST(request: NextRequest) {
           )
         }
 
-        // Agent turn complete — auto-commit and release locks
-        try {
-          const changedFiles = await autoCommit(
-            owner,
-            repoName,
-            card.identifier,
-            'Update specs from interview',
-            user.displayName,
-            `${user.githubUsername}@users.noreply.github.com`,
-            user.accessToken,
-          )
-
-          if (changedFiles.length > 0) {
-            // Update touched files on card
-            const freshCard = await prisma.card.findUnique({ where: { id: cardId } })
-            const existingFiles = safeParseTouchedFiles(freshCard?.touchedFiles ?? '[]')
-            const allFiles = [...new Set([...existingFiles, ...changedFiles])]
-            await prisma.card.update({
-              where: { id: cardId },
-              data: { touchedFiles: JSON.stringify(allFiles) },
-            })
-
-            // Send commit notification
-            controller.enqueue(
-              encoder.encode(
-                `data: ${JSON.stringify({ type: 'commit', files: changedFiles })}\n\n`,
-              ),
-            )
-          }
-        } catch (commitErr) {
-          // Log but don't fail the response
-          console.error('Auto-commit failed:', commitErr)
-        }
-
-        // Release AI locks
-        await releaseAllLocks(cardId, AI_LOCK_AGENT)
+        // Agent turn complete — auto-commit, release locks, update session metadata
+        await finaliseSessionAfterExchange(controller, encoder, {
+          owner,
+          repoName,
+          card,
+          cardId,
+          user,
+          convSessionId,
+          isFirstMessage,
+          convSessionTitle: convSession.title,
+          message,
+        })
 
         controller.enqueue(encoder.encode('data: [DONE]\n\n'))
         controller.close()
@@ -321,4 +322,96 @@ export async function POST(request: NextRequest) {
       Connection: 'keep-alive',
     },
   })
+}
+
+/**
+ * Post-stream cleanup: auto-commit, release locks, update session metadata.
+ * Only called on the success path (full agent response received).
+ */
+async function finaliseSessionAfterExchange(
+  controller: ReadableStreamDefaultController,
+  encoder: TextEncoder,
+  ctx: {
+    owner: string
+    repoName: string
+    card: { identifier: string }
+    cardId: string
+    user: { displayName: string; githubUsername: string; accessToken: string }
+    convSessionId: string
+    isFirstMessage: boolean
+    convSessionTitle: string | null
+    message: string
+  },
+) {
+  try {
+    const changedFiles = await autoCommit(
+      ctx.owner,
+      ctx.repoName,
+      ctx.card.identifier,
+      'Update specs from interview',
+      ctx.user.displayName,
+      `${ctx.user.githubUsername}@users.noreply.github.com`,
+      ctx.user.accessToken,
+    )
+
+    if (changedFiles.length > 0) {
+      const freshCard = await prisma.card.findUnique({ where: { id: ctx.cardId } })
+      const existingFiles = safeParseTouchedFiles(freshCard?.touchedFiles ?? '[]')
+      const allFiles = [...new Set([...existingFiles, ...changedFiles])]
+      await prisma.card.update({
+        where: { id: ctx.cardId },
+        data: { touchedFiles: JSON.stringify(allFiles) },
+      })
+
+      controller.enqueue(
+        encoder.encode(
+          `data: ${JSON.stringify({ type: 'commit', files: changedFiles })}\n\n`,
+        ),
+      )
+    }
+  } catch (commitErr) {
+    console.error('Auto-commit failed:', commitErr)
+  }
+
+  await releaseAllLocks(ctx.cardId, AI_LOCK_AGENT)
+
+  // Update conversation session metadata
+  const now = new Date()
+  const updateData: Record<string, unknown> = {
+    messageCount: { increment: 2 },
+    lastMessageAt: now,
+  }
+
+  if (ctx.isFirstMessage && !ctx.convSessionTitle) {
+    updateData.title = generateSessionTitle(ctx.message)
+  }
+
+  await prisma.conversationSession.update({
+    where: { id: ctx.convSessionId },
+    data: updateData,
+  })
+
+  // Send conversation session info to client
+  controller.enqueue(
+    encoder.encode(
+      `data: ${JSON.stringify({ type: 'session', sessionId: ctx.convSessionId })}\n\n`,
+    ),
+  )
+}
+
+/**
+ * Generate a short session title from the user's first message.
+ * Simple heuristic: take the first sentence/clause, truncate to ~50 chars.
+ */
+function generateSessionTitle(message: string): string {
+  // Strip leading whitespace and take the first line
+  const firstLine = message.trim().split('\n')[0]
+  // Take first sentence (end at period, question mark, or exclamation)
+  const sentenceMatch = firstLine.match(/^[^.!?]+[.!?]?/)
+  const sentence = sentenceMatch?.[0] ?? firstLine
+  // Truncate to ~50 chars at a word boundary
+  if (sentence.length <= 50) return sentence.trim()
+  const truncated = sentence.slice(0, 50)
+  const lastSpace = truncated.lastIndexOf(' ')
+  return (lastSpace > 20 ? truncated.slice(0, lastSpace) : truncated).trim() + '…'
 }

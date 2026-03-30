@@ -4,6 +4,7 @@ import { getProjects } from '../../lib/actions/projects'
 import { filterAccessibleRepos } from '../../lib/auth/github'
 import { UserProvider } from '../../components/UserProvider'
 import { Sidebar } from '../../components/Sidebar'
+import { getRecentSessions, mapRecentSession } from '../../lib/sessions'
 
 export default async function MainLayout({
   children,
@@ -30,6 +31,9 @@ export default async function MainLayout({
     teams: p.teams.map((t) => ({ id: t.id, name: t.name, colour: t.colour })),
   }))
 
+  const recentSessions = await getRecentSessions(user.id, 8)
+  const recentSessionData = recentSessions.map(mapRecentSession)
+
   return (
     <UserProvider
       initialUser={{
@@ -40,7 +44,7 @@ export default async function MainLayout({
       }}
     >
       <div className="flex h-screen overflow-hidden">
-        <Sidebar projects={sidebarProjects} />
+        <Sidebar projects={sidebarProjects} recentSessions={recentSessionData} />
         <main className="flex-1 flex flex-col overflow-hidden">
           {children}
         </main>

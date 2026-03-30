@@ -131,11 +131,15 @@ The mode parameter flows from the action pill UI → `useAgentSession` hook → 
 
 ### Session persistence and resumption
 
+> **Superseded by `conversation-sessions.md`.** The single `agentSessionId` on the Card model is replaced by a `ConversationSession` table that supports multiple sessions per card and standalone sessions. The Agent SDK integration described here still applies — `ConversationSession.agentSessionId` replaces `Card.agentSessionId`.
+
 - [ ] Agent SDK sessions persist to disk automatically (in `~/.claude/projects/`)
-- [ ] `session_id` stored on the Feature record
+- [ ] `session_id` stored on the `ConversationSession` record (was: Feature/Card record)
 - [ ] Resume sessions with `resume: sessionId` on subsequent turns
 - [ ] Session transcript retrievable via `getSessionMessages()` for audit/display
 - [ ] Individual messages are not stored in Workhorse's database — the SDK is the source of truth for conversation history
+- [ ] Multiple sessions per card — each is an independent Agent SDK session with its own context
+- [ ] Standalone sessions (no card) — used for Q&A, exploration, small fixes. May auto-create a card when file changes occur
 
 ### Fresh-eyes review
 
@@ -424,7 +428,7 @@ The worktree-on-disk architecture means that any agent with access to the same w
 
 > **Worktree disk pressure:** For very large monorepos, even with partial clone, working tree checkout could be slow or large. Should we support sparse checkout (only materialise relevant directories)? Probably premature — try full checkout first.
 
-> **Concurrent sessions on the same card:** Current design is one Agent SDK session per card. If two users want to use the agent simultaneously, they'd need to take turns or the session would need to be shared. Is this acceptable for v1?
+> **Concurrent sessions on the same card:** ~~Current design is one Agent SDK session per card.~~ Resolved: multiple conversation sessions per card (see `conversation-sessions.md`). Each session is an independent Agent SDK session. Two users can have separate sessions on the same card. File locking still applies to prevent conflicting writes.
 
 > **Session transcript display:** Should the UI show the full Agent SDK session transcript (including tool calls), or just the text messages? The full transcript is richer but noisier. Could offer a toggle.
 

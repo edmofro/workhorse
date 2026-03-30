@@ -3,17 +3,16 @@
 /**
  * Message operations — conversation history is now managed by the Agent SDK.
  * The SDK stores session transcripts on disk, retrievable by session_id.
- * This file is kept as a placeholder for any future message-related operations.
+ * ConversationSession records track the agentSessionId for each conversation.
  */
 
-export async function getSessionId(cardId: string): Promise<string | null> {
-  // Import lazily to avoid circular dependencies
+export async function getAgentSessionId(conversationSessionId: string): Promise<string | null> {
   const { prisma } = await import('../prisma')
 
-  const card = await prisma.card.findUnique({
-    where: { id: cardId },
+  const session = await prisma.conversationSession.findUnique({
+    where: { id: conversationSessionId },
     select: { agentSessionId: true },
   })
 
-  return card?.agentSessionId ?? null
+  return session?.agentSessionId ?? null
 }

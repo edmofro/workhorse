@@ -4,28 +4,36 @@ import { requireUser } from '../../../lib/auth/session'
 import { prisma } from '../../../lib/prisma'
 
 /**
- * GET /api/chat-history?cardId=xxx
+ * GET /api/chat-history?sessionId=xxx
  *
- * Retrieves chat history for a card from the Agent SDK session transcript.
+ * Retrieves chat history for a conversation session from the Agent SDK session transcript.
  * Falls back gracefully if the session no longer exists or getSessionMessages
  * is not available.
  */
 export async function GET(request: NextRequest) {
-  await requireUser()
+  const user = await requireUser()
 
   const { searchParams } = new URL(request.url)
-  const cardId = searchParams.get('cardId')
+  const sessionId = searchParams.get('sessionId')
 
-  if (!cardId) {
-    return NextResponse.json({ error: 'cardId is required' }, { status: 400 })
+  if (!sessionId) {
+    return NextResponse.json({ error: 'sessionId is required' }, { status: 400 })
   }
 
-  const card = await prisma.card.findUnique({
-    where: { id: cardId },
-    select: { agentSessionId: true },
+  const convSession = await prisma.conversationSession.findUnique({
+    where: { id: sessionId },
+    select: { agentSessionId: true, userId: true },
   })
 
-  if (!card?.agentSessionId) {
+  if (!convSession) {
+    return NextResponse.json({ messages: [] })
+  }
+
+  if (convSession.userId !== user.id) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
+  if (!convSession.agentSessionId) {
     return NextResponse.json({ messages: [] })
   }
 
@@ -37,7 +45,7 @@ export async function GET(request: NextRequest) {
     if (typeof getSessionMessages !== 'function') {
       return NextResponse.json({ messages: [] })
     }
-    const transcript = await getSessionMessages(card.agentSessionId)
+    const transcript = await getSessionMessages(convSession.agentSessionId)
 
     if (!transcript || !Array.isArray(transcript)) {
       return NextResponse.json({ messages: [] })

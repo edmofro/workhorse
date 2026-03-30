@@ -17,11 +17,12 @@ model User {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  cards             Card[]
-  cardActivities    CardActivity[]
-  comments          CardComment[]
-  fileLocks         FileLock[]
-  attachments       Attachment[]
+  cards                Card[]
+  cardActivities       CardActivity[]
+  comments             CardComment[]
+  fileLocks            FileLock[]
+  attachments          Attachment[]
+  conversationSessions ConversationSession[]
 }
 
 model Project {
@@ -45,8 +46,9 @@ model Team {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  project  Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  cards    Card[]
+  project              Project              @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  cards                Card[]
+  conversationSessions ConversationSession[]
 }
 
 model Card {
@@ -60,7 +62,6 @@ model Card {
   assigneeId      String?
   tags            String   @default("[]") // JSON array of strings
   cardBranch      String?  // Git branch for this card's work (internal, not surfaced to user)
-  agentSessionId  String?  // Agent SDK session ID for resumption
   touchedFiles    String   @default("[]") // JSON array of file paths this card has modified
   prNumber        Int?     // GitHub PR number
   prUrl           String?  // GitHub PR URL
@@ -84,6 +85,7 @@ model Card {
   fileLocks    FileLock[]
   dependsOn    CardDependency[] @relation("dependent")
   dependedOnBy CardDependency[] @relation("parent")
+  sessions     ConversationSession[]
 }
 
 model Mockup {
@@ -161,4 +163,23 @@ model Attachment {
   card       Card?        @relation(fields: [cardId], references: [id], onDelete: Cascade)
   comment    CardComment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
   uploadedBy User         @relation(fields: [uploadedById], references: [id])
+}
+
+model ConversationSession {
+  id              String   @id @default(cuid())
+  cardId          String?
+  teamId          String?
+  userId          String
+  agentSessionId  String?  // Agent SDK session ID for resumption
+  title           String?  // Auto-generated from first exchange
+  messageCount    Int      @default(0)
+  lastMessageAt   DateTime @default(now())
+  createdAt       DateTime @default(now())
+
+  card Card? @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  team Team? @relation(fields: [teamId], references: [id], onDelete: SetNull)
+  user User  @relation(fields: [userId], references: [id])
+
+  @@index([cardId, lastMessageAt(sort: Desc)])
+  @@index([userId, lastMessageAt(sort: Desc)])
 }

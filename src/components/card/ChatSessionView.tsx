@@ -22,7 +22,7 @@ export function ChatSessionView({ cardId }: ChatSessionViewProps) {
     fileWrites,
     thinkingSnippet,
     sendMessage,
-  } = useAgentSession(cardId)
+  } = useAgentSession(cardId, null)
   const {
     pending,
     addFiles,

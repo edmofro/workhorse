@@ -4,7 +4,7 @@ import { getProjects } from '../../lib/actions/projects'
 import { filterAccessibleRepos } from '../../lib/auth/github'
 import { UserProvider } from '../../components/UserProvider'
 import { Sidebar } from '../../components/Sidebar'
-import { prisma } from '../../lib/prisma'
+import { getRecentSessions, mapRecentSession } from '../../lib/sessions'
 
 export default async function MainLayout({
   children,
@@ -31,42 +31,8 @@ export default async function MainLayout({
     teams: p.teams.map((t) => ({ id: t.id, name: t.name, colour: t.colour })),
   }))
 
-  // Fetch recent conversation sessions for the sidebar
-  const recentSessions = await prisma.conversationSession.findMany({
-    where: { userId: user.id },
-    orderBy: { lastMessageAt: 'desc' },
-    take: 8,
-    include: {
-      card: {
-        select: {
-          identifier: true,
-          title: true,
-          team: {
-            select: {
-              colour: true,
-              project: { select: { name: true } },
-            },
-          },
-        },
-      },
-      team: {
-        select: {
-          colour: true,
-          project: { select: { name: true } },
-        },
-      },
-    },
-  })
-
-  const recentSessionData = recentSessions.map((s) => ({
-    id: s.id,
-    title: s.title,
-    cardId: s.cardId,
-    cardIdentifier: s.card?.identifier ?? null,
-    teamColour: s.card?.team?.colour ?? s.team?.colour ?? null,
-    projectName: s.card?.team?.project?.name ?? s.team?.project?.name ?? null,
-    lastMessageAt: s.lastMessageAt.toISOString(),
-  }))
+  const recentSessions = await getRecentSessions(user.id, 8)
+  const recentSessionData = recentSessions.map(mapRecentSession)
 
   return (
     <UserProvider

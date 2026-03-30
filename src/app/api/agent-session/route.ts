@@ -50,11 +50,16 @@ export async function POST(request: NextRequest) {
   }
 
   // Resolve or create ConversationSession
-  let convSession = incomingSessionId
-    ? await prisma.conversationSession.findUnique({ where: { id: incomingSessionId } })
-    : null
-
-  if (!convSession) {
+  let convSession
+  if (incomingSessionId) {
+    convSession = await prisma.conversationSession.findUnique({ where: { id: incomingSessionId } })
+    if (!convSession) {
+      return new Response('Session not found', { status: 404 })
+    }
+    if (convSession.userId !== user.id) {
+      return new Response('Forbidden', { status: 403 })
+    }
+  } else {
     convSession = await prisma.conversationSession.create({
       data: {
         userId: user.id,

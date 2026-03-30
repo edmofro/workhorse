@@ -38,6 +38,7 @@ export function useAgentSession(cardId: string, sessionId: string | null) {
   const abortRef = useRef<AbortController | null>(null)
   // Track the conversation session ID (may be set after first message)
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(sessionId)
+  const currentSessionIdRef = useRef<string | null>(sessionId)
 
   // Text buffering for smooth streaming — accumulate deltas and flush every ~60ms
   const textBufferRef = useRef('')
@@ -48,6 +49,7 @@ export function useAgentSession(cardId: string, sessionId: string | null) {
   // Update currentSessionId when prop changes
   useEffect(() => {
     setCurrentSessionId(sessionId)
+    currentSessionIdRef.current = sessionId
   }, [sessionId])
 
   // Load chat history from Agent SDK session on mount or when sessionId changes
@@ -166,7 +168,7 @@ export function useAgentSession(cardId: string, sessionId: string | null) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             cardId,
-            sessionId: currentSessionId,
+            sessionId: currentSessionIdRef.current,
             message: content,
             attachmentIds,
             mode,
@@ -240,7 +242,7 @@ export function useAgentSession(cardId: string, sessionId: string | null) {
         abortRef.current = null
       }
     },
-    [cardId, currentSessionId],
+    [cardId],
   )
 
   function processEvent(
@@ -252,6 +254,8 @@ export function useAgentSession(cardId: string, sessionId: string | null) {
     if (event.type === 'session') {
       const newSessionId = event.sessionId as string
       setCurrentSessionId(newSessionId)
+      currentSessionIdRef.current = newSessionId
+      return
     }
 
     // Handle streaming text and thinking events

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireUser } from '../../../lib/auth/session'
 import { prisma } from '../../../lib/prisma'
+import { getRecentSessions, mapRecentSession } from '../../../lib/sessions'
 
 /**
  * GET /api/sessions
@@ -13,55 +14,21 @@ export async function GET(request: NextRequest) {
 
   const cardId = searchParams.get('cardId')
   const recent = searchParams.get('recent')
-  const limit = parseInt(searchParams.get('limit') ?? '8', 10)
+  const limit = Math.min(Math.max(parseInt(searchParams.get('limit') ?? '8', 10) || 8, 1), 50)
 
   if (recent === 'true') {
-    const sessions = await prisma.conversationSession.findMany({
-      where: { userId: user.id },
-      orderBy: { lastMessageAt: 'desc' },
-      take: limit,
-      include: {
-        card: {
-          select: {
-            identifier: true,
-            title: true,
-            team: {
-              select: {
-                colour: true,
-                project: { select: { name: true } },
-              },
-            },
-          },
-        },
-        team: {
-          select: {
-            colour: true,
-            project: { select: { name: true } },
-          },
-        },
-      },
-    })
-
+    const sessions = await getRecentSessions(user.id, limit)
     return NextResponse.json({
-      sessions: sessions.map((s) => ({
-        id: s.id,
-        title: s.title,
-        messageCount: s.messageCount,
-        lastMessageAt: s.lastMessageAt.toISOString(),
-        createdAt: s.createdAt.toISOString(),
-        cardId: s.cardId,
-        cardIdentifier: s.card?.identifier ?? null,
-        cardTitle: s.card?.title ?? null,
-        teamColour: s.card?.team?.colour ?? s.team?.colour ?? null,
-        projectName: s.card?.team?.project?.name ?? s.team?.project?.name ?? null,
-      })),
+      sessions: sessions.map(mapRecentSession),
     })
   }
 
   if (cardId) {
+    // Scope to user's own sessions for this card
     const sessions = await prisma.conversationSession.findMany({
-      where: { cardId },
+      where: { cardId, userId: user.id },
       orderBy: { lastMessageAt: 'desc' },
+      take: 50,
     })
 
     return NextResponse.json({

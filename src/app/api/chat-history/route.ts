@@ -11,7 +11,7 @@ import { prisma } from '../../../lib/prisma'
  * is not available.
  */
 export async function GET(request: NextRequest) {
-  await requireUser()
+  const user = await requireUser()
 
   const { searchParams } = new URL(request.url)
   const sessionId = searchParams.get('sessionId')
@@ -22,10 +22,18 @@ export async function GET(request: NextRequest) {
 
   const convSession = await prisma.conversationSession.findUnique({
     where: { id: sessionId },
-    select: { agentSessionId: true },
+    select: { agentSessionId: true, userId: true },
   })
 
-  if (!convSession?.agentSessionId) {
+  if (!convSession) {
+    return NextResponse.json({ messages: [] })
+  }
+
+  if (convSession.userId !== user.id) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
+  if (!convSession.agentSessionId) {
     return NextResponse.json({ messages: [] })
   }
 

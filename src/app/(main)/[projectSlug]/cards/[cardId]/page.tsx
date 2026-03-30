@@ -53,6 +53,7 @@ export default async function CardPage({ params, searchParams }: Props) {
     prisma.conversationSession.findMany({
       where: { cardId: card.id },
       orderBy: { lastMessageAt: 'desc' },
+      take: 20,
     }),
   ])
 

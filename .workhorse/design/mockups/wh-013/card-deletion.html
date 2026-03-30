@@ -1,0 +1,553 @@
+<!-- spec: cards/card-deletion.md -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Card deletion — WH-013</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;450;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg-page: #f8f7f4;
+      --bg-surface: #ffffff;
+      --bg-sidebar: #f1efeb;
+      --bg-hover: #edeae5;
+      --bg-inset: #e8e5df;
+      --text-primary: #1c1917;
+      --text-secondary: #57534e;
+      --text-muted: #a8a29e;
+      --text-faint: #d1cdc6;
+      --border-default: #dfdcd5;
+      --border-subtle: #eae7e1;
+      --accent: #c2410c;
+      --accent-hover: #b33b09;
+      --red: #dc2626;
+      --red-hover: #b91c1c;
+      --red-bg: rgba(220,38,38,0.06);
+      --amber: #b45309;
+      --amber-bg: rgba(180,83,9,0.06);
+      --shadow-sm: 0 1px 3px rgba(28,25,23,0.04);
+      --shadow-md: 0 2px 8px rgba(28,25,23,0.06);
+      --shadow-lg: 0 12px 40px rgba(28,25,23,0.14), 0 2px 8px rgba(28,25,23,0.06);
+      --radius-default: 8px;
+      --radius-lg: 10px;
+      --radius-xl: 12px;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg-page);
+      color: var(--text-primary);
+      min-height: 100vh;
+      padding: 48px 32px;
+    }
+
+    h2 {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 16px;
+    }
+
+    .scenarios {
+      display: flex;
+      gap: 40px;
+      align-items: flex-start;
+      flex-wrap: wrap;
+    }
+
+    .scenario {
+      flex: 1;
+      min-width: 320px;
+      max-width: 480px;
+    }
+
+    /* Dialog */
+    .dialog-backdrop {
+      background: rgba(28,25,23,0.3);
+      border-radius: var(--radius-xl);
+      padding: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .dialog {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-xl);
+      padding: 24px;
+      width: 100%;
+      max-width: 400px;
+      box-shadow: var(--shadow-lg);
+    }
+
+    .dialog-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: var(--red-bg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 16px;
+    }
+
+    .dialog-icon svg {
+      width: 18px;
+      height: 18px;
+      color: var(--red);
+    }
+
+    .dialog-title {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text-primary);
+      letter-spacing: -0.01em;
+      margin-bottom: 8px;
+    }
+
+    .dialog-body {
+      font-size: 13px;
+      font-weight: 400;
+      color: var(--text-secondary);
+      line-height: 1.6;
+      margin-bottom: 20px;
+    }
+
+    .dialog-body strong {
+      font-weight: 500;
+      color: var(--text-primary);
+    }
+
+    /* Dependency list */
+    .dep-warning {
+      background: var(--amber-bg);
+      border: 1px solid rgba(180,83,9,0.12);
+      border-radius: var(--radius-default);
+      padding: 12px 14px;
+      margin-bottom: 20px;
+    }
+
+    .dep-warning-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--amber);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 10px;
+    }
+
+    .dep-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .dep-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .dep-id {
+      font-family: ui-monospace, 'SF Mono', 'Cascadia Code', monospace;
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--text-muted);
+    }
+
+    .dep-name {
+      font-size: 13px;
+      font-weight: 400;
+      color: var(--text-secondary);
+    }
+
+    .dep-note {
+      font-size: 12px;
+      color: var(--amber);
+      margin-top: 10px;
+      line-height: 1.5;
+    }
+
+    /* Actions */
+    .dialog-actions {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+
+    .btn {
+      padding: 7px 14px;
+      border-radius: var(--radius-default);
+      font-size: 12px;
+      font-weight: 500;
+      font-family: inherit;
+      cursor: pointer;
+      border: none;
+      transition: background 0.1s;
+    }
+
+    .btn-secondary {
+      background: var(--bg-surface);
+      color: var(--text-secondary);
+      border: 1px solid var(--border-default);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .btn-secondary:hover {
+      background: var(--bg-hover);
+    }
+
+    .btn-danger {
+      background: var(--red);
+      color: #ffffff;
+    }
+
+    .btn-danger:hover {
+      background: var(--red-hover);
+    }
+
+    /* Context trigger examples */
+    .context-section {
+      margin-top: 40px;
+    }
+
+    .context-title {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 12px;
+    }
+
+    .context-examples {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    /* Board card with context menu */
+    .board-card-wrap {
+      position: relative;
+      width: 280px;
+    }
+
+    .board-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 14px 16px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .board-card-id {
+      font-family: ui-monospace, 'SF Mono', 'Cascadia Code', monospace;
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+    }
+
+    .board-card-title {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text-primary);
+      line-height: 1.4;
+    }
+
+    .context-menu {
+      position: absolute;
+      top: 8px;
+      right: -160px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-lg);
+      width: 152px;
+      padding: 4px;
+      z-index: 10;
+    }
+
+    .context-menu-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 10px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 400;
+      color: var(--text-secondary);
+      cursor: pointer;
+    }
+
+    .context-menu-item:hover {
+      background: var(--bg-hover);
+    }
+
+    .context-menu-item.danger {
+      color: var(--red);
+    }
+
+    .context-menu-item.danger:hover {
+      background: var(--red-bg);
+    }
+
+    .context-menu-item svg {
+      width: 14px;
+      height: 14px;
+      flex-shrink: 0;
+    }
+
+    .context-menu-divider {
+      height: 1px;
+      background: var(--border-subtle);
+      margin: 3px 0;
+    }
+
+    /* Card workspace header with kebab */
+    .workspace-header {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 14px 18px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .workspace-back {
+      width: 24px;
+      height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-muted);
+      border-radius: 6px;
+      flex-shrink: 0;
+    }
+
+    .workspace-back svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    .workspace-title {
+      flex: 1;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text-primary);
+    }
+
+    .workspace-id {
+      font-family: ui-monospace, 'SF Mono', 'Cascadia Code', monospace;
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-left: 6px;
+    }
+
+    .workspace-kebab {
+      width: 28px;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-muted);
+      border-radius: 6px;
+      cursor: pointer;
+      border: 1px solid var(--border-subtle);
+      background: transparent;
+    }
+
+    .workspace-kebab:hover {
+      background: var(--bg-hover);
+      color: var(--text-secondary);
+    }
+
+    .workspace-kebab svg {
+      width: 14px;
+      height: 14px;
+    }
+
+    .workspace-menu-wrap {
+      position: relative;
+    }
+
+    .workspace-context-menu {
+      position: absolute;
+      top: 36px;
+      right: 0;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-lg);
+      width: 152px;
+      padding: 4px;
+      z-index: 10;
+    }
+  </style>
+</head>
+<body>
+
+  <h2>Card deletion — WH-013</h2>
+
+  <div class="scenarios">
+
+    <!-- Scenario 1: Simple deletion -->
+    <div class="scenario">
+      <h2>No dependents</h2>
+      <div class="dialog-backdrop">
+        <div class="dialog">
+          <div class="dialog-icon">
+            <!-- trash icon -->
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M2 4h12M6 4V2.5a.5.5 0 0 1 .5-.5h3a.5.5 0 0 1 .5.5V4M13 4l-.8 8.5a.5.5 0 0 1-.5.5H4.3a.5.5 0 0 1-.5-.5L3 4"/>
+              <path d="M6.5 7v4M9.5 7v4"/>
+            </svg>
+          </div>
+          <div class="dialog-title">Delete card?</div>
+          <div class="dialog-body">
+            <strong>Lab request — allergy checking</strong> and all its specs will be permanently deleted. This cannot be undone.
+          </div>
+          <div class="dialog-actions">
+            <button class="btn btn-secondary">Cancel</button>
+            <button class="btn btn-danger">Delete card</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Scenario 2: With dependents -->
+    <div class="scenario">
+      <h2>With dependents</h2>
+      <div class="dialog-backdrop">
+        <div class="dialog">
+          <div class="dialog-icon">
+            <!-- trash icon -->
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M2 4h12M6 4V2.5a.5.5 0 0 1 .5-.5h3a.5.5 0 0 1 .5.5V4M13 4l-.8 8.5a.5.5 0 0 1-.5.5H4.3a.5.5 0 0 1-.5-.5L3 4"/>
+              <path d="M6.5 7v4M9.5 7v4"/>
+            </svg>
+          </div>
+          <div class="dialog-title">Delete card?</div>
+          <div class="dialog-body">
+            <strong>Patient allergies</strong> and all its specs will be permanently deleted. This cannot be undone.
+          </div>
+          <div class="dep-warning">
+            <div class="dep-warning-label">Dependent cards</div>
+            <ul class="dep-list">
+              <li class="dep-item">
+                <span class="dep-id">WH-019</span>
+                <span class="dep-name">Lab request — allergy checking</span>
+              </li>
+              <li class="dep-item">
+                <span class="dep-id">WH-024</span>
+                <span class="dep-name">Medication prescribing warnings</span>
+              </li>
+            </ul>
+            <div class="dep-note">These cards depend on this one. The dependency will be removed if you proceed.</div>
+          </div>
+          <div class="dialog-actions">
+            <button class="btn btn-secondary">Cancel</button>
+            <button class="btn btn-danger">Delete card</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Entry points -->
+  <div class="context-section">
+    <div class="context-title">Entry points</div>
+    <div class="context-examples">
+
+      <!-- Board card + context menu -->
+      <div>
+        <div style="font-size:11px;font-weight:500;color:var(--text-muted);margin-bottom:8px;">Team board — right-click / ⋯</div>
+        <div class="board-card-wrap">
+          <div class="board-card">
+            <div class="board-card-id">WH-013</div>
+            <div class="board-card-title">Card deletion</div>
+          </div>
+          <div class="context-menu">
+            <div class="context-menu-item">
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M8 3v5l3 2"/>
+                <circle cx="8" cy="8" r="6"/>
+              </svg>
+              Change status
+            </div>
+            <div class="context-menu-item">
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M2 8a6 6 0 1 0 12 0A6 6 0 0 0 2 8zM8 5v3l2 1"/>
+              </svg>
+              Open card
+            </div>
+            <div class="context-menu-divider"></div>
+            <div class="context-menu-item danger">
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M2 4h12M6 4V2.5a.5.5 0 0 1 .5-.5h3a.5.5 0 0 1 .5.5V4M13 4l-.8 8.5a.5.5 0 0 1-.5.5H4.3a.5.5 0 0 1-.5-.5L3 4"/>
+              </svg>
+              Delete card
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card workspace topbar -->
+      <div>
+        <div style="font-size:11px;font-weight:500;color:var(--text-muted);margin-bottom:8px;">Card workspace — ⋯ menu</div>
+        <div style="width:300px;">
+          <div class="workspace-header">
+            <div class="workspace-back">
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M10 12L6 8l4-4"/>
+              </svg>
+            </div>
+            <div class="workspace-title">
+              Card deletion
+              <span class="workspace-id">WH-013</span>
+            </div>
+            <div class="workspace-menu-wrap">
+              <button class="workspace-kebab">
+                <svg viewBox="0 0 16 16" fill="currentColor">
+                  <circle cx="8" cy="3.5" r="1.2"/>
+                  <circle cx="8" cy="8" r="1.2"/>
+                  <circle cx="8" cy="12.5" r="1.2"/>
+                </svg>
+              </button>
+              <div class="workspace-context-menu">
+                <div class="context-menu-item">
+                  <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M11 2l3 3-7 7H4V9l7-7z"/>
+                  </svg>
+                  Rename
+                </div>
+                <div class="context-menu-divider"></div>
+                <div class="context-menu-item danger">
+                  <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M2 4h12M6 4V2.5a.5.5 0 0 1 .5-.5h3a.5.5 0 0 1 .5.5V4M13 4l-.8 8.5a.5.5 0 0 1-.5.5H4.3a.5.5 0 0 1-.5-.5L3 4"/>
+                  </svg>
+                  Delete card
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</body>
+</html>

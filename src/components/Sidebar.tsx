@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname, useSearchParams } from 'next/navigation'
+import { usePathname, useSearchParams, useRouter } from 'next/navigation'
 import {
   Settings,
   LogOut,
@@ -9,10 +9,10 @@ import {
   Palette,
   ChevronDown,
   Ellipsis,
+  Search,
   Plus,
   LayoutList,
   MessageCircle,
-  Code2,
 } from 'lucide-react'
 import { cn } from '../lib/cn'
 import { Avatar } from './Avatar'
@@ -26,7 +26,23 @@ import {
 import { CreateModal } from './CreateModal'
 import { useState, useRef, useEffect, useCallback } from 'react'
 
-export type RecentSession = SidebarSession
+interface SidebarProject {
+  id: string
+  name: string
+  teams: { id: string; name: string; colour: string }[]
+}
+
+export interface RecentSession {
+  id: string
+  title: string | null
+  cardId: string | null
+  cardIdentifier: string | null
+  cardTitle: string | null
+  cardStatus: string | null
+  teamColour: string | null
+  projectName: string | null
+  lastMessageAt: string
+}
 
 interface SidebarProps {
   initialProjects: SidebarProject[]
@@ -44,7 +60,7 @@ export function Sidebar({ initialProjects, initialRecentSessions = [] }: Sidebar
   const searchParams = useSearchParams()
   const { user } = useUser()
   const [switcherOpen, setSwitcherOpen] = useState(false)
-  const [createModal, setCreateModal] = useState<'chat' | 'card' | null>(null)
+  const [createOpen, setCreateOpen] = useState(false)
 
   const firstSegment = decodeURIComponent(pathname.split('/')[1] ?? '')
   const activeProject = projects.find(
@@ -109,22 +125,40 @@ export function Sidebar({ initialProjects, initialRecentSessions = [] }: Sidebar
             )}
           </div>
         )}
+
+        {/* Action buttons */}
+        <div className="flex items-center justify-end gap-1 px-1 mt-2">
+          <button
+            className="p-[6px] rounded-[var(--radius-md)] text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer"
+            title="Search"
+          >
+            <Search size={14} />
+          </button>
+          <button
+            onClick={() => setCreateOpen(true)}
+            className="p-[6px] rounded-[var(--radius-md)] text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer"
+            title="New conversation or card"
+          >
+            <Plus size={14} />
+          </button>
+        </div>
       </div>
 
       {/* Sections */}
       <nav className="flex-1 px-3 overflow-y-auto">
         {projectPath && (
           <>
-            <SectionItem
+            {/* Cards link */}
+            <NavItem
               href={projectPath}
               icon={<LayoutList size={14} />}
               active={pathname === projectPath && !searchParams.has('session')}
-              onAdd={() => setCreateModal('card')}
             >
               Cards
-            </SectionItem>
+            </NavItem>
 
-            <SectionItem
+            {/* Specs link */}
+            <NavItem
               href={`${projectPath}/specs`}
               icon={<FileText size={14} />}
               active={pathname.startsWith(`${projectPath}/specs`)}
@@ -140,65 +174,45 @@ export function Sidebar({ initialProjects, initialRecentSessions = [] }: Sidebar
               Design
             </SectionItem>
 
-            <SectionItem
-              href={`${projectPath}/code`}
-              icon={<Code2 size={14} />}
-              active={pathname.startsWith(`${projectPath}/code`)}
-              disabled
-            >
-              Code
-            </SectionItem>
+            {/* Recent conversations */}
+            {recentSessions.length > 0 && (
+              <>
+                <div className="px-2 pt-5 pb-[6px] text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-[0.06em]">
+                  Recent
+                </div>
+                {recentSessions
+                  .filter((s) => !activeProject || s.projectName?.toLowerCase() === activeProject.name.toLowerCase())
+                  .slice(0, 8)
+                  .map((session) => {
+                    const href = session.cardId && session.cardIdentifier && session.projectName
+                      ? `/${encodeURIComponent(session.projectName.toLowerCase())}/cards/${session.cardIdentifier}?session=${session.id}`
+                      : session.projectName
+                        ? `/${encodeURIComponent(session.projectName.toLowerCase())}/sessions/${session.id}`
+                        : '#'
+                    const sessionLabel = session.title ?? session.cardTitle ?? 'New conversation'
+                    const label = session.cardIdentifier
+                      ? `${session.cardIdentifier}: ${sessionLabel}`
+                      : sessionLabel
+                    const isActive = searchParams.get('session') === session.id
+                      || pathname.includes(`/sessions/${session.id}`)
+                    const isCardBound = !!session.cardId
 
-            {/* Conversations section with recent items */}
-            <SectionItem
-              href={`${projectPath}/conversations`}
-              icon={<MessageCircle size={14} />}
-              active={pathname.startsWith(`${projectPath}/conversations`) || pathname.startsWith(`${projectPath}/sessions/`)}
-              onAdd={() => setCreateModal('chat')}
-            >
-              Conversations
-            </SectionItem>
-
-            {filteredSessions.length > 0 && (
-              <div className="ml-1">
-                {filteredSessions.map((session) => {
-                  const href = session.cardId && session.cardIdentifier && session.projectName
-                    ? `/${encodeURIComponent(session.projectName.toLowerCase())}/cards/${session.cardIdentifier}?session=${session.id}`
-                    : session.projectName
-                      ? `/${encodeURIComponent(session.projectName.toLowerCase())}/sessions/${session.id}`
-                      : '#'
-                  const sessionLabel = session.title ?? session.cardTitle ?? 'New conversation'
-                  const label = session.cardIdentifier
-                    ? `${session.cardIdentifier}: ${sessionLabel}`
-                    : sessionLabel
-                  const isActive = searchParams.get('session') === session.id
-                    || pathname.startsWith(`${projectPath}/sessions/${session.id}`)
-                  const isCardBound = !!session.cardId
-
-                  return (
-                    <ConversationItem
-                      key={session.id}
-                      href={href}
-                      active={isActive}
-                      indicator={
-                        isCardBound
-                          ? <StatusDot status={session.cardStatus} />
-                          : <MessageCircle size={11} className="text-[var(--text-muted)] shrink-0" />
-                      }
-                    >
-                      {label}
-                    </ConversationItem>
-                  )
-                })}
-                {projectSessions.length > 5 && (
-                  <Link
-                    href={`${projectPath}/conversations`}
-                    className="block px-3 py-1 text-[11px] text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors duration-100"
-                  >
-                    View all
-                  </Link>
-                )}
-              </div>
+                    return (
+                      <NavItem
+                        key={session.id}
+                        href={href}
+                        active={isActive}
+                        statusIndicator={
+                          isCardBound
+                            ? <StatusDot status={session.cardStatus} />
+                            : <MessageCircle size={12} className="text-[var(--text-muted)] shrink-0" />
+                        }
+                      >
+                        <span className="truncate">{label}</span>
+                      </NavItem>
+                    )
+                  })}
+              </>
             )}
           </>
         )}
@@ -208,103 +222,15 @@ export function Sidebar({ initialProjects, initialRecentSessions = [] }: Sidebar
       <UserMenu user={user} />
 
       {/* Create modal */}
-      {createModal && projectPath && activeProject && (
+      {createOpen && projectPath && activeProject && (
         <CreateModal
+          projectName={activeProject.name}
           projectSlug={projectPath}
           defaultTeamId={activeProject.teams[0]?.id}
-          defaultMode={createModal}
-          onClose={handleCloseModal}
+          onClose={() => setCreateOpen(false)}
         />
       )}
     </aside>
-  )
-}
-
-/** A section row with icon, label (navigable), and hover action ([+]). */
-function SectionItem({
-  href,
-  icon,
-  active,
-  disabled,
-  onAdd,
-  children,
-}: {
-  href: string
-  icon: React.ReactNode
-  active: boolean
-  disabled?: boolean
-  onAdd?: () => void
-  children: React.ReactNode
-}) {
-  if (disabled) {
-    return (
-      <div className="group flex items-center rounded-[var(--radius-md)]">
-        <span
-          className="flex items-center gap-2 flex-1 min-w-0 px-3 py-2 rounded-[var(--radius-md)] text-[13px] text-[var(--text-muted)] font-[450] cursor-default"
-          aria-disabled="true"
-        >
-          {icon}
-          <span className="truncate">{children}</span>
-        </span>
-      </div>
-    )
-  }
-
-  return (
-    <div className="group relative flex items-center rounded-[var(--radius-md)] transition-colors duration-100">
-      <Link
-        href={href}
-        className={cn(
-          'flex items-center gap-2 flex-1 min-w-0 px-3 py-2 rounded-[var(--radius-md)]',
-          'text-[13px] cursor-pointer transition-colors duration-100',
-          active
-            ? 'bg-[var(--bg-surface)] text-[var(--text-primary)] font-medium shadow-[var(--shadow-sm)]'
-            : 'text-[var(--text-secondary)] font-[450] hover:bg-[var(--bg-hover)]',
-        )}
-      >
-        {icon}
-        <span className="truncate">{children}</span>
-      </Link>
-      {onAdd && (
-        <button
-          type="button"
-          className="absolute right-1 p-1 rounded-[var(--radius-sm)] text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity duration-100"
-          title="New"
-          onClick={onAdd}
-        >
-          <Plus size={12} />
-        </button>
-      )}
-    </div>
-  )
-}
-
-/** A recent conversation item shown below the Conversations section. */
-function ConversationItem({
-  href,
-  active,
-  indicator,
-  children,
-}: {
-  href: string
-  active: boolean
-  indicator: React.ReactNode
-  children: React.ReactNode
-}) {
-  return (
-    <Link
-      href={href}
-      className={cn(
-        'flex items-center gap-2 px-3 py-1 rounded-[var(--radius-md)]',
-        'text-[12px] cursor-pointer transition-colors duration-100',
-        active
-          ? 'bg-[var(--bg-surface)] text-[var(--text-primary)] font-medium shadow-[var(--shadow-sm)]'
-          : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]',
-      )}
-    >
-      {indicator}
-      <span className="truncate">{children}</span>
-    </Link>
   )
 }
 
@@ -319,8 +245,140 @@ function StatusDot({ status }: { status: string | null }) {
       <span className="w-[8px] h-[8px] rounded-full shrink-0 bg-[var(--amber)]" />
     )
   }
+  // NOT_STARTED or unknown — hollow dot
   return (
     <span className="w-[8px] h-[8px] rounded-full shrink-0 border border-[var(--border-default)]" />
+  )
+}
+
+function CreateModal({
+  projectName,
+  projectSlug,
+  defaultTeamId,
+  onClose,
+}: {
+  projectName: string
+  projectSlug: string
+  defaultTeamId?: string
+  onClose: () => void
+}) {
+  const [prompt, setPrompt] = useState('')
+  const [busy, setBusy] = useState(false)
+  const router = useRouter()
+
+  async function handleCreateCard() {
+    if (!prompt.trim() || busy || !defaultTeamId) return
+    setBusy(true)
+
+    let title: string
+    let description: string
+
+    try {
+      const res = await fetch('/api/generate-card', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: prompt.trim() }),
+      })
+      const data = await res.json()
+      title = data.title
+      description = data.description ?? ''
+    } catch {
+      title = prompt.trim().length > 60
+        ? prompt.trim().slice(0, 57) + '...'
+        : prompt.trim()
+      description = prompt.trim()
+    }
+
+    const { createCard } = await import('../lib/actions/cards')
+    const card = await createCard({ title, description: description || undefined, teamId: defaultTeamId })
+
+    onClose()
+    router.push(`${projectSlug}/cards/${card.identifier}`)
+  }
+
+  async function handleStartChat() {
+    if (!prompt.trim() || busy) return
+    setBusy(true)
+
+    try {
+      const res = await fetch('/api/sessions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: prompt.trim(),
+          teamId: defaultTeamId,
+        }),
+      })
+      const data = await res.json()
+      onClose()
+      router.push(`${projectSlug}/sessions/${data.id}`)
+    } catch {
+      setBusy(false)
+    }
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (e.key === 'Enter' && !e.shiftKey && !e.metaKey && !e.ctrlKey) {
+      e.preventDefault()
+      handleStartChat()
+    }
+    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+      e.preventDefault()
+      handleCreateCard()
+    }
+    if (e.key === 'Escape' && !busy) {
+      onClose()
+    }
+  }
+
+  return (
+    <>
+      <div
+        className="fixed inset-0 z-40 bg-[rgba(28,25,23,0.40)]"
+        onClick={() => !busy && onClose()}
+      />
+      <div className="fixed inset-0 z-50 flex items-center justify-center">
+        <div className="w-full max-w-[480px] bg-[var(--bg-surface)] rounded-[var(--radius-lg)] border border-[var(--border-subtle)] shadow-[var(--shadow-lg)] p-6">
+          <div className="relative">
+            <textarea
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
+              onKeyDown={handleKeyDown}
+              autoFocus
+              rows={4}
+              placeholder="What's on your mind?"
+              disabled={busy}
+              className="w-full px-3 py-3 pb-12 text-[14px] bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-[var(--radius-default)] outline-none transition-[border-color,box-shadow] duration-150 focus:border-[var(--accent)] focus:shadow-[var(--shadow-input-focus)] placeholder:text-[var(--text-faint)] resize-none disabled:opacity-60"
+            />
+            <div className="absolute bottom-[1px] left-[1px] right-[1px] flex items-center justify-between px-2 py-2 rounded-b-[var(--radius-default)]">
+              <button
+                onClick={handleStartChat}
+                disabled={!prompt.trim() || busy}
+                title="Start conversation (↵)"
+                className="p-[6px] rounded-[var(--radius-md)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer disabled:opacity-40 disabled:cursor-default"
+              >
+                {busy ? (
+                  <div className="w-[14px] h-[14px] border-2 border-[var(--text-muted)] border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M5 12h14" />
+                    <path d="m12 5 7 7-7 7" />
+                  </svg>
+                )}
+              </button>
+              <button
+                onClick={handleCreateCard}
+                disabled={!prompt.trim() || busy || !defaultTeamId}
+                title="Create card (⌘↵)"
+                className="p-[6px] rounded-[var(--radius-md)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer disabled:opacity-40 disabled:cursor-default"
+              >
+                <LayoutList size={14} />
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </>
   )
 }
 
@@ -376,5 +434,36 @@ function UserMenu({ user }: { user: { displayName: string; avatarUrl: string | n
         </button>
       </div>
     </div>
+  )
+}
+
+function NavItem({
+  href,
+  icon,
+  statusIndicator,
+  active,
+  children,
+}: {
+  href: string
+  icon?: React.ReactNode
+  statusIndicator?: React.ReactNode
+  active: boolean
+  children: React.ReactNode
+}) {
+  return (
+    <Link
+      href={href}
+      className={cn(
+        'flex items-center gap-2 px-3 py-[7px] rounded-[var(--radius-md)]',
+        'text-[13px] cursor-pointer transition-colors duration-100',
+        active
+          ? 'bg-[var(--bg-surface)] text-[var(--text-primary)] font-medium shadow-[var(--shadow-sm)]'
+          : 'text-[var(--text-secondary)] font-[450] hover:bg-[var(--bg-hover)]',
+      )}
+    >
+      {icon}
+      {statusIndicator}
+      {children}
+    </Link>
   )
 }

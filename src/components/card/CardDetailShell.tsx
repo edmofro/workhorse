@@ -6,6 +6,7 @@ import { Topbar, TopbarCardTitle, TopbarRight } from '../Topbar'
 import { CollaborateButton } from './CollaborateButton'
 import { ActivityPopover } from './ActivityPopover'
 import { useCardBack } from './CardBackContext'
+import type { CardActivity } from '../../lib/hooks/queries'
 
 interface CardDetailShellProps {
   card: {
@@ -16,6 +17,7 @@ interface CardDetailShellProps {
     cardBranch: string | null
     touchedFiles: string[]
     defaultBranch: string
+    activities: CardActivity[]
   }
   projectSlug: string
   children: React.ReactNode
@@ -50,7 +52,7 @@ export function CardDetailShell({
           identifier={card.identifier}
         />
         <TopbarRight>
-          <ActivityPopover cardId={card.id} />
+          <ActivityPopover activities={card.activities} />
           <CollaborateButton
             cardId={card.id}
             cardBranch={card.cardBranch}

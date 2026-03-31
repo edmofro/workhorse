@@ -3,18 +3,16 @@
 import { useState, useRef, useEffect } from 'react'
 import { Activity } from 'lucide-react'
 import { cn } from '../../lib/cn'
-import { useCardDetail } from '../../lib/hooks/queries'
+import type { CardActivity } from '../../lib/hooks/queries'
 import { Avatar } from '../Avatar'
 
 interface ActivityPopoverProps {
-  cardId: string
+  activities: CardActivity[]
 }
 
-export function ActivityPopover({ cardId }: ActivityPopoverProps) {
+export function ActivityPopover({ activities }: ActivityPopoverProps) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
-  const { data } = useCardDetail(cardId)
-  const activities = data?.card.activities ?? []
 
   useEffect(() => {
     if (!open) return

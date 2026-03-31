@@ -2,23 +2,19 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { Activity } from 'lucide-react'
+import { cn } from '../../lib/cn'
+import { useCardDetail } from '../../lib/hooks/queries'
 import { Avatar } from '../Avatar'
 
-interface ActivityItem {
-  id: string
-  action: string
-  details: string | null
-  createdAt: string
-  user: { displayName: string } | null
-}
-
 interface ActivityPopoverProps {
-  activities: ActivityItem[]
+  cardId: string
 }
 
-export function ActivityPopover({ activities }: ActivityPopoverProps) {
+export function ActivityPopover({ cardId }: ActivityPopoverProps) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
+  const { data } = useCardDetail(cardId)
+  const activities = data?.card.activities ?? []
 
   useEffect(() => {
     if (!open) return
@@ -35,11 +31,12 @@ export function ActivityPopover({ activities }: ActivityPopoverProps) {
     <div className="relative" ref={ref}>
       <button
         onClick={() => setOpen(!open)}
-        className={`p-2 rounded-[var(--radius-default)] transition-colors duration-100 cursor-pointer ${
+        className={cn(
+          'p-2 rounded-[var(--radius-default)] transition-colors duration-100 cursor-pointer',
           open
             ? 'bg-[var(--bg-hover)] text-[var(--text-primary)]'
-            : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'
-        }`}
+            : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]',
+        )}
         title="Activity"
       >
         <Activity size={16} />
@@ -78,7 +75,7 @@ export function ActivityPopover({ activities }: ActivityPopoverProps) {
                       </span>
                     </span>
                     <div className="text-[11px] text-[var(--text-faint)]">
-                      {new Date(activity.createdAt).toLocaleDateString('en-AU', {
+                      {new Date(activity.createdAt).toLocaleString('en-AU', {
                         day: 'numeric',
                         month: 'short',
                         hour: '2-digit',

@@ -98,8 +98,6 @@ export function CreateModal({
     }
   }
 
-  const primaryShortcut = defaultMode === 'card' ? '⌘↵' : '↵'
-  const secondaryShortcut = defaultMode === 'card' ? '↵' : '⌘↵'
 
   return (
     <>

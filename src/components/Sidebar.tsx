@@ -66,7 +66,7 @@ export function Sidebar({ initialProjects, initialRecentSessions = [] }: Sidebar
     >
       {/* Header with project switcher */}
       <div className="px-3 pt-4 pb-2">
-        <div className="flex items-center gap-[10px] px-1 mb-3">
+        <div className="flex items-center gap-2 px-1 mb-3">
           <div className="w-[26px] h-[26px] bg-[var(--accent)] rounded-[var(--radius-md)] flex items-center justify-center text-white text-[13px] font-bold">
             W
           </div>
@@ -300,7 +300,7 @@ function ConversationItem({
     <Link
       href={href}
       className={cn(
-        'flex items-center gap-2 px-3 py-[5px] rounded-[var(--radius-md)]',
+        'flex items-center gap-2 px-3 py-1 rounded-[var(--radius-md)]',
         'text-[12px] cursor-pointer transition-colors duration-100',
         active
           ? 'bg-[var(--bg-surface)] text-[var(--text-primary)] font-medium shadow-[var(--shadow-sm)]'

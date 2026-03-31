@@ -35,7 +35,7 @@ export function ActivityPopover({ activities }: ActivityPopoverProps) {
     <div className="relative" ref={ref}>
       <button
         onClick={() => setOpen(!open)}
-        className={`p-[6px] rounded-[var(--radius-default)] transition-colors duration-100 cursor-pointer ${
+        className={`p-2 rounded-[var(--radius-default)] transition-colors duration-100 cursor-pointer ${
           open
             ? 'bg-[var(--bg-hover)] text-[var(--text-primary)]'
             : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'
@@ -46,7 +46,7 @@ export function ActivityPopover({ activities }: ActivityPopoverProps) {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full mt-2 w-[340px] bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-[var(--radius-lg)] shadow-[var(--shadow-lg)] z-50 overflow-hidden">
+        <div className="absolute right-0 top-full mt-2 w-[340px] bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-[var(--radius-xl)] shadow-[var(--shadow-lg)] z-50 overflow-hidden">
           <div className="px-4 pt-3 pb-2">
             <h3 className="text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-[0.06em]">
               Activity

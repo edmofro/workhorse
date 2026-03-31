@@ -2,7 +2,6 @@
 title: Card navigation and chat-first workflow
 area: cards
 card: WH-006
-status: in-progress
 ---
 
 The card detail experience is built around a chat-first workflow following the Claude/ChatGPT artifact pattern. The chat is the primary interaction surface — centred when no artifact is open, sliding left when an artifact opens on the right. Specs and mockups are both artifacts produced by or referenced by the conversation, sharing a unified layout. The card's status shapes what actions are prominent and what the AI focuses on, but never gates access to any view.

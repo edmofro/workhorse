@@ -2,7 +2,6 @@
 title: AI-driven spec interview
 area: agent
 card: WH-001
-status: draft
 ---
 
 An AI-powered interview system that guides users through developing comprehensive acceptance criteria. The agent has remote access to the target codebase to understand how changes fit together, identify edge cases, and find interactions with existing functionality.

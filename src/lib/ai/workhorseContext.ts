@@ -45,7 +45,6 @@ Workhorse is a spec-driven development workbench. It helps product owners, teste
 title: Human-readable name
 area: which-area
 card: WH-042
-status: draft
 ---
 
 Summary paragraph describing what this area covers.
@@ -65,7 +64,6 @@ Summary paragraph describing what this area covers.
 - \`title\` — human-readable name
 - \`area\` — which area this belongs to (matches directory)
 - \`card\` — Workhorse card ID (e.g. WH-042)
-- \`status\` — \`draft\`, \`complete\`, or \`superseded\`
 
 ### Writing conventions
 

@@ -2,7 +2,6 @@
 title: Spec editor
 area: editor
 card: WH-002
-status: draft
 ---
 
 A rich editor for viewing and editing specs within Workhorse. Product owners and testers work with specs without touching markdown. Developers can also toggle to the underlying format.

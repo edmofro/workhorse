@@ -119,12 +119,9 @@ function NewSpecView({ content }: { content: string }) {
   return (
     <div className="flex-1 overflow-y-auto flex justify-center">
       <div className="w-full" style={{ maxWidth: '720px', padding: '48px 40px 80px' }}>
-        <h1 className="text-[24px] font-bold tracking-[-0.03em] leading-[1.3] mb-2">
+        <h1 className="text-[24px] font-bold tracking-[-0.03em] leading-[1.3] mb-6">
           <span className="diff-added">{parsed.frontmatter.title || 'Untitled spec'}</span>
         </h1>
-        <div className="text-[14px] text-[var(--text-muted)] mb-8">
-          <span className="diff-added capitalize">{parsed.frontmatter.status ?? 'draft'}</span>
-        </div>
         <div className="text-[14px] text-[var(--text-secondary)] leading-[1.75] prose-workhorse">
           <div className="diff-added">
             <DiffMarkdown content={parsed.content} />
@@ -141,7 +138,6 @@ function DiffRenderedSpec({ baseContent, currentContent }: { baseContent: string
   const currentParsed = useMemo(() => parseSpec(currentContent), [currentContent])
 
   const titleChanged = baseParsed.frontmatter.title !== currentParsed.frontmatter.title
-  const statusChanged = (baseParsed.frontmatter.status ?? 'draft') !== (currentParsed.frontmatter.status ?? 'draft')
 
   // Compute word-level diff of the body content
   const bodySegments = useMemo(
@@ -153,7 +149,7 @@ function DiffRenderedSpec({ baseContent, currentContent }: { baseContent: string
     <div className="flex-1 overflow-y-auto flex justify-center">
       <div className="w-full" style={{ maxWidth: '720px', padding: '48px 40px 80px' }}>
         {/* Title */}
-        <h1 className="text-[24px] font-bold tracking-[-0.03em] leading-[1.3] mb-2">
+        <h1 className="text-[24px] font-bold tracking-[-0.03em] leading-[1.3] mb-6">
           {titleChanged ? (
             <>
               <span className="diff-removed">{baseParsed.frontmatter.title}</span>
@@ -163,18 +159,6 @@ function DiffRenderedSpec({ baseContent, currentContent }: { baseContent: string
             currentParsed.frontmatter.title || 'Untitled spec'
           )}
         </h1>
-
-        {/* Status */}
-        <div className="text-[14px] text-[var(--text-muted)] mb-8">
-          {statusChanged ? (
-            <>
-              <span className="diff-removed capitalize">{baseParsed.frontmatter.status ?? 'draft'}</span>
-              <span className="diff-added capitalize">{currentParsed.frontmatter.status ?? 'draft'}</span>
-            </>
-          ) : (
-            <span className="capitalize">{currentParsed.frontmatter.status ?? 'draft'}</span>
-          )}
-        </div>
 
         {/* Body with inline diff */}
         <div className="text-[14px] text-[var(--text-secondary)] leading-[1.75] prose-workhorse">

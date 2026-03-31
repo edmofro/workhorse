@@ -2,7 +2,6 @@
 title: GitHub integration
 area: integrations
 card: WH-013
-status: draft
 ---
 
 Deep GitHub integration — authentication (SSO), create PRs, view diffs, run reviews (via Review Hero), manage branches. Eventually may bring some GitHub workflows into Workhorse directly.

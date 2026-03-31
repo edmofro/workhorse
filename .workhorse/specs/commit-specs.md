@@ -2,7 +2,6 @@
 title: Commit specs to codebase
 area: workflow
 card: WH-005
-status: draft
 ---
 
 Specs are auto-committed to the card's git branch on every change. The user never sees branch names, SHAs, or git operations. A card may create new specs and modify existing ones — all committed to the same branch.

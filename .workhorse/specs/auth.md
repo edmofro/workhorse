@@ -2,7 +2,6 @@
 title: Authentication and access
 area: identity
 card: WH-021
-status: draft
 ---
 
 Authentication via GitHub SSO. No org hierarchy or admin roles — just individual users whose GitHub repo access determines which teams they can join or create.

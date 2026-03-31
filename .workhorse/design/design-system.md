@@ -1,6 +1,5 @@
 ---
 title: Workhorse design system
-status: complete
 ---
 # Workhorse Design System
 
@@ -161,6 +160,7 @@ Base unit: **4px**. All spacing values are multiples of 4.
 | Topbar height | 52px |
 | Conversation max-width | 680px |
 | Spec document max-width | 720px |
+| Artifacts sidebar width | 248px |
 | Files panel width | ~180px |
 
 ---

@@ -1,7 +1,6 @@
 ---
 title: Chat-to-data extraction pipeline
 area: workflow
-status: draft
 ---
 
 Connects the AI chat session to the rest of the system by automatically persisting mockups and specs extracted from chat responses and populating the activity log.

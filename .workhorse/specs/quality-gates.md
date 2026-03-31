@@ -1,7 +1,6 @@
 ---
 title: Workflow quality gates and enforcement
 area: workflow
-status: draft
 ---
 
 Ordering and quality constraints in the commit and completion workflows.

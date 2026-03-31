@@ -2,7 +2,6 @@
 title: Agent SDK session architecture
 area: agent
 card: WH-001
-status: draft
 ---
 
 The AI agent runs on the Claude Agent SDK, giving it full codebase access, automatic context window management, and the ability to write spec and mockup files directly to disk. Workhorse is an orchestration and approval UI — the Agent SDK handles the agentic loop, file tools (Read, Glob, Grep, Write, Edit), context window compaction, and session persistence.

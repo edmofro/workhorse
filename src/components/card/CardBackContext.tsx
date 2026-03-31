@@ -1,25 +1,38 @@
 'use client'
 
-import { createContext, useContext } from 'react'
+import { createContext, useContext, useEffect, useState } from 'react'
 
 type CardBackHandler = (() => void) | null
 
-const CardBackContext = createContext<CardBackHandler>(null)
+interface CardBackContextValue {
+  handler: CardBackHandler
+  setHandler: (h: CardBackHandler) => void
+}
 
-export function CardBackProvider({
-  onBack,
-  children,
-}: {
-  onBack: CardBackHandler
-  children: React.ReactNode
-}) {
+const CardBackContext = createContext<CardBackContextValue>({
+  handler: null,
+  setHandler: () => {},
+})
+
+export function CardBackStoreProvider({ children }: { children: React.ReactNode }) {
+  const [handler, setHandler] = useState<CardBackHandler>(null)
   return (
-    <CardBackContext.Provider value={onBack}>
+    <CardBackContext.Provider value={{ handler, setHandler }}>
       {children}
     </CardBackContext.Provider>
   )
 }
 
+/** Called by CardWorkspace to register the current back handler */
+export function useCardBackRegister(handler: CardBackHandler) {
+  const { setHandler } = useContext(CardBackContext)
+  useEffect(() => {
+    setHandler(handler)
+    return () => setHandler(null)
+  }, [handler, setHandler])
+}
+
+/** Called by CardDetailShell to read the current back handler */
 export function useCardBack(): CardBackHandler {
-  return useContext(CardBackContext)
+  return useContext(CardBackContext).handler
 }

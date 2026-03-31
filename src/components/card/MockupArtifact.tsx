@@ -16,7 +16,6 @@ interface MockupArtifactProps {
   device: DeviceKey
   isEditing?: boolean
   onContentChange?: (html: string) => void
-  onDoneEditing?: () => void
 }
 
 /** Renders a mockup HTML file as an artifact (inline, not full-screen overlay).
@@ -28,7 +27,6 @@ export function MockupArtifact({
   device,
   isEditing = false,
   onContentChange,
-  onDoneEditing,
 }: MockupArtifactProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const [editSource, setEditSource] = useState(html)
@@ -52,7 +50,7 @@ export function MockupArtifact({
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Preview (top half) */}
         <div className="flex-1 overflow-auto bg-[var(--bg-mockup-stage)] min-h-0">
-          <div className="flex items-start justify-center p-4 min-h-full">
+          <div className="flex items-start justify-center p-4">
             <div
               className={cn(
                 'bg-white rounded-[var(--radius-lg)] shadow-[var(--shadow-md)] overflow-hidden transition-[width] duration-300 ease-out',
@@ -60,7 +58,6 @@ export function MockupArtifact({
               style={{
                 width: DEVICE_WIDTHS[device],
                 maxWidth: '100%',
-                minHeight: '200px',
               }}
             >
               {/* sandbox: allow-scripts enables JS; allow-same-origin is intentionally
@@ -70,7 +67,7 @@ export function MockupArtifact({
                 ref={iframeRef}
                 srcDoc={displayHtml}
                 className="w-full border-none"
-                style={{ minHeight: '300px' }}
+                style={{ minHeight: '200px' }}
                 sandbox="allow-scripts"
                 title={title}
               />
@@ -80,16 +77,10 @@ export function MockupArtifact({
 
         {/* Source editor (bottom half) */}
         <div className="shrink-0 border-t border-[var(--border-subtle)] bg-[var(--bg-page)] flex flex-col" style={{ height: '40%', minHeight: '160px' }}>
-          <div className="flex items-center justify-between px-3 py-1.5 border-b border-[var(--border-subtle)] bg-[var(--bg-surface)]">
+          <div className="px-3 py-1.5 border-b border-[var(--border-subtle)] bg-[var(--bg-surface)]">
             <span className="text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-[0.06em]">
               Source
             </span>
-            <button
-              onClick={onDoneEditing}
-              className="px-2 py-1 rounded-[var(--radius-default)] text-[12px] font-medium bg-[var(--accent)] text-white hover:bg-[var(--accent-hover)] transition-colors duration-100 cursor-pointer"
-            >
-              Done
-            </button>
           </div>
           <textarea
             value={editSource}
@@ -105,7 +96,7 @@ export function MockupArtifact({
   // Read-only mode
   return (
     <div className="flex-1 overflow-auto bg-[var(--bg-mockup-stage)]">
-      <div className="flex items-start justify-center p-6 min-h-full">
+      <div className="flex items-start justify-center p-6">
         <div
           className={cn(
             'bg-white rounded-[var(--radius-lg)] shadow-[var(--shadow-md)] overflow-hidden transition-[width] duration-300 ease-out',
@@ -113,17 +104,13 @@ export function MockupArtifact({
           style={{
             width: DEVICE_WIDTHS[device],
             maxWidth: '100%',
-            minHeight: '400px',
           }}
         >
-          {/* sandbox: allow-scripts enables JS; allow-same-origin is intentionally
-             omitted so mockup HTML cannot access parent page storage/cookies.
-             Trade-off: external font links and relative asset URLs won't load. */}
           <iframe
             ref={iframeRef}
             srcDoc={displayHtml}
             className="w-full border-none"
-            style={{ minHeight: '600px' }}
+            style={{ minHeight: '400px' }}
             sandbox="allow-scripts"
             title={title}
           />

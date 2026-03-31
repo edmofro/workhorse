@@ -2,7 +2,6 @@
 title: Spec format and information architecture
 area: workflow
 card: WH-006
-status: draft
 ---
 
 Defines the format specs are written in, how they're structured in the codebase, and how they map to the navigable hierarchy in Workhorse. The format serves product owners (who author and review), developers and AI agents (who implement from them), and the spec explorer (which builds a navigable knowledge base from them).
@@ -44,7 +43,6 @@ Each spec is a markdown file with YAML frontmatter and structured content:
 title: Patient allergies
 area: patient
 card: WH-042
-status: complete
 ---
 
 Summary paragraph describing what this area covers.
@@ -64,7 +62,6 @@ Summary paragraph describing what this area covers.
 - `title` — human-readable name
 - `area` — which area this belongs to (matches directory)
 - `card` — Workhorse card ID that created or owns this spec (links back to chat, comments, mockups)
-- `status` — `draft`, `complete`, `superseded`
 
 ### Content conventions
 
@@ -84,7 +81,7 @@ Summary paragraph describing what this area covers.
 ## Format
 
 - [ ] Specs are markdown files with YAML frontmatter
-- [ ] Frontmatter includes: title, area, card reference, status
+- [ ] Frontmatter includes: title, area, card reference
 - [ ] Content uses standard markdown: headings, checkbox lists, blockquotes
 - [ ] No special syntax or IDs that a product owner would need to manage
 - [ ] Readable and editable in any text editor or GitHub's web UI

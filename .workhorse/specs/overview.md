@@ -1,6 +1,5 @@
 ---
 title: Workhorse v1 overview
-status: draft
 ---
 
 Workhorse is a spec-driven development workbench with three major areas: cards (AI-assisted spec interviews, specs auto-committed to the codebase), a spec explorer (navigable hierarchy of merged specs per project from main branch), and a design library (living design system per project in `.workhorse/design/`).

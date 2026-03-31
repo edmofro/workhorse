@@ -49,12 +49,12 @@ export async function GET(request: NextRequest) {
  * POST /api/sessions
  *
  * Create a new conversation session.
- * Body: { cardId?: string, teamId?: string }
+ * Body: { cardId?: string, teamId?: string, message?: string }
  */
 export async function POST(request: NextRequest) {
   const user = await requireUser()
   const body = await request.json()
-  const { cardId, teamId } = body as { cardId?: string; teamId?: string }
+  const { cardId, teamId, message } = body as { cardId?: string; teamId?: string; message?: string }
 
   // If cardId provided, verify it exists and user has access
   let resolvedTeamId = teamId ?? null
@@ -71,6 +71,8 @@ export async function POST(request: NextRequest) {
       userId: user.id,
       cardId: cardId ?? null,
       teamId: resolvedTeamId,
+      // If an initial message was provided, use it as the session title and count it
+      ...(message ? { title: message.slice(0, 60), messageCount: 1 } : {}),
     },
   })
 
@@ -81,5 +83,6 @@ export async function POST(request: NextRequest) {
     lastMessageAt: session.lastMessageAt.toISOString(),
     createdAt: session.createdAt.toISOString(),
     cardId: session.cardId,
+    initialMessage: message ?? null,
   })
 }

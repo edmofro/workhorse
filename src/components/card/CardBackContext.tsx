@@ -1,38 +1,68 @@
 'use client'
 
-import { createContext, useContext, useEffect, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useRef, useSyncExternalStore } from 'react'
 
 type CardBackHandler = (() => void) | null
 
-interface CardBackContextValue {
-  handler: CardBackHandler
+/**
+ * Ref-based store for the back-button handler. The store lives in a ref so the
+ * context value never changes — this avoids cascading re-renders of every
+ * consumer when the handler updates. Consumers read via useSyncExternalStore
+ * which only re-renders when the snapshot (handler) actually changes.
+ */
+interface CardBackStore {
+  subscribe: (cb: () => void) => () => void
+  getSnapshot: () => CardBackHandler
   setHandler: (h: CardBackHandler) => void
 }
 
-const CardBackContext = createContext<CardBackContextValue>({
-  handler: null,
-  setHandler: () => {},
-})
+function createCardBackStore(): CardBackStore {
+  let handler: CardBackHandler = null
+  const listeners = new Set<() => void>()
+  return {
+    subscribe(cb) {
+      listeners.add(cb)
+      return () => listeners.delete(cb)
+    },
+    getSnapshot() {
+      return handler
+    },
+    setHandler(h) {
+      if (h === handler) return // no-op, avoid unnecessary notifications
+      handler = h
+      listeners.forEach((cb) => cb())
+    },
+  }
+}
+
+const CardBackStoreContext = createContext<CardBackStore>(createCardBackStore())
 
 export function CardBackStoreProvider({ children }: { children: React.ReactNode }) {
-  const [handler, setHandler] = useState<CardBackHandler>(null)
+  const storeRef = useRef<CardBackStore>(null)
+  if (!storeRef.current) storeRef.current = createCardBackStore()
   return (
-    <CardBackContext.Provider value={{ handler, setHandler }}>
+    <CardBackStoreContext.Provider value={storeRef.current}>
       {children}
-    </CardBackContext.Provider>
+    </CardBackStoreContext.Provider>
   )
 }
 
-/** Called by CardWorkspace to register the current back handler */
+/** Called by CardWorkspace to register the current back handler. */
 export function useCardBackRegister(handler: CardBackHandler) {
-  const { setHandler } = useContext(CardBackContext)
+  const store = useContext(CardBackStoreContext)
   useEffect(() => {
-    setHandler(handler)
-    return () => setHandler(null)
-  }, [handler, setHandler])
+    store.setHandler(handler)
+    return () => store.setHandler(null)
+  }, [store, handler])
 }
 
-/** Called by CardDetailShell to read the current back handler */
+/** Called by CardDetailShell to read the current back handler. */
 export function useCardBack(): CardBackHandler {
-  return useContext(CardBackContext).handler
+  const store = useContext(CardBackStoreContext)
+  const subscribe = useCallback(
+    (cb: () => void) => store.subscribe(cb),
+    [store],
+  )
+  const getSnapshot = useCallback(() => store.getSnapshot(), [store])
+  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
 }

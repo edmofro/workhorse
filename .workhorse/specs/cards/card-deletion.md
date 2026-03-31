@@ -1,11 +1,10 @@
 ---
-title: Card deletion
-area: cards
-card: WH-013
-status: draft
+title: "Card deletion"
+area: "cards"
+status: "draft"
 ---
 
-Card deletion permanently removes a card and all associated data. Deleted cards are not recoverable.
+Card deletion permanently removes all associated data. Deleted cards are not recoverable.
 
 ## Entry points
 

@@ -275,6 +275,22 @@ export async function createWorktree(
 }
 
 /**
+ * Delete a branch from the bare clone.
+ */
+export async function deleteBranch(
+  owner: string,
+  repo: string,
+  branchName: string,
+): Promise<void> {
+  const barePath = bareClonePath(owner, repo)
+  try {
+    await git(['branch', '-D', branchName], barePath)
+  } catch {
+    // Branch may not exist — ignore
+  }
+}
+
+/**
  * Remove a worktree for a card.
  */
 export async function removeWorktree(

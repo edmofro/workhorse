@@ -3,6 +3,7 @@
 import { prisma } from '../prisma'
 import { revalidatePath } from 'next/cache'
 import { requireUser } from '../auth/session'
+import { removeWorktree, deleteBranch } from '../git/worktree'
 
 export async function getCards(teamIds: string[]) {
   return prisma.card.findMany({
@@ -102,6 +103,28 @@ export async function updateCard(
 
 export async function deleteCard(id: string) {
   await requireUser()
+
+  const card = await prisma.card.findUnique({
+    where: { id },
+    include: { team: { include: { project: true } } },
+  })
+
+  if (card) {
+    const { owner, repoName } = card.team.project
+    try {
+      await removeWorktree(owner, repoName, card.identifier)
+    } catch {
+      // Best-effort cleanup
+    }
+    if (card.cardBranch) {
+      try {
+        await deleteBranch(owner, repoName, card.cardBranch)
+      } catch {
+        // Best-effort cleanup
+      }
+    }
+  }
+
   await prisma.card.delete({ where: { id } })
   revalidatePath('/')
 }

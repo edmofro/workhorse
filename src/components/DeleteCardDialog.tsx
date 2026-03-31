@@ -11,7 +11,6 @@ interface DependentCard {
 }
 
 interface DeleteCardDialogProps {
-  cardId: string
   cardTitle: string
   onCancel: () => void
   onDeleted: () => void

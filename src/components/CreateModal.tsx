@@ -8,12 +8,15 @@ import { createCard } from '../lib/actions/cards'
 interface CreateModalProps {
   projectSlug: string
   defaultTeamId?: string
+  /** Which action Enter triggers. 'chat' = Enter starts conversation, 'card' = Enter creates card. */
+  defaultMode?: 'chat' | 'card'
   onClose: () => void
 }
 
 export function CreateModal({
   projectSlug,
   defaultTeamId,
+  defaultMode = 'chat',
   onClose,
 }: CreateModalProps) {
   const [prompt, setPrompt] = useState('')
@@ -78,19 +81,25 @@ export function CreateModal({
     }
   }
 
+  const primaryAction = defaultMode === 'card' ? handleCreateCard : handleStartChat
+  const secondaryAction = defaultMode === 'card' ? handleStartChat : handleCreateCard
+
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === 'Enter' && !e.shiftKey && !e.metaKey && !e.ctrlKey) {
       e.preventDefault()
-      handleStartChat()
+      primaryAction()
     }
     if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
       e.preventDefault()
-      handleCreateCard()
+      secondaryAction()
     }
     if (e.key === 'Escape' && !busy) {
       onClose()
     }
   }
+
+  const primaryShortcut = defaultMode === 'card' ? '⌘↵' : '↵'
+  const secondaryShortcut = defaultMode === 'card' ? '↵' : '⌘↵'
 
   return (
     <>
@@ -115,7 +124,7 @@ export function CreateModal({
               <button
                 onClick={handleStartChat}
                 disabled={!prompt.trim() || busy}
-                title="Start conversation (↵)"
+                title={`Start conversation (${defaultMode === 'chat' ? '↵' : '⌘↵'})`}
                 className="p-2 rounded-[var(--radius-md)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer disabled:opacity-40 disabled:cursor-default"
               >
                 {busyAction === 'chat' ? (
@@ -127,7 +136,7 @@ export function CreateModal({
               <button
                 onClick={handleCreateCard}
                 disabled={!prompt.trim() || busy || !defaultTeamId}
-                title="Create card (⌘↵)"
+                title={`Create card (${defaultMode === 'card' ? '↵' : '⌘↵'})`}
                 className="p-2 rounded-[var(--radius-md)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer disabled:opacity-40 disabled:cursor-default"
               >
                 {busyAction === 'card' ? (

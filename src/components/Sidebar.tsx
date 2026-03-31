@@ -13,6 +13,7 @@ import {
   Plus,
   LayoutList,
   MessageCircle,
+  Code2,
 } from 'lucide-react'
 import { cn } from '../lib/cn'
 import { Avatar } from './Avatar'
@@ -44,7 +45,7 @@ export function Sidebar({ initialProjects, initialRecentSessions = [] }: Sidebar
   const searchParams = useSearchParams()
   const { user } = useUser()
   const [switcherOpen, setSwitcherOpen] = useState(false)
-  const [createOpen, setCreateOpen] = useState(false)
+  const [createModal, setCreateModal] = useState<{ mode: 'chat' | 'card' } | null>(null)
 
   const firstSegment = decodeURIComponent(pathname.split('/')[1] ?? '')
   const activeProject = projects.find(
@@ -53,6 +54,10 @@ export function Sidebar({ initialProjects, initialRecentSessions = [] }: Sidebar
   const projectPath = activeProject
     ? `/${encodeURIComponent(activeProject.name.toLowerCase())}`
     : null
+
+  const filteredSessions = recentSessions
+    .filter((s) => !activeProject || s.projectName?.toLowerCase() === activeProject.name.toLowerCase())
+    .slice(0, 5)
 
   return (
     <aside
@@ -103,96 +108,101 @@ export function Sidebar({ initialProjects, initialRecentSessions = [] }: Sidebar
             )}
           </div>
         )}
-
-        {/* Action buttons */}
-        <div className="flex items-center justify-end gap-1 px-1 mt-2">
-          <button
-            disabled
-            className="p-2 rounded-[var(--radius-md)] text-[var(--text-faint)] cursor-default"
-            title="Search"
-          >
-            <Search size={14} />
-          </button>
-          <button
-            onClick={() => setCreateOpen(true)}
-            className="p-2 rounded-[var(--radius-md)] text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer"
-            title="New conversation or card"
-          >
-            <Plus size={14} />
-          </button>
-        </div>
       </div>
 
-      {/* Navigation */}
+      {/* Sections */}
       <nav className="flex-1 px-3 overflow-y-auto">
         {projectPath && (
           <>
-            {/* Cards link */}
-            <NavItem
+            <SectionItem
               href={projectPath}
               icon={<LayoutList size={14} />}
               active={pathname === projectPath && !searchParams.has('session')}
+              onAdd={() => setCreateModal({ mode: 'card' })}
             >
               Cards
-            </NavItem>
+            </SectionItem>
 
-            {/* Specs link */}
-            <NavItem
+            <SectionItem
               href={`${projectPath}/specs`}
               icon={<FileText size={14} />}
               active={pathname.startsWith(`${projectPath}/specs`)}
+              onAdd={() => {
+                // TODO: quick card → spec editor flow
+              }}
             >
               Specs
-            </NavItem>
+            </SectionItem>
 
-            {/* Design link */}
-            <NavItem
+            <SectionItem
               href={`${projectPath}/design`}
               icon={<Palette size={14} />}
               active={pathname.startsWith(`${projectPath}/design`)}
+              onAdd={() => {
+                // TODO: quick card → mockup mode flow
+              }}
             >
               Design
-            </NavItem>
+            </SectionItem>
 
-            {/* Recent conversations */}
-            {recentSessions.length > 0 && (
-              <>
-                <div className="px-2 pt-5 pb-[6px] text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-[0.06em]">
-                  Recent
-                </div>
-                {recentSessions
-                  .filter((s) => !activeProject || s.projectName?.toLowerCase() === activeProject.name.toLowerCase())
-                  .slice(0, 8)
-                  .map((session) => {
-                    const href = session.cardId && session.cardIdentifier && session.projectName
-                      ? `/${encodeURIComponent(session.projectName.toLowerCase())}/cards/${session.cardIdentifier}?session=${session.id}`
-                      : session.projectName
-                        ? `/${encodeURIComponent(session.projectName.toLowerCase())}/sessions/${session.id}`
-                        : '#'
-                    const sessionLabel = session.title ?? session.cardTitle ?? 'New conversation'
-                    const label = session.cardIdentifier
-                      ? `${session.cardIdentifier}: ${sessionLabel}`
-                      : sessionLabel
-                    const isActive = searchParams.get('session') === session.id
-                      || pathname.includes(`/sessions/${session.id}`)
-                    const isCardBound = !!session.cardId
+            <SectionItem
+              href={`${projectPath}/code`}
+              icon={<Code2 size={14} />}
+              active={pathname.startsWith(`${projectPath}/code`)}
+            >
+              Code
+            </SectionItem>
 
-                    return (
-                      <NavItem
-                        key={session.id}
-                        href={href}
-                        active={isActive}
-                        statusIndicator={
-                          isCardBound
-                            ? <StatusDot status={session.cardStatus} />
-                            : <MessageCircle size={12} className="text-[var(--text-muted)] shrink-0" />
-                        }
-                      >
-                        <span className="truncate">{label}</span>
-                      </NavItem>
-                    )
-                  })}
-              </>
+            {/* Conversations section with recent items */}
+            <SectionItem
+              href={`${projectPath}/conversations`}
+              icon={<MessageCircle size={14} />}
+              active={pathname.startsWith(`${projectPath}/conversations`) || pathname.includes('/sessions/')}
+              onAdd={() => setCreateModal({ mode: 'chat' })}
+            >
+              Conversations
+            </SectionItem>
+
+            {filteredSessions.length > 0 && (
+              <div className="ml-1">
+                {filteredSessions.map((session) => {
+                  const href = session.cardId && session.cardIdentifier && session.projectName
+                    ? `/${encodeURIComponent(session.projectName.toLowerCase())}/cards/${session.cardIdentifier}?session=${session.id}`
+                    : session.projectName
+                      ? `/${encodeURIComponent(session.projectName.toLowerCase())}/sessions/${session.id}`
+                      : '#'
+                  const sessionLabel = session.title ?? session.cardTitle ?? 'New conversation'
+                  const label = session.cardIdentifier
+                    ? `${session.cardIdentifier}: ${sessionLabel}`
+                    : sessionLabel
+                  const isActive = searchParams.get('session') === session.id
+                    || pathname.includes(`/sessions/${session.id}`)
+                  const isCardBound = !!session.cardId
+
+                  return (
+                    <ConversationItem
+                      key={session.id}
+                      href={href}
+                      active={isActive}
+                      indicator={
+                        isCardBound
+                          ? <StatusDot status={session.cardStatus} />
+                          : <MessageCircle size={11} className="text-[var(--text-muted)] shrink-0" />
+                      }
+                    >
+                      {label}
+                    </ConversationItem>
+                  )
+                })}
+                {recentSessions.filter((s) => !activeProject || s.projectName?.toLowerCase() === activeProject.name.toLowerCase()).length > 5 && (
+                  <Link
+                    href={`${projectPath}/conversations`}
+                    className="block px-3 py-1 text-[11px] text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors duration-100"
+                  >
+                    View all
+                  </Link>
+                )}
+              </div>
             )}
           </>
         )}
@@ -202,14 +212,104 @@ export function Sidebar({ initialProjects, initialRecentSessions = [] }: Sidebar
       <UserMenu user={user} />
 
       {/* Create modal */}
-      {createOpen && projectPath && activeProject && (
+      {createModal && projectPath && activeProject && (
         <CreateModal
           projectSlug={projectPath}
           defaultTeamId={activeProject.teams[0]?.id}
-          onClose={() => setCreateOpen(false)}
+          defaultMode={createModal.mode}
+          onClose={() => setCreateModal(null)}
         />
       )}
     </aside>
+  )
+}
+
+/** A section row with icon, label (navigable), and hover actions ([🔍] [+]). */
+function SectionItem({
+  href,
+  icon,
+  active,
+  onAdd,
+  children,
+}: {
+  href: string
+  icon: React.ReactNode
+  active: boolean
+  onAdd?: () => void
+  children: React.ReactNode
+}) {
+  return (
+    <div className="group flex items-center rounded-[var(--radius-md)] transition-colors duration-100">
+      <Link
+        href={href}
+        className={cn(
+          'flex items-center gap-2 flex-1 min-w-0 px-3 py-[7px] rounded-[var(--radius-md)]',
+          'text-[13px] cursor-pointer transition-colors duration-100',
+          active
+            ? 'bg-[var(--bg-surface)] text-[var(--text-primary)] font-medium shadow-[var(--shadow-sm)]'
+            : 'text-[var(--text-secondary)] font-[450] hover:bg-[var(--bg-hover)]',
+        )}
+      >
+        {icon}
+        <span className="truncate">{children}</span>
+        {/* Hover actions — positioned inside the link row to stay aligned */}
+        <span className="ml-auto flex items-center gap-0 opacity-0 group-hover:opacity-100 transition-opacity duration-100">
+          <span
+            role="button"
+            className="p-1 rounded-[var(--radius-sm)] text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] cursor-pointer"
+            title="Search"
+            onClick={(e) => {
+              e.preventDefault()
+              // TODO: scoped search
+            }}
+          >
+            <Search size={12} />
+          </span>
+          {onAdd && (
+            <span
+              role="button"
+              className="p-1 rounded-[var(--radius-sm)] text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] cursor-pointer"
+              title="New"
+              onClick={(e) => {
+                e.preventDefault()
+                onAdd()
+              }}
+            >
+              <Plus size={12} />
+            </span>
+          )}
+        </span>
+      </Link>
+    </div>
+  )
+}
+
+/** A recent conversation item shown below the Conversations section. */
+function ConversationItem({
+  href,
+  active,
+  indicator,
+  children,
+}: {
+  href: string
+  active: boolean
+  indicator: React.ReactNode
+  children: React.ReactNode
+}) {
+  return (
+    <Link
+      href={href}
+      className={cn(
+        'flex items-center gap-2 px-3 py-[5px] rounded-[var(--radius-md)]',
+        'text-[12px] cursor-pointer transition-colors duration-100',
+        active
+          ? 'bg-[var(--bg-surface)] text-[var(--text-primary)] font-medium shadow-[var(--shadow-sm)]'
+          : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]',
+      )}
+    >
+      {indicator}
+      <span className="truncate">{children}</span>
+    </Link>
   )
 }
 
@@ -224,7 +324,6 @@ function StatusDot({ status }: { status: string | null }) {
       <span className="w-[8px] h-[8px] rounded-full shrink-0 bg-[var(--amber)]" />
     )
   }
-  // NOT_STARTED or unknown — hollow dot
   return (
     <span className="w-[8px] h-[8px] rounded-full shrink-0 border border-[var(--border-default)]" />
   )
@@ -282,36 +381,5 @@ function UserMenu({ user }: { user: { displayName: string; avatarUrl: string | n
         </button>
       </div>
     </div>
-  )
-}
-
-function NavItem({
-  href,
-  icon,
-  statusIndicator,
-  active,
-  children,
-}: {
-  href: string
-  icon?: React.ReactNode
-  statusIndicator?: React.ReactNode
-  active: boolean
-  children: React.ReactNode
-}) {
-  return (
-    <Link
-      href={href}
-      className={cn(
-        'flex items-center gap-2 px-3 py-[7px] rounded-[var(--radius-md)]',
-        'text-[13px] cursor-pointer transition-colors duration-100',
-        active
-          ? 'bg-[var(--bg-surface)] text-[var(--text-primary)] font-medium shadow-[var(--shadow-sm)]'
-          : 'text-[var(--text-secondary)] font-[450] hover:bg-[var(--bg-hover)]',
-      )}
-    >
-      {icon}
-      {statusIndicator}
-      {children}
-    </Link>
   )
 }

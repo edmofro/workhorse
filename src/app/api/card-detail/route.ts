@@ -2,19 +2,14 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireUser } from '../../../lib/auth/session'
 import { hasProjectAccess } from '../../../lib/auth/github'
 import { prisma } from '../../../lib/prisma'
-import { worktreeExists, getChangedFiles, readWorktreeFile } from '../../../lib/git/worktree'
-import { fetchRepoSpecTree } from '../../../lib/git/specTree'
-import { isMockupPath } from '../../../lib/paths'
 
 /**
  * GET /api/card-detail?cardId=<identifier>
  *
- * Returns full card data for the card workspace view, including:
- * - Card with all relations (comments, activities, attachments, dependencies, mockups)
- * - Users and teams for the project
- * - Conversation sessions
- * - Worktree files (if worktree exists)
- * - Project specs
+ * Returns card data from the database only — no git or GitHub operations.
+ * Worktree files and project specs are loaded separately via /api/card-files
+ * so the card UI can render immediately while slow git operations load in
+ * the background.
  */
 export async function GET(request: NextRequest) {
   let user
@@ -56,13 +51,11 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Card not found' }, { status: 404 })
   }
 
-  const { owner, repoName, defaultBranch } = card.team.project
-
-  if (!await hasProjectAccess(user.accessToken, owner, repoName)) {
+  if (!await hasProjectAccess(user.accessToken, card.team.project.owner, card.team.project.repoName)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  const [users, teams, hasWorktree, sessions, projectSpecs] = await Promise.all([
+  const [users, teams, sessions] = await Promise.all([
     prisma.user.findMany({
       select: { id: true, displayName: true },
       orderBy: { displayName: 'asc' },
@@ -71,53 +64,12 @@ export async function GET(request: NextRequest) {
       where: { projectId: card.team.projectId },
       orderBy: { name: 'asc' },
     }),
-    worktreeExists(owner, repoName, card.identifier),
     prisma.conversationSession.findMany({
       where: { cardId: card.id },
       orderBy: { lastMessageAt: 'desc' },
       take: 20,
     }),
-    (async (): Promise<{ filePath: string; content: string }[]> => {
-      try {
-        const specTree = await fetchRepoSpecTree(
-          user.accessToken, owner, repoName, defaultBranch,
-        )
-        return specTree.files.map((f) => ({
-          filePath: f.path,
-          content: f.content,
-        }))
-      } catch {
-        return []
-      }
-    })(),
   ])
-
-  // Load spec files and code files from worktree if it exists
-  const initialFiles: { filePath: string; isNew: boolean; content: string }[] = []
-  let initialCodeFiles: { filePath: string; isNew: boolean }[] = []
-  if (hasWorktree) {
-    const { workhorseFiles, codeFiles } = await getChangedFiles(
-      owner, repoName, card.identifier, defaultBranch,
-    )
-    const specFiles = workhorseFiles.filter((f) =>
-      f.filePath.startsWith('.workhorse/specs/') ||
-      isMockupPath(f.filePath),
-    ).slice(0, 20)
-    // Read files in batches of 5 to avoid spawning too many concurrent subprocesses
-    for (let i = 0; i < specFiles.length; i += 5) {
-      const batch = specFiles.slice(i, i + 5)
-      const results = await Promise.all(
-        batch.map(async (f) => {
-          const content = await readWorktreeFile(
-            owner, repoName, card.identifier, f.filePath,
-          ) ?? ''
-          return { ...f, content }
-        }),
-      )
-      initialFiles.push(...results)
-    }
-    initialCodeFiles = codeFiles
-  }
 
   // Parse touchedFiles
   let touchedFiles: string[] = []
@@ -143,6 +95,8 @@ export async function GET(request: NextRequest) {
       project: {
         id: card.team.project.id,
         name: card.team.project.name,
+        owner: card.team.project.owner,
+        repoName: card.team.project.repoName,
         defaultBranch: card.team.project.defaultBranch,
       },
       assignee: card.assignee
@@ -193,8 +147,5 @@ export async function GET(request: NextRequest) {
       lastMessageAt: s.lastMessageAt.toISOString(),
       createdAt: s.createdAt.toISOString(),
     })),
-    initialFiles,
-    initialCodeFiles,
-    projectSpecs,
   })
 }

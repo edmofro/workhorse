@@ -132,7 +132,7 @@ interface CardDetailData {
     cardBranch: string | null
     touchedFiles: string[]
     team: { id: string; name: string; colour: string }
-    project: { id: string; name: string; defaultBranch: string }
+    project: { id: string; name: string; owner: string; repoName: string; defaultBranch: string }
     assignee: { id: string; displayName: string } | null
     dependsOn: { identifier: string; title: string }[]
     attachments: CardAttachment[]
@@ -149,9 +149,6 @@ interface CardDetailData {
     lastMessageAt: string
     createdAt: string
   }[]
-  initialFiles: { filePath: string; isNew: boolean; content: string }[]
-  initialCodeFiles: { filePath: string; isNew: boolean }[]
-  projectSpecs: { filePath: string; content: string }[]
 }
 
 export function useCardDetail(cardId: string) {
@@ -162,6 +159,25 @@ export function useCardDetail(cardId: string) {
         `/api/card-detail?cardId=${encodeURIComponent(cardId)}`,
       ),
     staleTime: 15_000, // Card data changes during active work
+  })
+}
+
+// ── Card files (worktree files + project specs, loaded independently) ───
+
+interface CardFilesData {
+  initialFiles: { filePath: string; isNew: boolean; content: string }[]
+  initialCodeFiles: { filePath: string; isNew: boolean; linesAdded?: number; linesRemoved?: number }[]
+  projectSpecs: { filePath: string; content: string }[]
+}
+
+export function useCardFiles(cardId: string) {
+  return useQuery({
+    queryKey: ['card-files', cardId],
+    queryFn: () =>
+      fetchJSON<CardFilesData>(
+        `/api/card-files?cardId=${encodeURIComponent(cardId)}`,
+      ),
+    staleTime: 30_000, // Files change less frequently, and this endpoint is expensive
   })
 }
 
@@ -196,6 +212,7 @@ export type {
   BoardData,
   BoardCard,
   CardDetailData,
+  CardFilesData,
   CardAttachment,
   CardComment,
   CardActivity,

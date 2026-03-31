@@ -81,6 +81,8 @@ const lastFetchTime = new Map<string, number>()
 const FETCH_INTERVAL_MS = 30_000
 /** Tracks repos already checked for mirror→bare migration this process. */
 const migratedRepos = new Set<string>()
+/** Track in-flight background fetches to avoid duplicate git fetch processes. */
+const pendingFetches = new Set<string>()
 
 /**
  * Ensure the bare clone exists and is reasonably up to date.
@@ -137,15 +139,21 @@ export async function ensureBareClone(
     lastFetchTime.set(repoKey, Date.now())
   }
 
-  // Fetch if stale (skip if we just cloned)
+  // Stale-while-revalidate: if the bare clone is stale, return it immediately
+  // and trigger a background git fetch so the next caller gets fresh data.
   const lastFetch = lastFetchTime.get(repoKey) ?? 0
   if (!clonedJustNow && Date.now() - lastFetch > FETCH_INTERVAL_MS) {
-    try {
-      await fetchBareClone(owner, repo, token)
-    } catch (err) {
-      console.warn(`[git] Fetch failed for ${repoKey} (stale data used):`, err)
+    if (!pendingFetches.has(repoKey)) {
+      pendingFetches.add(repoKey)
+      fetchBareClone(owner, repo, token)
+        .catch((err) => console.warn(`[git] Background fetch failed for ${repoKey}:`, err))
+        .finally(() => {
+          // Always update lastFetchTime — on failure this prevents a fetch storm
+          // where every caller immediately retries the failing fetch
+          lastFetchTime.set(repoKey, Date.now())
+          pendingFetches.delete(repoKey)
+        })
     }
-    lastFetchTime.set(repoKey, Date.now())
   }
 
   return barePath

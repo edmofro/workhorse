@@ -106,14 +106,29 @@ export async function hasRepoWriteAccess(
 
 /**
  * Given a list of owner/repo pairs, return the ones the user has write access to.
- * Results are cached per token+repos combination for 5 minutes.
+ *
+ * Uses stale-while-revalidate caching: serves cached results immediately (up to
+ * 24h) while triggering a background refresh. This means the first request after
+ * a revalidation window returns instantly from cache, and the fresh result is
+ * available for the next request.
  */
 
-const repoAccessCache = new Map<string, { result: Set<string>; expiresAt: number }>()
-const REPO_ACCESS_CACHE_TTL = 5 * 60 * 1000 // 5 minutes
+interface CacheEntry {
+  result: Set<string>
+  /** Hard expiry — entry is evicted after this time */
+  expiresAt: number
+  /** Soft expiry — entry is still served but triggers a background refresh */
+  staleAt: number
+}
+
+const repoAccessCache = new Map<string, CacheEntry>()
+const REPO_ACCESS_STALE_TIME = 5 * 60 * 1000        // Fresh for 5 min, then serve stale + revalidate
+const REPO_ACCESS_MAX_AGE = 48 * 60 * 60 * 1000     // Hard expiry after 48 hours
 const REPO_ACCESS_CACHE_MAX_SIZE = 100
 let lastEvictionTime = 0
-const EVICTION_INTERVAL = 60 * 1000 // Run eviction at most once per minute
+const EVICTION_INTERVAL = 60 * 1000
+// Track in-flight background revalidations to avoid duplicate fetches
+const pendingRevalidations = new Set<string>()
 
 function tokenHash(accessToken: string): string {
   return createHash('sha256').update(accessToken).digest('hex')
@@ -126,18 +141,16 @@ function evictExpiredEntries() {
   }
 }
 
-export async function filterAccessibleRepos(
+function buildCacheKey(accessToken: string, repos: { owner: string; repoName: string }[]): string {
+  const repoFingerprint = repos.map((r) => `${r.owner}/${r.repoName}`).sort().join(',')
+  return `${tokenHash(accessToken)}:${repoFingerprint}`
+}
+
+async function fetchAndCacheAccess(
   accessToken: string,
   repos: { owner: string; repoName: string }[],
+  cacheKey: string,
 ): Promise<Set<string>> {
-  // Include repos in cache key so adding a project invalidates the cache
-  const repoFingerprint = repos.map((r) => `${r.owner}/${r.repoName}`).sort().join(',')
-  const cacheKey = `${tokenHash(accessToken)}:${repoFingerprint}`
-  const cached = repoAccessCache.get(cacheKey)
-  if (cached && cached.expiresAt > Date.now()) {
-    return cached.result
-  }
-
   const results = await Promise.all(
     repos.map(async ({ owner, repoName }) => {
       const canWrite = await hasRepoWriteAccess(accessToken, owner, repoName)
@@ -146,21 +159,56 @@ export async function filterAccessibleRepos(
   )
 
   const result = new Set(results.filter((r): r is string => r !== null))
-
-  // Evict expired entries periodically (not on every insert) and enforce size cap
   const now = Date.now()
+
+  // Evict periodically and enforce size cap
   if (repoAccessCache.size >= REPO_ACCESS_CACHE_MAX_SIZE || now - lastEvictionTime > EVICTION_INTERVAL) {
     evictExpiredEntries()
     lastEvictionTime = now
   }
   if (repoAccessCache.size >= REPO_ACCESS_CACHE_MAX_SIZE) {
-    // Still full — drop oldest entry
     const firstKey = repoAccessCache.keys().next().value
     if (firstKey) repoAccessCache.delete(firstKey)
   }
 
-  repoAccessCache.set(cacheKey, { result, expiresAt: Date.now() + REPO_ACCESS_CACHE_TTL })
+  repoAccessCache.set(cacheKey, {
+    result,
+    staleAt: now + REPO_ACCESS_STALE_TIME,
+    expiresAt: now + REPO_ACCESS_MAX_AGE,
+  })
   return result
+}
+
+export async function filterAccessibleRepos(
+  accessToken: string,
+  repos: { owner: string; repoName: string }[],
+): Promise<Set<string>> {
+  if (repos.length === 0) return new Set()
+
+  const cacheKey = buildCacheKey(accessToken, repos)
+  const cached = repoAccessCache.get(cacheKey)
+  const now = Date.now()
+
+  if (cached && cached.expiresAt > now) {
+    // Cache hit — if stale, trigger background revalidation (fire-and-forget)
+    if (cached.staleAt <= now && !pendingRevalidations.has(cacheKey)) {
+      pendingRevalidations.add(cacheKey)
+      fetchAndCacheAccess(accessToken, repos, cacheKey)
+        .catch(() => {
+          // Revalidation failed — shorten the stale entry's hard expiry so
+          // we don't serve potentially-revoked permissions for 48h
+          const entry = repoAccessCache.get(cacheKey)
+          if (entry) {
+            entry.expiresAt = Math.min(entry.expiresAt, Date.now() + 10 * 60 * 1000)
+          }
+        })
+        .finally(() => pendingRevalidations.delete(cacheKey))
+    }
+    return cached.result
+  }
+
+  // Cache miss or expired — fetch synchronously
+  return fetchAndCacheAccess(accessToken, repos, cacheKey)
 }
 
 /**

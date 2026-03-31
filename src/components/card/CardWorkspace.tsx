@@ -18,6 +18,7 @@ import { SpecEditor } from './SpecEditor'
 import { MockupArtifact } from './MockupArtifact'
 import { NewSpecDialog } from './NewSpecDialog'
 import { ArtifactsSidebar, type CodeFileItem } from './ArtifactsSidebar'
+import { Skeleton } from '../Skeleton'
 import { CodeDiffArtifact } from './CodeDiffArtifact'
 import { CodeEditorView } from './CodeEditorView'
 import { SpecDiffView } from './SpecDiffView'
@@ -66,6 +67,7 @@ interface CardWorkspaceProps {
   cardTabContent: React.ReactNode
   initialFiles: SpecFileData[]
   initialCodeFiles?: { filePath: string; isNew: boolean; linesAdded?: number; linesRemoved?: number }[]
+  filesLoading?: boolean
   mockups: MockupData[]
   projectSpecs: ProjectSpecData[]
   sessions: ConversationSessionData[]
@@ -77,6 +79,7 @@ export function CardWorkspace({
   cardTabContent,
   initialFiles,
   initialCodeFiles = [],
+  filesLoading = false,
   mockups,
   projectSpecs,
   sessions: initialSessions,
@@ -93,9 +96,26 @@ export function CardWorkspace({
     initialSessionId ?? null,
   )
 
-  // Spec files state
+  // Spec files state — synced from props when files load asynchronously.
+  // Only sync once (empty → loaded), and never while user is editing.
   const [files, setFiles] = useState(initialFiles)
   const [codeFiles, setCodeFiles] = useState<{ filePath: string; isNew: boolean; linesAdded?: number; linesRemoved?: number }[]>(initialCodeFiles)
+  const filesSyncedRef = useRef(initialFiles.length > 0)
+  const codeFilesSyncedRef = useRef(initialCodeFiles.length > 0)
+
+  useEffect(() => {
+    if (!filesSyncedRef.current && initialFiles.length > 0 && !isEditingRef.current) {
+      setFiles(initialFiles)
+      filesSyncedRef.current = true
+    }
+  }, [initialFiles])
+
+  useEffect(() => {
+    if (!codeFilesSyncedRef.current && initialCodeFiles.length > 0) {
+      setCodeFiles(initialCodeFiles)
+      codeFilesSyncedRef.current = true
+    }
+  }, [initialCodeFiles])
   const [showNewSpecDialog, setShowNewSpecDialog] = useState(false)
   const [isEnsuring, setIsEnsuring] = useState(false)
   const chatScrollRef = useRef<HTMLDivElement>(null)
@@ -743,13 +763,23 @@ export function CardWorkspace({
       {view.type === 'chat' && (
         <>
           {chatColumn}
-          <ArtifactsSidebar
-            specs={specFiles.map((f) => ({ filePath: f.filePath, isNew: f.isNew, content: f.content }))}
-            mockups={allMockupFiles}
-            codeFiles={codeFileItems}
-            activeFilePath={activeFilePath}
-            onSelectFile={(fp) => openFile(fp)}
-          />
+          {filesLoading ? (
+            <aside className="shrink-0 w-[216px] border-l border-[var(--border-subtle)] bg-[var(--bg-page)] flex flex-col p-4 space-y-3">
+              <Skeleton className="h-3 w-12" />
+              <Skeleton className="h-4 w-3/4" />
+              <Skeleton className="h-4 w-1/2" />
+              <Skeleton className="h-3 w-10 mt-2" />
+              <Skeleton className="h-4 w-2/3" />
+            </aside>
+          ) : (
+            <ArtifactsSidebar
+              specs={specFiles.map((f) => ({ filePath: f.filePath, isNew: f.isNew, content: f.content }))}
+              mockups={allMockupFiles}
+              codeFiles={codeFileItems}
+              activeFilePath={activeFilePath}
+              onSelectFile={(fp) => openFile(fp)}
+            />
+          )}
         </>
       )}
 

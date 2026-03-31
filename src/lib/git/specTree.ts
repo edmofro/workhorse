@@ -55,18 +55,27 @@ export async function fetchRepoSpecTree(
 
   const tree = buildSpecTree(specPaths)
 
-  // Read content for each file using git show (local, instant)
+  // Read content for each file using git show — batch 5 at a time
+  // to avoid spawning too many subprocesses, but parallelise within batches
   const files: RepoSpecFile[] = []
-  for (const filePath of specPaths) {
-    try {
-      const { stdout } = await execFileAsync(
-        'git',
-        ['show', `origin/${branch}:${filePath}`],
-        { cwd: barePath },
-      )
-      files.push({ path: filePath, content: stdout })
-    } catch {
-      // Skip files that can't be read
+  for (let i = 0; i < specPaths.length; i += 5) {
+    const batch = specPaths.slice(i, i + 5)
+    const results = await Promise.all(
+      batch.map(async (filePath) => {
+        try {
+          const { stdout } = await execFileAsync(
+            'git',
+            ['show', `origin/${branch}:${filePath}`],
+            { cwd: barePath },
+          )
+          return { path: filePath, content: stdout }
+        } catch {
+          return null
+        }
+      }),
+    )
+    for (const r of results) {
+      if (r) files.push(r)
     }
   }
 

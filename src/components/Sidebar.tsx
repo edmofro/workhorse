@@ -9,7 +9,6 @@ import {
   Palette,
   ChevronDown,
   Ellipsis,
-  Search,
   Plus,
   LayoutList,
   MessageCircle,
@@ -25,7 +24,7 @@ import {
   type SidebarSession,
 } from '../lib/hooks/queries'
 import { CreateModal } from './CreateModal'
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 
 export type RecentSession = SidebarSession
 
@@ -45,7 +44,7 @@ export function Sidebar({ initialProjects, initialRecentSessions = [] }: Sidebar
   const searchParams = useSearchParams()
   const { user } = useUser()
   const [switcherOpen, setSwitcherOpen] = useState(false)
-  const [createModal, setCreateModal] = useState<{ mode: 'chat' | 'card' } | null>(null)
+  const [createModal, setCreateModal] = useState<'chat' | 'card' | null>(null)
 
   const firstSegment = decodeURIComponent(pathname.split('/')[1] ?? '')
   const activeProject = projects.find(
@@ -58,6 +57,8 @@ export function Sidebar({ initialProjects, initialRecentSessions = [] }: Sidebar
   const projectSessions = recentSessions
     .filter((s) => !activeProject || s.projectName?.toLowerCase() === activeProject.name.toLowerCase())
   const filteredSessions = projectSessions.slice(0, 5)
+
+  const handleCloseModal = useCallback(() => setCreateModal(null), [])
 
   return (
     <aside
@@ -94,7 +95,7 @@ export function Sidebar({ initialProjects, initialRecentSessions = [] }: Sidebar
                       href={`/${encodeURIComponent(project.name.toLowerCase())}`}
                       onClick={() => setSwitcherOpen(false)}
                       className={cn(
-                        'block px-3 py-[6px] text-[13px] transition-colors duration-100',
+                        'block px-3 py-2 text-[13px] transition-colors duration-100',
                         project.id === activeProject?.id
                           ? 'text-[var(--text-primary)] font-medium bg-[var(--bg-hover)]'
                           : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]',
@@ -118,7 +119,7 @@ export function Sidebar({ initialProjects, initialRecentSessions = [] }: Sidebar
               href={projectPath}
               icon={<LayoutList size={14} />}
               active={pathname === projectPath && !searchParams.has('session')}
-              onAdd={() => setCreateModal({ mode: 'card' })}
+              onAdd={() => setCreateModal('card')}
             >
               Cards
             </SectionItem>
@@ -143,6 +144,7 @@ export function Sidebar({ initialProjects, initialRecentSessions = [] }: Sidebar
               href={`${projectPath}/code`}
               icon={<Code2 size={14} />}
               active={pathname.startsWith(`${projectPath}/code`)}
+              disabled
             >
               Code
             </SectionItem>
@@ -152,7 +154,7 @@ export function Sidebar({ initialProjects, initialRecentSessions = [] }: Sidebar
               href={`${projectPath}/conversations`}
               icon={<MessageCircle size={14} />}
               active={pathname.startsWith(`${projectPath}/conversations`) || pathname.startsWith(`${projectPath}/sessions/`)}
-              onAdd={() => setCreateModal({ mode: 'chat' })}
+              onAdd={() => setCreateModal('chat')}
             >
               Conversations
             </SectionItem>
@@ -170,7 +172,7 @@ export function Sidebar({ initialProjects, initialRecentSessions = [] }: Sidebar
                     ? `${session.cardIdentifier}: ${sessionLabel}`
                     : sessionLabel
                   const isActive = searchParams.get('session') === session.id
-                    || pathname.includes(`/sessions/${session.id}`)
+                    || pathname.startsWith(`${projectPath}/sessions/${session.id}`)
                   const isCardBound = !!session.cardId
 
                   return (
@@ -210,30 +212,46 @@ export function Sidebar({ initialProjects, initialRecentSessions = [] }: Sidebar
         <CreateModal
           projectSlug={projectPath}
           defaultTeamId={activeProject.teams[0]?.id}
-          defaultMode={createModal.mode}
-          onClose={() => setCreateModal(null)}
+          defaultMode={createModal}
+          onClose={handleCloseModal}
         />
       )}
     </aside>
   )
 }
 
-/** A section row with icon, label (navigable), and hover actions ([🔍] [+]). */
+/** A section row with icon, label (navigable), and hover action ([+]). */
 function SectionItem({
   href,
   icon,
   active,
+  disabled,
   onAdd,
   children,
 }: {
   href: string
   icon: React.ReactNode
   active: boolean
+  disabled?: boolean
   onAdd?: () => void
   children: React.ReactNode
 }) {
+  if (disabled) {
+    return (
+      <div className="group flex items-center rounded-[var(--radius-md)]">
+        <span
+          className="flex items-center gap-2 flex-1 min-w-0 px-3 py-2 rounded-[var(--radius-md)] text-[13px] text-[var(--text-muted)] font-[450] cursor-default"
+          aria-disabled="true"
+        >
+          {icon}
+          <span className="truncate">{children}</span>
+        </span>
+      </div>
+    )
+  }
+
   return (
-    <div className="group flex items-center rounded-[var(--radius-md)] transition-colors duration-100">
+    <div className="group relative flex items-center rounded-[var(--radius-md)] transition-colors duration-100">
       <Link
         href={href}
         className={cn(
@@ -246,36 +264,17 @@ function SectionItem({
       >
         {icon}
         <span className="truncate">{children}</span>
-        {/* Hover actions — positioned inside the link row to stay aligned */}
-        <span className="ml-auto flex items-center gap-0 opacity-0 group-hover:opacity-100 transition-opacity duration-100">
-          <span
-            role="button"
-            className="p-1 rounded-[var(--radius-sm)] text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] cursor-pointer"
-            title="Search"
-            onClick={(e) => {
-              e.preventDefault()
-              e.stopPropagation()
-              // TODO: scoped search
-            }}
-          >
-            <Search size={12} />
-          </span>
-          {onAdd && (
-            <span
-              role="button"
-              className="p-1 rounded-[var(--radius-sm)] text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] cursor-pointer"
-              title="New"
-              onClick={(e) => {
-                e.preventDefault()
-                e.stopPropagation()
-                onAdd()
-              }}
-            >
-              <Plus size={12} />
-            </span>
-          )}
-        </span>
       </Link>
+      {onAdd && (
+        <button
+          type="button"
+          className="absolute right-1 p-1 rounded-[var(--radius-sm)] text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity duration-100"
+          title="New"
+          onClick={onAdd}
+        >
+          <Plus size={12} />
+        </button>
+      )}
     </div>
   )
 }

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { ArrowRight, LayoutList, X } from 'lucide-react'
 import { createCard } from '../lib/actions/cards'
@@ -21,24 +21,30 @@ export function CreateModal({
 }: CreateModalProps) {
   const [prompt, setPrompt] = useState('')
   const [busyAction, setBusyAction] = useState<'chat' | 'card' | null>(null)
+  const [error, setError] = useState<string | null>(null)
   const router = useRouter()
 
   const busy = busyAction !== null
 
+  // Stable ref for onClose to avoid re-registering listener on every render
+  const onCloseRef = useRef(onClose)
+  useEffect(() => { onCloseRef.current = onClose }, [onClose])
+
   // Document-level Escape handler so it works regardless of focus
   useEffect(() => {
     function handleEscape(e: KeyboardEvent) {
-      if (e.key === 'Escape' && !busy) {
-        onClose()
+      if (e.key === 'Escape') {
+        onCloseRef.current()
       }
     }
     document.addEventListener('keydown', handleEscape)
     return () => document.removeEventListener('keydown', handleEscape)
-  }, [busy, onClose])
+  }, [])
 
   async function handleCreateCard() {
     if (!prompt.trim() || busy || !defaultTeamId) return
     setBusyAction('card')
+    setError(null)
 
     try {
       let title: string
@@ -67,12 +73,14 @@ export function CreateModal({
       router.push(`${projectSlug}/cards/${card.identifier}`)
     } catch {
       setBusyAction(null)
+      setError('Failed to create card. Please try again.')
     }
   }
 
   async function handleStartChat() {
     if (!prompt.trim() || busy) return
     setBusyAction('chat')
+    setError(null)
 
     try {
       const res = await fetch('/api/sessions', {
@@ -89,6 +97,7 @@ export function CreateModal({
       router.push(`${projectSlug}/sessions/${data.id}`)
     } catch {
       setBusyAction(null)
+      setError('Failed to start conversation. Please try again.')
     }
   }
 
@@ -162,6 +171,9 @@ export function CreateModal({
               </button>
             </div>
           </div>
+          {error && (
+            <p className="mt-2 text-[12px] text-[var(--red)]">{error}</p>
+          )}
         </div>
       </div>
     </>

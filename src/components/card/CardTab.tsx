@@ -438,45 +438,6 @@ export function CardTab({ card, users, teams }: CardTabProps) {
           </div>
         </div>
 
-        {/* Activity */}
-        {card.activities.length > 0 && (
-          <div className="border-t border-[var(--border-subtle)] mt-8 pt-6">
-            <h3 className="text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-[0.06em] mb-4">
-              Activity
-            </h3>
-            <div className="space-y-3">
-              {card.activities.map((activity) => (
-                <div key={activity.id} className="flex items-start gap-2">
-                  {activity.user ? (
-                    <Avatar
-                      variant="human"
-                      initial={activity.user.displayName}
-                      size="sm"
-                    />
-                  ) : (
-                    <Avatar variant="ai" size="sm" />
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <span className="text-[13px] text-[var(--text-secondary)]">
-                      {activity.user?.displayName ?? 'System'}{' '}
-                      <span className="text-[var(--text-muted)]">
-                        {activity.action.replace(/_/g, ' ')}
-                      </span>
-                    </span>
-                    <div className="text-[11px] text-[var(--text-faint)]">
-                      {new Date(activity.createdAt).toLocaleDateString('en-AU', {
-                        day: 'numeric',
-                        month: 'short',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
     </div>
   )

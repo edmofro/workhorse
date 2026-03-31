@@ -54,7 +54,8 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const user = await requireUser()
   const body = await request.json()
-  const { cardId, teamId, message } = body as { cardId?: string; teamId?: string; message?: string }
+  const { cardId, teamId } = body as { cardId?: string; teamId?: string }
+  const message = typeof body.message === 'string' ? body.message.slice(0, 10_000) : undefined
 
   // If cardId provided, verify it exists and user has access
   let resolvedTeamId = teamId ?? null
@@ -83,6 +84,5 @@ export async function POST(request: NextRequest) {
     lastMessageAt: session.lastMessageAt.toISOString(),
     createdAt: session.createdAt.toISOString(),
     cardId: session.cardId,
-    initialMessage: message ?? null,
   })
 }

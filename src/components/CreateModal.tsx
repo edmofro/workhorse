@@ -116,7 +116,7 @@ export function CreateModal({
                 onClick={handleStartChat}
                 disabled={!prompt.trim() || busy}
                 title="Start conversation (↵)"
-                className="p-[6px] rounded-[var(--radius-md)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer disabled:opacity-40 disabled:cursor-default"
+                className="p-2 rounded-[var(--radius-md)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer disabled:opacity-40 disabled:cursor-default"
               >
                 {busyAction === 'chat' ? (
                   <div className="w-[14px] h-[14px] border-2 border-[var(--text-muted)] border-t-transparent rounded-full animate-spin" />
@@ -128,7 +128,7 @@ export function CreateModal({
                 onClick={handleCreateCard}
                 disabled={!prompt.trim() || busy || !defaultTeamId}
                 title="Create card (⌘↵)"
-                className="p-[6px] rounded-[var(--radius-md)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer disabled:opacity-40 disabled:cursor-default"
+                className="p-2 rounded-[var(--radius-md)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer disabled:opacity-40 disabled:cursor-default"
               >
                 {busyAction === 'card' ? (
                   <div className="w-[14px] h-[14px] border-2 border-[var(--text-muted)] border-t-transparent rounded-full animate-spin" />

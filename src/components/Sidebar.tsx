@@ -114,14 +114,14 @@ export function Sidebar({ initialProjects, initialRecentSessions = [] }: Sidebar
         <div className="flex items-center justify-end gap-1 px-1 mt-2">
           <button
             disabled
-            className="p-[6px] rounded-[var(--radius-md)] text-[var(--text-faint)] cursor-default"
+            className="p-2 rounded-[var(--radius-md)] text-[var(--text-faint)] cursor-default"
             title="Search"
           >
             <Search size={14} />
           </button>
           <button
             onClick={() => setCreateOpen(true)}
-            className="p-[6px] rounded-[var(--radius-md)] text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer"
+            className="p-2 rounded-[var(--radius-md)] text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer"
             title="New conversation or card"
           >
             <Plus size={14} />

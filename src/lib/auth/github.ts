@@ -108,7 +108,7 @@ export async function hasRepoWriteAccess(
  * Given a list of owner/repo pairs, return the ones the user has write access to.
  *
  * Uses stale-while-revalidate caching: serves cached results immediately (up to
- * 24h) while triggering a background refresh. This means the first request after
+ * 48h) while triggering a background refresh. This means the first request after
  * a revalidation window returns instantly from cache, and the fresh result is
  * available for the next request.
  */

@@ -89,11 +89,10 @@ export function useAgentSession(cardId: string, sessionId: string | null) {
       }
       return
     }
-    if (historySessionIdRef.current === sessionId) return
-    // Apply cached data immediately if available (even during background refetch).
-    // Only block on isFetching when there's no cached data at all (first load).
-    const dataReady = historyData !== undefined && (!!historyData || !isHistoryFetching)
-    if (dataReady && currentSessionIdRef.current === sessionId) {
+    // Wait until fetch has settled before applying data. This ensures background
+    // refetches update messages even for previously-viewed sessions.
+    if (isHistoryFetching) return
+    if (historyData !== undefined && currentSessionIdRef.current === sessionId) {
       historySessionIdRef.current = sessionId
       setMessages(historyData?.messages?.length > 0 ? historyData.messages : [])
     }

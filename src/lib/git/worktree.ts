@@ -145,11 +145,14 @@ export async function ensureBareClone(
   if (!clonedJustNow && Date.now() - lastFetch > FETCH_INTERVAL_MS) {
     if (!pendingFetches.has(repoKey)) {
       pendingFetches.add(repoKey)
+      // Set lastFetchTime optimistically to prevent duplicate fetches from
+      // callers arriving while the background fetch is still in flight
+      lastFetchTime.set(repoKey, Date.now())
       fetchBareClone(owner, repo, token)
         .catch((err) => console.warn(`[git] Background fetch failed for ${repoKey}:`, err))
         .finally(() => {
-          // Always update lastFetchTime — on failure this prevents a fetch storm
-          // where every caller immediately retries the failing fetch
+          // Update lastFetchTime on completion so the stale window starts
+          // from when the fetch actually finished
           lastFetchTime.set(repoKey, Date.now())
           pendingFetches.delete(repoKey)
         })

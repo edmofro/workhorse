@@ -61,9 +61,9 @@ export async function GET(request: NextRequest) {
         const specTree = await fetchRepoSpecTree(
           user.accessToken, owner, repoName, defaultBranch,
         )
-        return specTree.files.map((f) => ({
+        return specTree.files.slice(0, 200).map((f) => ({
           filePath: f.path,
-          content: f.content,
+          content: f.content.slice(0, 50_000),
         }))
       } catch {
         return []

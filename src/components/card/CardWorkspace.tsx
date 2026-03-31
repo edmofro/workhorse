@@ -764,7 +764,7 @@ export function CardWorkspace({
         <>
           {chatColumn}
           {filesLoading ? (
-            <aside className="shrink-0 w-[216px] border-l border-[var(--border-subtle)] bg-[var(--bg-page)] flex flex-col p-4 space-y-3">
+            <aside className="shrink-0 w-[248px] border-l border-[var(--border-subtle)] bg-[var(--bg-page)] flex flex-col p-4 space-y-3">
               <Skeleton className="h-3 w-12" />
               <Skeleton className="h-4 w-3/4" />
               <Skeleton className="h-4 w-1/2" />

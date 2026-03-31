@@ -164,6 +164,7 @@ export function SpecDropdown({
             })}
             {filteredCodeFiles.map((file) => {
               const fileName = file.filePath.split('/').pop() ?? file.filePath
+              const hasStats = file.linesAdded != null || file.linesRemoved != null
               return (
                 <button
                   key={file.filePath}
@@ -172,6 +173,13 @@ export function SpecDropdown({
                 >
                   <Code2 size={11} className="shrink-0 text-[var(--text-muted)]" />
                   <span className="text-[11px] font-medium truncate flex-1">{fileName}</span>
+                  {hasStats && (
+                    <span className="shrink-0 text-[10px] font-mono tabular-nums">
+                      {(file.linesAdded ?? 0) > 0 && <span className="text-[var(--green)]">+{file.linesAdded}</span>}
+                      {(file.linesAdded ?? 0) > 0 && (file.linesRemoved ?? 0) > 0 && <span className="text-[var(--text-faint)]">/</span>}
+                      {(file.linesRemoved ?? 0) > 0 && <span className="text-[var(--diff-red,#dc2626)]">−{file.linesRemoved}</span>}
+                    </span>
+                  )}
                 </button>
               )
             })}

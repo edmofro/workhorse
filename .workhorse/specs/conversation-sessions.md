@@ -86,34 +86,30 @@ Standalone sessions often reveal work that needs tracking. Workhorse creates car
 
 ### Card home page: conversations as navigable items
 
-The card home page is a hub — it shows card metadata, a list of conversations, a list of specs/mockups, and a text input. Sessions are navigable destinations, not inline chat. This matches how the sidebar treats sessions (clickable items that take you somewhere).
+The card home page is a hub — it shows card metadata, a list of conversations, and a text input. Specs, mockups, and code changes are shown in the right sidebar (see `card-navigation.md`). Sessions are navigable destinations, not inline chat. This matches how the sidebar treats sessions (clickable items that take you somewhere).
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│  ← WH-042  Fix patient search                              │
-├─────────────────────────────────────────────────────────────┤
-│                                                             │
-│  [card details: title, description, metadata]               │
-│                                                             │
-│  ─────────────────────────────────────────────────────────  │
-│                                                             │
-│  CONVERSATIONS                                              │
-│  💬 Error handling follow-up        4 msgs · 1h ago    →   │
-│  💬 Initial spec interview         12 msgs · 2h ago    →   │
-│                                                             │
-│  SPECS & MOCKUPS                                   + New    │
-│  📄 patient-search                                 updated  │
-│  📄 search-diacritics                                 new   │
-│                                                             │
-├─────────────────────────────────────────────────────────────┤
-│        Draft spec    Interview    Review                    │
-│  ┌───────────────────────────────────────────────────────┐  │
-│  │ Start a new conversation...                           │  │
-│  └───────────────────────────────────────────────────────┘  │
-└─────────────────────────────────────────────────────────────┘
+┌────────────────────────────────────────────────┬────────────┐
+│  ← WH-042  Fix patient search                 │            │
+├────────────────────────────────────────────────┤  SPECS     │
+│                                                │  Patient…  │
+│  [card details: title, description, metadata]  │            │
+│                                                │  MOCKUPS   │
+│  ─────────────────────────────────────────     │  No mock…  │
+│                                                │            │
+│  CONVERSATIONS                                 │  CODE      │
+│  💬 Error handling follow-up     1h ago    →   │  search…   │
+│  💬 Initial spec interview       2h ago    →   │  +42/−7    │
+│                                                │            │
+├────────────────────────────────────────────────┤            │
+│        Draft spec    Interview    Review        │            │
+│  ┌──────────────────────────────────────────┐  │            │
+│  │ Start a new conversation...              │  │            │
+│  └──────────────────────────────────────────┘  │            │
+└────────────────────────────────────────────────┴────────────┘
 ```
 
-- [ ] Past sessions appear as a "Conversations" section alongside "Specs & Mockups", ordered by `lastMessageAt` descending
+- [ ] Past sessions appear as a "Conversations" section in the main body, ordered by `lastMessageAt` descending
 - [ ] Each session row shows: title, message count (muted), relative timestamp, and an arrow affordance
 - [ ] Clicking a session navigates to the chat zone with that session loaded (same as clicking a spec opens the spec view)
 - [ ] The input bar at the bottom **always starts a new session**. Typing and sending creates a fresh session and navigates to the chat zone
@@ -126,7 +122,7 @@ Navigating into a session (from card home or sidebar) enters the chat zone — a
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  ← WH-042  Error handling follow-up                        │
+│  ← WH-042  Fix patient search                              │
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
 │  [full message history for this session]                    │
@@ -138,7 +134,7 @@ Navigating into a session (from card home or sidebar) enters the chat zone — a
 └─────────────────────────────────────────────────────────────┘
 ```
 
-- [ ] The header shows the card identifier + session title. The back arrow returns to card home
+- [ ] The topbar shows the card identifier + card title (not the session title — that's redundant noise). The back arrow returns to card home
 - [ ] The input bar continues this session — messages are sent to the existing Agent SDK session
 - [ ] If the Agent SDK session is stale (expired, storage cleared), the next message starts a fresh Agent SDK session under the same `ConversationSession` record. The user doesn't notice — their history is still there, the agent just has fresh context
 - [ ] Files panel, artifact view, and editing all work as before within the chat zone
@@ -216,7 +212,7 @@ The sidebar gains a "Recent" section showing the most recently active sessions a
 |-----------|--------|
 | `Sidebar` | Add `recentSessions` prop. Render "Recent" section with deep links. Add "+ New" button |
 | `CardWorkspace` | Add `sessions` prop. Render conversations list on card home (alongside specs). Input starts new session and navigates to chat zone |
-| `CardDetailShell` | When inside a session, show session title in header alongside card identifier. Back arrow returns to card home |
+| `CardDetailShell` | Back arrow is context-aware: returns to card home from chat/artifact (via `CardBackContext`), or to team board from card home (standard `Link`). No session title in header — the topbar shows the card title + identifier |
 | `useAgentSession` | Accept `sessionId` instead of `cardId` for history loading. Pass `sessionId` to API calls |
 | Card page (server) | Fetch sessions for the card. Resolve `?session=` query param to load specific session in chat zone |
 | Main layout (server) | Fetch recent sessions for the sidebar |

@@ -9,6 +9,8 @@ export interface CodeFileItem {
   filePath: string
   /** The raw file extension, e.g. 'tsx', 'ts', 'css' */
   ext: string
+  linesAdded?: number
+  linesRemoved?: number
 }
 
 interface ArtifactsSidebarProps {
@@ -27,65 +29,64 @@ export function ArtifactsSidebar({
   activeFilePath,
   onSelectFile,
 }: ArtifactsSidebarProps) {
-  const hasContent = specs.length > 0 || mockups.length > 0 || codeFiles.length > 0
-
-  if (!hasContent) return null
-
   return (
     <aside className="shrink-0 w-[216px] border-l border-[var(--border-subtle)] bg-[var(--bg-page)] flex flex-col overflow-y-auto">
       {/* Specs */}
-      {specs.length > 0 && (
-        <Section label="Specs">
-          {specs.map((spec) => {
-            const label = deriveLabel(spec.filePath, spec.content)
-            return (
-              <FileRow
-                key={spec.filePath}
-                icon={<FileText size={13} className="text-[var(--text-muted)]" />}
-                label={label}
-                isActive={spec.filePath === activeFilePath}
-                onClick={() => onSelectFile(spec.filePath)}
-              />
-            )
-          })}
-        </Section>
-      )}
+      <Section label="Specs">
+        {specs.length > 0 ? specs.map((spec) => {
+          const label = deriveLabel(spec.filePath, spec.content)
+          return (
+            <FileRow
+              key={spec.filePath}
+              icon={<FileText size={13} className="text-[var(--text-muted)]" />}
+              label={label}
+              isActive={spec.filePath === activeFilePath}
+              onClick={() => onSelectFile(spec.filePath)}
+            />
+          )
+        }) : (
+          <p className="px-2 py-1 text-[11px] text-[var(--text-faint)]">No specs yet</p>
+        )}
+      </Section>
 
       {/* Mockups */}
-      {mockups.length > 0 && (
-        <Section label="Mockups">
-          {mockups.map((mockup) => {
-            const label = deriveLabel(mockup.filePath, mockup.content)
-            return (
-              <FileRow
-                key={mockup.filePath}
-                icon={<ImageIcon size={13} className="text-[var(--text-muted)]" />}
-                label={label}
-                isActive={mockup.filePath === activeFilePath}
-                onClick={() => onSelectFile(mockup.filePath)}
-              />
-            )
-          })}
-        </Section>
-      )}
+      <Section label="Mockups">
+        {mockups.length > 0 ? mockups.map((mockup) => {
+          const label = deriveLabel(mockup.filePath, mockup.content)
+          return (
+            <FileRow
+              key={mockup.filePath}
+              icon={<ImageIcon size={13} className="text-[var(--text-muted)]" />}
+              label={label}
+              isActive={mockup.filePath === activeFilePath}
+              onClick={() => onSelectFile(mockup.filePath)}
+            />
+          )
+        }) : (
+          <p className="px-2 py-1 text-[11px] text-[var(--text-faint)]">No mockups yet</p>
+        )}
+      </Section>
 
       {/* Code */}
-      {codeFiles.length > 0 && (
-        <Section label="Code">
-          {codeFiles.map((file) => {
-            const label = file.filePath.split('/').pop() ?? file.filePath
-            return (
-              <FileRow
-                key={file.filePath}
-                icon={<Code2 size={13} className="text-[var(--text-muted)]" />}
-                label={label}
-                isActive={file.filePath === activeFilePath}
-                onClick={() => onSelectFile(file.filePath)}
-              />
-            )
-          })}
-        </Section>
-      )}
+      <Section label="Code changes">
+        {codeFiles.length > 0 ? codeFiles.map((file) => {
+          const label = file.filePath.split('/').pop() ?? file.filePath
+          return (
+            <FileRow
+              key={file.filePath}
+              icon={<Code2 size={13} className="text-[var(--text-muted)]" />}
+              label={label}
+              isActive={file.filePath === activeFilePath}
+              onClick={() => onSelectFile(file.filePath)}
+              lineStats={file.linesAdded != null || file.linesRemoved != null
+                ? { added: file.linesAdded ?? 0, removed: file.linesRemoved ?? 0 }
+                : undefined}
+            />
+          )
+        }) : (
+          <p className="px-2 py-1 text-[11px] text-[var(--text-faint)]">No changes yet</p>
+        )}
+      </Section>
     </aside>
   )
 }
@@ -110,11 +111,13 @@ function FileRow({
   label,
   isActive,
   onClick,
+  lineStats,
 }: {
   icon: React.ReactNode
   label: string
   isActive: boolean
   onClick: () => void
+  lineStats?: { added: number; removed: number }
 }) {
   return (
     <button
@@ -128,11 +131,18 @@ function FileRow({
     >
       <div className="shrink-0">{icon}</div>
       <span className={cn(
-        'text-[12px] font-medium truncate',
+        'text-[12px] font-medium truncate flex-1',
         isActive ? 'text-[var(--text-primary)]' : 'text-[var(--text-secondary)]',
       )}>
         {label}
       </span>
+      {lineStats && (
+        <span className="shrink-0 text-[10px] font-mono tabular-nums">
+          {lineStats.added > 0 && <span className="text-[var(--green)]">+{lineStats.added}</span>}
+          {lineStats.added > 0 && lineStats.removed > 0 && <span className="text-[var(--text-faint)]">/</span>}
+          {lineStats.removed > 0 && <span className="text-[var(--diff-red,#dc2626)]">−{lineStats.removed}</span>}
+        </span>
+      )}
     </button>
   )
 }

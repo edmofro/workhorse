@@ -13,6 +13,7 @@ The label for any file is derived as follows:
 
 - **Spec files**: use the frontmatter `title` field. If absent, fall back to the humanised filename.
 - **HTML files** (mockups, design library components and views): use the HTML `<title>` element. If absent, fall back to the humanised filename.
+- **Code files**: shown as-is — the raw filename with extension, not humanised or sentence-cased. Code filenames like `PatientSearch.tsx` or `index.ts` are already meaningful to developers and should not be transformed.
 
 ## Humanised filename fallback
 

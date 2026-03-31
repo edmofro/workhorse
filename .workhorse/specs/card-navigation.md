@@ -13,49 +13,52 @@ A card is a workspace. The chat is how you interact with the AI about it. Specs 
 
 The workspace has three states, each using the full content area (no floating panels):
 
-1. **Card home** — card details centred with inline specs/mockups list, input bar + pills at the bottom. No sidebar.
-2. **Chat** — centred conversation (~680px), artifacts sidebar on the right
+1. **Card home** — card details centred, input bar + pills at the bottom. Artifacts sidebar on the right showing specs, mockups, and code changes (always visible, even when empty).
+2. **Chat** — centred conversation (~680px), artifacts sidebar on the right (always visible, even when empty). No session title header in the chat zone — the topbar already shows the card context.
 3. **Chat + artifact** — chat left (~40%), artifact right (~60%). No sidebar — navigation is via the dropdown, search, and prev/next arrows in the artifact header bar.
 
 Specs and mockups share the same artifact layout. The artifact area renders differently based on file type (rendered markdown vs rendered HTML), but the surrounding chrome — header bar, chat column — is identical.
 
 ## Artifacts sidebar
 
-A compact panel (216px, matching the main sidebar width) on the right side of the chat view. Clean and minimal — file names only, grouped by section. No type labels, no badges. Only appears in the **chat** view — not on card home, not in artifact mode.
+A compact panel (216px, matching the main sidebar width) on the right side of both the **card home** and **chat** views. Always visible — shows all three sections even when they have no files yet, with placeholder text ("No specs yet", "No mockups yet", "No changes yet") to indicate what will appear there as the card progresses.
 
 ### Visibility by view state
 
-- [ ] **Card home:** no sidebar — specs and mockups are listed inline within the card details
-- [ ] **Chat (no artifact):** sidebar open on the right (216px)
-- [ ] **Artifact mode (spec, mockup, or code open):** no sidebar — navigation uses the dropdown, search, and ◀ ▶ arrows in the artifact header bar
+- [x] **Card home:** sidebar open on the right (216px). Clicking a file opens it in artifact mode with the chat contracted (expanded artifact)
+- [x] **Chat (no artifact):** sidebar open on the right (216px). Clicking a file opens it as an artifact (chat slides left)
+- [x] **Artifact mode (spec, mockup, or code open):** no sidebar — navigation uses the dropdown, search, and ◀ ▶ arrows in the artifact header bar
 
 ### Sidebar sections
 
-The sidebar is divided into three sections with uppercase section labels (following the design system section label style). No heading above the sections — the section labels are self-explanatory.
+The sidebar is divided into three sections with uppercase section labels (following the design system section label style). All three sections are always shown. No heading above the sections — the section labels are self-explanatory.
 
 **Specs**
 - [ ] Lists this card's spec files by human-readable label (see `labels.md`)
-- [ ] Clicking a spec opens it as an artifact (chat slides left)
+- [ ] Clicking a spec opens it as an artifact
+- [ ] When empty, shows "No specs yet" in faint text
 
 **Mockups**
 - [ ] Lists this card's mockup files by human-readable label
-- [ ] Clicking a mockup opens it as an artifact (chat slides left)
+- [ ] Clicking a mockup opens it as an artifact
+- [ ] When empty, shows "No mockups yet" in faint text
 
-**Code**
+**Code changes**
 - [ ] Lists any changed files that aren't specs or mockups — code files changed during implementation
 - [ ] Clicking a code file opens it as an artifact
-- [ ] Only appears when there are code changes to show (hidden when empty)
+- [ ] Code filenames are shown as-is (raw filename with extension), not sentence-cased — unlike specs and mockups which use human-readable labels
+- [ ] Each code file shows a +/− lines changed indicator (e.g. "+42/−7") using diff colours from the design system (`--green` for additions, `--diff-red` for removals). Uses monospace tabular-nums for alignment
+- [ ] When empty, shows "No changes yet" in faint text
 
 ## Card home (landing state)
 
-The default when opening a card. Card details fill the content area, centred. No sidebar — specs and mockups are listed inline.
+The default when opening a card. Card details fill the content area, centred. The artifacts sidebar is always visible on the right.
 
 - [ ] Card details (title, description, metadata, comments, activity) fill the content area, centred
-- [ ] Specs and mockups listed inline within the card details with new/updated labels
-- [ ] New spec button (+) available in the inline specs list
+- [ ] Specs, mockups, and code changes are shown in the right sidebar — not inline in the body
 - [ ] Input bar fixed at the bottom with action pills above it
 - [ ] No chat messages shown — just the input bar and pills as a launchpad
-- [ ] Clicking a spec or mockup opens it in artifact view (chat + artifact)
+- [ ] Clicking a spec, mockup, or code file in the sidebar opens it in artifact view with the artifact expanded (chat contracted)
 - [ ] Sending a message or clicking a pill transitions to full chat
 
 ### When returning to a SPECIFYING card
@@ -67,11 +70,10 @@ The default when opening a card. Card details fill the content area, centred. No
 
 ## Chat mode (centred conversation)
 
-Triggered when the user sends a message from card home. The card details slide away and the chat fills the content area (~680px max-width, centred). The artifacts sidebar is open on the right.
+Triggered when the user sends a message from card home. The card details slide away and the chat fills the content area (~680px max-width, centred). The artifacts sidebar is open on the right. No session title header in the chat zone — the topbar already provides card context.
 
 - [ ] Chat messages render at 680px max-width, centred in the content area
-- [ ] Artifacts sidebar open on the right (~240px), showing Specs, Mockups, and Code sections
-- [ ] Artifacts sidebar collapses on narrow screens
+- [ ] Artifacts sidebar open on the right (216px), showing Specs, Mockups, and Code changes sections (always visible, even when empty)
 - [ ] File write notifications from the AI appear inline in the chat as clickable cards (human-readable label + snippet; see labels.md), like Claude's artifact reference cards
 - [ ] Clicking a file in the artifacts sidebar or an inline notification opens it as an artifact (chat slides left, sidebar disappears)
 - [ ] `←` back arrow returns to card home
@@ -118,7 +120,7 @@ When a code file (.tsx, .ts, .py, etc.) is open:
 - [ ] **File view:** plain code view with line numbers (read-only by default)
 - [ ] Edit button makes it editable in-place (switches to File view if in Changes view) — provides a plain textarea code editor
 - [ ] "Done editing" triggers auto-commit
-- [ ] File path shown in the header bar
+- [ ] File path shown in the header bar — raw filename with extension, not sentence-cased
 
 ### Expanding the artifact (mockups)
 
@@ -164,8 +166,8 @@ When the user opens a different file (via ◀ ▶, dropdown, or artifacts sideba
 ## State transitions
 
 ```
-Card home ──(send message / pill)──────────→ Chat (centred, artifacts sidebar appears)
-Card home ──(click spec or mockup)─────────→ Chat + artifact (no sidebar)
+Card home ──(send message / pill)──────────→ Chat (centred, artifacts sidebar stays)
+Card home ──(click file in sidebar)────────→ Chat + artifact (expanded, chat contracted)
 Card home ──(← back)───────────────────────→ Team board
 
 Chat ──(click file in sidebar/notification)→ Chat + artifact (sidebar disappears)
@@ -188,7 +190,7 @@ Available via the ⌄ chevron in the artifact header bar. The primary way to fin
 - [ ] Search bar at the top, always focused on open
 - [ ] Typing instantly filters card files below by name
 - [ ] Simultaneously fires a backend search across all project specs, fuzzy matching on title and content
-- [ ] Below search: **This card** section showing card specs and mockups with new/updated labels (always visible, not filtered by search unless search is active)
+- [ ] Below search: **This card** section showing card specs, mockups, and code files (always visible, not filtered by search unless search is active). Code files show raw filenames (not sentence-cased) and +/− lines changed indicators
 - [ ] Below that: **All project specs** section showing results from the backend search, or the full list when no search query
 - [ ] Clicking a card file opens it (replacing the current artifact, with save prompt if editing)
 - [ ] Clicking a project spec opens it for reading; editing it auto-commits to the card's branch and it appears in the card files section
@@ -197,9 +199,9 @@ Available via the ⌄ chevron in the artifact header bar. The primary way to fin
 
 ### Back arrow (← in topbar)
 
-- [ ] On card home → navigates to the team board
-- [ ] In chat mode → returns to card home
-- [ ] In artifact mode → Escape closes the artifact first; ← from chat goes to card home
+- [x] On card home → navigates to the team board (Link to project page)
+- [x] In chat mode → returns to card home (in-page navigation via view state, not a route change)
+- [x] In artifact mode → returns to card home (closes artifact and chat, returns to card home via view state)
 
 ### Escape key
 

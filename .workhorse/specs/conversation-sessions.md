@@ -150,15 +150,14 @@ Navigating into a session (from card home or sidebar) enters the chat zone — a
 - [ ] Standalone sessions get their own route since they have no card to hang off
 - [ ] If a standalone session acquires a card (via auto-creation), the standalone URL redirects to the card URL with `?session=`
 
-## Sidebar: recent sessions
+## Sidebar: recent conversations
 
-The sidebar gains a "Recent" section showing the most recently active sessions across all cards and standalone sessions.
+The sidebar shows a "Recent" section with the most recently active conversation sessions. Card-bound and standalone sessions are visually distinct so users can tell at a glance whether a conversation is attached to a card.
 
 ### Data
 
-- [ ] Fetch the 8 most recent sessions by `lastMessageAt` for the current user, filtered to accessible projects
-- [ ] Each entry shows: team colour dot, card identifier (if card-bound) or "Chat" label, and the session title
-- [ ] Standalone sessions without a card show just the session title with no identifier prefix
+- [ ] Fetch the 8 most recent sessions by `lastMessageAt` for the current user, filtered to the active project
+- [ ] Each entry is a conversation session — multiple entries may reference the same card (different conversations)
 
 ### Display
 
@@ -166,34 +165,35 @@ The sidebar gains a "Recent" section showing the most recently active sessions a
 ┌─ Workhorse ──────────┐
 │  ▾ Tamanu             │
 ├───────────────────────┤
+│  [🔍]  [+]           │
+├───────────────────────┤
+│  Cards                │
 │  Specs                │
 │  Design               │
 ├───────────────────────┤
-│  TEAMS                │
-│  ● Server             │
-│  ● Mobile             │
-├───────────────────────┤
 │  RECENT               │
-│  ● WH-042 Initial…   │  ← card-bound session, team colour dot
-│  ● Fix login timeout  │  ← standalone session, team colour dot
-│  ● WH-038 Refine…    │
-│  ● Schema question    │  ← standalone, Q&A, never got a card
-│  ● WH-042 Error ha…  │
+│  ● WH-042: Initial…  │  ← card-bound, status dot (amber = in progress)
+│  ◌ WH-042: Error h…  │  ← card-bound, status dot (hollow = not started)
+│  💬 Schema question   │  ← standalone session, chat icon
+│  ● WH-038: Refine…   │  ← card-bound, status dot (green = complete)
+│  💬 Fix login idea    │  ← standalone, no card
 │                       │
 │  ─── user menu ───    │
 └───────────────────────┘
 ```
 
-- [ ] Each item is a deep link. Card-bound sessions link to `/tamanu/cards/WH-042?session=clxyz123`. Standalone sessions link to `/tamanu/sessions/clxyz123`
-- [ ] Clicking a recent item navigates directly to that session, preserving context
+- [ ] **Card-bound sessions** show a status dot (coloured by the card's status: amber for in-progress, hollow/border-only for not started, green for complete) followed by `{cardIdentifier}: {sessionTitle}`
+- [ ] **Standalone sessions** show a `MessageCircle` icon (from Lucide, muted colour) followed by the session title — visually distinct from card-bound sessions
+- [ ] Each item is a deep link. Card-bound sessions link to `/:projectSlug/cards/:identifier?session=:sessionId`. Standalone sessions link to `/:projectSlug/sessions/:sessionId`
+- [ ] Clicking a recent item navigates directly to that conversation, preserving context
 - [ ] The "Recent" section updates reactively: when a new session is created or receives messages, the sidebar refreshes via `router.refresh()`. Active/streaming sessions show a subtle pulsing indicator on their title text to signal ongoing work
 - [ ] When navigating to a card via a sidebar session deep link (`?session=`), the card page auto-opens the chat zone for that session (not just the card home)
 
-### New conversation button
+### New conversation / card creation
 
-- [ ] A "+ New" button or icon appears in the sidebar header area or near the Recent section header
-- [ ] Clicking it opens a standalone session immediately — no dialogs, no team selection (defaults to last-used team or first available)
-- [ ] The new session appears at the top of Recent and the main content area shows an empty chat ready for input
+- [ ] A [+] icon button in the sidebar action bar opens the unified creation modal (see `ai-card-creation.md`)
+- [ ] The modal allows starting a conversation (Enter) or creating a card directly (Cmd+Enter)
+- [ ] New sessions and cards appear at the top of Recent immediately
 
 ## API changes
 

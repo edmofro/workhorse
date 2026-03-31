@@ -2,38 +2,38 @@
 
 import Link from 'next/link'
 import { usePathname, useSearchParams } from 'next/navigation'
-import { Settings, LogOut, FileText, Palette, ChevronDown, Ellipsis } from 'lucide-react'
+import {
+  Settings,
+  LogOut,
+  FileText,
+  Palette,
+  ChevronDown,
+  Ellipsis,
+  Search,
+  Plus,
+  LayoutList,
+  MessageCircle,
+} from 'lucide-react'
 import { cn } from '../lib/cn'
 import { Avatar } from './Avatar'
 import { useUser } from './UserProvider'
-import { useSidebarData, type SidebarData } from '../lib/hooks/queries'
+import {
+  useSidebarData,
+  type SidebarData,
+  type SidebarProject,
+  type SidebarSession,
+} from '../lib/hooks/queries'
+import { CreateModal } from './CreateModal'
 import { useState, useRef, useEffect } from 'react'
 
-interface SidebarProject {
-  id: string
-  name: string
-  teams: { id: string; name: string; colour: string }[]
-}
-
-export interface RecentSession {
-  id: string
-  title: string | null
-  cardId: string | null
-  cardIdentifier: string | null
-  cardTitle: string | null
-  teamColour: string | null
-  projectName: string | null
-  lastMessageAt: string
-}
+export type RecentSession = SidebarSession
 
 interface SidebarProps {
   initialProjects: SidebarProject[]
-  initialRecentSessions?: RecentSession[]
+  initialRecentSessions?: SidebarSession[]
 }
 
 export function Sidebar({ initialProjects, initialRecentSessions = [] }: SidebarProps) {
-  // Pass server-provided data as initialData so react-query serves it instantly
-  // without a redundant fetch, then revalidates in the background
   const initialData = initialProjects.length > 0
     ? { projects: initialProjects, recentSessions: initialRecentSessions } as SidebarData
     : undefined
@@ -44,14 +44,12 @@ export function Sidebar({ initialProjects, initialRecentSessions = [] }: Sidebar
   const searchParams = useSearchParams()
   const { user } = useUser()
   const [switcherOpen, setSwitcherOpen] = useState(false)
+  const [createOpen, setCreateOpen] = useState(false)
 
-  // Derive active project from URL path
   const firstSegment = decodeURIComponent(pathname.split('/')[1] ?? '')
   const activeProject = projects.find(
     (p) => p.name.toLowerCase() === firstSegment.toLowerCase(),
   ) ?? projects[0] ?? null
-  const activeTeamId = searchParams.get('team')
-
   const projectPath = activeProject
     ? `/${encodeURIComponent(activeProject.name.toLowerCase())}`
     : null
@@ -105,12 +103,39 @@ export function Sidebar({ initialProjects, initialRecentSessions = [] }: Sidebar
             )}
           </div>
         )}
+
+        {/* Action buttons */}
+        <div className="flex items-center justify-end gap-1 px-1 mt-2">
+          <button
+            disabled
+            className="p-2 rounded-[var(--radius-md)] text-[var(--text-faint)] cursor-default"
+            title="Search"
+          >
+            <Search size={14} />
+          </button>
+          <button
+            onClick={() => setCreateOpen(true)}
+            className="p-2 rounded-[var(--radius-md)] text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer"
+            title="New conversation or card"
+          >
+            <Plus size={14} />
+          </button>
+        </div>
       </div>
 
       {/* Navigation */}
       <nav className="flex-1 px-3 overflow-y-auto">
         {projectPath && (
           <>
+            {/* Cards link */}
+            <NavItem
+              href={projectPath}
+              icon={<LayoutList size={14} />}
+              active={pathname === projectPath && !searchParams.has('session')}
+            >
+              Cards
+            </NavItem>
+
             {/* Specs link */}
             <NavItem
               href={`${projectPath}/specs`}
@@ -129,29 +154,7 @@ export function Sidebar({ initialProjects, initialRecentSessions = [] }: Sidebar
               Design
             </NavItem>
 
-            {/* Teams section */}
-            <div className="px-2 pt-5 pb-[6px] text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-[0.06em]">
-              Teams
-            </div>
-
-            {activeProject?.teams.map((team) => (
-              <NavItem
-                key={team.id}
-                href={`${projectPath}?team=${team.id}`}
-                active={pathname === projectPath && activeTeamId === team.id}
-                dot={team.colour}
-              >
-                {team.name}
-              </NavItem>
-            ))}
-
-            {activeProject?.teams.length === 0 && (
-              <p className="px-2 py-2 text-[11px] text-[var(--text-faint)]">
-                No teams yet
-              </p>
-            )}
-
-            {/* Recent sessions */}
+            {/* Recent conversations */}
             {recentSessions.length > 0 && (
               <>
                 <div className="px-2 pt-5 pb-[6px] text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-[0.06em]">
@@ -172,12 +175,18 @@ export function Sidebar({ initialProjects, initialRecentSessions = [] }: Sidebar
                       : sessionLabel
                     const isActive = searchParams.get('session') === session.id
                       || pathname.includes(`/sessions/${session.id}`)
+                    const isCardBound = !!session.cardId
+
                     return (
                       <NavItem
                         key={session.id}
                         href={href}
-                        dot={session.teamColour ?? undefined}
                         active={isActive}
+                        statusIndicator={
+                          isCardBound
+                            ? <StatusDot status={session.cardStatus} />
+                            : <MessageCircle size={12} className="text-[var(--text-muted)] shrink-0" />
+                        }
                       >
                         <span className="truncate">{label}</span>
                       </NavItem>
@@ -191,7 +200,33 @@ export function Sidebar({ initialProjects, initialRecentSessions = [] }: Sidebar
 
       {/* Footer */}
       <UserMenu user={user} />
+
+      {/* Create modal */}
+      {createOpen && projectPath && activeProject && (
+        <CreateModal
+          projectSlug={projectPath}
+          defaultTeamId={activeProject.teams[0]?.id}
+          onClose={() => setCreateOpen(false)}
+        />
+      )}
     </aside>
+  )
+}
+
+function StatusDot({ status }: { status: string | null }) {
+  if (status === 'COMPLETE' || status === 'SPEC_COMPLETE') {
+    return (
+      <span className="w-[8px] h-[8px] rounded-full shrink-0 bg-[var(--green)]" />
+    )
+  }
+  if (status === 'IN_PROGRESS' || status === 'SPECIFYING') {
+    return (
+      <span className="w-[8px] h-[8px] rounded-full shrink-0 bg-[var(--amber)]" />
+    )
+  }
+  // NOT_STARTED or unknown — hollow dot
+  return (
+    <span className="w-[8px] h-[8px] rounded-full shrink-0 border border-[var(--border-default)]" />
   )
 }
 
@@ -213,7 +248,7 @@ function UserMenu({ user }: { user: { displayName: string; avatarUrl: string | n
   return (
     <div className="relative border-t border-[var(--border-subtle)]" ref={menuRef}>
       {open && (
-        <div className="absolute bottom-full left-2 right-2 mb-1 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-[var(--radius-default)] shadow-[var(--shadow-md)] py-1 z-40">
+        <div className="absolute bottom-full left-2 right-2 mb-1 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-[var(--radius-default)] shadow-[var(--shadow-md)] z-40 py-1">
           <Link
             href="/settings"
             onClick={() => setOpen(false)}
@@ -253,13 +288,13 @@ function UserMenu({ user }: { user: { displayName: string; avatarUrl: string | n
 function NavItem({
   href,
   icon,
-  dot,
+  statusIndicator,
   active,
   children,
 }: {
   href: string
   icon?: React.ReactNode
-  dot?: string
+  statusIndicator?: React.ReactNode
   active: boolean
   children: React.ReactNode
 }) {
@@ -275,12 +310,7 @@ function NavItem({
       )}
     >
       {icon}
-      {dot && (
-        <span
-          className="w-[8px] h-[8px] rounded-full shrink-0"
-          style={{ background: dot }}
-        />
-      )}
+      {statusIndicator}
       {children}
     </Link>
   )

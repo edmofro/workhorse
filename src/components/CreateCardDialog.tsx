@@ -24,7 +24,7 @@ interface CreateCardDialogProps {
 export function CreateCardDialog({ teams, projectName }: CreateCardDialogProps) {
   const [open, setOpen] = useState(false)
   const [prompt, setPrompt] = useState('')
-  const [teamId, setTeamId] = useState(teams[0]?.id ?? '')
+  const defaultTeamId = teams[0]?.id ?? ''
   const [isPending, startTransition] = useTransition()
   const [isGenerating, setIsGenerating] = useState(false)
   const router = useRouter()
@@ -34,7 +34,7 @@ export function CreateCardDialog({ teams, projectName }: CreateCardDialogProps) 
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!prompt.trim() || !teamId || busy || attachments.isUploading) return
+    if (!prompt.trim() || !defaultTeamId || busy || attachments.isUploading) return
 
     startTransition(async () => {
       setIsGenerating(true)
@@ -70,7 +70,7 @@ export function CreateCardDialog({ teams, projectName }: CreateCardDialogProps) 
       const card = await createCard({
         title,
         description: description || undefined,
-        teamId,
+        teamId: defaultTeamId,
       })
 
       // Associate attachments with the card
@@ -158,23 +158,6 @@ export function CreateCardDialog({ teams, projectName }: CreateCardDialogProps) 
                   compact
                 />
               </div>
-            </div>
-            <div>
-              <label className="block text-[12px] text-[var(--text-muted)] mb-1">
-                Team
-              </label>
-              <select
-                value={teamId}
-                onChange={(e) => setTeamId(e.target.value)}
-                disabled={busy}
-                className="w-full px-3 py-2 text-[14px] bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-[var(--radius-default)] outline-none focus:border-[var(--accent)] focus:shadow-[var(--shadow-input-focus)] transition-[border-color,box-shadow] duration-150 disabled:opacity-60"
-              >
-                {teams.map((team) => (
-                  <option key={team.id} value={team.id}>
-                    {team.name}
-                  </option>
-                ))}
-              </select>
             </div>
             <div className="flex justify-end gap-2 pt-2">
               <Button

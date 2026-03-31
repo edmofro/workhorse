@@ -19,10 +19,17 @@ interface Team {
 interface CreateCardDialogProps {
   teams: Team[]
   projectName: string
+  /** Controlled mode: externally managed open state */
+  open?: boolean
+  /** Controlled mode: called when the dialog should close */
+  onClose?: () => void
 }
 
-export function CreateCardDialog({ teams, projectName }: CreateCardDialogProps) {
-  const [open, setOpen] = useState(false)
+export function CreateCardDialog({ teams, projectName, open: controlledOpen, onClose }: CreateCardDialogProps) {
+  const [internalOpen, setInternalOpen] = useState(false)
+  const isControlled = controlledOpen !== undefined
+  const open = isControlled ? controlledOpen : internalOpen
+  const setOpen = isControlled ? (v: boolean) => { if (!v) onClose?.() } : setInternalOpen
   const [prompt, setPrompt] = useState('')
   const defaultTeamId = teams[0]?.id ?? ''
   const [isPending, startTransition] = useTransition()
@@ -111,6 +118,8 @@ export function CreateCardDialog({ teams, projectName }: CreateCardDialogProps) 
   }
 
   if (!open) {
+    // In controlled mode, parent handles the trigger
+    if (isControlled) return null
     return (
       <Button onClick={() => setOpen(true)} disabled={teams.length === 0}>
         <Plus size={12} /> New card

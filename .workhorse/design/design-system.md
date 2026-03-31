@@ -223,7 +223,7 @@ The app uses a fixed sidebar (216px) with a main content area. The topbar (52px)
 
 ### Three primary views
 
-**Cards view** — Feature list grouped by status (Specifying, Not started, Spec complete). Each group has a status dot, title, and count. Cards stack vertically.
+**Cards view** — Kanban board with horizontal columns per status (Specifying, Implementing, Not started, Complete). Each column has a status dot, label, and card count. Cards stack vertically within columns. A project selector dropdown in the topbar filters by project. Compact icon buttons (Search, Filter, New) replace the old chunky header buttons. See `board-redesign.md`.
 
 **Chat view** — Full-width scrollable conversation centred at 680px max-width. Input fixed at the bottom, also centred.
 

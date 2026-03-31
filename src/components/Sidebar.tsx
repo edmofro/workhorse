@@ -23,26 +23,9 @@ import {
   type SidebarProject,
   type SidebarSession,
 } from '../lib/hooks/queries'
-import { CreateModal } from './CreateModal'
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect } from 'react'
 
-interface SidebarProject {
-  id: string
-  name: string
-  teams: { id: string; name: string; colour: string }[]
-}
-
-export interface RecentSession {
-  id: string
-  title: string | null
-  cardId: string | null
-  cardIdentifier: string | null
-  cardTitle: string | null
-  cardStatus: string | null
-  teamColour: string | null
-  projectName: string | null
-  lastMessageAt: string
-}
+export type RecentSession = SidebarSession
 
 interface SidebarProps {
   initialProjects: SidebarProject[]
@@ -263,42 +246,48 @@ function CreateModal({
   onClose: () => void
 }) {
   const [prompt, setPrompt] = useState('')
-  const [busy, setBusy] = useState(false)
+  const [busyAction, setBusyAction] = useState<'chat' | 'card' | null>(null)
   const router = useRouter()
+
+  const busy = busyAction !== null
 
   async function handleCreateCard() {
     if (!prompt.trim() || busy || !defaultTeamId) return
-    setBusy(true)
-
-    let title: string
-    let description: string
+    setBusyAction('card')
 
     try {
-      const res = await fetch('/api/generate-card', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: prompt.trim() }),
-      })
-      const data = await res.json()
-      title = data.title
-      description = data.description ?? ''
+      let title: string
+      let description: string
+
+      try {
+        const res = await fetch('/api/generate-card', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt: prompt.trim() }),
+        })
+        const data = await res.json()
+        title = data.title
+        description = data.description ?? ''
+      } catch {
+        title = prompt.trim().length > 60
+          ? prompt.trim().slice(0, 57) + '...'
+          : prompt.trim()
+        description = prompt.trim()
+      }
+
+      const { createCard } = await import('../lib/actions/cards')
+      const card = await createCard({ title, description: description || undefined, teamId: defaultTeamId })
+
+      onClose()
+      router.push(`${projectSlug}/cards/${card.identifier}`)
     } catch {
-      title = prompt.trim().length > 60
-        ? prompt.trim().slice(0, 57) + '...'
-        : prompt.trim()
-      description = prompt.trim()
+      setBusyAction(null)
     }
-
-    const { createCard } = await import('../lib/actions/cards')
-    const card = await createCard({ title, description: description || undefined, teamId: defaultTeamId })
-
-    onClose()
-    router.push(`${projectSlug}/cards/${card.identifier}`)
   }
 
   async function handleStartChat() {
     if (!prompt.trim() || busy) return
-    setBusy(true)
+    setBusyAction('chat')
 
     try {
       const res = await fetch('/api/sessions', {
@@ -313,7 +302,7 @@ function CreateModal({
       onClose()
       router.push(`${projectSlug}/sessions/${data.id}`)
     } catch {
-      setBusy(false)
+      setBusyAction(null)
     }
   }
 
@@ -357,7 +346,7 @@ function CreateModal({
                 title="Start conversation (↵)"
                 className="p-[6px] rounded-[var(--radius-md)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer disabled:opacity-40 disabled:cursor-default"
               >
-                {busy ? (
+                {busyAction === 'chat' ? (
                   <div className="w-[14px] h-[14px] border-2 border-[var(--text-muted)] border-t-transparent rounded-full animate-spin" />
                 ) : (
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -372,7 +361,11 @@ function CreateModal({
                 title="Create card (⌘↵)"
                 className="p-[6px] rounded-[var(--radius-md)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer disabled:opacity-40 disabled:cursor-default"
               >
-                <LayoutList size={14} />
+                {busyAction === 'card' ? (
+                  <div className="w-[14px] h-[14px] border-2 border-[var(--text-muted)] border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <LayoutList size={14} />
+                )}
               </button>
             </div>
           </div>

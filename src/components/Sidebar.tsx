@@ -115,7 +115,7 @@ export function Sidebar({ initialProjects, initialRecentSessions = [] }: Sidebar
           <button
             disabled
             className="p-[6px] rounded-[var(--radius-md)] text-[var(--text-faint)] cursor-default"
-            title="Search (coming soon)"
+            title="Search"
           >
             <Search size={14} />
           </button>
@@ -209,7 +209,6 @@ export function Sidebar({ initialProjects, initialRecentSessions = [] }: Sidebar
       {/* Create modal */}
       {createOpen && projectPath && activeProject && (
         <CreateModal
-          projectName={activeProject.name}
           projectSlug={projectPath}
           defaultTeamId={activeProject.teams[0]?.id}
           onClose={() => setCreateOpen(false)}

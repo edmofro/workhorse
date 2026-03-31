@@ -20,6 +20,7 @@ export async function getRecentSessions(userId: string, limit: number = 8) {
         select: {
           identifier: true,
           title: true,
+          status: true,
           team: {
             select: {
               colour: true,
@@ -51,6 +52,7 @@ export function mapRecentSession(s: RecentSessionRow) {
     cardId: s.cardId,
     cardIdentifier: s.card?.identifier ?? null,
     cardTitle: s.card?.title ?? null,
+    cardStatus: s.card?.status ?? null,
     teamColour: s.card?.team?.colour ?? s.team?.colour ?? null,
     projectName: s.card?.team?.project?.name ?? s.team?.project?.name ?? null,
   }

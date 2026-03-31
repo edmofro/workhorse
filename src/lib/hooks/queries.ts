@@ -35,6 +35,7 @@ interface SidebarSession {
   cardId: string | null
   cardIdentifier: string | null
   cardTitle: string | null
+  cardStatus: string | null
   teamColour: string | null
   projectName: string | null
 }

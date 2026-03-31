@@ -6,14 +6,12 @@ import { ArrowRight, LayoutList } from 'lucide-react'
 import { createCard } from '../lib/actions/cards'
 
 interface CreateModalProps {
-  projectName: string
   projectSlug: string
   defaultTeamId?: string
   onClose: () => void
 }
 
 export function CreateModal({
-  projectName,
   projectSlug,
   defaultTeamId,
   onClose,
@@ -101,7 +99,7 @@ export function CreateModal({
         onClick={() => !busy && onClose()}
       />
       <div className="fixed inset-0 z-50 flex items-center justify-center">
-        <div className="w-full max-w-[480px] bg-[var(--bg-surface)] rounded-[var(--radius-lg)] border border-[var(--border-subtle)] shadow-[var(--shadow-lg)] p-6">
+        <div className="w-full max-w-[480px] bg-[var(--bg-surface)] rounded-[var(--radius-xl)] border border-[var(--border-subtle)] shadow-[var(--shadow-lg)] p-5">
           <div className="relative">
             <textarea
               value={prompt}

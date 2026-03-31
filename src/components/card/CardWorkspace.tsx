@@ -189,6 +189,23 @@ export function CardWorkspace({
     [],
   )
 
+  // Persist a file to the worktree API
+  const persistFile = useCallback(
+    async (filePath: string) => {
+      const file = files.find((f) => f.filePath === filePath)
+      if (!file) return
+      const res = await fetch('/api/worktree-files', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cardId: card.id, filePath, content: file.content }),
+      })
+      if (!res.ok) {
+        console.error('Failed to save file')
+      }
+    },
+    [card.id, files],
+  )
+
   const handleDoneEditing = useCallback(
     async (filePath: string) => {
       // Persist buffered content to the worktree
@@ -400,23 +417,6 @@ export function CardWorkspace({
       )
     },
     [],
-  )
-
-  // Persist a file to the worktree API
-  const persistFile = useCallback(
-    async (filePath: string) => {
-      const file = files.find((f) => f.filePath === filePath)
-      if (!file) return
-      const res = await fetch('/api/worktree-files', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cardId: card.id, filePath, content: file.content }),
-      })
-      if (!res.ok) {
-        console.error('Failed to save file')
-      }
-    },
-    [card.id, files],
   )
 
   const handleCreateSpec = useCallback(

@@ -73,11 +73,13 @@ export async function GET(request: NextRequest) {
 
   // Load worktree files if worktree exists
   const initialFiles: { filePath: string; isNew: boolean; content: string }[] = []
-  let initialCodeFiles: { filePath: string; isNew: boolean }[] = []
+  let initialCodeFiles: { filePath: string; isNew: boolean; linesAdded?: number; linesRemoved?: number }[] = []
+  let codeFilesTruncated = false
   if (hasWorktree) {
-    const { workhorseFiles, codeFiles } = await getChangedFiles(
+    const { workhorseFiles, codeFiles, codeFilesTruncated: truncated } = await getChangedFiles(
       owner, repoName, cardId, defaultBranch,
     )
+    codeFilesTruncated = truncated
     const specFiles = workhorseFiles.filter((f) =>
       f.filePath.startsWith('.workhorse/specs/') ||
       isMockupPath(f.filePath),
@@ -101,6 +103,7 @@ export async function GET(request: NextRequest) {
   return NextResponse.json({
     initialFiles,
     initialCodeFiles,
+    codeFilesTruncated,
     projectSpecs,
   })
 }

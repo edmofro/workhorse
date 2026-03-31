@@ -31,7 +31,6 @@ export async function GET(request: NextRequest) {
       team: { include: { project: true } },
       assignee: true,
       dependsOn: { include: { parent: { select: { identifier: true, title: true } } } },
-      dependedOnBy: { include: { dependent: { select: { identifier: true, title: true } } } },
       attachments: { where: { commentId: null }, orderBy: { createdAt: 'asc' } },
       mockups: true,
       activities: {

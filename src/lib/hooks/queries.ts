@@ -167,6 +167,7 @@ export function useCardDetail(cardId: string) {
 interface CardFilesData {
   initialFiles: { filePath: string; isNew: boolean; content: string }[]
   initialCodeFiles: { filePath: string; isNew: boolean; linesAdded?: number; linesRemoved?: number }[]
+  codeFilesTruncated: boolean
   projectSpecs: { filePath: string; content: string }[]
 }
 

@@ -55,9 +55,9 @@ export function Sidebar({ initialProjects, initialRecentSessions = [] }: Sidebar
     ? `/${encodeURIComponent(activeProject.name.toLowerCase())}`
     : null
 
-  const filteredSessions = recentSessions
+  const projectSessions = recentSessions
     .filter((s) => !activeProject || s.projectName?.toLowerCase() === activeProject.name.toLowerCase())
-    .slice(0, 5)
+  const filteredSessions = projectSessions.slice(0, 5)
 
   return (
     <aside
@@ -78,7 +78,7 @@ export function Sidebar({ initialProjects, initialRecentSessions = [] }: Sidebar
           <div className="relative">
             <button
               onClick={() => setSwitcherOpen(!switcherOpen)}
-              className="flex items-center justify-between w-full px-2 py-[7px] rounded-[var(--radius-md)] text-[13px] font-medium text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer"
+              className="flex items-center justify-between w-full px-2 py-2 rounded-[var(--radius-md)] text-[13px] font-medium text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer"
             >
               <span className="truncate">{activeProject?.name ?? 'Select project'}</span>
               <ChevronDown size={13} className="text-[var(--text-muted)] shrink-0" />
@@ -127,9 +127,6 @@ export function Sidebar({ initialProjects, initialRecentSessions = [] }: Sidebar
               href={`${projectPath}/specs`}
               icon={<FileText size={14} />}
               active={pathname.startsWith(`${projectPath}/specs`)}
-              onAdd={() => {
-                // TODO: quick card → spec editor flow
-              }}
             >
               Specs
             </SectionItem>
@@ -138,9 +135,6 @@ export function Sidebar({ initialProjects, initialRecentSessions = [] }: Sidebar
               href={`${projectPath}/design`}
               icon={<Palette size={14} />}
               active={pathname.startsWith(`${projectPath}/design`)}
-              onAdd={() => {
-                // TODO: quick card → mockup mode flow
-              }}
             >
               Design
             </SectionItem>
@@ -157,7 +151,7 @@ export function Sidebar({ initialProjects, initialRecentSessions = [] }: Sidebar
             <SectionItem
               href={`${projectPath}/conversations`}
               icon={<MessageCircle size={14} />}
-              active={pathname.startsWith(`${projectPath}/conversations`) || pathname.includes('/sessions/')}
+              active={pathname.startsWith(`${projectPath}/conversations`) || pathname.startsWith(`${projectPath}/sessions/`)}
               onAdd={() => setCreateModal({ mode: 'chat' })}
             >
               Conversations
@@ -194,7 +188,7 @@ export function Sidebar({ initialProjects, initialRecentSessions = [] }: Sidebar
                     </ConversationItem>
                   )
                 })}
-                {recentSessions.filter((s) => !activeProject || s.projectName?.toLowerCase() === activeProject.name.toLowerCase()).length > 5 && (
+                {projectSessions.length > 5 && (
                   <Link
                     href={`${projectPath}/conversations`}
                     className="block px-3 py-1 text-[11px] text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors duration-100"
@@ -243,7 +237,7 @@ function SectionItem({
       <Link
         href={href}
         className={cn(
-          'flex items-center gap-2 flex-1 min-w-0 px-3 py-[7px] rounded-[var(--radius-md)]',
+          'flex items-center gap-2 flex-1 min-w-0 px-3 py-2 rounded-[var(--radius-md)]',
           'text-[13px] cursor-pointer transition-colors duration-100',
           active
             ? 'bg-[var(--bg-surface)] text-[var(--text-primary)] font-medium shadow-[var(--shadow-sm)]'
@@ -260,6 +254,7 @@ function SectionItem({
             title="Search"
             onClick={(e) => {
               e.preventDefault()
+              e.stopPropagation()
               // TODO: scoped search
             }}
           >
@@ -272,6 +267,7 @@ function SectionItem({
               title="New"
               onClick={(e) => {
                 e.preventDefault()
+                e.stopPropagation()
                 onAdd()
               }}
             >
@@ -351,7 +347,7 @@ function UserMenu({ user }: { user: { displayName: string; avatarUrl: string | n
           <Link
             href="/settings"
             onClick={() => setOpen(false)}
-            className="flex items-center gap-2 px-3 py-[7px] text-[13px] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-colors duration-100"
+            className="flex items-center gap-2 px-3 py-2 text-[13px] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-colors duration-100"
           >
             <Settings size={14} />
             Settings
@@ -360,7 +356,7 @@ function UserMenu({ user }: { user: { displayName: string; avatarUrl: string | n
           <form action="/api/auth/sign-out" method="POST">
             <button
               type="submit"
-              className="flex items-center gap-2 w-full px-3 py-[7px] text-[13px] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer"
+              className="flex items-center gap-2 w-full px-3 py-2 text-[13px] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer"
             >
               <LogOut size={14} />
               Sign out

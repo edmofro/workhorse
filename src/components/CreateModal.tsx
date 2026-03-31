@@ -1,8 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowRight, LayoutList } from 'lucide-react'
+import { ArrowRight, LayoutList, X } from 'lucide-react'
 import { createCard } from '../lib/actions/cards'
 
 interface CreateModalProps {
@@ -24,6 +24,17 @@ export function CreateModal({
   const router = useRouter()
 
   const busy = busyAction !== null
+
+  // Document-level Escape handler so it works regardless of focus
+  useEffect(() => {
+    function handleEscape(e: KeyboardEvent) {
+      if (e.key === 'Escape' && !busy) {
+        onClose()
+      }
+    }
+    document.addEventListener('keydown', handleEscape)
+    return () => document.removeEventListener('keydown', handleEscape)
+  }, [busy, onClose])
 
   async function handleCreateCard() {
     if (!prompt.trim() || busy || !defaultTeamId) return
@@ -93,11 +104,7 @@ export function CreateModal({
       e.preventDefault()
       secondaryAction()
     }
-    if (e.key === 'Escape' && !busy) {
-      onClose()
-    }
   }
-
 
   return (
     <>
@@ -105,8 +112,18 @@ export function CreateModal({
         className="fixed inset-0 z-40 bg-[rgba(28,25,23,0.40)]"
         onClick={() => !busy && onClose()}
       />
-      <div className="fixed inset-0 z-50 flex items-center justify-center">
-        <div className="w-full max-w-[480px] bg-[var(--bg-surface)] rounded-[var(--radius-xl)] border border-[var(--border-subtle)] shadow-[var(--shadow-lg)] p-5">
+      <div
+        className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none"
+      >
+        <div className="w-full max-w-[480px] bg-[var(--bg-surface)] rounded-[var(--radius-xl)] border border-[var(--border-subtle)] shadow-[var(--shadow-lg)] p-5 pointer-events-auto">
+          <div className="flex justify-end mb-2">
+            <button
+              onClick={() => !busy && onClose()}
+              className="p-1 rounded-[var(--radius-sm)] text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer"
+            >
+              <X size={14} />
+            </button>
+          </div>
           <div className="relative">
             <textarea
               value={prompt}

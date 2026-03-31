@@ -375,7 +375,7 @@ const MAX_CODE_FILES = 200
 
 interface ChangedFilesResult {
   workhorseFiles: { filePath: string; isNew: boolean }[]
-  codeFiles: { filePath: string; isNew: boolean }[]
+  codeFiles: { filePath: string; isNew: boolean; linesAdded?: number; linesRemoved?: number }[]
   codeFilesTruncated: boolean
 }
 
@@ -387,24 +387,43 @@ export async function getChangedFiles(
 ): Promise<ChangedFilesResult> {
   const wtPath = worktreePath(owner, repo, cardIdentifier)
   const workhorseMap = new Map<string, boolean>()
-  const codeFiles: { filePath: string; isNew: boolean }[] = []
+  const codeFiles: { filePath: string; isNew: boolean; linesAdded?: number; linesRemoved?: number }[] = []
   let codeFilesTruncated = false
 
   // Committed changes: files changed on the card branch vs the default branch.
+  // Run --name-status and --numstat in parallel for efficiency.
   try {
-    const diff = await git(
-      ['diff', '--name-status', `origin/${defaultBranch}...HEAD`],
-      wtPath,
-    )
+    const [nameStatus, numstat] = await Promise.all([
+      git(['diff', '--name-status', `origin/${defaultBranch}...HEAD`], wtPath),
+      git(['diff', '--numstat', `origin/${defaultBranch}...HEAD`], wtPath),
+    ])
 
-    for (const line of diff.split('\n').filter(Boolean)) {
+    // Build a map of file → { linesAdded, linesRemoved } from numstat
+    const lineStats = new Map<string, { added: number; removed: number }>()
+    for (const line of numstat.split('\n').filter(Boolean)) {
+      const parts = line.split('\t')
+      const added = parseInt(parts[0]!, 10)
+      const removed = parseInt(parts[1]!, 10)
+      const fp = parts[2]!
+      if (!isNaN(added) && !isNaN(removed) && fp) {
+        lineStats.set(fp, { added, removed })
+      }
+    }
+
+    for (const line of nameStatus.split('\n').filter(Boolean)) {
       const parts = line.split('\t')
       const status = parts[0]!
       const filePath = status.startsWith('R') ? parts[2]! : parts[1]!
       if (filePath.startsWith('.workhorse/')) {
         workhorseMap.set(filePath, status === 'A')
       } else if (codeFiles.length < MAX_CODE_FILES) {
-        codeFiles.push({ filePath, isNew: status === 'A' })
+        const stats = lineStats.get(filePath)
+        codeFiles.push({
+          filePath,
+          isNew: status === 'A',
+          linesAdded: stats?.added,
+          linesRemoved: stats?.removed,
+        })
       } else {
         codeFilesTruncated = true
       }

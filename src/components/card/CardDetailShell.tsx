@@ -4,6 +4,7 @@ import { ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 import { Topbar, TopbarCardTitle, TopbarRight } from '../Topbar'
 import { CollaborateButton } from './CollaborateButton'
+import { useCardBack } from './CardBackContext'
 
 interface CardDetailShellProps {
   card: {
@@ -24,15 +25,25 @@ export function CardDetailShell({
   projectSlug,
   children,
 }: CardDetailShellProps) {
+  const onBack = useCardBack()
   return (
     <>
       <Topbar>
-        <Link
-          href={`/${projectSlug}`}
-          className="p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors duration-100"
-        >
-          <ArrowLeft size={16} />
-        </Link>
+        {onBack ? (
+          <button
+            onClick={onBack}
+            className="p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors duration-100 cursor-pointer"
+          >
+            <ArrowLeft size={16} />
+          </button>
+        ) : (
+          <Link
+            href={`/${projectSlug}`}
+            className="p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors duration-100"
+          >
+            <ArrowLeft size={16} />
+          </Link>
+        )}
         <TopbarCardTitle
           title={card.title}
           identifier={card.identifier}

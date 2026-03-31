@@ -81,7 +81,9 @@ export function SpecHeaderBar({
 }: SpecHeaderBarProps) {
   const [dropdownOpen, setDropdownOpen] = useState(false)
 
-  const fileName = deriveLabel(filePath, fileContent)
+  const fileName = isCode
+    ? (filePath.split('/').pop() ?? filePath)
+    : deriveLabel(filePath, fileContent)
 
   // Use allNavigableFiles for prev/next boundary detection
   const currentIdx = allNavigableFiles.indexOf(filePath)

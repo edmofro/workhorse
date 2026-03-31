@@ -27,6 +27,7 @@ import { deriveLabel } from '../../lib/labels'
 import { updateCardTitleFromSpec } from '../../lib/actions/cards'
 import { formatRelativeTime } from '../../lib/formatRelativeTime'
 import { isMockupPath } from '../../lib/paths'
+import { CardBackProvider } from './CardBackContext'
 
 interface SpecFileData {
   filePath: string
@@ -64,7 +65,7 @@ interface CardWorkspaceProps {
   }
   cardTabContent: React.ReactNode
   initialFiles: SpecFileData[]
-  initialCodeFiles?: { filePath: string; isNew: boolean }[]
+  initialCodeFiles?: { filePath: string; isNew: boolean; linesAdded?: number; linesRemoved?: number }[]
   mockups: MockupData[]
   projectSpecs: ProjectSpecData[]
   sessions: ConversationSessionData[]
@@ -94,7 +95,7 @@ export function CardWorkspace({
 
   // Spec files state
   const [files, setFiles] = useState(initialFiles)
-  const [codeFiles, setCodeFiles] = useState(initialCodeFiles)
+  const [codeFiles, setCodeFiles] = useState<{ filePath: string; isNew: boolean; linesAdded?: number; linesRemoved?: number }[]>(initialCodeFiles)
   const [showNewSpecDialog, setShowNewSpecDialog] = useState(false)
   const [isEnsuring, setIsEnsuring] = useState(false)
   const chatScrollRef = useRef<HTMLDivElement>(null)
@@ -169,6 +170,8 @@ export function CardWorkspace({
   const codeFileItems: CodeFileItem[] = codeFiles.map((f) => ({
     filePath: f.filePath,
     ext: f.filePath.split('.').pop() ?? '',
+    linesAdded: f.linesAdded,
+    linesRemoved: f.linesRemoved,
   }))
 
   // All navigable files (specs + mockups + code) for prev/next
@@ -324,6 +327,15 @@ export function CardWorkspace({
     }
   }, [fileWrites])
 
+  // Open a file from card home in expanded mode (chat contracted)
+  const openFileExpanded = useCallback(
+    (filePath: string) => {
+      setExpanded(true)
+      openFile(filePath)
+    },
+    [openFile],
+  )
+
   // Navigate to a session's chat zone
   const openSession = useCallback(
     (sessionId: string) => {
@@ -478,21 +490,9 @@ export function CardWorkspace({
     : { type: view.type as 'card' | 'chat' }
   const pills = getPillsForContext(card.status, messages.length > 0, pillView)
 
-  // Session title for the chat zone header
-  const chatSessionTitle = view.type === 'chat' ? view.sessionTitle : null
-
   // --- Chat column (shared between chat mode and artifact mode) ---
   const chatColumn = (
     <div className="flex-1 flex flex-col overflow-hidden">
-      {/* Session header bar in chat zone */}
-      {view.type === 'chat' && chatSessionTitle && (
-        <div className="shrink-0 px-4 py-3 border-b border-[var(--border-subtle)] flex items-center gap-2">
-          <MessageCircle size={13} className="text-[var(--text-muted)]" />
-          <span className="text-[13px] font-medium text-[var(--text-secondary)] truncate">
-            {chatSessionTitle}
-          </span>
-        </div>
-      )}
       <div ref={chatScrollRef} className="flex-1 overflow-y-auto flex justify-center">
         <div className="w-full" style={{ maxWidth: '680px', padding: '32px 24px 32px' }}>
           {messages.length === 0 && (
@@ -649,17 +649,21 @@ export function CardWorkspace({
     </div>
   ) : null
 
+  // Provide back handler to topbar: go to card home when in chat/artifact, null when already on card home
+  const backHandler = view.type !== 'card' ? goBack : null
+
   return (
+    <CardBackProvider onBack={backHandler}>
     <div className="flex-1 flex overflow-hidden">
       {/* ===== Card home ===== */}
       {view.type === 'card' && (
+        <>
           <div className="flex-1 flex flex-col overflow-hidden">
             <div className="flex-1 overflow-y-auto">
               {cardTabContent}
 
-              {/* Conversations and specs/mockups sections */}
+              {/* Conversations section */}
               <div className="max-w-[720px] mx-auto px-10 pb-8">
-                {/* Conversations section */}
                 {sessions.length > 0 && (
                   <div className="border-t border-[var(--border-subtle)] pt-6">
                     <h3 className="text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-[0.06em] mb-3">
@@ -684,56 +688,6 @@ export function CardWorkspace({
                             <span className="text-[11px] text-[var(--text-muted)] shrink-0">
                               {isSessionStreaming ? 'Working…' : formatRelativeTime(session.lastMessageAt)}
                             </span>
-                          </button>
-                        )
-                      })}
-                    </div>
-                  </div>
-                )}
-
-                {/* Inline specs and mockups */}
-                {(specFiles.length > 0 || allMockupFiles.length > 0) && (
-                  <div className="border-t border-[var(--border-subtle)] pt-6 mt-2">
-                    <div className="flex items-center justify-between mb-3">
-                      <h3 className="text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-[0.06em]">
-                        Specs &amp; Mockups
-                      </h3>
-                      <button
-                        onClick={() => setShowNewSpecDialog(true)}
-                        className="text-[11px] font-medium text-[var(--accent)] hover:text-[var(--accent-hover)] cursor-pointer transition-colors duration-100"
-                      >
-                        + New spec
-                      </button>
-                    </div>
-                    <div className="space-y-1">
-                      {specFiles.map((spec) => {
-                        const label = deriveLabel(spec.filePath, spec.content)
-                        return (
-                          <button
-                            key={spec.filePath}
-                            onClick={() => openFile(spec.filePath)}
-                            className="flex items-center gap-2 w-full px-3 py-2 rounded-[var(--radius-default)] text-left text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer"
-                          >
-                            <FileText size={13} className="shrink-0 text-[var(--text-muted)]" />
-                            <span className="text-[13px] font-medium flex-1">{label}</span>
-                            {spec.isNew ? (
-                              <span className="text-[10px] text-[var(--green)] font-medium shrink-0">new</span>
-                            ) : (
-                              <span className="text-[10px] text-[var(--amber)] font-medium shrink-0">updated</span>
-                            )}
-                          </button>
-                        )
-                      })}
-                      {allMockupFiles.map((mockup) => {
-                        const label = deriveLabel(mockup.filePath, mockup.content)
-                        return (
-                          <button
-                            key={mockup.filePath}
-                            onClick={() => openFile(mockup.filePath)}
-                            className="flex items-center gap-2 w-full px-3 py-2 rounded-[var(--radius-default)] text-left text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer"
-                          >
-                            <FileText size={13} className="shrink-0 text-[var(--text-muted)]" />
-                            <span className="text-[13px] font-medium">{label}</span>
                           </button>
                         )
                       })}
@@ -765,6 +719,14 @@ export function CardWorkspace({
               />
             </div>
           </div>
+          <ArtifactsSidebar
+            specs={specFiles.map((f) => ({ filePath: f.filePath, isNew: f.isNew, content: f.content }))}
+            mockups={allMockupFiles}
+            codeFiles={codeFileItems}
+            activeFilePath={null}
+            onSelectFile={(fp) => openFileExpanded(fp)}
+          />
+        </>
       )}
 
       {/* ===== Centred chat ===== */}
@@ -852,6 +814,7 @@ export function CardWorkspace({
         </>
       )}
     </div>
+    </CardBackProvider>
   )
 }
 

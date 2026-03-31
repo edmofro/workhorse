@@ -89,11 +89,13 @@ export function useAgentSession(cardId: string, sessionId: string | null) {
       }
       return
     }
+    // Sync history once per session switch — never overwrite after that, because
+    // streaming and local state may have added messages the server doesn't know about.
     if (historySessionIdRef.current === sessionId) return
-    // Wait for fresh data — if react-query is still fetching for this key,
-    // the current historyData may be stale cached data from a previous view.
-    // Only apply once the fetch has settled to avoid showing wrong session's messages.
-    if (historyData !== undefined && !isHistoryFetching && currentSessionIdRef.current === sessionId) {
+    // Wait for the fetch to settle so we don't apply stale cached data from a
+    // previously-viewed session while the fresh fetch is still in flight.
+    if (isHistoryFetching) return
+    if (historyData !== undefined && currentSessionIdRef.current === sessionId) {
       historySessionIdRef.current = sessionId
       setMessages(historyData?.messages?.length > 0 ? historyData.messages : [])
     }

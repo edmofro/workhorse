@@ -1,7 +1,7 @@
 'use client'
 
 import { notFound } from 'next/navigation'
-import { useCardDetail, NotFoundError } from '../../lib/hooks/queries'
+import { useCardDetail, useCardFiles, NotFoundError } from '../../lib/hooks/queries'
 import { CardTab } from './CardTab'
 import { CardWorkspace } from './CardWorkspace'
 import { Skeleton } from '../Skeleton'
@@ -50,11 +50,14 @@ interface Props {
 export function CardDetailPage({ cardId, initialSessionId }: Props) {
   const { data, isLoading, error } = useCardDetail(cardId)
 
+  // Files load independently — card UI renders before git operations complete
+  const { data: filesData, isLoading: filesLoading } = useCardFiles(cardId)
+
   if (isLoading) return <CardSkeleton />
   if (error instanceof NotFoundError) notFound()
   if (error || !data) return <CardSkeleton />
 
-  const { card, users, teams, sessions, initialFiles, initialCodeFiles, projectSpecs } = data
+  const { card, users, teams, sessions } = data
 
   const cardTabContent = (
     <CardTab
@@ -88,10 +91,11 @@ export function CardDetailPage({ cardId, initialSessionId }: Props) {
         cardBranch: card.cardBranch,
       }}
       cardTabContent={cardTabContent}
-      initialFiles={initialFiles}
-      initialCodeFiles={initialCodeFiles}
+      initialFiles={filesData?.initialFiles ?? []}
+      initialCodeFiles={filesData?.initialCodeFiles ?? []}
+      filesLoading={filesLoading}
       mockups={card.mockups}
-      projectSpecs={projectSpecs}
+      projectSpecs={filesData?.projectSpecs ?? []}
       sessions={sessions}
       initialSessionId={initialSessionId}
     />

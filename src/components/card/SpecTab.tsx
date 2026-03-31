@@ -290,7 +290,6 @@ export function SpecTab({ card, initialFiles, projectSpecs = [] }: SpecTabProps)
               }
               isEditing={isEditing}
               onStartEditing={() => handleStartEditing()}
-              onDoneEditing={() => handleDoneEditing(activeFile.filePath)}
               cardStatus={card.status}
             />
           </div>

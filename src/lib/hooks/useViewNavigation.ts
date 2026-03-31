@@ -52,6 +52,8 @@ function viewReducer(state: ViewNavState, action: ViewAction): ViewNavState {
       // No non-artifact in history — return to card home
       return { current: { type: 'card' }, history: [] }
     }
+    default:
+      return state
   }
 }
 

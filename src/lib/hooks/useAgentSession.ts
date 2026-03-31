@@ -89,8 +89,11 @@ export function useAgentSession(cardId: string, sessionId: string | null) {
       }
       return
     }
-    // Wait until fetch has settled before applying data. This ensures background
-    // refetches update messages even for previously-viewed sessions.
+    // Sync history once per session switch — never overwrite after that, because
+    // streaming and local state may have added messages the server doesn't know about.
+    if (historySessionIdRef.current === sessionId) return
+    // Wait for the fetch to settle so we don't apply stale cached data from a
+    // previously-viewed session while the fresh fetch is still in flight.
     if (isHistoryFetching) return
     if (historyData !== undefined && currentSessionIdRef.current === sessionId) {
       historySessionIdRef.current = sessionId

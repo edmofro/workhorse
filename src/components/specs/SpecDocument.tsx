@@ -30,14 +30,11 @@ export function SpecDocument({ path, content, onEdit, isCreating }: SpecDocument
           </button>
         )}
       </div>
-      <div className="text-[14px] text-[var(--text-muted)] mb-8">
-        {parsed.frontmatter.status && (
-          <span className="capitalize">{parsed.frontmatter.status}</span>
-        )}
-        {parsed.frontmatter.area && (
-          <span className="text-[var(--text-faint)]"> · {parsed.frontmatter.area}</span>
-        )}
-      </div>
+      {parsed.frontmatter.area && (
+        <div className="text-[14px] text-[var(--text-faint)] mb-8">
+          {parsed.frontmatter.area}
+        </div>
+      )}
 
       <div className="text-[12px] text-[var(--text-faint)] font-mono mb-6">
         {path}

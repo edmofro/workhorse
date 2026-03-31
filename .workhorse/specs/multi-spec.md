@@ -2,7 +2,6 @@
 title: Multi-spec cards
 area: cards
 card: WH-018
-status: draft
 ---
 
 A card isn't "one spec" — it's a set of changes to the spec tree. A card may create new specs and edit existing ones. Under the hood this maps to a git branch, but the user just sees "the specs on this card."

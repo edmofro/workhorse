@@ -1,7 +1,6 @@
 ---
 title: Conversation sessions
 area: agent
-status: draft
 ---
 
 Conversations are the primary interaction model in Workhorse. A conversation session is an independent thread of dialogue between a user and the AI agent. Sessions can exist standalone (without a card) or be associated with a card. A card can have multiple sessions, and standalone sessions can become card-bound when the conversation reveals work to be done.

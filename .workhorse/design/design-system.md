@@ -1,6 +1,5 @@
 ---
 title: Workhorse design system
-status: complete
 ---
 # Workhorse Design System
 

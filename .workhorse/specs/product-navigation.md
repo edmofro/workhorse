@@ -1,7 +1,6 @@
 ---
 title: Product navigation and onboarding
 area: navigation
-status: draft
 ---
 
 Navigation structure: a global project switcher sets the context, and the sidebar provides access to everything within the active project.

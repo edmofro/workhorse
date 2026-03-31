@@ -2,7 +2,6 @@
 title: Human-readable labels for specs and mockups
 area: ui
 card: WH-014
-status: draft
 ---
 
 Wherever Workhorse displays a reference to a spec, mockup, or design library file, it shows a clean human-readable label rather than a raw file path or filename. This applies consistently across all surfaces: the files panel, spec explorer, design library browser, and chat notifications.

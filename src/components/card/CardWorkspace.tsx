@@ -27,7 +27,7 @@ import { deriveLabel } from '../../lib/labels'
 import { updateCardTitleFromSpec } from '../../lib/actions/cards'
 import { formatRelativeTime } from '../../lib/formatRelativeTime'
 import { isMockupPath } from '../../lib/paths'
-import { CardBackProvider } from './CardBackContext'
+import { useCardBackRegister } from './CardBackContext'
 
 interface SpecFileData {
   filePath: string
@@ -191,6 +191,8 @@ export function CardWorkspace({
 
   const handleDoneEditing = useCallback(
     async (filePath: string) => {
+      // Persist buffered content to the worktree
+      await persistFile(filePath)
       await fetch('/api/auto-commit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -207,7 +209,7 @@ export function CardWorkspace({
         }
       }
     },
-    [card.id, card.title, files, router],
+    [card.id, card.title, files, persistFile, router],
   )
 
   // Restore file content from worktree (used on discard)
@@ -390,22 +392,31 @@ export function CardWorkspace({
     }
   }, [card.id])
 
-  const handleSpecUpdate = useCallback(
-    async (filePath: string, content: string) => {
-      const res = await fetch('/api/worktree-files', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cardId: card.id, filePath, content }),
-      })
-      if (!res.ok) {
-        console.error('Failed to save spec update')
-        return
-      }
+  // Buffer content changes locally (does not write to API)
+  const handleContentChange = useCallback(
+    (filePath: string, content: string) => {
       setFiles((prev) =>
         prev.map((f) => (f.filePath === filePath ? { ...f, content } : f)),
       )
     },
-    [card.id],
+    [],
+  )
+
+  // Persist a file to the worktree API
+  const persistFile = useCallback(
+    async (filePath: string) => {
+      const file = files.find((f) => f.filePath === filePath)
+      if (!file) return
+      const res = await fetch('/api/worktree-files', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cardId: card.id, filePath, content: file.content }),
+      })
+      if (!res.ok) {
+        console.error('Failed to save file')
+      }
+    },
+    [card.id, files],
   )
 
   const handleCreateSpec = useCallback(
@@ -591,6 +602,7 @@ export function CardWorkspace({
         onSelectProjectSpec={handleSelectProjectSpec}
         onClose={() => { setExpanded(false); closeArtifact() }}
         onEdit={enterEdit}
+        onSave={finishEditing}
         showChanges={showChanges}
         onToggleChanges={() => setShowChanges(!showChanges)}
         expanded={expanded}
@@ -605,7 +617,7 @@ export function CardWorkspace({
             cardId={card.id}
             filePath={activeFilePath}
             isEditing={isEditing}
-            onContentChange={(content) => handleSpecUpdate(activeFilePath, content)}
+            onContentChange={(content) => handleContentChange(activeFilePath, content)}
           />
         )
       ) : isMockupFile ? (
@@ -615,9 +627,8 @@ export function CardWorkspace({
           device={mockupDevice}
           isEditing={isEditing}
           onContentChange={(newHtml) => {
-            if (activeFilePath) handleSpecUpdate(activeFilePath, newHtml)
+            if (activeFilePath) handleContentChange(activeFilePath, newHtml)
           }}
-          onDoneEditing={finishEditing}
         />
       ) : activeFile ? (
         showChanges && !isEditing ? (
@@ -634,11 +645,10 @@ export function CardWorkspace({
                   isNew: activeFile.isNew,
                 }}
                 onContentChange={(_, content) =>
-                  handleSpecUpdate(activeFile.filePath, content)
+                  handleContentChange(activeFile.filePath, content)
                 }
                 isEditing={isEditing}
                 onStartEditing={() => handleStartEditing()}
-                onDoneEditing={finishEditing}
                 cardStatus={card.status}
                 hideEditButton
               />
@@ -649,11 +659,11 @@ export function CardWorkspace({
     </div>
   ) : null
 
-  // Provide back handler to topbar: go to card home when in chat/artifact, null when already on card home
+  // Register back handler for topbar: go to card home when in chat/artifact, null when already on card home
   const backHandler = view.type !== 'card' ? goBack : null
+  useCardBackRegister(backHandler)
 
   return (
-    <CardBackProvider onBack={backHandler}>
     <div className="flex-1 flex overflow-hidden">
       {/* ===== Card home ===== */}
       {view.type === 'card' && (
@@ -814,7 +824,6 @@ export function CardWorkspace({
         </>
       )}
     </div>
-    </CardBackProvider>
   )
 }
 

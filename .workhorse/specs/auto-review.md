@@ -1,7 +1,6 @@
 ---
 title: Automated spec review
 area: workflow
-status: draft
 ---
 
 A fresh-context AI agent reviews the draft specs and posts its findings into the chat. The user doesn't leave the conversation — the review results land as a message, the session agent sees them, and they work through the suggestions together.

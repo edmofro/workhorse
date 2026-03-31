@@ -2,7 +2,6 @@
 title: Teams and boards
 area: navigation
 card: WH-007
-status: draft
 ---
 
 The home view of Workhorse. Each team has a board — a list of open cards grouped by status. Teams belong to a single project.

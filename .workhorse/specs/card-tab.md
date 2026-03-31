@@ -2,7 +2,6 @@
 title: Card view
 area: cards
 card: WH-016
-status: draft
 ---
 
 The card view is the home state of the card workspace — title, description, metadata, comments, and activity. This is the anchor for the card, where the initial context lives before specifying begins. An input bar with action pills sits at the bottom, and the files panel is open on the right (see `card-navigation.md`).

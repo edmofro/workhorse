@@ -1,7 +1,6 @@
 ---
 title: AI card creation
 area: workflow
-status: draft
 ---
 
 Creating a new card from the board starts with a single free-text prompt describing what the user wants to achieve. The AI generates a title and brief description from this input, then opens the card workspace so the user can begin the spec interview immediately via the chat input bar.

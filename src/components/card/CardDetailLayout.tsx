@@ -3,6 +3,7 @@
 import { notFound } from 'next/navigation'
 import { useCardDetail, NotFoundError } from '../../lib/hooks/queries'
 import { CardDetailShell } from './CardDetailShell'
+import { CardBackStoreProvider } from './CardBackContext'
 import { Topbar } from '../Topbar'
 import { Skeleton } from '../Skeleton'
 
@@ -21,7 +22,6 @@ export function CardDetailLayout({ projectSlug, cardId, children }: Props) {
   }
 
   if (!data) {
-    // Show skeleton topbar so layout doesn't shift when data arrives
     return (
       <>
         <Topbar>
@@ -36,19 +36,21 @@ export function CardDetailLayout({ projectSlug, cardId, children }: Props) {
   const { card } = data
 
   return (
-    <CardDetailShell
-      card={{
-        id: card.id,
-        identifier: card.identifier,
-        title: card.title,
-        status: card.status,
-        cardBranch: card.cardBranch,
-        touchedFiles: card.touchedFiles,
-        defaultBranch: card.project.defaultBranch,
-      }}
-      projectSlug={projectSlug}
-    >
-      {children}
-    </CardDetailShell>
+    <CardBackStoreProvider>
+      <CardDetailShell
+        card={{
+          id: card.id,
+          identifier: card.identifier,
+          title: card.title,
+          status: card.status,
+          cardBranch: card.cardBranch,
+          touchedFiles: card.touchedFiles,
+          defaultBranch: card.project.defaultBranch,
+        }}
+        projectSlug={projectSlug}
+      >
+        {children}
+      </CardDetailShell>
+    </CardBackStoreProvider>
   )
 }

@@ -6,7 +6,6 @@
 export interface SpecFrontmatter {
   title: string
   area?: string
-  status?: 'draft' | 'complete' | 'superseded'
 }
 
 export interface ParsedSpec {
@@ -41,7 +40,6 @@ export function parseSpec(raw: string): ParsedSpec {
       const value = match[2].trim().replace(/^["']|["']$/g, '')
       if (key === 'title') frontmatter.title = value
       else if (key === 'area') frontmatter.area = value
-      else if (key === 'status') frontmatter.status = value as SpecFrontmatter['status']
     }
   }
 
@@ -56,7 +54,6 @@ export function serializeSpec(frontmatter: SpecFrontmatter, content: string): st
 
   lines.push(`title: "${frontmatter.title}"`)
   if (frontmatter.area) lines.push(`area: "${frontmatter.area}"`)
-  if (frontmatter.status) lines.push(`status: "${frontmatter.status}"`)
 
   lines.push('---')
   lines.push('')
@@ -93,7 +90,6 @@ export function buildDefaultSpec(
     {
       title,
       area: area ?? 'general',
-      status: 'draft',
     },
     `${title}
 

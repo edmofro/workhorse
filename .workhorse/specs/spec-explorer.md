@@ -2,7 +2,6 @@
 title: Project spec explorer
 area: navigation
 card: WH-017
-status: draft
 ---
 
 A navigable hierarchy of specs organised by project. Projects are the user-facing concept (Tamanu, Tupaia) — each project maps to a repo under the hood but users think in terms of projects, not repos.

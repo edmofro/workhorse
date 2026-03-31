@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useCallback } from 'react'
-import { ChevronLeft, ChevronRight, ChevronDown, X, Pencil, Maximize2, Minimize2 } from 'lucide-react'
+import { ChevronUp, ChevronDown, X, Pencil, Check, Maximize2, Minimize2 } from 'lucide-react'
 import { SpecDropdown } from './SpecDropdown'
 import { deriveLabel } from '../../lib/labels'
 import type { SpecFileItem, MockupFileItem, ProjectSpecItem } from './types'
@@ -46,6 +46,7 @@ interface SpecHeaderBarProps {
   onSelectProjectSpec: (filePath: string, content: string) => void
   onClose: () => void
   onEdit: () => void
+  onSave?: () => void
   /** Whether changes diff view is active */
   showChanges?: boolean
   onToggleChanges?: () => void
@@ -74,6 +75,7 @@ export function SpecHeaderBar({
   onSelectProjectSpec,
   onClose,
   onEdit,
+  onSave,
   showChanges = false,
   onToggleChanges,
   expanded = false,
@@ -107,7 +109,7 @@ export function SpecHeaderBar({
         className="p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors duration-100 cursor-pointer disabled:opacity-30 disabled:cursor-default"
         title="Previous file"
       >
-        <ChevronLeft size={14} />
+        <ChevronUp size={14} />
       </button>
       <button
         onClick={onNext}
@@ -115,7 +117,7 @@ export function SpecHeaderBar({
         className="p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors duration-100 cursor-pointer disabled:opacity-30 disabled:cursor-default"
         title="Next file"
       >
-        <ChevronRight size={14} />
+        <ChevronDown size={14} />
       </button>
 
       {/* File name + dropdown trigger */}
@@ -163,8 +165,17 @@ export function SpecHeaderBar({
         />
       )}
 
-      {/* Edit button */}
-      {!isEditing && (
+      {/* Edit / Save button */}
+      {isEditing ? (
+        <button
+          onClick={onSave}
+          className="inline-flex items-center gap-1 px-[10px] py-1 rounded-[var(--radius-default)] text-[12px] font-medium bg-[var(--accent)] text-white hover:bg-[var(--accent-hover)] transition-colors duration-100 cursor-pointer"
+          title="Save changes"
+        >
+          <Check size={11} />
+          Save
+        </button>
+      ) : (
         <button
           onClick={onEdit}
           className="inline-flex items-center gap-1 px-2 py-1 rounded-[var(--radius-default)] text-[12px] font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer"

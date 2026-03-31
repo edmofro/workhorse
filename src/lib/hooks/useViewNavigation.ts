@@ -36,15 +36,20 @@ function viewReducer(state: ViewNavState, action: ViewAction): ViewNavState {
       }
     }
     case 'close_artifact': {
-      // Close artifact -> return to centred chat. Clear artifact entries from history
-      // so back goes to card home, not a stale artifact entry.
-      // Preserve the session context from the most recent chat in history.
+      // Close artifact -> return to the view we came from.
+      // If there's a chat in history, return to chat. Otherwise return to card home.
+      // Clear artifact entries from history so back goes cleanly.
       const lastChat = [...state.history].reverse().find((v) => v.type === 'chat')
-      const sessionId = lastChat?.type === 'chat' ? lastChat.sessionId : null
-      const sessionTitle = lastChat?.type === 'chat' ? lastChat.sessionTitle : null
+      if (lastChat?.type === 'chat') {
+        return {
+          current: { type: 'chat', sessionId: lastChat.sessionId, sessionTitle: lastChat.sessionTitle },
+          history: state.history.filter((v) => v.type !== 'artifact'),
+        }
+      }
+      // No chat in history — we came from card home
       return {
-        current: { type: 'chat', sessionId, sessionTitle },
-        history: state.history.filter((v) => v.type !== 'artifact'),
+        current: { type: 'card' },
+        history: [],
       }
     }
   }

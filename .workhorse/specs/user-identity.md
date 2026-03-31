@@ -2,7 +2,6 @@
 title: User identity
 area: identity
 card: WH-008
-status: draft
 ---
 
 Users are identified by their GitHub account (see WH-021). Display name and avatar default from GitHub but can be customised.

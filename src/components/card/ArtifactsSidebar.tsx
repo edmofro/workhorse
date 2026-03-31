@@ -30,7 +30,7 @@ export function ArtifactsSidebar({
   onSelectFile,
 }: ArtifactsSidebarProps) {
   return (
-    <aside className="shrink-0 w-[216px] border-l border-[var(--border-subtle)] bg-[var(--bg-page)] flex flex-col overflow-y-auto">
+    <aside className="shrink-0 w-[248px] border-l border-[var(--border-subtle)] bg-[var(--bg-page)] flex flex-col overflow-y-auto">
       {/* Specs */}
       <Section label="Specs">
         {specs.length > 0 ? specs.map((spec) => {
@@ -137,10 +137,9 @@ function FileRow({
         {label}
       </span>
       {lineStats && (
-        <span className="shrink-0 text-[10px] font-mono tabular-nums">
-          {lineStats.added > 0 && <span className="text-[var(--green)]">+{lineStats.added}</span>}
-          {lineStats.added > 0 && lineStats.removed > 0 && <span className="text-[var(--text-faint)]">/</span>}
-          {lineStats.removed > 0 && <span className="text-[var(--diff-red,#dc2626)]">−{lineStats.removed}</span>}
+        <span className="shrink-0 text-[10px] font-mono tabular-nums flex items-center gap-1">
+          <span className="text-[var(--green)]">+{lineStats.added}</span>
+          <span className="text-[var(--diff-red,#dc2626)]">−{lineStats.removed}</span>
         </span>
       )}
     </button>

@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useRef, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { parseSpec, serializeSpec, type SpecFrontmatter } from '../../lib/specs/format'
 import { MarkdownContent } from './MarkdownContent'
-import { Pencil, Check } from 'lucide-react'
+import { Pencil } from 'lucide-react'
 
 interface SpecEditorProps {
   spec: {
@@ -16,7 +16,6 @@ interface SpecEditorProps {
   baselineContent?: string | null
   isEditing?: boolean
   onStartEditing?: () => Promise<boolean> | boolean
-  onDoneEditing?: () => void
   cardStatus?: string
   /** Hide the built-in Edit button (when header bar provides it) */
   hideEditButton?: boolean
@@ -27,7 +26,6 @@ export function SpecEditor({
   onContentChange,
   isEditing = false,
   onStartEditing,
-  onDoneEditing,
   cardStatus,
   hideEditButton = false,
 }: SpecEditorProps) {
@@ -36,8 +34,6 @@ export function SpecEditor({
   const [body, setBody] = useState(parsed.content)
   const [showRaw, setShowRaw] = useState(false)
   const [rawContent, setRawContent] = useState(spec.content)
-  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const [lastSaved, setLastSaved] = useState<string | null>(null)
   const [editing, setEditing] = useState(isEditing)
 
   // Sync local editing state when parent prop changes (e.g. header bar Edit button)
@@ -47,26 +43,12 @@ export function SpecEditor({
 
   const isAgentWorking = cardStatus === 'SPECIFYING'
 
-  const save = useCallback(
+  const emitChange = useCallback(
     (content: string) => {
-      if (saveTimer.current) clearTimeout(saveTimer.current)
-      saveTimer.current = setTimeout(async () => {
-        onContentChange(spec.id, content)
-        setLastSaved(new Date().toLocaleTimeString('en-AU', {
-          hour: 'numeric',
-          minute: '2-digit',
-        }))
-      }, 500)
+      onContentChange(spec.id, content)
     },
     [spec.id, onContentChange],
   )
-
-  // Clean up timer on unmount
-  useEffect(() => {
-    return () => {
-      if (saveTimer.current) clearTimeout(saveTimer.current)
-    }
-  }, [])
 
   async function handleStartEdit() {
     if (onStartEditing) {
@@ -76,17 +58,12 @@ export function SpecEditor({
     setEditing(true)
   }
 
-  function handleDoneEdit() {
-    setEditing(false)
-    onDoneEditing?.()
-  }
-
   function handleTitleChange(newTitle: string) {
     setTitle(newTitle)
     const fm: SpecFrontmatter = { ...parsed.frontmatter, title: newTitle }
     const full = serializeSpec(fm, body)
     setRawContent(full)
-    save(full)
+    emitChange(full)
   }
 
   function handleBodyChange(newBody: string) {
@@ -94,7 +71,7 @@ export function SpecEditor({
     const fm: SpecFrontmatter = { ...parsed.frontmatter, title }
     const full = serializeSpec(fm, newBody)
     setRawContent(full)
-    save(full)
+    emitChange(full)
   }
 
   function handleRawChange(raw: string) {
@@ -102,7 +79,7 @@ export function SpecEditor({
     const reParsed = parseSpec(raw)
     setTitle(reParsed.frontmatter.title)
     setBody(reParsed.content)
-    save(raw)
+    emitChange(raw)
   }
 
   // View-only mode (not editing)
@@ -123,13 +100,9 @@ export function SpecEditor({
         )}
 
         {/* Title */}
-        <h1 className="text-[24px] font-bold tracking-[-0.03em] leading-[1.3] mb-2">
+        <h1 className="text-[24px] font-bold tracking-[-0.03em] leading-[1.3] mb-6">
           {title || 'Untitled spec'}
         </h1>
-
-        <div className="text-[14px] text-[var(--text-muted)] mb-8">
-          <span className="capitalize">{parsed.frontmatter.status ?? 'draft'}</span>
-        </div>
 
         {/* Body (read-only rendered) */}
         <div className="text-[14px] text-[var(--text-secondary)] leading-[1.75]">
@@ -153,32 +126,18 @@ export function SpecEditor({
           <span className="text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-[0.06em]">
             Raw markdown
           </span>
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setShowRaw(false)}
-              className="text-[11px] font-medium text-[var(--accent)] hover:text-[var(--accent-hover)] cursor-pointer transition-colors duration-100"
-            >
-              Rich editor
-            </button>
-            <button
-              onClick={handleDoneEdit}
-              className="inline-flex items-center gap-[6px] px-3 py-[6px] rounded-[var(--radius-default)] text-xs font-medium bg-[var(--accent)] text-white hover:bg-[var(--accent-hover)] transition-colors duration-100 cursor-pointer"
-            >
-              <Check size={11} />
-              Done editing
-            </button>
-          </div>
+          <button
+            onClick={() => setShowRaw(false)}
+            className="text-[11px] font-medium text-[var(--accent)] hover:text-[var(--accent-hover)] cursor-pointer transition-colors duration-100"
+          >
+            Rich editor
+          </button>
         </div>
         <textarea
           value={rawContent}
           onChange={(e) => handleRawChange(e.target.value)}
           className="w-full min-h-[60vh] font-mono text-[13px] leading-[1.6] text-[var(--text-secondary)] bg-transparent border border-[var(--border-default)] rounded-[var(--radius-default)] p-4 outline-none focus:border-[var(--accent)] focus:shadow-[var(--shadow-input-focus)] transition-[border-color,box-shadow] duration-150 resize-y"
         />
-        {lastSaved && (
-          <p className="text-[11px] text-[var(--text-faint)] mt-2">
-            Auto-saved at {lastSaved}
-          </p>
-        )}
       </div>
     )
   }
@@ -186,45 +145,25 @@ export function SpecEditor({
   // Rich editor mode
   return (
     <div>
-      <div className="flex items-center justify-between mb-2">
-        <div />
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => setShowRaw(true)}
-            className="text-[11px] font-medium text-[var(--text-muted)] hover:text-[var(--text-secondary)] cursor-pointer transition-colors duration-100"
-          >
-            Raw markdown
-          </button>
-          <button
-            onClick={handleDoneEdit}
-            className="inline-flex items-center gap-[6px] px-3 py-[6px] rounded-[var(--radius-default)] text-xs font-medium bg-[var(--accent)] text-white hover:bg-[var(--accent-hover)] transition-colors duration-100 cursor-pointer"
-          >
-            <Check size={11} />
-            Done editing
-          </button>
-        </div>
+      <div className="flex items-center justify-end mb-2">
+        <button
+          onClick={() => setShowRaw(true)}
+          className="text-[11px] font-medium text-[var(--text-muted)] hover:text-[var(--text-secondary)] cursor-pointer transition-colors duration-100"
+        >
+          Raw markdown
+        </button>
       </div>
 
       {/* Title */}
       <input
         value={title}
         onChange={(e) => handleTitleChange(e.target.value)}
-        className="w-full text-[24px] font-bold tracking-[-0.03em] leading-[1.3] bg-transparent border-none outline-none mb-2"
+        className="w-full text-[24px] font-bold tracking-[-0.03em] leading-[1.3] bg-transparent border-none outline-none mb-6"
         placeholder="Spec title"
       />
 
-      <div className="text-[14px] text-[var(--text-muted)] mb-8">
-        <span className="capitalize">{parsed.frontmatter.status ?? 'draft'}</span>
-      </div>
-
       {/* Body editor */}
       <SpecBodyEditor value={body} onChange={handleBodyChange} />
-
-      {lastSaved && (
-        <p className="text-[11px] text-[var(--text-faint)] mt-4">
-          Auto-saved at {lastSaved}
-        </p>
-      )}
     </div>
   )
 }

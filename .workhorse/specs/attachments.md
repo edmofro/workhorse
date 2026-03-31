@@ -2,7 +2,6 @@
 title: Attachment support
 area: core
 card: n/a
-status: draft
 ---
 
 ## Description

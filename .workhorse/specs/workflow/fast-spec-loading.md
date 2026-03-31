@@ -2,7 +2,6 @@
 title: Fast spec and design library loading
 area: workflow
 card: WH-030
-status: complete
 ---
 
 Loading specs (21 files) took 8.4 seconds because each file was fetched sequentially from the GitHub API (~400ms per round-trip). The design library had the same problem. Subsequent loads were equally slow because there was no caching.

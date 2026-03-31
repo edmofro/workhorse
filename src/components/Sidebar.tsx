@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname, useSearchParams, useRouter } from 'next/navigation'
+import { usePathname, useSearchParams } from 'next/navigation'
 import {
   Settings,
   LogOut,
@@ -23,6 +23,7 @@ import {
   type SidebarProject,
   type SidebarSession,
 } from '../lib/hooks/queries'
+import { CreateModal } from './CreateModal'
 import { useState, useRef, useEffect } from 'react'
 
 export type RecentSession = SidebarSession
@@ -112,8 +113,9 @@ export function Sidebar({ initialProjects, initialRecentSessions = [] }: Sidebar
         {/* Action buttons */}
         <div className="flex items-center justify-end gap-1 px-1 mt-2">
           <button
-            className="p-[6px] rounded-[var(--radius-md)] text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer"
-            title="Search"
+            disabled
+            className="p-[6px] rounded-[var(--radius-md)] text-[var(--text-faint)] cursor-default"
+            title="Search (coming soon)"
           >
             <Search size={14} />
           </button>
@@ -231,147 +233,6 @@ function StatusDot({ status }: { status: string | null }) {
   // NOT_STARTED or unknown — hollow dot
   return (
     <span className="w-[8px] h-[8px] rounded-full shrink-0 border border-[var(--border-default)]" />
-  )
-}
-
-function CreateModal({
-  projectName,
-  projectSlug,
-  defaultTeamId,
-  onClose,
-}: {
-  projectName: string
-  projectSlug: string
-  defaultTeamId?: string
-  onClose: () => void
-}) {
-  const [prompt, setPrompt] = useState('')
-  const [busyAction, setBusyAction] = useState<'chat' | 'card' | null>(null)
-  const router = useRouter()
-
-  const busy = busyAction !== null
-
-  async function handleCreateCard() {
-    if (!prompt.trim() || busy || !defaultTeamId) return
-    setBusyAction('card')
-
-    try {
-      let title: string
-      let description: string
-
-      try {
-        const res = await fetch('/api/generate-card', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ prompt: prompt.trim() }),
-        })
-        const data = await res.json()
-        title = data.title
-        description = data.description ?? ''
-      } catch {
-        title = prompt.trim().length > 60
-          ? prompt.trim().slice(0, 57) + '...'
-          : prompt.trim()
-        description = prompt.trim()
-      }
-
-      const { createCard } = await import('../lib/actions/cards')
-      const card = await createCard({ title, description: description || undefined, teamId: defaultTeamId })
-
-      onClose()
-      router.push(`${projectSlug}/cards/${card.identifier}`)
-    } catch {
-      setBusyAction(null)
-    }
-  }
-
-  async function handleStartChat() {
-    if (!prompt.trim() || busy) return
-    setBusyAction('chat')
-
-    try {
-      const res = await fetch('/api/sessions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: prompt.trim(),
-          teamId: defaultTeamId,
-        }),
-      })
-      const data = await res.json()
-      onClose()
-      router.push(`${projectSlug}/sessions/${data.id}`)
-    } catch {
-      setBusyAction(null)
-    }
-  }
-
-  function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
-    if (e.key === 'Enter' && !e.shiftKey && !e.metaKey && !e.ctrlKey) {
-      e.preventDefault()
-      handleStartChat()
-    }
-    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
-      e.preventDefault()
-      handleCreateCard()
-    }
-    if (e.key === 'Escape' && !busy) {
-      onClose()
-    }
-  }
-
-  return (
-    <>
-      <div
-        className="fixed inset-0 z-40 bg-[rgba(28,25,23,0.40)]"
-        onClick={() => !busy && onClose()}
-      />
-      <div className="fixed inset-0 z-50 flex items-center justify-center">
-        <div className="w-full max-w-[480px] bg-[var(--bg-surface)] rounded-[var(--radius-lg)] border border-[var(--border-subtle)] shadow-[var(--shadow-lg)] p-6">
-          <div className="relative">
-            <textarea
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
-              onKeyDown={handleKeyDown}
-              autoFocus
-              rows={4}
-              placeholder="What's on your mind?"
-              disabled={busy}
-              className="w-full px-3 py-3 pb-12 text-[14px] bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-[var(--radius-default)] outline-none transition-[border-color,box-shadow] duration-150 focus:border-[var(--accent)] focus:shadow-[var(--shadow-input-focus)] placeholder:text-[var(--text-faint)] resize-none disabled:opacity-60"
-            />
-            <div className="absolute bottom-[1px] left-[1px] right-[1px] flex items-center justify-between px-2 py-2 rounded-b-[var(--radius-default)]">
-              <button
-                onClick={handleStartChat}
-                disabled={!prompt.trim() || busy}
-                title="Start conversation (↵)"
-                className="p-[6px] rounded-[var(--radius-md)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer disabled:opacity-40 disabled:cursor-default"
-              >
-                {busyAction === 'chat' ? (
-                  <div className="w-[14px] h-[14px] border-2 border-[var(--text-muted)] border-t-transparent rounded-full animate-spin" />
-                ) : (
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M5 12h14" />
-                    <path d="m12 5 7 7-7 7" />
-                  </svg>
-                )}
-              </button>
-              <button
-                onClick={handleCreateCard}
-                disabled={!prompt.trim() || busy || !defaultTeamId}
-                title="Create card (⌘↵)"
-                className="p-[6px] rounded-[var(--radius-md)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer disabled:opacity-40 disabled:cursor-default"
-              >
-                {busyAction === 'card' ? (
-                  <div className="w-[14px] h-[14px] border-2 border-[var(--text-muted)] border-t-transparent rounded-full animate-spin" />
-                ) : (
-                  <LayoutList size={14} />
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </>
   )
 }
 

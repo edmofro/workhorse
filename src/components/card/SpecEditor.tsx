@@ -105,7 +105,7 @@ export function SpecEditor({
         </h1>
 
         {/* Body (read-only rendered) */}
-        <div className="text-[14px] text-[var(--text-secondary)] leading-[1.75]">
+        <div className="text-[14px] text-[var(--text-secondary)] leading-[1.7]">
           <MarkdownContent content={body} />
         </div>
 

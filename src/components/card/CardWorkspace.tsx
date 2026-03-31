@@ -695,7 +695,7 @@ export function CardWorkspace({
                             )}>
                               {session.title ?? 'New conversation'}
                             </span>
-                            <span className="text-[11px] text-[var(--text-muted)] shrink-0">
+                            <span className="text-[11px] text-[var(--text-faint)] shrink-0">
                               {isSessionStreaming ? 'Working…' : formatRelativeTime(session.lastMessageAt)}
                             </span>
                           </button>

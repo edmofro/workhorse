@@ -11,6 +11,7 @@ export type ViewState =
 
 type ViewAction =
   | { type: 'navigate'; to: ViewState }
+  | { type: 'replace'; to: ViewState }
   | { type: 'back' }
   | { type: 'close_artifact' }
 
@@ -26,6 +27,8 @@ function viewReducer(state: ViewNavState, action: ViewAction): ViewNavState {
         current: action.to,
         history: [...state.history, state.current],
       }
+    case 'replace':
+      return { ...state, current: action.to }
     case 'back': {
       if (state.history.length === 0) {
         return { current: { type: 'card' }, history: [] }
@@ -36,21 +39,18 @@ function viewReducer(state: ViewNavState, action: ViewAction): ViewNavState {
       }
     }
     case 'close_artifact': {
-      // Close artifact -> return to the view we came from.
-      // If there's a chat in history, return to chat. Otherwise return to card home.
-      // Clear artifact entries from history so back goes cleanly.
-      const lastChat = [...state.history].reverse().find((v) => v.type === 'chat')
-      if (lastChat?.type === 'chat') {
-        return {
-          current: { type: 'chat', sessionId: lastChat.sessionId, sessionTitle: lastChat.sessionTitle },
-          history: state.history.filter((v) => v.type !== 'artifact'),
+      // Close artifact -> return to the last non-artifact view in history.
+      // Trim history so back continues naturally from there.
+      for (let i = state.history.length - 1; i >= 0; i--) {
+        if (state.history[i].type !== 'artifact') {
+          return {
+            current: state.history[i],
+            history: state.history.slice(0, i),
+          }
         }
       }
-      // No chat in history — we came from card home
-      return {
-        current: { type: 'card' },
-        history: [],
-      }
+      // No non-artifact in history — return to card home
+      return { current: { type: 'card' }, history: [] }
     }
   }
 }
@@ -142,7 +142,7 @@ export function useViewNavigation({
     }
   }, [view, allNavigableFiles, navigateToFile])
 
-  // Enter editing mode in-place (no layout change)
+  // Enter editing mode in-place (no navigation, no history entry)
   const enterEdit = useCallback(async () => {
     if (view.type !== 'artifact') return
     try {
@@ -152,17 +152,17 @@ export function useViewNavigation({
       return
     }
     dispatchView({
-      type: 'navigate',
+      type: 'replace',
       to: { type: 'artifact', filePath: view.filePath, editing: true },
     })
   }, [view, onStartEditing])
 
-  // Done editing -> back to read-only artifact
+  // Done editing -> back to read-only artifact (in-place, no history entry)
   const finishEditing = useCallback(async () => {
     if (view.type !== 'artifact' || !view.editing) return
     await onDoneEditing(view.filePath)
     dispatchView({
-      type: 'navigate',
+      type: 'replace',
       to: { type: 'artifact', filePath: view.filePath, editing: false },
     })
   }, [view, onDoneEditing])

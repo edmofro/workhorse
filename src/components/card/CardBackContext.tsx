@@ -1,63 +1,38 @@
 'use client'
 
-import { createContext, useCallback, useContext, useRef, useSyncExternalStore } from 'react'
+import { createContext, useContext, useEffect, useState } from 'react'
 
 type CardBackHandler = (() => void) | null
 
-interface CardBackStore {
+interface CardBackContextValue {
   handler: CardBackHandler
-  subscribe: (cb: () => void) => () => void
-  getSnapshot: () => CardBackHandler
   setHandler: (h: CardBackHandler) => void
 }
 
-function createCardBackStore(): CardBackStore {
-  let handler: CardBackHandler = null
-  const listeners = new Set<() => void>()
-  return {
-    get handler() { return handler },
-    subscribe(cb) {
-      listeners.add(cb)
-      return () => listeners.delete(cb)
-    },
-    getSnapshot() { return handler },
-    setHandler(h) {
-      handler = h
-      listeners.forEach((cb) => cb())
-    },
-  }
-}
-
-const CardBackStoreContext = createContext<CardBackStore>(createCardBackStore())
+const CardBackContext = createContext<CardBackContextValue>({
+  handler: null,
+  setHandler: () => {},
+})
 
 export function CardBackStoreProvider({ children }: { children: React.ReactNode }) {
-  const storeRef = useRef<CardBackStore>(null)
-  if (!storeRef.current) storeRef.current = createCardBackStore()
+  const [handler, setHandler] = useState<CardBackHandler>(null)
   return (
-    <CardBackStoreContext.Provider value={storeRef.current}>
+    <CardBackContext.Provider value={{ handler, setHandler }}>
       {children}
-    </CardBackStoreContext.Provider>
+    </CardBackContext.Provider>
   )
 }
 
 /** Called by CardWorkspace to register the current back handler */
 export function useCardBackRegister(handler: CardBackHandler) {
-  const store = useContext(CardBackStoreContext)
-  const prev = useRef(handler)
-  if (prev.current !== handler) {
-    prev.current = handler
-    store.setHandler(handler)
-  }
-  // Set on first render too
-  const initialized = useRef(false)
-  if (!initialized.current) {
-    initialized.current = true
-    store.setHandler(handler)
-  }
+  const { setHandler } = useContext(CardBackContext)
+  useEffect(() => {
+    setHandler(handler)
+    return () => setHandler(null)
+  }, [handler, setHandler])
 }
 
 /** Called by CardDetailShell to read the current back handler */
 export function useCardBack(): CardBackHandler {
-  const store = useContext(CardBackStoreContext)
-  return useSyncExternalStore(store.subscribe, store.getSnapshot, store.getSnapshot)
+  return useContext(CardBackContext).handler
 }

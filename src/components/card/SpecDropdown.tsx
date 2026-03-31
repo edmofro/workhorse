@@ -174,7 +174,7 @@ export function SpecDropdown({
                   <Code2 size={11} className="shrink-0 text-[var(--text-muted)]" />
                   <span className="text-[11px] font-medium truncate flex-1">{fileName}</span>
                   {hasStats && (
-                    <span className="shrink-0 text-[10px] font-mono tabular-nums flex items-center gap-1">
+                    <span className="shrink-0 text-[11px] tabular-nums flex items-center gap-1">
                       <span className="text-[var(--green)]">+{file.linesAdded ?? 0}</span>
                       <span className="text-[var(--diff-red,#dc2626)]">−{file.linesRemoved ?? 0}</span>
                     </span>

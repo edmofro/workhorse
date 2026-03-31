@@ -4,6 +4,7 @@ import { ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 import { Topbar, TopbarCardTitle, TopbarRight } from '../Topbar'
 import { CollaborateButton } from './CollaborateButton'
+import { ActivityPopover } from './ActivityPopover'
 import { useCardBack } from './CardBackContext'
 
 interface CardDetailShellProps {
@@ -16,12 +17,20 @@ interface CardDetailShellProps {
     touchedFiles: string[]
     defaultBranch: string
   }
+  activities: {
+    id: string
+    action: string
+    details: string | null
+    createdAt: string
+    user: { displayName: string } | null
+  }[]
   projectSlug: string
   children: React.ReactNode
 }
 
 export function CardDetailShell({
   card,
+  activities,
   projectSlug,
   children,
 }: CardDetailShellProps) {
@@ -49,6 +58,7 @@ export function CardDetailShell({
           identifier={card.identifier}
         />
         <TopbarRight>
+          <ActivityPopover activities={activities} />
           <CollaborateButton
             cardId={card.id}
             cardBranch={card.cardBranch}

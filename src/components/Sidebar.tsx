@@ -24,7 +24,7 @@ import {
   type SidebarSession,
 } from '../lib/hooks/queries'
 import { CreateModal } from './CreateModal'
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 
 export type RecentSession = SidebarSession
 
@@ -44,7 +44,7 @@ export function Sidebar({ initialProjects, initialRecentSessions = [] }: Sidebar
   const searchParams = useSearchParams()
   const { user } = useUser()
   const [switcherOpen, setSwitcherOpen] = useState(false)
-  const [createOpen, setCreateOpen] = useState(false)
+  const [createModal, setCreateModal] = useState<'card' | 'chat' | null>(null)
 
   const firstSegment = decodeURIComponent(pathname.split('/')[1] ?? '')
   const activeProject = projects.find(
@@ -120,9 +120,9 @@ export function Sidebar({ initialProjects, initialRecentSessions = [] }: Sidebar
             <Search size={14} />
           </button>
           <button
-            onClick={() => setCreateOpen(true)}
+            onClick={() => setCreateModal('chat')}
             className="p-2 rounded-[var(--radius-md)] text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer"
-            title="New conversation or card"
+            title="New conversation"
           >
             <Plus size={14} />
           </button>
@@ -134,16 +134,17 @@ export function Sidebar({ initialProjects, initialRecentSessions = [] }: Sidebar
         {projectPath && (
           <>
             {/* Cards link */}
-            <NavItem
+            <SectionItem
               href={projectPath}
               icon={<LayoutList size={14} />}
               active={pathname === projectPath && !searchParams.has('session')}
+              onAdd={() => setCreateModal('card')}
             >
               Cards
-            </NavItem>
+            </SectionItem>
 
             {/* Specs link */}
-            <NavItem
+            <SectionItem
               href={`${projectPath}/specs`}
               icon={<FileText size={14} />}
               active={pathname.startsWith(`${projectPath}/specs`)}
@@ -158,29 +159,6 @@ export function Sidebar({ initialProjects, initialRecentSessions = [] }: Sidebar
             >
               Design
             </SectionItem>
-
-            {/* Recent conversations */}
-            {recentSessions.length > 0 && (
-              <>
-                <div className="px-2 pt-5 pb-[6px] text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-[0.06em]">
-                  Recent
-                </div>
-                {recentSessions
-                  .filter((s) => !activeProject || s.projectName?.toLowerCase() === activeProject.name.toLowerCase())
-                  .slice(0, 8)
-                  .map((session) => {
-                    const href = session.cardId && session.cardIdentifier && session.projectName
-                      ? `/${encodeURIComponent(session.projectName.toLowerCase())}/cards/${session.cardIdentifier}?session=${session.id}`
-                      : session.projectName
-                        ? `/${encodeURIComponent(session.projectName.toLowerCase())}/sessions/${session.id}`
-                        : '#'
-                    const sessionLabel = session.title ?? session.cardTitle ?? 'New conversation'
-                    const label = session.cardIdentifier
-                      ? `${session.cardIdentifier}: ${sessionLabel}`
-                      : sessionLabel
-                    const isActive = searchParams.get('session') === session.id
-                      || pathname.includes(`/sessions/${session.id}`)
-                    const isCardBound = !!session.cardId
 
             {/* Conversations section with recent items */}
             <div className="mt-3 pt-3 border-t border-[var(--border-subtle)]">
@@ -209,11 +187,12 @@ export function Sidebar({ initialProjects, initialRecentSessions = [] }: Sidebar
       <UserMenu user={user} />
 
       {/* Create modal */}
-      {createOpen && projectPath && activeProject && (
+      {createModal && projectPath && activeProject && (
         <CreateModal
           projectSlug={projectPath}
           defaultTeamId={activeProject.teams[0]?.id}
-          onClose={() => setCreateOpen(false)}
+          defaultMode={createModal}
+          onClose={handleCloseModal}
         />
       )}
     </aside>
@@ -478,33 +457,3 @@ function UserMenu({ user }: { user: { displayName: string; avatarUrl: string | n
   )
 }
 
-function NavItem({
-  href,
-  icon,
-  statusIndicator,
-  active,
-  children,
-}: {
-  href: string
-  icon?: React.ReactNode
-  statusIndicator?: React.ReactNode
-  active: boolean
-  children: React.ReactNode
-}) {
-  return (
-    <Link
-      href={href}
-      className={cn(
-        'flex items-center gap-2 px-3 py-[7px] rounded-[var(--radius-md)]',
-        'text-[13px] cursor-pointer transition-colors duration-100',
-        active
-          ? 'bg-[var(--bg-surface)] text-[var(--text-primary)] font-medium shadow-[var(--shadow-sm)]'
-          : 'text-[var(--text-secondary)] font-[450] hover:bg-[var(--bg-hover)]',
-      )}
-    >
-      {icon}
-      {statusIndicator}
-      {children}
-    </Link>
-  )
-}

@@ -1,30 +1,50 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowRight, LayoutList } from 'lucide-react'
+import { ArrowRight, LayoutList, X } from 'lucide-react'
 import { createCard } from '../lib/actions/cards'
 
 interface CreateModalProps {
   projectSlug: string
   defaultTeamId?: string
+  /** Which action Enter triggers. 'chat' = Enter starts conversation, 'card' = Enter creates card. */
+  defaultMode?: 'chat' | 'card'
   onClose: () => void
 }
 
 export function CreateModal({
   projectSlug,
   defaultTeamId,
+  defaultMode = 'chat',
   onClose,
 }: CreateModalProps) {
   const [prompt, setPrompt] = useState('')
   const [busyAction, setBusyAction] = useState<'chat' | 'card' | null>(null)
+  const [error, setError] = useState<string | null>(null)
   const router = useRouter()
 
   const busy = busyAction !== null
 
+  // Stable ref for onClose to avoid re-registering listener on every render
+  const onCloseRef = useRef(onClose)
+  useEffect(() => { onCloseRef.current = onClose }, [onClose])
+
+  // Document-level Escape handler so it works regardless of focus
+  useEffect(() => {
+    function handleEscape(e: KeyboardEvent) {
+      if (e.key === 'Escape') {
+        onCloseRef.current()
+      }
+    }
+    document.addEventListener('keydown', handleEscape)
+    return () => document.removeEventListener('keydown', handleEscape)
+  }, [])
+
   async function handleCreateCard() {
     if (!prompt.trim() || busy || !defaultTeamId) return
     setBusyAction('card')
+    setError(null)
 
     try {
       let title: string
@@ -53,12 +73,14 @@ export function CreateModal({
       router.push(`${projectSlug}/cards/${card.identifier}`)
     } catch {
       setBusyAction(null)
+      setError('Failed to create card. Please try again.')
     }
   }
 
   async function handleStartChat() {
     if (!prompt.trim() || busy) return
     setBusyAction('chat')
+    setError(null)
 
     try {
       const res = await fetch('/api/sessions', {
@@ -75,20 +97,21 @@ export function CreateModal({
       router.push(`${projectSlug}/sessions/${data.id}`)
     } catch {
       setBusyAction(null)
+      setError('Failed to start conversation. Please try again.')
     }
   }
+
+  const primaryAction = defaultMode === 'card' ? handleCreateCard : handleStartChat
+  const secondaryAction = defaultMode === 'card' ? handleStartChat : handleCreateCard
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === 'Enter' && !e.shiftKey && !e.metaKey && !e.ctrlKey) {
       e.preventDefault()
-      handleStartChat()
+      primaryAction()
     }
     if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
       e.preventDefault()
-      handleCreateCard()
-    }
-    if (e.key === 'Escape' && !busy) {
-      onClose()
+      secondaryAction()
     }
   }
 
@@ -98,8 +121,18 @@ export function CreateModal({
         className="fixed inset-0 z-40 bg-[rgba(28,25,23,0.40)]"
         onClick={() => !busy && onClose()}
       />
-      <div className="fixed inset-0 z-50 flex items-center justify-center">
-        <div className="w-full max-w-[480px] bg-[var(--bg-surface)] rounded-[var(--radius-xl)] border border-[var(--border-subtle)] shadow-[var(--shadow-lg)] p-5">
+      <div
+        className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none"
+      >
+        <div className="w-full max-w-[480px] bg-[var(--bg-surface)] rounded-[var(--radius-xl)] border border-[var(--border-subtle)] shadow-[var(--shadow-lg)] p-5 pointer-events-auto">
+          <div className="flex justify-end mb-2">
+            <button
+              onClick={() => !busy && onClose()}
+              className="p-1 rounded-[var(--radius-sm)] text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer"
+            >
+              <X size={14} />
+            </button>
+          </div>
           <div className="relative">
             <textarea
               value={prompt}
@@ -115,7 +148,7 @@ export function CreateModal({
               <button
                 onClick={handleStartChat}
                 disabled={!prompt.trim() || busy}
-                title="Start conversation (↵)"
+                title={`Start conversation (${defaultMode === 'chat' ? '↵' : '⌘↵'})`}
                 className="p-2 rounded-[var(--radius-md)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer disabled:opacity-40 disabled:cursor-default"
               >
                 {busyAction === 'chat' ? (
@@ -127,7 +160,7 @@ export function CreateModal({
               <button
                 onClick={handleCreateCard}
                 disabled={!prompt.trim() || busy || !defaultTeamId}
-                title="Create card (⌘↵)"
+                title={`Create card (${defaultMode === 'card' ? '↵' : '⌘↵'})`}
                 className="p-2 rounded-[var(--radius-md)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer disabled:opacity-40 disabled:cursor-default"
               >
                 {busyAction === 'card' ? (
@@ -138,6 +171,9 @@ export function CreateModal({
               </button>
             </div>
           </div>
+          {error && (
+            <p className="mt-2 text-[12px] text-[var(--red)]">{error}</p>
+          )}
         </div>
       </div>
     </>

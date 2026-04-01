@@ -150,50 +150,29 @@ Navigating into a session (from card home or sidebar) enters the chat zone — a
 - [ ] Standalone sessions get their own route since they have no card to hang off
 - [ ] If a standalone session acquires a card (via auto-creation), the standalone URL redirects to the card URL with `?session=`
 
-## Sidebar: recent conversations
+## Sidebar: Conversations section
 
-The sidebar shows a "Recent" section with the most recently active conversation sessions. Card-bound and standalone sessions are visually distinct so users can tell at a glance whether a conversation is attached to a card.
+The Conversations section in the sidebar is both a navigable section and a container for recent conversation items. It follows the same section pattern as Cards, Specs, Design, and Code — with [🔍] and [+] actions on hover — but uniquely shows recent conversations below it.
 
 ### Data
 
-- [ ] Fetch the 8 most recent sessions by `lastMessageAt` for the current user, filtered to the active project
+- [ ] Fetch the 5 most recent sessions by `lastMessageAt` for the current user, filtered to the active project
 - [ ] Each entry is a conversation session — multiple entries may reference the same card (different conversations)
 
 ### Display
 
-```
-┌─ Workhorse ──────────┐
-│  ▾ Tamanu             │
-├───────────────────────┤
-│  [🔍]  [+]           │
-├───────────────────────┤
-│  Cards                │
-│  Specs                │
-│  Design               │
-├───────────────────────┤
-│  RECENT               │
-│  ● WH-042: Initial…  │  ← card-bound, status dot (amber = in progress)
-│  ◌ WH-042: Error h…  │  ← card-bound, status dot (hollow = not started)
-│  💬 Schema question   │  ← standalone session, chat icon
-│  ● WH-038: Refine…   │  ← card-bound, status dot (green = complete)
-│  💬 Fix login idea    │  ← standalone, no card
-│                       │
-│  ─── user menu ───    │
-└───────────────────────┘
-```
-
+- [ ] The section label "Conversations" with a `MessageCircle` icon navigates to a full conversations list view
+- [ ] [+] on hover opens the unified creation modal in chat-first mode (see `ai-card-creation.md`)
+- [ ] [🔍] on hover opens search scoped to conversations
+- [ ] Below the section label, up to 5 recent conversations are listed
 - [ ] **Card-bound sessions** show a status dot (coloured by the card's status: amber for in-progress, hollow/border-only for not started, green for complete) followed by `{cardIdentifier}: {sessionTitle}`
-- [ ] **Standalone sessions** show a `MessageCircle` icon (from Lucide, muted colour) followed by the session title — visually distinct from card-bound sessions
+- [ ] **Standalone sessions** show a `MessageCircle` icon (muted colour) followed by the session title — visually distinct from card-bound sessions
+- [ ] A "View all" link appears below the items when there are more conversations than the display limit
 - [ ] Each item is a deep link. Card-bound sessions link to `/:projectSlug/cards/:identifier?session=:sessionId`. Standalone sessions link to `/:projectSlug/sessions/:sessionId`
 - [ ] Clicking a recent item navigates directly to that conversation, preserving context
-- [ ] The "Recent" section updates reactively: when a new session is created or receives messages, the sidebar refreshes via `router.refresh()`. Active/streaming sessions show a subtle pulsing indicator on their title text to signal ongoing work
+- [ ] The section updates reactively: when a new session is created or receives messages, the sidebar refreshes. Active/streaming sessions show a subtle pulsing indicator on their title text to signal ongoing work
 - [ ] When navigating to a card via a sidebar session deep link (`?session=`), the card page auto-opens the chat zone for that session (not just the card home)
-
-### New conversation / card creation
-
-- [ ] A [+] icon button in the sidebar action bar opens the unified creation modal (see `ai-card-creation.md`)
-- [ ] The modal allows starting a conversation (Enter) or creating a card directly (Cmd+Enter)
-- [ ] New sessions and cards appear at the top of Recent immediately
+- [ ] New sessions appear at the top of the list immediately after creation
 
 ## API changes
 

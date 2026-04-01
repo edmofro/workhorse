@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useEffect, useTransition } from 'react'
 import { Loader2 } from 'lucide-react'
 import { Button } from './Button'
 import { createCard } from '../lib/actions/cards'
@@ -32,6 +32,14 @@ export function CreateCardDialog({ teams, projectName, open, onClose }: CreateCa
   const attachments = useAttachments()
 
   const busy = isPending || isGenerating
+
+  // Reset form state when dialog opens
+  useEffect(() => {
+    if (open) {
+      setPrompt('')
+      attachments.clear()
+    }
+  }, [open]) // eslint-disable-line react-hooks/exhaustive-deps -- attachments.clear is stable
 
   function handleClose() {
     if (!busy) onClose()

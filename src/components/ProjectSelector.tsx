@@ -48,7 +48,7 @@ export function ProjectSelector({
   const selectedProject = projects.find((p) => p.id === selectedProjectId)
   const label = selectedProject?.name ?? 'All projects'
 
-  // Close on outside click
+  // Close on outside click or Escape
   useEffect(() => {
     if (!open) return
     function handleClick(e: MouseEvent) {
@@ -56,8 +56,15 @@ export function ProjectSelector({
         setOpen(false)
       }
     }
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') setOpen(false)
+    }
     document.addEventListener('mousedown', handleClick)
-    return () => document.removeEventListener('mousedown', handleClick)
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('mousedown', handleClick)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
   }, [open])
 
   // On open: reset query, load recents, focus search
@@ -95,7 +102,7 @@ export function ProjectSelector({
       <button
         onClick={() => setOpen(!open)}
         className={cn(
-          'flex items-center gap-2 px-2 py-1.5 rounded-[var(--radius-md)]',
+          'flex items-center gap-2 px-2 py-1 rounded-[var(--radius-md)]',
           'text-[13px] font-medium text-[var(--text-secondary)]',
           'hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]',
           'transition-colors duration-100 cursor-pointer',
@@ -115,7 +122,7 @@ export function ProjectSelector({
         <div className="absolute left-0 top-full mt-1 w-[220px] bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-[var(--radius-default)] shadow-[var(--shadow-lg)] z-50 overflow-hidden">
           {/* Search */}
           <div className="p-2 border-b border-[var(--border-subtle)]">
-            <div className="flex items-center gap-2 px-2 py-1.5 bg-[var(--bg-page)] rounded-[var(--radius-md)] border border-[var(--border-subtle)]">
+            <div className="flex items-center gap-2 px-2 py-1 bg-[var(--bg-page)] rounded-[var(--radius-md)] border border-[var(--border-subtle)]">
               <Search size={12} className="shrink-0 text-[var(--text-muted)]" />
               <input
                 ref={inputRef}
@@ -201,7 +208,7 @@ function ProjectOption({
     <button
       onClick={onSelect}
       className={cn(
-        'w-full flex items-center gap-2 px-3 py-1.5 text-[12px] text-left',
+        'w-full flex items-center gap-2 px-3 py-1 text-[12px] text-left',
         'cursor-pointer transition-colors duration-100 hover:bg-[var(--bg-hover)]',
         isSelected
           ? 'text-[var(--text-primary)] font-medium'

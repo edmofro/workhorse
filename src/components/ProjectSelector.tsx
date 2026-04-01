@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useMemo } from 'react'
 import { ChevronDown, Search } from 'lucide-react'
+import { cn } from '../lib/cn'
 
 interface Project {
   id: string
@@ -40,6 +41,7 @@ export function ProjectSelector({
 }: ProjectSelectorProps) {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
+  const [recentIds, setRecentIds] = useState<string[]>([])
   const inputRef = useRef<HTMLInputElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
 
@@ -58,16 +60,15 @@ export function ProjectSelector({
     return () => document.removeEventListener('mousedown', handleClick)
   }, [open])
 
-  // Autofocus search on open
+  // On open: reset query, load recents, focus search
   useEffect(() => {
     if (open) {
       setQuery('')
-      // Small delay to let the dropdown render
+      setRecentIds(getRecentIds())
       requestAnimationFrame(() => inputRef.current?.focus())
     }
   }, [open])
 
-  const recentIds = useMemo(() => getRecentIds(), [open]) // eslint-disable-line react-hooks/exhaustive-deps
   const recentProjects = useMemo(
     () =>
       recentIds
@@ -93,11 +94,16 @@ export function ProjectSelector({
     <div ref={containerRef} className="relative">
       <button
         onClick={() => setOpen(!open)}
-        className="flex items-center gap-1.5 px-2 py-1.5 rounded-[var(--radius-md)] text-[13px] font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer"
+        className={cn(
+          'flex items-center gap-2 px-2 py-1.5 rounded-[var(--radius-md)]',
+          'text-[13px] font-medium text-[var(--text-secondary)]',
+          'hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]',
+          'transition-colors duration-100 cursor-pointer',
+        )}
       >
         {selectedProject && (
           <span
-            className="w-[7px] h-[7px] rounded-full shrink-0"
+            className="w-[8px] h-[8px] rounded-full shrink-0"
             style={{ backgroundColor: selectedProject.colour }}
           />
         )}
@@ -124,31 +130,27 @@ export function ProjectSelector({
 
           <div className="max-h-[280px] overflow-y-auto py-1">
             {/* All projects option */}
-            <button
-              onClick={() => handleSelect(null)}
-              className={`w-full flex items-center gap-2 px-3 py-1.5 text-[12px] text-left cursor-pointer transition-colors duration-100 hover:bg-[var(--bg-hover)] ${
-                !selectedProjectId
-                  ? 'text-[var(--text-primary)] font-medium'
-                  : 'text-[var(--text-secondary)]'
-              }`}
-            >
-              All projects
-            </button>
+            <ProjectOption
+              label="All projects"
+              isSelected={!selectedProjectId}
+              onSelect={() => handleSelect(null)}
+            />
 
             {/* Recently viewed */}
             {!query.trim() && recentProjects.length > 0 && (
               <>
                 <div className="px-3 pt-2 pb-1">
-                  <span className="text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-[0.06em]">
+                  <span className="text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-[0.06em]">
                     Recent
                   </span>
                 </div>
                 {recentProjects.map((project) => (
                   <ProjectOption
                     key={`recent-${project.id}`}
-                    project={project}
+                    label={project.name}
+                    colour={project.colour}
                     isSelected={project.id === selectedProjectId}
-                    onSelect={handleSelect}
+                    onSelect={() => handleSelect(project.id)}
                   />
                 ))}
               </>
@@ -157,7 +159,7 @@ export function ProjectSelector({
             {/* Full list */}
             {!query.trim() && projects.length > 0 && (
               <div className="px-3 pt-2 pb-1">
-                <span className="text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-[0.06em]">
+                <span className="text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-[0.06em]">
                   All
                 </span>
               </div>
@@ -165,9 +167,10 @@ export function ProjectSelector({
             {filtered.map((project) => (
               <ProjectOption
                 key={project.id}
-                project={project}
+                label={project.name}
+                colour={project.colour}
                 isSelected={project.id === selectedProjectId}
-                onSelect={handleSelect}
+                onSelect={() => handleSelect(project.id)}
               />
             ))}
 
@@ -184,28 +187,34 @@ export function ProjectSelector({
 }
 
 function ProjectOption({
-  project,
+  label,
+  colour,
   isSelected,
   onSelect,
 }: {
-  project: Project
+  label: string
+  colour?: string
   isSelected: boolean
-  onSelect: (id: string) => void
+  onSelect: () => void
 }) {
   return (
     <button
-      onClick={() => onSelect(project.id)}
-      className={`w-full flex items-center gap-2 px-3 py-1.5 text-[12px] text-left cursor-pointer transition-colors duration-100 hover:bg-[var(--bg-hover)] ${
+      onClick={onSelect}
+      className={cn(
+        'w-full flex items-center gap-2 px-3 py-1.5 text-[12px] text-left',
+        'cursor-pointer transition-colors duration-100 hover:bg-[var(--bg-hover)]',
         isSelected
           ? 'text-[var(--text-primary)] font-medium'
-          : 'text-[var(--text-secondary)]'
-      }`}
+          : 'text-[var(--text-secondary)]',
+      )}
     >
-      <span
-        className="w-[7px] h-[7px] rounded-full shrink-0"
-        style={{ backgroundColor: project.colour }}
-      />
-      <span className="truncate">{project.name}</span>
+      {colour && (
+        <span
+          className="w-[8px] h-[8px] rounded-full shrink-0"
+          style={{ backgroundColor: colour }}
+        />
+      )}
+      <span className="truncate">{label}</span>
     </button>
   )
 }

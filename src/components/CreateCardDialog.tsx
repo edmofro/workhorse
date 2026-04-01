@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { Plus, Loader2 } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
 import { Button } from './Button'
 import { createCard } from '../lib/actions/cards'
 import { associateAttachmentsWithCard } from '../lib/actions/attachments'
@@ -19,17 +19,11 @@ interface Team {
 interface CreateCardDialogProps {
   teams: Team[]
   projectName: string
-  /** Controlled mode: externally managed open state */
-  open?: boolean
-  /** Controlled mode: called when the dialog should close */
-  onClose?: () => void
+  open: boolean
+  onClose: () => void
 }
 
-export function CreateCardDialog({ teams, projectName, open: controlledOpen, onClose }: CreateCardDialogProps) {
-  const [internalOpen, setInternalOpen] = useState(false)
-  const isControlled = controlledOpen !== undefined
-  const open = isControlled ? controlledOpen : internalOpen
-  const setOpen = isControlled ? (v: boolean) => { if (!v) onClose?.() } : setInternalOpen
+export function CreateCardDialog({ teams, projectName, open, onClose }: CreateCardDialogProps) {
   const [prompt, setPrompt] = useState('')
   const defaultTeamId = teams[0]?.id ?? ''
   const [isPending, startTransition] = useTransition()
@@ -38,6 +32,10 @@ export function CreateCardDialog({ teams, projectName, open: controlledOpen, onC
   const attachments = useAttachments()
 
   const busy = isPending || isGenerating
+
+  function handleClose() {
+    if (!busy) onClose()
+  }
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -88,7 +86,7 @@ export function CreateCardDialog({ teams, projectName, open: controlledOpen, onC
         )
       }
 
-      setOpen(false)
+      onClose()
       setPrompt('')
       attachments.clear()
       router.push(
@@ -117,21 +115,13 @@ export function CreateCardDialog({ teams, projectName, open: controlledOpen, onC
     }
   }
 
-  if (!open) {
-    // In controlled mode, parent handles the trigger
-    if (isControlled) return null
-    return (
-      <Button onClick={() => setOpen(true)} disabled={teams.length === 0}>
-        <Plus size={12} /> New card
-      </Button>
-    )
-  }
+  if (!open) return null
 
   return (
     <>
       <div
         className="fixed inset-0 z-40 bg-[rgba(28,25,23,0.40)]"
-        onClick={() => !busy && setOpen(false)}
+        onClick={handleClose}
       />
       <div className="fixed inset-0 z-50 flex items-center justify-center">
         <div className="w-full max-w-[480px] bg-[var(--bg-surface)] rounded-[var(--radius-lg)] border border-[var(--border-subtle)] shadow-[var(--shadow-lg)] p-6">
@@ -172,7 +162,7 @@ export function CreateCardDialog({ teams, projectName, open: controlledOpen, onC
               <Button
                 type="button"
                 variant="secondary"
-                onClick={() => setOpen(false)}
+                onClick={handleClose}
                 disabled={busy}
               >
                 Cancel

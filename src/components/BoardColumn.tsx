@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { cn } from '../lib/cn'
 import { StatusDot } from './StatusDot'
 import { Avatar } from './Avatar'
 import { Tag } from './Tag'
@@ -39,7 +40,7 @@ export function BoardColumn({ label, dotState, cards, projectName }: BoardColumn
       </div>
 
       {/* Card stack */}
-      <div className="flex-1 overflow-y-auto px-1.5 pb-4 space-y-1.5">
+      <div className="flex-1 overflow-y-auto px-2 pb-4 space-y-2">
         {cards.length === 0 ? (
           <div className="flex items-center justify-center py-8">
             <span className="text-[12px] text-[var(--text-faint)]">No cards</span>
@@ -68,14 +69,20 @@ function BoardCard({ card, projectName }: { card: CardData; projectName: string 
   return (
     <Link
       href={href}
-      className="block bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-[var(--radius-lg)] shadow-[var(--shadow-sm)] cursor-pointer transition-[border-color,box-shadow] duration-100 hover:border-[var(--border-default)] hover:shadow-[var(--shadow-md)] p-3"
+      className={cn(
+        'block bg-[var(--bg-surface)] border border-[var(--border-subtle)]',
+        'rounded-[var(--radius-lg)] shadow-[var(--shadow-sm)]',
+        'cursor-pointer transition-[border-color,box-shadow] duration-100',
+        'hover:border-[var(--border-default)] hover:shadow-[var(--shadow-md)]',
+      )}
+      style={{ padding: '12px 16px' }}
     >
-      <div className="text-[11px] text-[var(--text-muted)] font-mono font-medium mb-1">
+      <div className="text-[12px] text-[var(--text-muted)] font-mono font-medium" style={{ marginBottom: '4px' }}>
         {card.identifier}
       </div>
-      <div className="text-[13px] font-medium leading-[1.4]">{card.title}</div>
+      <div className="text-[14px] font-medium leading-[1.4]">{card.title}</div>
       {(tags.length > 0 || card.assignee) && (
-        <div className="flex items-center gap-1.5 mt-2">
+        <div className="flex items-center gap-2" style={{ marginTop: '8px' }}>
           {tags.map((tag) => (
             <Tag key={tag} variant={tag === 'future' ? 'future' : 'core'}>
               {tag}

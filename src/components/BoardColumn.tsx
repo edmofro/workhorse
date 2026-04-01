@@ -74,15 +74,15 @@ function BoardCard({ card, projectName }: { card: CardData; projectName: string 
         'rounded-[var(--radius-lg)] shadow-[var(--shadow-sm)]',
         'cursor-pointer transition-[border-color,box-shadow] duration-100',
         'hover:border-[var(--border-default)] hover:shadow-[var(--shadow-md)]',
+        'py-3 px-4',
       )}
-      style={{ padding: '12px 16px' }}
     >
-      <div className="text-[12px] text-[var(--text-muted)] font-mono font-medium" style={{ marginBottom: '4px' }}>
+      <div className="text-[12px] text-[var(--text-muted)] font-mono font-medium mb-1">
         {card.identifier}
       </div>
-      <div className="text-[14px] font-medium leading-[1.4]">{card.title}</div>
+      <div className="text-[14px] font-medium leading-[1.4] text-[var(--text-primary)]">{card.title}</div>
       {(tags.length > 0 || card.assignee) && (
-        <div className="flex items-center gap-2" style={{ marginTop: '8px' }}>
+        <div className="flex items-center gap-2 mt-2">
           {tags.map((tag) => (
             <Tag key={tag} variant={tag === 'future' ? 'future' : 'core'}>
               {tag}

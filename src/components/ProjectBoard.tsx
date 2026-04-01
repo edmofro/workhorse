@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { notFound } from 'next/navigation'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Search, SlidersHorizontal, Plus } from 'lucide-react'
+import { SlidersHorizontal, Plus } from 'lucide-react'
 import { useProjectBoard, NotFoundError } from '../lib/hooks/queries'
 import { Topbar, TopbarRight } from './Topbar'
 import { BoardColumn } from './BoardColumn'
@@ -26,7 +26,6 @@ function BoardSkeleton() {
       <Topbar>
         <Skeleton className="h-6 w-28" />
         <TopbarRight>
-          <Skeleton className="h-8 w-8 rounded-[var(--radius-md)]" />
           <Skeleton className="h-8 w-8 rounded-[var(--radius-md)]" />
           <Skeleton className="h-8 w-8 rounded-[var(--radius-md)]" />
         </TopbarRight>
@@ -101,9 +100,6 @@ export function ProjectBoard({ projectSlug, filters }: ProjectBoardProps) {
           onSelect={handleTeamSelect}
         />
         <TopbarRight>
-          <IconButton title="Search" disabled>
-            <Search size={14} />
-          </IconButton>
           <div className="relative">
             <IconButton
               title="Filter"
@@ -112,7 +108,7 @@ export function ProjectBoard({ projectSlug, filters }: ProjectBoardProps) {
             >
               <SlidersHorizontal size={14} />
               {hasActiveFilters && (
-                <span className="absolute top-1 right-1 w-1 h-1 rounded-full bg-[var(--accent)]" />
+                <span className="absolute top-1 right-1 w-[6px] h-[6px] rounded-full bg-[var(--accent)]" />
               )}
             </IconButton>
             {showFilter && (

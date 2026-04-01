@@ -37,7 +37,7 @@ Product owners, testers, and developers — anyone who specifies what software s
 
 - **Projects not repos.** Users think in projects. Repos are infrastructure.
 - **Global project context.** The user is always in one project at a time, with a lightweight switcher to move between them.
-- **Teams have boards.** Each team's board is a list of open cards grouped by status — the home view for day-to-day work.
+- **Kanban board with project filter.** The board shows cards in horizontal status columns. A project selector dropdown (with search and recents) filters to a specific project's cards — the home view for day-to-day work. See `board-redesign.md`.
 - **Deployment:** Hosted SaaS on Railway. Single service with persistent disk for git worktrees and agent sessions. PostgreSQL on Railway for the database.
 - **AI codebase access:** Remote Claude agents (review-hero / ask-ai pattern). No pre-indexing.
 - **Multiplayer:** Spec document is collaborative. Chat is one user + AI per session.

@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useTransition } from 'react'
-import { Plus, Loader2 } from 'lucide-react'
+import { useState, useEffect, useTransition } from 'react'
+import { Loader2 } from 'lucide-react'
 import { Button } from './Button'
 import { createCard } from '../lib/actions/cards'
 import { associateAttachmentsWithCard } from '../lib/actions/attachments'
@@ -19,10 +19,11 @@ interface Team {
 interface CreateCardDialogProps {
   teams: Team[]
   projectName: string
+  open: boolean
+  onClose: () => void
 }
 
-export function CreateCardDialog({ teams, projectName }: CreateCardDialogProps) {
-  const [open, setOpen] = useState(false)
+export function CreateCardDialog({ teams, projectName, open, onClose }: CreateCardDialogProps) {
   const [prompt, setPrompt] = useState('')
   const defaultTeamId = teams[0]?.id ?? ''
   const [isPending, startTransition] = useTransition()
@@ -31,6 +32,18 @@ export function CreateCardDialog({ teams, projectName }: CreateCardDialogProps) 
   const attachments = useAttachments()
 
   const busy = isPending || isGenerating
+
+  // Reset form state when dialog opens
+  useEffect(() => {
+    if (open) {
+      setPrompt('')
+      attachments.clear()
+    }
+  }, [open]) // eslint-disable-line react-hooks/exhaustive-deps -- attachments.clear is stable
+
+  function handleClose() {
+    if (!busy) onClose()
+  }
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -65,28 +78,32 @@ export function CreateCardDialog({ teams, projectName }: CreateCardDialogProps) 
         description = prompt.trim()
       }
 
-      setIsGenerating(false)
+      try {
+        const card = await createCard({
+          title,
+          description: description || undefined,
+          teamId: defaultTeamId,
+        })
 
-      const card = await createCard({
-        title,
-        description: description || undefined,
-        teamId: defaultTeamId,
-      })
+        // Associate attachments with the card
+        if (uploaded.length > 0) {
+          await associateAttachmentsWithCard(
+            card.id,
+            uploaded.map((a) => a.id),
+          )
+        }
 
-      // Associate attachments with the card
-      if (uploaded.length > 0) {
-        await associateAttachmentsWithCard(
-          card.id,
-          uploaded.map((a) => a.id),
+        onClose()
+        setPrompt('')
+        attachments.clear()
+        router.push(
+          `/${encodeURIComponent(projectName.toLowerCase())}/cards/${card.identifier}`,
         )
+      } catch {
+        // Keep dialog open with user's input so they can retry
+      } finally {
+        setIsGenerating(false)
       }
-
-      setOpen(false)
-      setPrompt('')
-      attachments.clear()
-      router.push(
-        `/${encodeURIComponent(projectName.toLowerCase())}/cards/${card.identifier}`,
-      )
     })
   }
 
@@ -110,19 +127,13 @@ export function CreateCardDialog({ teams, projectName }: CreateCardDialogProps) 
     }
   }
 
-  if (!open) {
-    return (
-      <Button onClick={() => setOpen(true)} disabled={teams.length === 0}>
-        <Plus size={12} /> New card
-      </Button>
-    )
-  }
+  if (!open) return null
 
   return (
     <>
       <div
         className="fixed inset-0 z-40 bg-[rgba(28,25,23,0.40)]"
-        onClick={() => !busy && setOpen(false)}
+        onClick={handleClose}
       />
       <div className="fixed inset-0 z-50 flex items-center justify-center">
         <div className="w-full max-w-[480px] bg-[var(--bg-surface)] rounded-[var(--radius-lg)] border border-[var(--border-subtle)] shadow-[var(--shadow-lg)] p-6">
@@ -163,7 +174,7 @@ export function CreateCardDialog({ teams, projectName }: CreateCardDialogProps) 
               <Button
                 type="button"
                 variant="secondary"
-                onClick={() => setOpen(false)}
+                onClick={handleClose}
                 disabled={busy}
               >
                 Cancel

@@ -16,81 +16,36 @@ Navigation structure: a global project switcher sets the context, and the sideba
 
 ## Sidebar structure
 
-Within the active project, the sidebar shows sections top to bottom:
+Within the active project, the sidebar shows these sections top to bottom:
 
 ### Header
 
 - [ ] Logo and app name ("Workhorse") at the top
 - [ ] Project switcher dropdown below
 
-### Sections
+### Action buttons
 
-Each section is a row with a label, an icon, and optional hover actions. The label navigates to the section's full view. On hover, [🔍] and [+] icon buttons appear right-aligned, replacing truncated label space.
+- [ ] A row of icon buttons sits between the project switcher and the navigation items
+- [ ] **Search** (`Search` icon) — opens the search interface (not inline; a separate view or command palette). Displays as a compact icon button
+- [ ] **New** (`Plus` icon) — opens the unified creation modal (see `ai-card-creation.md`). Displays as a compact icon button
+- [ ] Both buttons are right-aligned in the row, subtle but always visible
 
-```
-┌─ Workhorse ──────────────┐
-│  Workhorse ▾              │
-├──────────────────────────┤
-│  ☐ Cards        [🔍] [+] │  ← hover to reveal actions
-│  📄 Specs        [🔍] [+] │
-│  🎨 Design       [🔍] [+] │
-│  🗂 Code         [🔍]     │  ← search only, no +
-│                           │
-│  💬 Conversations [🔍] [+] │
-│    ● WH-042: Initial…    │
-│    💬 Schema question     │
-│    ● WH-005: Now I h…    │
-│    💬 Fix login idea      │
-│    ● WH-038: Refine…     │
-│    View all →             │
-│                           │
-├──────────────────────────┤
-│  👤 Felix            •••  │
-└──────────────────────────┘
-```
+### Navigation
 
-#### Cards
+- [ ] **Cards** — links to the project board (`/:projectSlug`), a list of cards grouped by status with filters
+- [ ] **Specs** — links to the spec explorer (`/:projectSlug/specs`), the navigable hierarchy of merged specs from the main branch
+- [ ] **Design** — links to the design browser (`/:projectSlug/design`), the project's design library
 
-- [ ] Clicking the label navigates to the project board (`/:projectSlug`)
-- [ ] [🔍] opens search scoped to cards
-- [ ] [+] opens the card creation modal (see `ai-card-creation.md`) — defaults to card-creation mode
-- [ ] No recent items listed below — the board is the primary view
+### Recent conversations
 
-#### Specs
-
-- [ ] Clicking the label navigates to the spec explorer (`/:projectSlug/specs`)
-- [ ] [🔍] opens search scoped to specs
-- [ ] [+] creates a quick card and drops the user into the spec editor (reverse workflow — spec first, card wraps around it)
-
-#### Design
-
-- [ ] Clicking the label navigates to the design browser (`/:projectSlug/design`)
-- [ ] [🔍] opens search scoped to design files
-- [ ] [+] creates a quick card and drops the user into mockup mode
-
-#### Code
-
-- [ ] Clicking the label navigates to the code browser (`/:projectSlug/code`) — placeholder for now
-- [ ] [🔍] opens search scoped to code
-- [ ] No [+] button — there is no meaningful "create a new code file" action
-
-#### Conversations
-
-- [ ] Clicking the label navigates to a conversations list view (`/:projectSlug/conversations`)
-- [ ] [🔍] opens search scoped to conversations
-- [ ] [+] opens the creation modal (see `ai-card-creation.md`) — defaults to chat mode
-- [ ] Below the section label, up to 5 recent conversations are listed
-- [ ] **Card-bound sessions** show a status dot (coloured by card status: amber for in-progress, hollow for not started, green for complete) followed by `{cardIdentifier}: {sessionTitle}`
-- [ ] **Standalone sessions** show a `MessageCircle` icon (muted colour) followed by the session title
-- [ ] A "View all" link appears below the last item when there are more conversations
-- [ ] Each item is a deep link into the conversation
-
-### Hover behaviour for section actions
-
-- [ ] [🔍] and [+] icons are hidden by default; they appear on hover over the section row
-- [ ] Icons use `--text-muted` colour, transitioning to `--text-secondary` on hover
-- [ ] Icons sit right-aligned within the section row, overlapping the label's trailing space
-- [ ] The section label itself remains clickable for navigation even when icons are visible
+- [ ] Shows the most recently active conversation sessions for the current user within the active project
+- [ ] Each entry is a conversation session — these are deep links into conversations, not cards
+- [ ] Multiple entries may reference the same card (different conversations on the same card)
+- [ ] **Card-bound sessions** show the card identifier prefix and session title, with a status-coloured dot (based on card status: amber for in-progress, hollow for not started, green for complete)
+- [ ] **Standalone sessions** (no card) show just the session title with a chat bubble icon instead of a status dot — visually distinct from card-bound sessions
+- [ ] Capped at 8 items, sorted by `lastMessageAt` descending
+- [ ] Card-bound sessions link to `/:projectSlug/cards/:identifier?session=:sessionId`
+- [ ] Standalone sessions link to `/:projectSlug/sessions/:sessionId`
 
 ### User menu
 
@@ -108,7 +63,7 @@ Teams are not exposed in the sidebar or as a primary navigation concept. They ex
 ## Empty project onboarding
 
 - [ ] When a project has no cards, the board shows an empty state with guidance
-- [ ] The [+] on the Cards section is always enabled (creates a card with default team)
+- [ ] The "New" button in the sidebar is always enabled (creates a card with default team)
 
 ## Product creation
 

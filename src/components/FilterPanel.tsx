@@ -33,7 +33,12 @@ export function FilterPanel({ users, basePath, onClose }: FilterPanelProps) {
   }
 
   function clearFilters() {
-    router.push(basePath)
+    // Preserve non-filter params (like team) when clearing
+    const params = new URLSearchParams(searchParams.toString())
+    params.delete('status')
+    params.delete('assignee')
+    const qs = params.toString()
+    router.push(`${basePath}${qs ? `?${qs}` : ''}`)
     onClose()
   }
 

@@ -78,28 +78,32 @@ export function CreateCardDialog({ teams, projectName, open, onClose }: CreateCa
         description = prompt.trim()
       }
 
-      setIsGenerating(false)
+      try {
+        const card = await createCard({
+          title,
+          description: description || undefined,
+          teamId: defaultTeamId,
+        })
 
-      const card = await createCard({
-        title,
-        description: description || undefined,
-        teamId: defaultTeamId,
-      })
+        // Associate attachments with the card
+        if (uploaded.length > 0) {
+          await associateAttachmentsWithCard(
+            card.id,
+            uploaded.map((a) => a.id),
+          )
+        }
 
-      // Associate attachments with the card
-      if (uploaded.length > 0) {
-        await associateAttachmentsWithCard(
-          card.id,
-          uploaded.map((a) => a.id),
+        onClose()
+        setPrompt('')
+        attachments.clear()
+        router.push(
+          `/${encodeURIComponent(projectName.toLowerCase())}/cards/${card.identifier}`,
         )
+      } catch {
+        // Keep dialog open with user's input so they can retry
+      } finally {
+        setIsGenerating(false)
       }
-
-      onClose()
-      setPrompt('')
-      attachments.clear()
-      router.push(
-        `/${encodeURIComponent(projectName.toLowerCase())}/cards/${card.identifier}`,
-      )
     })
   }
 

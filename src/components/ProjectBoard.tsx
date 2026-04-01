@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { notFound } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Search, SlidersHorizontal, Plus } from 'lucide-react'
 import { useProjectBoard, NotFoundError } from '../lib/hooks/queries'
 import { Topbar, TopbarRight } from './Topbar'
@@ -59,16 +60,10 @@ interface ProjectBoardProps {
 
 export function ProjectBoard({ projectSlug, filters }: ProjectBoardProps) {
   const { data, isLoading, error } = useProjectBoard(projectSlug)
-  const [selectedTeamId, setSelectedTeamId] = useState<string | null>(
-    filters.team ?? null,
-  )
+  const router = useRouter()
+  const searchParams = useSearchParams()
   const [showFilter, setShowFilter] = useState(false)
   const [showCreate, setShowCreate] = useState(false)
-
-  // Sync selectedTeamId when URL filters change (back/forward, shared links)
-  useEffect(() => {
-    setSelectedTeamId(filters.team ?? null)
-  }, [filters.team])
 
   if (isLoading) return <BoardSkeleton />
   if (error instanceof NotFoundError) notFound()
@@ -76,12 +71,25 @@ export function ProjectBoard({ projectSlug, filters }: ProjectBoardProps) {
 
   const { project, cards: allCards, users } = data
 
+  const selectedTeamId = filters.team ?? null
+  const projectPath = `/${encodeURIComponent(project.name.toLowerCase())}`
+
+  function handleTeamSelect(teamId: string | null) {
+    const params = new URLSearchParams(searchParams.toString())
+    if (teamId) {
+      params.set('team', teamId)
+    } else {
+      params.delete('team')
+    }
+    const qs = params.toString()
+    router.push(`${projectPath}${qs ? `?${qs}` : ''}`)
+  }
+
   let cards = allCards
   if (selectedTeamId) cards = cards.filter((c) => c.team.id === selectedTeamId)
   if (filters.status) cards = cards.filter((c) => c.status === filters.status)
   if (filters.assignee) cards = cards.filter((c) => c.assignee?.id === filters.assignee)
 
-  const projectPath = `/${encodeURIComponent(project.name.toLowerCase())}`
   const hasActiveFilters = !!selectedTeamId || !!filters.status || !!filters.assignee
 
   return (
@@ -90,7 +98,7 @@ export function ProjectBoard({ projectSlug, filters }: ProjectBoardProps) {
         <ProjectSelector
           projects={project.teams}
           selectedProjectId={selectedTeamId}
-          onSelect={setSelectedTeamId}
+          onSelect={handleTeamSelect}
         />
         <TopbarRight>
           <IconButton title="Search" disabled>

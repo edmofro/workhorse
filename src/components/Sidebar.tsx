@@ -182,23 +182,25 @@ export function Sidebar({ initialProjects, initialRecentSessions = [] }: Sidebar
                       || pathname.includes(`/sessions/${session.id}`)
                     const isCardBound = !!session.cardId
 
-                    return (
-                      <NavItem
-                        key={session.id}
-                        href={href}
-                        active={isActive}
-                        statusIndicator={
-                          isCardBound
-                            ? <StatusDot status={session.cardStatus} />
-                            : <MessageCircle size={12} className="text-[var(--text-muted)] shrink-0" />
-                        }
-                      >
-                        <span className="truncate">{label}</span>
-                      </NavItem>
-                    )
-                  })}
-              </>
-            )}
+            {/* Conversations section with recent items */}
+            <div className="mt-3 pt-3 border-t border-[var(--border-subtle)]">
+              <SectionHeader
+                icon={<MessageCircle size={14} />}
+                active={pathname.startsWith(`${projectPath}/sessions/`)}
+                onAdd={() => setCreateModal('chat')}
+              >
+                Conversations
+              </SectionHeader>
+
+              {filteredSessions.length > 0 && (
+                <ConversationsList
+                  sessions={projectSessions}
+                  projectPath={projectPath}
+                  pathname={pathname}
+                  searchParams={searchParams}
+                />
+              )}
+            </div>
           </>
         )}
       </nav>
@@ -215,6 +217,192 @@ export function Sidebar({ initialProjects, initialRecentSessions = [] }: Sidebar
         />
       )}
     </aside>
+  )
+}
+
+/** A section row with icon, label (navigable), and hover action ([+]). */
+function SectionItem({
+  href,
+  icon,
+  active,
+  disabled,
+  onAdd,
+  children,
+}: {
+  href: string
+  icon: React.ReactNode
+  active: boolean
+  disabled?: boolean
+  onAdd?: () => void
+  children: React.ReactNode
+}) {
+  if (disabled) {
+    return (
+      <div className="group flex items-center rounded-[var(--radius-md)]">
+        <span
+          className="flex items-center gap-2 flex-1 min-w-0 px-3 py-2 rounded-[var(--radius-md)] text-[13px] text-[var(--text-muted)] font-[450] cursor-default"
+          aria-disabled="true"
+        >
+          {icon}
+          <span className="truncate">{children}</span>
+        </span>
+      </div>
+    )
+  }
+
+  return (
+    <div className="group relative flex items-center rounded-[var(--radius-md)] transition-colors duration-100">
+      <Link
+        href={href}
+        className={cn(
+          'flex items-center gap-2 flex-1 min-w-0 px-3 py-2 rounded-[var(--radius-md)]',
+          'text-[13px] cursor-pointer transition-colors duration-100',
+          active
+            ? 'bg-[var(--bg-surface)] text-[var(--text-primary)] font-medium shadow-[var(--shadow-sm)]'
+            : 'text-[var(--text-secondary)] font-[450] hover:bg-[var(--bg-hover)]',
+        )}
+      >
+        {icon}
+        <span className="truncate">{children}</span>
+      </Link>
+      {onAdd && (
+        <button
+          type="button"
+          className="absolute right-1 p-1 rounded-[var(--radius-sm)] text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity duration-100"
+          title="New"
+          onClick={onAdd}
+        >
+          <Plus size={12} />
+        </button>
+      )}
+    </div>
+  )
+}
+
+/** A recent conversation item shown below the Conversations section. */
+function ConversationItem({
+  href,
+  active,
+  indicator,
+  children,
+}: {
+  href: string
+  active: boolean
+  indicator: React.ReactNode
+  children: React.ReactNode
+}) {
+  return (
+    <Link
+      href={href}
+      className={cn(
+        'flex items-center gap-2 px-3 py-1 rounded-[var(--radius-md)]',
+        'text-[12px] cursor-pointer transition-colors duration-100',
+        active
+          ? 'bg-[var(--bg-surface)] text-[var(--text-primary)] font-medium shadow-[var(--shadow-sm)]'
+          : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]',
+      )}
+    >
+      {indicator}
+      <span className="truncate">{children}</span>
+    </Link>
+  )
+}
+
+/** A non-navigating section header with icon, label, and hover [+] action. */
+function SectionHeader({
+  icon,
+  active,
+  onAdd,
+  children,
+}: {
+  icon: React.ReactNode
+  active: boolean
+  onAdd?: () => void
+  children: React.ReactNode
+}) {
+  return (
+    <div className="group relative flex items-center rounded-[var(--radius-md)] transition-colors duration-100">
+      <span
+        className={cn(
+          'flex items-center gap-2 flex-1 min-w-0 px-3 py-2 rounded-[var(--radius-md)]',
+          'text-[13px] cursor-default',
+          active
+            ? 'text-[var(--text-primary)] font-medium'
+            : 'text-[var(--text-secondary)] font-[450]',
+        )}
+      >
+        {icon}
+        <span className="truncate">{children}</span>
+      </span>
+      {onAdd && (
+        <button
+          type="button"
+          className="absolute right-1 p-1 rounded-[var(--radius-sm)] text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity duration-100"
+          title="New"
+          onClick={onAdd}
+        >
+          <Plus size={12} />
+        </button>
+      )}
+    </div>
+  )
+}
+
+/** Expandable list of conversation items. Shows 5 by default, expands to 100 on "older". */
+function ConversationsList({
+  sessions,
+  projectPath,
+  pathname,
+  searchParams,
+}: {
+  sessions: SidebarSession[]
+  projectPath: string
+  pathname: string
+  searchParams: ReturnType<typeof useSearchParams>
+}) {
+  const [expanded, setExpanded] = useState(false)
+  const displaySessions = expanded ? sessions.slice(0, 100) : sessions.slice(0, 5)
+
+  return (
+    <div className="ml-1">
+      {displaySessions.map((session) => {
+        const href = session.cardId && session.cardIdentifier && session.projectName
+          ? `/${encodeURIComponent(session.projectName.toLowerCase())}/cards/${session.cardIdentifier}?session=${session.id}`
+          : session.projectName
+            ? `/${encodeURIComponent(session.projectName.toLowerCase())}/sessions/${session.id}`
+            : '#'
+        const sessionLabel = session.title ?? session.cardTitle ?? 'New conversation'
+        const label = session.cardIdentifier
+          ? `${session.cardIdentifier}: ${sessionLabel}`
+          : sessionLabel
+        const isActive = searchParams.get('session') === session.id
+          || pathname.startsWith(`${projectPath}/sessions/${session.id}`)
+        const isCardBound = !!session.cardId
+
+        return (
+          <ConversationItem
+            key={session.id}
+            href={href}
+            active={isActive}
+            indicator={
+              isCardBound
+                ? <StatusDot status={session.cardStatus} />
+                : <MessageCircle size={11} className="text-[var(--text-muted)] shrink-0" />
+            }
+          >
+            {label}
+          </ConversationItem>
+        )
+      })}
+      {sessions.length > 5 && !expanded && (
+        <button
+          onClick={() => setExpanded(true)}
+          className="block w-full text-left px-3 py-1 text-[11px] text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors duration-100 cursor-pointer"
+        >
+          Older
+        </button>
+      )}
+    </div>
   )
 }
 

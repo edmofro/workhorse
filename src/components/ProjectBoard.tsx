@@ -112,7 +112,7 @@ export function ProjectBoard({ projectSlug, filters }: ProjectBoardProps) {
             >
               <SlidersHorizontal size={14} />
               {hasActiveFilters && (
-                <span className="absolute top-1 right-1 w-[5px] h-[5px] rounded-full bg-[var(--accent)]" />
+                <span className="absolute top-1 right-1 w-1 h-1 rounded-full bg-[var(--accent)]" />
               )}
             </IconButton>
             {showFilter && (

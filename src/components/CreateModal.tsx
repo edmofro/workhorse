@@ -51,14 +51,12 @@ export function CreateModal({
 
   async function handleSubmit(text?: string) {
     const value = text ?? prompt
-    if (!value.trim() || busy || attachments.isUploading) return
+    if (!value.trim() || busy || attachments.isUploading || (isCard && !defaultTeamId)) return
     setBusy(true)
     setError(null)
 
     try {
       if (isCard) {
-        if (!defaultTeamId) return
-
         let title: string
         let description: string
 
@@ -87,7 +85,11 @@ export function CreateModal({
         const card = await createCard({ title, description: description || undefined, teamId: defaultTeamId })
 
         if (uploaded.length > 0) {
-          await associateAttachmentsWithCard(card.id, uploaded.map((a) => a.id))
+          try {
+            await associateAttachmentsWithCard(card.id, uploaded.map((a) => a.id))
+          } catch {
+            // Card was created — navigate anyway, attachments can be re-added
+          }
         }
 
         onClose()
@@ -213,8 +215,7 @@ export function CreateModal({
                 rows={1}
                 placeholder={isCard ? 'Describe what needs to be done...' : 'What would you like to discuss?'}
                 disabled={busy}
-                className="flex-1 border-none bg-transparent outline-none resize-none text-[14px] leading-[1.5] min-h-[24px] placeholder:text-[var(--text-faint)]"
-                style={{ padding: '8px 0' }}
+                className="flex-1 border-none bg-transparent outline-none resize-none text-[14px] leading-[1.5] min-h-[24px] py-2 placeholder:text-[var(--text-faint)]"
               />
               <button
                 onClick={() => handleSubmit()}

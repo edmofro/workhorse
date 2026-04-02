@@ -51,16 +51,13 @@ export function CreateModal({
 
   async function handleSubmit(text?: string) {
     const value = text ?? prompt
-    if (!value.trim() || busy) return
+    if (!value.trim() || busy || attachments.isUploading) return
     setBusy(true)
     setError(null)
 
     try {
       if (isCard) {
-        if (!defaultTeamId) {
-          setBusy(false)
-          return
-        }
+        if (!defaultTeamId) return
 
         let title: string
         let description: string
@@ -110,8 +107,9 @@ export function CreateModal({
         router.push(`${projectSlug}/sessions/${data.id}`)
       }
     } catch {
-      setBusy(false)
       setError(isCard ? 'Failed to create card. Please try again.' : 'Failed to start conversation. Please try again.')
+    } finally {
+      setBusy(false)
     }
   }
 
@@ -130,6 +128,7 @@ export function CreateModal({
   }
 
   function handlePaste(e: React.ClipboardEvent) {
+    if (!isCard) return
     const files = Array.from(e.clipboardData.items)
       .filter((item) => item.kind === 'file')
       .map((item) => item.getAsFile())

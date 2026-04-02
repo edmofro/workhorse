@@ -1,9 +1,10 @@
 'use client'
 
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Loader2, X } from 'lucide-react'
 import { createCard } from '../lib/actions/cards'
+import { associateAttachmentsWithCard } from '../lib/actions/attachments'
 import { useAttachments } from '../lib/hooks/useAttachments'
 import { AttachmentButton } from './card/AttachmentButton'
 import { AttachmentPreview } from './card/AttachmentPreview'
@@ -48,14 +49,7 @@ export function CreateModal({
     return () => document.removeEventListener('keydown', handleEscape)
   }, [])
 
-  // Reset on open
-  useEffect(() => {
-    setPrompt('')
-    setError(null)
-    attachments.clear()
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
-
-  const handleSubmit = useCallback(async (text?: string) => {
+  async function handleSubmit(text?: string) {
     const value = text ?? prompt
     if (!value.trim() || busy) return
     setBusy(true)
@@ -63,7 +57,10 @@ export function CreateModal({
 
     try {
       if (isCard) {
-        if (!defaultTeamId) return
+        if (!defaultTeamId) {
+          setBusy(false)
+          return
+        }
 
         let title: string
         let description: string
@@ -92,9 +89,7 @@ export function CreateModal({
 
         const card = await createCard({ title, description: description || undefined, teamId: defaultTeamId })
 
-        // Associate attachments with the card
         if (uploaded.length > 0) {
-          const { associateAttachmentsWithCard } = await import('../lib/actions/attachments')
           await associateAttachmentsWithCard(card.id, uploaded.map((a) => a.id))
         }
 
@@ -118,7 +113,7 @@ export function CreateModal({
       setBusy(false)
       setError(isCard ? 'Failed to create card. Please try again.' : 'Failed to start conversation. Please try again.')
     }
-  }, [prompt, busy, isCard, defaultTeamId, attachments, onClose, router, projectSlug])
+  }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -152,7 +147,7 @@ export function CreateModal({
     handleSubmit(pill.message)
   }
 
-  const canSend = (prompt.trim() || attachments.hasAttachments) && !busy && !attachments.isUploading && (isCard ? !!defaultTeamId : true)
+  const canSend = !!prompt.trim() && !busy && !attachments.isUploading && (isCard ? !!defaultTeamId : true)
 
   return (
     <>
@@ -161,90 +156,88 @@ export function CreateModal({
         onClick={() => !busy && onClose()}
       />
       <div className="fixed inset-0 z-50 flex items-start justify-center pt-[20vh] pointer-events-none">
-        <div className="w-full max-w-[520px] pointer-events-auto">
-          {/* Close button */}
-          <div className="flex justify-end mb-2">
-            <button
-              onClick={() => !busy && onClose()}
-              className="p-1.5 rounded-[var(--radius-md)] text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[rgba(255,255,255,0.15)] transition-colors duration-100 cursor-pointer"
-            >
-              <X size={16} />
-            </button>
-          </div>
-
-          {/* Title */}
-          <div className="px-1 mb-3">
-            <h2 className="text-[14px] font-medium text-white/90">
+        <div className="w-full max-w-[520px] pointer-events-auto bg-[var(--bg-surface)] rounded-[var(--radius-xl)] border border-[var(--border-subtle)] shadow-[var(--shadow-lg)] overflow-hidden">
+          {/* Header with title and close button */}
+          <div className="flex items-center justify-between px-5 pt-4 pb-2">
+            <h2 className="text-[14px] font-medium text-[var(--text-primary)]">
               {isCard ? 'New card' : 'New conversation'}
             </h2>
-          </div>
-
-          {/* Pills (conversation mode only) */}
-          {!isCard && !busy && (
-            <div className="flex flex-wrap gap-2 px-1 mb-3">
-              {CONVERSATION_PILLS.map((pill) => (
-                <button
-                  key={pill.label}
-                  onClick={() => handlePillClick(pill)}
-                  className="px-3 py-[6px] rounded-[var(--radius-pill)] text-[12px] font-medium bg-[rgba(255,255,255,0.08)] border border-[rgba(255,255,255,0.12)] text-white/70 hover:text-white/90 hover:border-[rgba(255,255,255,0.2)] hover:bg-[rgba(255,255,255,0.12)] transition-colors duration-100 cursor-pointer"
-                >
-                  {pill.label}
-                </button>
-              ))}
-            </div>
-          )}
-
-          {/* Attachment preview */}
-          {attachments.hasAttachments && (
-            <div className="px-1 mb-2">
-              <AttachmentPreview
-                pending={attachments.pending}
-                onRemovePending={attachments.removeAttachment}
-                compact
-              />
-            </div>
-          )}
-
-          {/* Chat-input-style container */}
-          <div className="flex items-end bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-[var(--radius-xl)] shadow-[var(--shadow-lg)] transition-[border-color,box-shadow] duration-150 focus-within:border-[var(--accent)] focus-within:shadow-[var(--shadow-input-focus)]"
-            style={{ padding: '6px 6px 6px 16px' }}
-          >
-            {isCard && (
-              <AttachmentButton onFiles={attachments.addFiles} disabled={busy} />
-            )}
-            <textarea
-              ref={textareaRef}
-              value={prompt}
-              onChange={handleInput}
-              onKeyDown={handleKeyDown}
-              onPaste={handlePaste}
-              autoFocus
-              rows={1}
-              placeholder={isCard ? 'Describe what needs to be done...' : 'What would you like to discuss?'}
-              disabled={busy}
-              className="flex-1 border-none bg-transparent outline-none resize-none text-[14px] leading-[1.5] min-h-[24px] placeholder:text-[var(--text-faint)]"
-              style={{ padding: '8px 0' }}
-            />
             <button
-              onClick={() => handleSubmit()}
-              disabled={!canSend}
-              className="px-4 py-2 bg-[var(--accent)] text-white rounded-[var(--radius-default)] text-xs font-medium cursor-pointer disabled:opacity-40 disabled:cursor-default shrink-0 transition-colors duration-100 hover:bg-[var(--accent-hover)]"
+              onClick={() => !busy && onClose()}
+              className="p-1.5 rounded-[var(--radius-md)] text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer"
             >
-              {busy ? (
-                <span className="flex items-center gap-1.5">
-                  <Loader2 size={12} className="animate-spin" />
-                  {isCard ? 'Creating...' : 'Starting...'}
-                </span>
-              ) : (
-                isCard ? 'Create card' : 'Send'
-              )}
+              <X size={14} />
             </button>
           </div>
 
-          {/* Error */}
-          {error && (
-            <p className="mt-2 px-1 text-[12px] text-[var(--accent)]">{error}</p>
-          )}
+          <div className="px-5 pb-4">
+            {/* Pills (conversation mode only) */}
+            {!isCard && !busy && (
+              <div className="flex flex-wrap gap-2 mb-3">
+                {CONVERSATION_PILLS.map((pill) => (
+                  <button
+                    key={pill.label}
+                    onClick={() => handlePillClick(pill)}
+                    className="px-3 py-[6px] rounded-[var(--radius-pill)] text-[12px] font-medium bg-[var(--bg-page)] border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--border-default)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer"
+                  >
+                    {pill.label}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Attachment preview */}
+            {attachments.hasAttachments && (
+              <div className="mb-2">
+                <AttachmentPreview
+                  pending={attachments.pending}
+                  onRemovePending={attachments.removeAttachment}
+                  compact
+                />
+              </div>
+            )}
+
+            {/* Chat-input-style container */}
+            <div className="flex items-end bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] transition-[border-color,box-shadow] duration-150 focus-within:border-[var(--accent)] focus-within:shadow-[var(--shadow-input-focus)]"
+              style={{ padding: '6px 6px 6px 16px' }}
+            >
+              {isCard && (
+                <AttachmentButton onFiles={attachments.addFiles} disabled={busy} />
+              )}
+              <textarea
+                ref={textareaRef}
+                value={prompt}
+                onChange={handleInput}
+                onKeyDown={handleKeyDown}
+                onPaste={handlePaste}
+                autoFocus
+                rows={1}
+                placeholder={isCard ? 'Describe what needs to be done...' : 'What would you like to discuss?'}
+                disabled={busy}
+                className="flex-1 border-none bg-transparent outline-none resize-none text-[14px] leading-[1.5] min-h-[24px] placeholder:text-[var(--text-faint)]"
+                style={{ padding: '8px 0' }}
+              />
+              <button
+                onClick={() => handleSubmit()}
+                disabled={!canSend}
+                className="px-4 py-2 bg-[var(--accent)] text-white rounded-[var(--radius-default)] text-xs font-medium cursor-pointer disabled:opacity-40 disabled:cursor-default shrink-0 transition-colors duration-100 hover:bg-[var(--accent-hover)]"
+              >
+                {busy ? (
+                  <span className="flex items-center gap-1.5">
+                    <Loader2 size={12} className="animate-spin" />
+                    {isCard ? 'Creating...' : 'Starting...'}
+                  </span>
+                ) : (
+                  isCard ? 'Create card' : 'Send'
+                )}
+              </button>
+            </div>
+
+            {/* Error */}
+            {error && (
+              <p className="mt-2 text-[12px] text-[var(--accent)]">{error}</p>
+            )}
+          </div>
         </div>
       </div>
     </>

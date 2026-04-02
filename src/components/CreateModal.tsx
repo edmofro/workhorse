@@ -206,7 +206,7 @@ export function CreateModal({
           )}
 
           {/* Chat-input-style container */}
-          <div className="flex items-end bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-[var(--radius-xl)] shadow-[var(--shadow-lg)] transition-[border-color,box-shadow] duration-150 focus-within:border-[var(--accent)] focus-within:shadow-[var(--shadow-input-focus)]"
+          <div className="flex items-end bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-[var(--radius-xl)] shadow-[var(--shadow-lg)] transition-[border-color,box-shadow] duration-150 focus-within:border-[var(--accent)] focus-within:shadow-[var(--shadow-input-focus)]"
             style={{ padding: '6px 6px 6px 16px' }}
           >
             {isCard && (

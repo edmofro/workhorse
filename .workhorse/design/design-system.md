@@ -322,6 +322,7 @@ font-weight: 500;
 - In progress: 8px circle, amber fill
 - Not started: 8px circle, default border (hollow)
 - Complete: 8px circle, green fill
+- Cancelled: 8px circle, muted fill (`--text-muted`)
 
 ### Spec extraction block (in chat)
 

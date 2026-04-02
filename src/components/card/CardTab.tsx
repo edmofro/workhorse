@@ -57,6 +57,7 @@ const STATUS_OPTIONS = [
   { value: 'SPECIFYING', label: 'Specifying' },
   { value: 'IMPLEMENTING', label: 'Implementing' },
   { value: 'COMPLETE', label: 'Complete' },
+  { value: 'CANCELLED', label: 'Cancelled' },
 ]
 
 const PRIORITY_OPTIONS = [

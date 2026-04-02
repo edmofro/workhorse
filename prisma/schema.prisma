@@ -58,7 +58,7 @@ model Card {
   identifier      String   @unique // e.g., "WH-001"
   title           String
   description     String?
-  status          String   @default("NOT_STARTED") // NOT_STARTED, SPECIFYING, IMPLEMENTING, COMPLETE
+  status          String   @default("NOT_STARTED") // NOT_STARTED, SPECIFYING, IMPLEMENTING, COMPLETE, CANCELLED
   priority        String   @default("MEDIUM") // URGENT, HIGH, MEDIUM, LOW
   teamId          String
   assigneeId      String?

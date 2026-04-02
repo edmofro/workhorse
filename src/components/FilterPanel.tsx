@@ -61,6 +61,7 @@ export function FilterPanel({ users, basePath, onClose }: FilterPanelProps) {
             <option value="SPECIFYING">Specifying</option>
             <option value="IMPLEMENTING">Implementing</option>
             <option value="COMPLETE">Complete</option>
+            <option value="CANCELLED">Cancelled</option>
           </select>
         </div>
 

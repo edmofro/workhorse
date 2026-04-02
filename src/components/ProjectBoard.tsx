@@ -3,10 +3,11 @@
 import { useState } from 'react'
 import { notFound } from 'next/navigation'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { SlidersHorizontal, Plus } from 'lucide-react'
+import { SlidersHorizontal, Plus, ChevronRight, ChevronLeft } from 'lucide-react'
 import { useProjectBoard, NotFoundError } from '../lib/hooks/queries'
 import { Topbar, TopbarRight } from './Topbar'
 import { BoardColumn } from './BoardColumn'
+import { StatusDot } from './StatusDot'
 import { CreateCardDialog } from './CreateCardDialog'
 import { FilterPanel } from './FilterPanel'
 import { ProjectSelector } from './ProjectSelector'
@@ -63,6 +64,7 @@ export function ProjectBoard({ projectSlug, filters }: ProjectBoardProps) {
   const searchParams = useSearchParams()
   const [showFilter, setShowFilter] = useState(false)
   const [showCreate, setShowCreate] = useState(false)
+  const [showCancelled, setShowCancelled] = useState(false)
 
   if (isLoading) return <BoardSkeleton />
   if (error instanceof NotFoundError) notFound()
@@ -155,6 +157,48 @@ export function ProjectBoard({ projectSlug, filters }: ProjectBoardProps) {
               projectName={project.name}
             />
           ))}
+
+          {/* Cancelled column — collapsed by default */}
+          {(() => {
+            const cancelledCards = cards.filter((c) => c.status === 'CANCELLED')
+            if (cancelledCards.length === 0 && !showCancelled) return null
+
+            if (!showCancelled) {
+              return (
+                <button
+                  onClick={() => setShowCancelled(true)}
+                  className="flex flex-col items-center gap-2 py-3 px-2 shrink-0 cursor-pointer group"
+                  title="Show cancelled cards"
+                >
+                  <div className="flex items-center gap-1">
+                    <StatusDot state="cancelled" />
+                    <span className="text-[11px] font-semibold text-[var(--text-faint)] uppercase tracking-[0.06em]">
+                      {cancelledCards.length}
+                    </span>
+                    <ChevronRight size={12} className="text-[var(--text-faint)] group-hover:text-[var(--text-muted)] transition-colors duration-100" />
+                  </div>
+                </button>
+              )
+            }
+
+            return (
+              <div className="flex flex-col min-w-0 flex-1 max-w-[280px] relative">
+                <button
+                  onClick={() => setShowCancelled(false)}
+                  className="absolute top-0 right-2 p-[2px] text-[var(--text-faint)] hover:text-[var(--text-muted)] cursor-pointer transition-colors duration-100 z-10"
+                  title="Hide cancelled cards"
+                >
+                  <ChevronLeft size={12} />
+                </button>
+                <BoardColumn
+                  label="Cancelled"
+                  dotState="cancelled"
+                  cards={cancelledCards}
+                  projectName={project.name}
+                />
+              </div>
+            )
+          })()}
         </div>
       )}
 

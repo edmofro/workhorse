@@ -1,8 +1,13 @@
+'use client'
+
+import { useState, useRef, useEffect, useTransition } from 'react'
 import Link from 'next/link'
+import { MoreHorizontal } from 'lucide-react'
 import { cn } from '../lib/cn'
 import { StatusDot } from './StatusDot'
 import { Avatar } from './Avatar'
 import { Tag } from './Tag'
+import { updateCard } from '../lib/actions/cards'
 
 interface CardData {
   id: string
@@ -16,7 +21,7 @@ interface CardData {
   team: { id: string; name: string; colour: string }
 }
 
-type StatusDotState = 'not-started' | 'specifying' | 'implementing' | 'complete'
+type StatusDotState = 'not-started' | 'specifying' | 'implementing' | 'complete' | 'cancelled'
 
 interface BoardColumnProps {
   label: string
@@ -55,7 +60,20 @@ export function BoardColumn({ label, dotState, cards, projectName }: BoardColumn
   )
 }
 
+const STATUS_MENU_OPTIONS = [
+  { value: 'NOT_STARTED', label: 'Not started' },
+  { value: 'SPECIFYING', label: 'Specifying' },
+  { value: 'IMPLEMENTING', label: 'Implementing' },
+  { value: 'COMPLETE', label: 'Complete' },
+  { value: 'CANCELLED', label: 'Cancelled' },
+]
+
 function BoardCard({ card, projectName }: { card: CardData; projectName: string }) {
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [statusSubmenuOpen, setStatusSubmenuOpen] = useState(false)
+  const menuRef = useRef<HTMLDivElement>(null)
+  const [, startTransition] = useTransition()
+
   const tags: string[] = (() => {
     try {
       return JSON.parse(card.tags)
@@ -66,39 +84,136 @@ function BoardCard({ card, projectName }: { card: CardData; projectName: string 
 
   const href = `/${encodeURIComponent(projectName.toLowerCase())}/cards/${card.identifier}`
 
+  useEffect(() => {
+    if (!menuOpen) return
+    function handleClickOutside(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false)
+        setStatusSubmenuOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [menuOpen])
+
+  function handleStatusChange(status: string) {
+    startTransition(async () => {
+      await updateCard(card.id, { status })
+    })
+    setMenuOpen(false)
+    setStatusSubmenuOpen(false)
+  }
+
   return (
-    <Link
-      href={href}
-      className={cn(
-        'block bg-[var(--bg-surface)] border border-[var(--border-subtle)]',
-        'rounded-[var(--radius-lg)] shadow-[var(--shadow-sm)]',
-        'cursor-pointer transition-[border-color,box-shadow] duration-100',
-        'hover:border-[var(--border-default)] hover:shadow-[var(--shadow-md)]',
-        'py-3 px-4',
-      )}
-    >
-      <div className="text-[12px] text-[var(--text-muted)] font-mono font-medium mb-1">
-        {card.identifier}
-      </div>
-      <div className="text-[14px] font-medium leading-[1.4] text-[var(--text-primary)]">{card.title}</div>
-      {(tags.length > 0 || card.assignee) && (
-        <div className="flex items-center gap-2 mt-2">
-          {tags.map((tag) => (
-            <Tag key={tag} variant={tag === 'future' ? 'future' : 'core'}>
-              {tag}
-            </Tag>
-          ))}
-          {card.assignee && (
-            <div className="ml-auto">
-              <Avatar
-                variant="human"
-                initial={card.assignee.displayName}
-                size="sm"
-              />
-            </div>
-          )}
+    <div className="relative group">
+      <Link
+        href={href}
+        className={cn(
+          'block bg-[var(--bg-surface)] border border-[var(--border-subtle)]',
+          'rounded-[var(--radius-lg)] shadow-[var(--shadow-sm)]',
+          'cursor-pointer transition-[border-color,box-shadow] duration-100',
+          'hover:border-[var(--border-default)] hover:shadow-[var(--shadow-md)]',
+          'py-3 px-4',
+          card.status === 'CANCELLED' && 'opacity-60',
+        )}
+      >
+        <div className="flex items-center justify-between mb-1">
+          <span className="text-[12px] text-[var(--text-muted)] font-mono font-medium">
+            {card.identifier}
+          </span>
+        </div>
+        <div className={cn(
+          'text-[14px] font-medium leading-[1.4] text-[var(--text-primary)]',
+          card.status === 'CANCELLED' && 'line-through text-[var(--text-muted)]',
+        )}>
+          {card.title}
+        </div>
+        {(tags.length > 0 || card.assignee) && (
+          <div className="flex items-center gap-2 mt-2">
+            {tags.map((tag) => (
+              <Tag key={tag} variant={tag === 'future' ? 'future' : 'core'}>
+                {tag}
+              </Tag>
+            ))}
+            {card.assignee && (
+              <div className="ml-auto">
+                <Avatar
+                  variant="human"
+                  initial={card.assignee.displayName}
+                  size="sm"
+                />
+              </div>
+            )}
+          </div>
+        )}
+      </Link>
+
+      {/* Overflow menu trigger */}
+      <button
+        onClick={(e) => {
+          e.preventDefault()
+          e.stopPropagation()
+          setMenuOpen(!menuOpen)
+          setStatusSubmenuOpen(false)
+        }}
+        className={cn(
+          'absolute top-2 right-2 p-1 rounded-[var(--radius-md)]',
+          'text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]',
+          'transition-[color,background-color,opacity] duration-100 cursor-pointer',
+          menuOpen ? 'opacity-100' : 'opacity-0 group-hover:opacity-100',
+        )}
+      >
+        <MoreHorizontal size={14} />
+      </button>
+
+      {/* Overflow menu */}
+      {menuOpen && (
+        <div
+          ref={menuRef}
+          className="absolute top-8 right-2 z-50 w-[160px] bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-[var(--radius-default)] shadow-[var(--shadow-lg)] py-1"
+        >
+          <div
+            className="relative"
+            onMouseEnter={() => setStatusSubmenuOpen(true)}
+            onMouseLeave={() => setStatusSubmenuOpen(false)}
+          >
+            <button
+              className="w-full text-left px-3 py-[6px] text-[12px] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer flex items-center justify-between"
+              onClick={() => setStatusSubmenuOpen(!statusSubmenuOpen)}
+            >
+              Status
+              <span className="text-[var(--text-faint)]">&#8250;</span>
+            </button>
+
+            {/* Status submenu */}
+            {statusSubmenuOpen && (
+              <div className="absolute left-full top-0 ml-1 w-[148px] bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-[var(--radius-default)] shadow-[var(--shadow-lg)] py-1">
+                {STATUS_MENU_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.value}
+                    onClick={() => handleStatusChange(opt.value)}
+                    className={cn(
+                      'w-full text-left px-3 py-[6px] text-[12px] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer',
+                      card.status === opt.value ? 'text-[var(--text-primary)] font-medium' : 'text-[var(--text-secondary)]',
+                    )}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="border-t border-[var(--border-subtle)] my-1" />
+
+          <button
+            onClick={() => handleStatusChange('CANCELLED')}
+            className="w-full text-left px-3 py-[6px] text-[12px] text-[var(--diff-red,#dc2626)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer"
+          >
+            Cancel card
+          </button>
         </div>
       )}
-    </Link>
+    </div>
   )
 }

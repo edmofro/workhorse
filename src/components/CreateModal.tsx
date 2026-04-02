@@ -49,8 +49,7 @@ export function CreateModal({
     return () => document.removeEventListener('keydown', handleEscape)
   }, [])
 
-  async function handleSubmit(text?: string) {
-    const value = text ?? prompt
+  async function handleSubmit(value: string) {
     if (!value.trim() || busy || attachments.isUploading || (isCard && !defaultTeamId)) return
     setBusy(true)
     setError(null)
@@ -88,7 +87,9 @@ export function CreateModal({
           try {
             await associateAttachmentsWithCard(card.id, uploaded.map((a) => a.id))
           } catch {
-            // Card was created — navigate anyway, attachments can be re-added
+            // Card was created — navigate but warn about attachments
+            setError('Card created, but attachments could not be linked. You can re-add them on the card.')
+            await new Promise((r) => setTimeout(r, 2000))
           }
         }
 
@@ -118,7 +119,7 @@ export function CreateModal({
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
-      handleSubmit()
+      handleSubmit(prompt)
     }
   }
 
@@ -144,7 +145,6 @@ export function CreateModal({
   }
 
   function handlePillClick(pill: { label: string; message: string }) {
-    setPrompt(pill.message)
     handleSubmit(pill.message)
   }
 
@@ -199,9 +199,7 @@ export function CreateModal({
             )}
 
             {/* Chat-input-style container */}
-            <div className="flex items-end bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] transition-[border-color,box-shadow] duration-150 focus-within:border-[var(--accent)] focus-within:shadow-[var(--shadow-input-focus)]"
-              style={{ padding: '6px 6px 6px 16px' }}
-            >
+            <div className="flex items-end bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] transition-[border-color,box-shadow] duration-150 focus-within:border-[var(--accent)] focus-within:shadow-[var(--shadow-input-focus)] p-1.5 pl-4">
               {isCard && (
                 <AttachmentButton onFiles={attachments.addFiles} disabled={busy} />
               )}
@@ -218,7 +216,7 @@ export function CreateModal({
                 className="flex-1 border-none bg-transparent outline-none resize-none text-[14px] leading-[1.5] min-h-[24px] py-2 placeholder:text-[var(--text-faint)]"
               />
               <button
-                onClick={() => handleSubmit()}
+                onClick={() => handleSubmit(prompt)}
                 disabled={!canSend}
                 className="px-4 py-2 bg-[var(--accent)] text-white rounded-[var(--radius-default)] text-xs font-medium cursor-pointer disabled:opacity-40 disabled:cursor-default shrink-0 transition-colors duration-100 hover:bg-[var(--accent-hover)]"
               >

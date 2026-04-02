@@ -9,7 +9,6 @@ import {
   Palette,
   ChevronDown,
   Ellipsis,
-  Search,
   Plus,
   LayoutList,
   MessageCircle,
@@ -110,23 +109,6 @@ export function Sidebar({ initialProjects, initialRecentSessions = [] }: Sidebar
           </div>
         )}
 
-        {/* Action buttons */}
-        <div className="flex items-center justify-end gap-1 px-1 mt-2">
-          <button
-            disabled
-            className="p-2 rounded-[var(--radius-md)] text-[var(--text-faint)] cursor-default"
-            title="Search"
-          >
-            <Search size={14} />
-          </button>
-          <button
-            onClick={() => setCreateModal('chat')}
-            className="p-2 rounded-[var(--radius-md)] text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer"
-            title="New conversation"
-          >
-            <Plus size={14} />
-          </button>
-        </div>
       </div>
 
       {/* Sections */}

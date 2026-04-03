@@ -10,7 +10,11 @@ import { useAttachments } from '../../lib/hooks/useAttachments'
 import { useViewNavigation } from '../../lib/hooks/useViewNavigation'
 import { SpecHeaderBar } from './SpecHeaderBar'
 import type { DeviceKey } from './SpecHeaderBar'
-import { ActionPills, getPillsForContext, type ActionPill } from './ActionPills'
+import { ActionPills, type ActionPill } from './ActionPills'
+import { JourneyBar } from './JourneyBar'
+import { PrBar } from './PrBar'
+import { useJockeyState } from '../../lib/hooks/useJockeyState'
+import { BUILT_IN_SKILLS } from '../../lib/skills/registry'
 import { ChatMessage } from './ChatMessage'
 import { ChatInput } from './ChatInput'
 import { ThinkingIndicator } from './ThinkingIndicator'
@@ -63,6 +67,7 @@ interface CardWorkspaceProps {
     title: string
     status: string
     cardBranch: string | null
+    prUrl?: string | null
   }
   cardTabContent: React.ReactNode
   initialFiles: SpecFileData[]
@@ -126,6 +131,9 @@ export function CardWorkspace({
   const [expanded, setExpanded] = useState(false)
   const [showChanges, setShowChanges] = useState(true)
 
+  // Jockey state — journal, pills, suggestions, scheduling
+  const jockey = useJockeyState(card.id)
+
   // Agent session state — uses activeSessionId for history loading
   const {
     messages,
@@ -135,7 +143,7 @@ export function CardWorkspace({
     currentSessionId,
     currentSessionTitle,
     sendMessage: rawSendMessage,
-  } = useAgentSession(card.id, activeSessionId)
+  } = useAgentSession(card.id, activeSessionId, jockey.handleJockeyEvent)
 
   // Sync back the session ID from the hook (set after first message creates a session)
   const activeSessionIdRef = useRef(activeSessionId)
@@ -412,6 +420,21 @@ export function CardWorkspace({
     [handleSendMessage],
   )
 
+  /** Trigger a skill from the journey bar */
+  const handleTriggerSkill = useCallback(
+    (skillId: string, label: string) => {
+      const skill = BUILT_IN_SKILLS[skillId]
+      const message = skill?.description ?? `Run ${label}`
+      handleSendMessage(message, skillId)
+    },
+    [handleSendMessage],
+  )
+
+  /** Create PR from the PR bar */
+  const handleCreatePr = useCallback(() => {
+    handleSendMessage('Create a pull request for this card', 'create_pr')
+  }, [handleSendMessage])
+
   // Spec operations
   const ensureWorktree = useCallback(async () => {
     setIsEnsuring(true)
@@ -514,16 +537,33 @@ export function CardWorkspace({
 
   const extractedAreas = extractAreas(projectSpecs)
 
-  // Determine pill context using discriminated union so isMockup is only
-  // expressible when the view is 'artifact'.
-  const pillView = view.type === 'artifact'
-    ? { type: 'artifact' as const, isMockup: isMockupFile }
-    : { type: view.type as 'card' | 'chat' }
-  const pills = getPillsForContext(card.status, messages.length > 0, pillView)
+  // Convert jockey pill suggestions to ActionPill format
+  const pills: ActionPill[] = jockey.pills.map(p => {
+    const skill = BUILT_IN_SKILLS[p.skillId]
+    return {
+      label: p.label,
+      message: skill?.description ?? `Run ${p.label}`,
+      mode: p.skillId,
+    }
+  })
+
+  // Deduplicate: remove suggestions that already appear in pills
+  const pillSkillIds = new Set(jockey.pills.map(p => p.skillId))
+  const dedupedSuggestions = jockey.suggestions.filter(s => !pillSkillIds.has(s.skillId))
 
   // --- Chat column (shared between chat mode and artifact mode) ---
   const chatColumn = (
     <div className="flex-1 flex flex-col overflow-hidden">
+      {/* Journey bar — between topbar and chat */}
+      <JourneyBar
+        journalEntries={jockey.journalEntries}
+        scheduledSteps={jockey.scheduledSteps}
+        suggestions={dedupedSuggestions}
+        activeStep={jockey.activeStep}
+        onTriggerSkill={handleTriggerSkill}
+        onScheduleStep={jockey.scheduleStep}
+        onUnscheduleStep={jockey.unscheduleStep}
+      />
       <div ref={chatScrollRef} className="flex-1 overflow-y-auto flex justify-center">
         <div className="w-full" style={{ maxWidth: '680px', padding: '32px 24px 80px' }}>
           {messages.length === 0 && (
@@ -597,6 +637,12 @@ export function CardWorkspace({
           isUploading={chatAttachments.isUploading}
         />
       </div>
+      {/* PR bar — bottom of chat area */}
+      <PrBar
+        hasCodeChanges={jockey.hasCodeChanges}
+        prUrl={card.prUrl ?? null}
+        onCreatePr={handleCreatePr}
+      />
     </div>
   )
 

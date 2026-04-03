@@ -19,16 +19,30 @@ export async function GET(request: NextRequest) {
     return new Response('Card not found', { status: 404 })
   }
 
-  const touchedFiles = safeParseTouchedFiles(card.touchedFiles)
+  const touchedFiles = safeParseTouchedFiles(card.touchedFiles ?? '[]')
 
-  // Get attachment file paths for the handoff prompt
-  const attachments = await prisma.attachment.findMany({
-    where: { cardId: card.id },
-    select: { fileName: true },
-  })
+  // Get attachment file paths and journal entries for the handoff prompt
+  const [attachments, journalEntries] = await Promise.all([
+    prisma.attachment.findMany({
+      where: { cardId: card.id },
+      select: { fileName: true },
+    }),
+    prisma.journalEntry.findMany({
+      where: { cardId: card.id },
+      orderBy: { createdAt: 'asc' },
+      select: { type: true, summary: true, createdAt: true },
+      take: 100,
+    }),
+  ])
   const attachmentFiles = attachments.map(
     (a) => `.workhorse/attachments/${card.identifier.toLowerCase()}/${a.fileName}`,
   )
+
+  const journalSummary = journalEntries.length > 0
+    ? journalEntries
+        .map(e => `- ${e.summary} (${e.createdAt.toISOString().split('T')[0]})`)
+        .join('\n')
+    : undefined
 
   const prompt = generateHandoffPrompt({
     cardIdentifier: card.identifier,
@@ -38,6 +52,7 @@ export async function GET(request: NextRequest) {
     touchedFiles,
     status: card.status,
     attachmentFiles,
+    journalSummary,
   })
 
   return NextResponse.json({ prompt })

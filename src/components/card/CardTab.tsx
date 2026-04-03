@@ -7,6 +7,7 @@ import { updateCard, addComment } from '../../lib/actions/cards'
 import { associateAttachmentsWithCard } from '../../lib/actions/attachments'
 import { Avatar } from '../Avatar'
 import { StatusDot } from '../StatusDot'
+import { Tag } from '../Tag'
 import { PropertyDropdown, usePortalMenu, type PropertyOption } from '../PropertyDropdown'
 import { useUser } from '../UserProvider'
 import { useAttachments } from '../../lib/hooks/useAttachments'
@@ -119,9 +120,11 @@ function TagOverflowDropdown({
             {tags.map((tag) => (
               <div
                 key={tag}
-                className="flex items-center justify-between px-3 py-2 text-[11px] font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-colors duration-100"
+                className="flex items-center justify-between px-3 py-2 hover:bg-[var(--bg-hover)] transition-colors duration-100"
               >
-                <span>{tag}</span>
+                <Tag variant={tag === 'future' ? 'future' : 'core'}>
+                  {tag}
+                </Tag>
                 <button
                   onClick={() => onRemove(tag)}
                   className="text-[var(--text-muted)] hover:text-[var(--accent)] cursor-pointer ml-3"
@@ -295,7 +298,7 @@ export function CardTab({ card, users, teams }: CardTabProps) {
         />
 
         {/* Property strip */}
-        <div className="flex flex-wrap items-center gap-x-0.5 gap-y-1 mb-5 -mx-2">
+        <div className="flex flex-wrap items-center gap-x-1 gap-y-1 mb-5 -mx-2">
           {/* Status */}
           <PropertyDropdown
             trigger={
@@ -363,20 +366,21 @@ export function CardTab({ card, users, teams }: CardTabProps) {
           {/* Divider before tags */}
           <span className="px-1 text-[12px] text-[var(--text-faint)] select-none">·</span>
 
-          {/* Visible tags */}
+          {/* Visible tags — variant logic matches the board's Tag component */}
           {visibleTags.map((tag) => (
-            <span
+            <Tag
               key={tag}
-              className="inline-flex items-center gap-1 px-2 py-1 rounded-[var(--radius-md)] text-[11px] font-medium text-[var(--text-secondary)] bg-[var(--bg-inset)]"
+              variant={tag === 'future' ? 'future' : 'core'}
+              className="gap-1 cursor-default"
             >
               {tag}
               <button
                 onClick={() => handleRemoveTag(tag)}
-                className="text-[var(--text-muted)] hover:text-[var(--accent)] cursor-pointer"
+                className="hover:opacity-60 cursor-pointer leading-none"
               >
                 <X size={9} />
               </button>
-            </span>
+            </Tag>
           ))}
 
           {/* +N more overflow */}

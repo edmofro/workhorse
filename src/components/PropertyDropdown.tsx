@@ -88,7 +88,7 @@ export function PropertyDropdown({
         onClick={toggle}
         className={cn(
           'inline-flex items-center gap-1.5 px-2 py-1 rounded-[var(--radius-md)]',
-          'text-[12px] text-[var(--text-secondary)]',
+          'text-[12px] font-medium text-[var(--text-secondary)]',
           'hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer',
           className,
         )}

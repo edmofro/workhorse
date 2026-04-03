@@ -1,0 +1,228 @@
+---
+title: Workflow orchestration
+area: workflow
+---
+
+Cards progress through a flexible workflow powered by three concepts: **skills** (actions that can be performed), the **jockey** (an observer that tracks progress and suggests next steps), and the **journey** (a visible record of what's happened and what's ahead). These work together to support workflows ranging from a quick bug fix (implement → PR) to a full feature lifecycle (workshop → interview → review → implement → audit → PR) without requiring the user to configure or choose a workflow shape upfront.
+
+## Skills
+
+A skill is an action that can be performed on a card. Skills are the atomic unit of doing things in Workhorse. Each skill has a name, an execution mode, and a trigger mechanism.
+
+### Execution modes
+
+- **Inline** — runs in the card's primary conversation. The agent adopts the skill's behaviour (e.g. interview mode, implementation mode) within the ongoing chat thread.
+- **Subagent** — forks a separate AI context with no conversation history, runs independently, and posts a summary back to the primary conversation as a system message. The primary agent sees the summary and can work through the findings with the user.
+- **External** — not an AI action. Performs a concrete operation like creating a GitHub PR, toggling a CI setting, or triggering a webhook.
+
+### Triggering skills
+
+Skills can be triggered from multiple surfaces:
+
+- [ ] **Pills** — contextual action buttons above the chat input. Clicking a pill triggers the corresponding skill inline
+- [ ] **Journey bar** — clicking a suggested "Up next" item in the expanded journey bar triggers that skill
+- [ ] **Orchestration rules** — per-project configuration that auto-triggers skills after other skills complete (see "Orchestration" section)
+
+### Built-in skills
+
+- [ ] **Workshop** (inline) — open-ended ideation and back-and-forth exploration of an idea. The agent explores approaches, generates mockups to illustrate concepts, and helps refine thinking
+- [ ] **Interview** (inline) — structured spec interview. The agent asks probing questions, surfaces edge cases, and challenges assumptions. Focuses on one or two questions at a time. Proactively generates mockups for UI-heavy features
+- [ ] **Draft spec** (inline) — the agent reads the card description and codebase context, then generates a complete spec draft. Less interactive than interview — produces output, then asks for feedback
+- [ ] **Review spec** (subagent) — fresh-eyes review with no conversation history (see `auto-review.md`). Checks for gaps, contradictions, cross-spec impact, and information architecture issues. Posts findings as a system message
+- [ ] **Implement** (inline) — the agent reads specs, diffs against main, and implements the acceptance criteria. A long-running session where the agent writes code
+- [ ] **Design audit** (subagent) — reviews implementation against the project's design system in `.workhorse/design/`. Checks component usage, spacing, colour palette, interaction patterns
+- [ ] **Security audit** (subagent) — reviews implementation for OWASP top 10, injection vulnerabilities, auth/authz issues, data exposure, input validation
+- [ ] **Code review** (subagent) — reviews implementation code against the spec acceptance criteria. Focuses on whether the code correctly implements the spec
+- [ ] **Create PR** (external) — creates a GitHub pull request from the card's branch. Links the PR to the card
+- [ ] **Fix CI** (inline) — reads CI failure output, diagnoses the issue, and pushes fixes. Runs when auto-fix is enabled and CI fails on the card's PR
+- [ ] **Update spec** (inline) — the agent updates spec files to reflect the current state of the implementation or new decisions made during development
+
+### Custom skills
+
+Projects can define custom skills as prompt files in `.workhorse/skills/`. Each file defines a skill with a name, execution mode, and prompt.
+
+- [ ] Custom skills appear alongside built-in skills — the jockey can suggest them in pills and "Up next"
+- [ ] A custom skill can define a multi-step recipe (e.g. "check a special box in the PR description, wait for a review bot to post comments, then assess and fix those comments")
+- [ ] Custom skills use the same execution modes as built-in skills (inline, subagent, external)
+
+### Skills and agent modes
+
+Each inline skill maps to a system prompt fragment that shapes the agent's behaviour. The mode flows from the skill trigger → API → system prompt builder. The agent receives mode-specific instructions alongside the user's message, so it knows to conduct an interview, or implement from specs, or follow directed editing instructions.
+
+## The jockey
+
+The jockey is a lightweight observer that watches the card's conversation and maintains an awareness of where things are. It runs on every message (user or agent), decides whether anything noteworthy just happened, and keeps the journey and pill suggestions current.
+
+Named after the rider who guides a workhorse — it doesn't do the work, but it knows where the work is headed.
+
+### What the jockey does
+
+- [ ] Reads each message as it's posted (user or agent) against the current journal state
+- [ ] Decides: did something just finish? Did something just start? Has the user's intent shifted?
+- [ ] Writes journal entries when something noteworthy happens (see "Journal" section)
+- [ ] Updates the "Up next" sequence — the expected remaining steps
+- [ ] Updates pill suggestions — the most relevant 2-4 actions for right now
+- [ ] Detects when the conversation diverges from the spec (e.g. user directs the agent to implement something the spec doesn't cover) and surfaces "Update spec" in pills
+
+### Two tiers
+
+| Tier | Trigger | What it does | Cost |
+|------|---------|--------------|------|
+| **Detect** | Branch changes, PR events, CI status changes | Deterministic checks — git diff, GitHub API polling, flag checks | Free |
+| **Assess** | Every message; after Detect finds something | LLM pass (Haiku) — reads the message and recent context against the journal, updates journal/pills/up-next | Cheap, fast |
+
+The Detect tier runs in the background and watches for external state changes (new commits on the card's branch, PR status updates, CI results). When it finds something, it triggers an Assess pass.
+
+The Assess tier runs on every message posted to the conversation. It reads the new message (plus a few recent messages for context) against the current journal. Most of the time, the assessment is "nothing noteworthy happened" and no journal entry is written. The jockey maintains a cursor tracking which message it last assessed, so it only processes new messages — not the full transcript.
+
+When a user returns to a card after being away, the jockey catches up on any messages since its last cursor position.
+
+### Pills vs "Up next"
+
+These are both generated by the jockey but serve different purposes:
+
+- **"Up next"** is the expected remaining sequence of steps. It's linear — "here's what's probably ahead." Example during implementation: Design audit → Code review → Create PR.
+- **Pills** are branching options for what to do right now. They may include actions not in the "Up next" sequence. Example during implementation: "Continue implementing", "Update spec", "Design audit."
+
+## Journal
+
+The journal is the single record of what's happened on a card. It replaces the current activity log with something richer and more useful. The jockey writes journal entries; the primary agent does not manage the journal.
+
+### Journal entries
+
+Each entry has:
+
+- [ ] **Type** — what kind of thing happened (e.g. workshop, interview, spec-draft, spec-review, implementation, design-audit, pr-created)
+- [ ] **Timestamp** — when it happened
+- [ ] **Summary** — a brief human-readable description (e.g. "Spec interview completed — 2 specs written, 1 open question remaining")
+
+### Characteristics
+
+- [ ] Entries are recorded in the order things happened, reflecting reality
+- [ ] Out-of-order workflows are normal — a spec update entry can appear after implementation entries if the spec was revised during implementation
+- [ ] The journal is append-only. Entries are never rewritten or reordered
+- [ ] The journal is the input the jockey uses to determine "Up next" and pill suggestions
+
+## Journey bar
+
+The journey bar is the visual representation of the journal. It sits between the topbar and the chat area, always visible in a compact collapsed state, expandable to show the full journey.
+
+### Collapsed state
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│  ✓ ✓ ● ◌ ◌   Implementing                            ▾     │
+└──────────────────────────────────────────────────────────────┘
+```
+
+- [ ] Shows progress dots: solid (✓) for completed steps, filled (●) for active step, hollow (◌) for suggested next steps
+- [ ] Current step label beside the dots
+- [ ] Expand chevron (▾) on the right
+- [ ] The journey bar does not appear on fresh cards with no completed steps. It appears after the first journal entry is written
+
+### Expanded state
+
+The expanded journey overlays the top of the chat area. It's meant to be opened briefly and closed — not left open during normal work.
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│  ✓ Spec interview              2 Apr                        │
+│  ✓ Spec review                 3 Apr                        │
+│  ● Implementing                In progress                  │
+│                                                              │
+│  Up next                                                     │
+│  ◌ Design audit                                              │
+│  ◌ Code review                                               │
+│  ◌ Create PR                                          ▴     │
+└──────────────────────────────────────────────────────────────┘
+```
+
+- [ ] Completed entries show at full opacity with timestamps
+- [ ] A text divider "Up next" separates completed entries from suggested future steps
+- [ ] Suggested steps are visually muted (lower opacity, hollow icons) to communicate that they are the jockey's guesses, not commitments
+- [ ] Clicking a suggested step triggers that skill (same as clicking a pill)
+- [ ] Clicking a completed step does nothing
+- [ ] The overlay closes when the user clicks outside it, presses Escape, or triggers an action
+
+## PR bar
+
+A bottom bar that appears when code changes exist outside the `.workhorse/` directory. It provides direct access to PR creation and management without going through the conversation.
+
+### Pre-PR state
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│                                                [Create PR]   │
+└──────────────────────────────────────────────────────────────┘
+```
+
+- [ ] Appears as soon as the card's branch has changes to files outside `.workhorse/`
+- [ ] Single action: Create PR. Triggers the create-pr skill
+
+### Post-PR state
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│                                         [View PR ↗]   [···] │
+└──────────────────────────────────────────────────────────────┘
+```
+
+- [ ] "View PR" opens the GitHub PR in a new tab
+- [ ] Overflow menu (···) contains: Auto fix toggle. When enabled, the fix-ci skill runs automatically when CI fails on the PR
+
+## Handoff
+
+A button in the topbar that generates a context-rich briefing prompt for an external agent (Claude Code, Cursor, or any other AI tool). Always available — works at any stage of the card's lifecycle.
+
+### The briefing prompt
+
+The prompt explains the Workhorse system and gives the card's context, but does not prescribe a task. The human tells the external agent what to do.
+
+- [ ] Explains where specs live (`.workhorse/specs/`), where the design system is (`.workhorse/design/design-system.md`), where mockups are (`.workhorse/design/mockups/`)
+- [ ] Instructs the external agent to diff the card branch against main to understand what specs and mockups have been added or changed
+- [ ] Includes a journal summary — what's happened so far on this card
+- [ ] Notes any open questions from the specs
+- [ ] If the card has implementation work, instructs the agent that code changes should meet the spec acceptance criteria
+- [ ] The prompt is concise — it teaches the external agent how to find information, rather than inlining all content
+
+### UX
+
+- [ ] A handoff button in the topbar (alongside the card title and other actions)
+- [ ] One click copies the prompt to the clipboard
+- [ ] A toast confirms: "Handoff prompt copied"
+
+## Orchestration
+
+Per-project rules that auto-trigger skills after other skills complete. These give teams a "sequence" feel without baking rigid workflows into the card model.
+
+### Rule format
+
+Each rule specifies: a trigger skill (what just completed), a target skill (what to run next), and a mode (auto or prompt).
+
+- [ ] **Auto mode** — the target skill runs without asking the user
+- [ ] **Prompt mode** — the user sees a suggestion (via pill or notification) but decides whether to proceed
+- [ ] Rules are defined per-project in a configuration file
+- [ ] Rules are optional — a project with no rules still works; the jockey suggests next steps based on the journal
+
+### Example rules
+
+- After implementation completes, auto-run design audit
+- After PR is created, auto-enable fix-ci
+- After PR is created, prompt user to trigger a custom review skill
+
+## Card statuses
+
+Card statuses are decoupled from skills and the journey. Any skill can be triggered in any status. The jockey's suggestions are based on the journal (what has actually happened) rather than the card's status.
+
+- [ ] Statuses are configurable per project (not hardcoded)
+- [ ] The jockey may suggest status changes based on the journal (e.g. "Implementation and review are done — move to Complete?") but the user always makes the decision
+- [ ] Skills are available regardless of status — a card in "Specifying" status can run a design audit if the user wants to
+
+## Cross-references
+
+- `auto-review.md` — the spec-review skill uses the fresh-eyes review mechanism defined there
+- `agent-sdk-session.md` — skills use the same Agent SDK infrastructure and system prompt injection described there; inline skills run in the card's primary session, subagent skills run in ephemeral sessions
+- `card-navigation.md` — the journey bar and PR bar are new UI elements in the card workspace; pills are now generated by the jockey rather than hardcoded by status
+- `conversation-sessions.md` — the primary conversation model remains; subagent skills create ephemeral sessions that post results back to the primary conversation
+- `commit-specs.md` — auto-commit behaviour continues to apply to all file changes made by skills
+- `quality-gates.md` — soft gates are informed by the journal (whether review/audit skills have run) rather than separate boolean flags

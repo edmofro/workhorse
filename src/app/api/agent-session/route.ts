@@ -1,6 +1,7 @@
 import '../../../lib/ai/ensureSessionStorage'
 import { NextRequest } from 'next/server'
 import { query } from '@anthropic-ai/claude-agent-sdk'
+import { anthropic } from '../../../lib/anthropic'
 import type { SDKUserMessage } from '@anthropic-ai/claude-agent-sdk'
 import type { ImageBlockParam, TextBlockParam } from '@anthropic-ai/sdk/resources/messages/messages'
 import { readFile, mkdir, copyFile } from 'fs/promises'
@@ -442,7 +443,13 @@ async function finaliseSessionAfterExchange(
 ) {
   try {
     const pending = await getPendingChanges(ctx.owner, ctx.repoName, ctx.card.identifier)
-    const commitMessage = buildCommitMessage(ctx.card.identifier, pending)
+    const commitMessage = await generateCommitMessage(
+      ctx.card.identifier,
+      ctx.cardTitle,
+      pending,
+      ctx.message,
+      ctx.assistantText,
+    )
 
     const changedFiles = await autoCommit(
       ctx.owner,
@@ -517,20 +524,77 @@ async function finaliseSessionAfterExchange(
 }
 
 /**
- * Build a meaningful commit message from the list of pending changed files.
- *
- * Examples:
- *   WH-042: add allergies spec
- *   WH-042: update 3 specs
- *   WH-048: add ward-overview mockup
- *   WH-042: update commit-messages spec and add mockup
+ * Generate a meaningful commit message using Haiku, informed by the files changed
+ * and the recent exchange. Falls back to a file-path-derived message if the LLM call fails.
  */
-function buildCommitMessage(
+async function generateCommitMessage(
   cardIdentifier: string,
+  cardTitle: string,
+  pending: { filePath: string; isNew: boolean }[],
+  userMessage: string,
+  assistantText: string,
+): Promise<string> {
+  const prefix = cardIdentifier.toUpperCase()
+  const fallback = buildCommitMessageFromFiles(prefix, pending)
+
+  if (pending.length === 0) return fallback
+
+  try {
+    const fileList = pending
+      .map((f) => `${f.isNew ? 'A' : 'M'} ${f.filePath}`)
+      .join('\n')
+
+    const prompt = `Generate a concise git commit message for a spec-driven development card.
+
+Card: ${prefix} — ${cardTitle}
+
+Changed files:
+${fileList}
+
+Recent exchange summary:
+User: ${userMessage.slice(0, 400)}${userMessage.length > 400 ? '...' : ''}
+Assistant: ${assistantText.slice(0, 400)}${assistantText.length > 400 ? '...' : ''}
+
+Rules:
+- Start with "${prefix}: " (already provided — do NOT include it, just write the rest)
+- One line, under 72 characters total including the prefix
+- Be specific about what changed and why, not just which files
+- Use lowercase imperative mood (e.g. "add allergies spec", "update ward-overview mockup with bed status")
+- No full stops at the end
+
+Respond with only the message text after the prefix, nothing else.`
+
+    const response = await anthropic.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 100,
+      messages: [{ role: 'user', content: prompt }],
+    })
+
+    const text = response.content
+      .filter((b) => b.type === 'text')
+      .map((b) => ('text' in b ? b.text : ''))
+      .join('')
+      .trim()
+      .replace(/^["']|["']$/g, '') // strip any surrounding quotes
+      .replace(/\.$/, '') // strip trailing full stop
+
+    if (text && text.length <= 72) {
+      return `${prefix}: ${text}`
+    }
+  } catch (err) {
+    console.warn('[commit-message] Haiku call failed, using fallback:', err)
+  }
+
+  return fallback
+}
+
+/**
+ * Fallback commit message derived purely from changed file paths.
+ */
+function buildCommitMessageFromFiles(
+  prefix: string,
   pending: { filePath: string; isNew: boolean }[],
 ): string {
-  const prefix = cardIdentifier.toUpperCase()
-
   if (pending.length === 0) return `${prefix}: update files`
 
   const specs = pending.filter((f) => f.filePath.startsWith('.workhorse/specs/'))
@@ -539,36 +603,31 @@ function buildCommitMessage(
 
   const parts: string[] = []
 
-  // Specs
   if (specs.length === 1) {
     const slug = specs[0].filePath.split('/').pop()?.replace(/\.md$/, '') ?? 'spec'
-    const verb = specs[0].isNew ? 'add' : 'update'
-    parts.push(`${verb} ${slug} spec`)
+    parts.push(`${specs[0].isNew ? 'add' : 'update'} ${slug} spec`)
   } else if (specs.length > 1) {
-    const verb = specs.every((f) => f.isNew) ? 'add' : 'update'
-    parts.push(`${verb} ${specs.length} specs`)
+    parts.push(`${specs.every((f) => f.isNew) ? 'add' : 'update'} ${specs.length} specs`)
   }
 
-  // Mockups
   if (mockups.length === 1) {
     const slug = mockups[0].filePath.split('/').pop()?.replace(/\.html$/, '') ?? 'mockup'
-    const verb = mockups[0].isNew ? 'add' : 'update'
-    parts.push(`${verb} ${slug} mockup`)
+    parts.push(`${mockups[0].isNew ? 'add' : 'update'} ${slug} mockup`)
   } else if (mockups.length > 1) {
-    const allNew = mockups.every((f) => f.isNew)
-    const verb = allNew ? 'add' : 'update'
-    parts.push(`${verb} ${mockups.length} mockups`)
+    parts.push(`${mockups.every((f) => f.isNew) ? 'add' : 'update'} ${mockups.length} mockups`)
   }
 
-  // Code files (non-.workhorse)
-  if (codeFiles.length > 0) {
-    parts.push(`update code`)
+  if (codeFiles.length === 1) {
+    const name = codeFiles[0].filePath.split('/').pop() ?? codeFiles[0].filePath
+    parts.push(`${codeFiles[0].isNew ? 'add' : 'update'} ${name}`)
+  } else if (codeFiles.length <= 3) {
+    parts.push(`update ${codeFiles.map((f) => f.filePath.split('/').pop() ?? f.filePath).join(', ')}`)
+  } else {
+    const dirs = [...new Set(codeFiles.map((f) => f.filePath.split('/')[0] ?? ''))]
+    parts.push(dirs.length === 1 && dirs[0] ? `update ${codeFiles.length} files in ${dirs[0]}/` : `update ${codeFiles.length} files`)
   }
 
-  // Fallback for .workhorse files that aren't specs or mockups
-  if (parts.length === 0) {
-    parts.push('update files')
-  }
+  if (parts.length === 0) parts.push('update files')
 
   return `${prefix}: ${parts.join(', ')}`
 }

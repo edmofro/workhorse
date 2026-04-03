@@ -221,6 +221,7 @@ Pills send a visible message (the user sees it in the chat) but also carry a hid
 - [ ] Each pill maps to a skill, which maps to a system prompt fragment
 - [ ] The jockey updates pill suggestions on every message — pills are always relevant to what's happening right now
 - [ ] Pills may differ from the journey bar's suggested steps — pills are branching options for the immediate moment, not the expected sequence
+- [ ] Pill labels are short and direct — 2–4 words maximum. Use verb + noun form: "Draft spec", "Review spec", "Continue", "Update spec". Never use verbose phrases like "Compare code changes against specs"
 
 ## Chat history retrieval
 

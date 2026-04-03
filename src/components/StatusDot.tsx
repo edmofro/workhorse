@@ -1,6 +1,18 @@
 import { cn } from '../lib/cn'
 
-type StatusDotState = 'not-started' | 'specifying' | 'implementing' | 'complete' | 'cancelled'
+export type StatusDotState = 'not-started' | 'specifying' | 'implementing' | 'complete' | 'cancelled'
+
+/** Maps a raw DB card status string to a StatusDotState. Unknown values default to 'not-started'. */
+export function statusToDotState(status: string): StatusDotState {
+  switch (status) {
+    case 'NOT_STARTED': return 'not-started'
+    case 'SPECIFYING': return 'specifying'
+    case 'IMPLEMENTING': return 'implementing'
+    case 'COMPLETE': return 'complete'
+    case 'CANCELLED': return 'cancelled'
+    default: return 'not-started'
+  }
+}
 
 interface StatusDotProps {
   state: StatusDotState

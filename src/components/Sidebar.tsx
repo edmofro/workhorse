@@ -15,6 +15,7 @@ import {
   MessageCircle,
   X,
 } from 'lucide-react'
+import { useQueryClient } from '@tanstack/react-query'
 import { cn } from '../lib/cn'
 import { Avatar } from './Avatar'
 import { useUser } from './UserProvider'
@@ -26,7 +27,18 @@ import {
 } from '../lib/hooks/queries'
 import { useSidebarEvents } from '../lib/hooks/useSidebarEvents'
 import { CreateModal } from './CreateModal'
+import { PropertyDropdown, type PropertyOption } from './PropertyDropdown'
+import { StatusDot, statusToDotState } from './StatusDot'
+import { STATUS_OPTIONS } from '../lib/status'
+import { updateCard } from '../lib/actions/cards'
 import { useState, useRef, useEffect, useCallback, useTransition } from 'react'
+
+/** Pre-built dropdown options for the status picker — stable reference, no per-render allocation. */
+const STATUS_DROPDOWN_OPTIONS: PropertyOption[] = STATUS_OPTIONS.map((opt) => ({
+  value: opt.value,
+  label: opt.label,
+  icon: <StatusDot state={statusToDotState(opt.value)} />,
+}))
 
 export type RecentSession = SidebarSession
 
@@ -273,18 +285,28 @@ function ConversationItem({
   children: React.ReactNode
 }) {
   return (
-    <div className="group relative flex items-center">
+    <div
+      className={cn(
+        'group relative flex items-center rounded-[var(--radius-md)] transition-colors duration-100',
+        active
+          ? 'bg-[var(--bg-surface)] shadow-[var(--shadow-sm)]'
+          : 'hover:bg-[var(--bg-hover)]',
+      )}
+    >
+      {/* Indicator sits outside the link so it can be independently interactive */}
+      <div className="flex items-center shrink-0 pl-3">
+        {indicator}
+      </div>
       <Link
         href={href}
         className={cn(
-          'flex items-center gap-2 px-3 py-1 rounded-[var(--radius-md)] flex-1 min-w-0',
+          'flex items-center flex-1 min-w-0 pl-2 pr-3 py-1',
           'text-[12px] cursor-pointer transition-colors duration-100',
           active
-            ? 'bg-[var(--bg-surface)] text-[var(--text-primary)] font-medium shadow-[var(--shadow-sm)]'
-            : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]',
+            ? 'text-[var(--text-primary)] font-medium'
+            : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]',
         )}
       >
-        {indicator}
         <span className={cn('truncate', streaming && 'animate-pulse')}>{children}</span>
       </Link>
       <div className="absolute right-0 flex items-center justify-end opacity-0 group-hover:opacity-100 transition-opacity duration-100"
@@ -303,6 +325,66 @@ function ConversationItem({
   )
 }
 
+/** Clickable status dot for card-bound sessions — opens a status picker dropdown. */
+function ClickableStatusDot({
+  status,
+  cardId,
+  onStatusChange,
+}: {
+  status: string | null
+  cardId: string
+  onStatusChange: (cardId: string, newStatus: string) => void
+}) {
+  return (
+    <PropertyDropdown
+      trigger={<StatusDot state={statusToDotState(status ?? 'NOT_STARTED')} />}
+      options={STATUS_DROPDOWN_OPTIONS}
+      value={status ?? ''}
+      onChange={(newStatus) => onStatusChange(cardId, newStatus)}
+      className="p-0 w-5 h-5 rounded-full justify-center hover:bg-[var(--bg-inset)]"
+    />
+  )
+}
+
+/** A non-navigating section header with icon, label, and hover [+] action. */
+function SectionHeader({
+  icon,
+  active,
+  onAdd,
+  children,
+}: {
+  icon: React.ReactNode
+  active: boolean
+  onAdd?: () => void
+  children: React.ReactNode
+}) {
+  return (
+    <div className="group relative flex items-center rounded-[var(--radius-md)] transition-colors duration-100">
+      <span
+        className={cn(
+          'flex items-center gap-2 flex-1 min-w-0 px-3 py-2 rounded-[var(--radius-md)]',
+          'text-[13px] cursor-default',
+          active
+            ? 'text-[var(--text-primary)] font-medium'
+            : 'text-[var(--text-secondary)] font-[450]',
+        )}
+      >
+        {icon}
+        <span className="truncate">{children}</span>
+      </span>
+      {onAdd && (
+        <button
+          type="button"
+          className="absolute right-1 p-1 rounded-[var(--radius-sm)] text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity duration-100"
+          title="New"
+          onClick={onAdd}
+        >
+          <Plus size={12} />
+        </button>
+      )}
+    </div>
+  )
+}
 /** Expandable list of conversation items. Shows 5 by default, expands to 100 on "older". */
 function ConversationsList({
   sessions,
@@ -319,6 +401,11 @@ function ConversationsList({
 }) {
   const [expanded, setExpanded] = useState(false)
   const [dismissed, setDismissed] = useState<Set<string>>(new Set())
+  // Keyed by cardId so all sessions sharing a card reflect the same optimistic status.
+  const [statusOverrides, setStatusOverrides] = useState<Record<string, string>>({})
+  // Per-cardId sequence counter — guards rollback against concurrent in-flight requests.
+  const changeCounterRef = useRef<Record<string, number>>({})
+  const queryClient = useQueryClient()
   const [, startTransition] = useTransition()
 
   const visibleSessions = sessions.filter((s) => !dismissed.has(s.id))
@@ -335,6 +422,23 @@ function ConversationsList({
     })
   }
 
+  async function handleStatusChange(cardId: string, newStatus: string) {
+    const seq = (changeCounterRef.current[cardId] = (changeCounterRef.current[cardId] ?? 0) + 1)
+    setStatusOverrides((prev) => ({ ...prev, [cardId]: newStatus }))
+    try {
+      await updateCard(cardId, { status: newStatus })
+      if (changeCounterRef.current[cardId] === seq) {
+        setStatusOverrides((prev) => { const next = { ...prev }; delete next[cardId]; return next })
+        queryClient.invalidateQueries({ queryKey: ['sidebar-data'] })
+      }
+    } catch (err) {
+      console.error('Failed to update card status', err)
+      if (changeCounterRef.current[cardId] === seq) {
+        setStatusOverrides((prev) => { const next = { ...prev }; delete next[cardId]; return next })
+      }
+    }
+  }
+
   return (
     <div className="ml-1">
       {displaySessions.map((session) => {
@@ -348,6 +452,7 @@ function ConversationsList({
           || pathname.startsWith(`${projectPath}/sessions/${session.id}`)
         const isCardBound = !!session.cardId
         const isStreaming = streamingSessions.has(session.id)
+        const effectiveStatus = (session.cardId ? statusOverrides[session.cardId] : null) ?? session.cardStatus
 
         return (
           <ConversationItem
@@ -357,9 +462,15 @@ function ConversationsList({
             streaming={isStreaming}
             onDismiss={() => handleDismiss(session.id)}
             indicator={
-              isCardBound
-                ? <StatusDot status={session.cardStatus} />
-                : <MessageCircle size={11} className="text-[var(--text-muted)] shrink-0" />
+              isCardBound && session.cardId
+                ? <ClickableStatusDot
+                    status={effectiveStatus}
+                    cardId={session.cardId}
+                    onStatusChange={handleStatusChange}
+                  />
+                : <div className="flex items-center justify-center w-5 h-5">
+                    <MessageCircle size={11} className="text-[var(--text-muted)]" />
+                  </div>
             }
           >
             {label}
@@ -378,27 +489,6 @@ function ConversationsList({
   )
 }
 
-function StatusDot({ status }: { status: string | null }) {
-  if (status === 'COMPLETE' || status === 'SPEC_COMPLETE') {
-    return (
-      <span className="w-[8px] h-[8px] rounded-full shrink-0 bg-[var(--green)]" />
-    )
-  }
-  if (status === 'IN_PROGRESS' || status === 'SPECIFYING') {
-    return (
-      <span className="w-[8px] h-[8px] rounded-full shrink-0 bg-[var(--amber)]" />
-    )
-  }
-  if (status === 'IMPLEMENTING') {
-    return (
-      <span className="w-[8px] h-[8px] rounded-full shrink-0 bg-[var(--blue,#2563eb)]" />
-    )
-  }
-  // NOT_STARTED or unknown — hollow dot
-  return (
-    <span className="w-[8px] h-[8px] rounded-full shrink-0 border border-[var(--border-default)]" />
-  )
-}
 
 function UserMenu({ user }: { user: { displayName: string; avatarUrl: string | null } }) {
   const [open, setOpen] = useState(false)

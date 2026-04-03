@@ -6,7 +6,7 @@ import { X, Plus } from 'lucide-react'
 import { updateCard, addComment } from '../../lib/actions/cards'
 import { associateAttachmentsWithCard } from '../../lib/actions/attachments'
 import { Avatar } from '../Avatar'
-import { StatusDot } from '../StatusDot'
+import { StatusDot, statusToDotState } from '../StatusDot'
 import { Tag } from '../Tag'
 import { PropertyDropdown, usePortalMenu, type PropertyOption } from '../PropertyDropdown'
 import { useUser } from '../UserProvider'
@@ -66,18 +66,6 @@ const PRIORITY_OPTIONS: PropertyOption[] = [
 
 const VISIBLE_TAG_COUNT = 3
 
-type StatusDotState = 'not-started' | 'specifying' | 'implementing' | 'complete' | 'cancelled'
-
-function statusToDotState(status: string): StatusDotState {
-  switch (status) {
-    case 'NOT_STARTED': return 'not-started'
-    case 'SPECIFYING': return 'specifying'
-    case 'IMPLEMENTING': return 'implementing'
-    case 'COMPLETE': return 'complete'
-    case 'CANCELLED': return 'cancelled'
-    default: return 'not-started'
-  }
-}
 
 function toAttachmentData(att: CardAttachment) {
   return {

@@ -170,7 +170,7 @@ function BoardCard({ card, projectName }: { card: CardData; projectName: string 
       {menuOpen && (
         <div
           ref={menuRef}
-          className="absolute top-8 right-2 z-50 w-[160px] bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-[var(--radius-default)] shadow-[var(--shadow-lg)] py-1"
+          className="absolute top-8 right-2 z-50 w-[160px] bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-[var(--radius-xl)] shadow-[var(--shadow-lg)] py-1"
         >
           <div
             className="relative"
@@ -178,7 +178,7 @@ function BoardCard({ card, projectName }: { card: CardData; projectName: string 
             onMouseLeave={() => setStatusSubmenuOpen(false)}
           >
             <button
-              className="w-full text-left px-3 py-[6px] text-[12px] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer flex items-center justify-between"
+              className="w-full text-left px-3 py-2 text-[12px] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer flex items-center justify-between"
               onClick={() => setStatusSubmenuOpen(!statusSubmenuOpen)}
             >
               Status
@@ -187,13 +187,13 @@ function BoardCard({ card, projectName }: { card: CardData; projectName: string 
 
             {/* Status submenu */}
             {statusSubmenuOpen && (
-              <div className="absolute left-full top-0 ml-1 w-[148px] bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-[var(--radius-default)] shadow-[var(--shadow-lg)] py-1">
+              <div className="absolute left-full top-0 ml-1 w-[152px] bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-[var(--radius-xl)] shadow-[var(--shadow-lg)] py-1">
                 {STATUS_MENU_OPTIONS.map((opt) => (
                   <button
                     key={opt.value}
                     onClick={() => handleStatusChange(opt.value)}
                     className={cn(
-                      'w-full text-left px-3 py-[6px] text-[12px] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer',
+                      'w-full text-left px-3 py-2 text-[12px] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer',
                       card.status === opt.value ? 'text-[var(--text-primary)] font-medium' : 'text-[var(--text-secondary)]',
                     )}
                   >
@@ -203,15 +203,6 @@ function BoardCard({ card, projectName }: { card: CardData; projectName: string 
               </div>
             )}
           </div>
-
-          <div className="border-t border-[var(--border-subtle)] my-1" />
-
-          <button
-            onClick={() => handleStatusChange('CANCELLED')}
-            className="w-full text-left px-3 py-[6px] text-[12px] text-[var(--diff-red,#dc2626)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer"
-          >
-            Cancel card
-          </button>
         </div>
       )}
     </div>

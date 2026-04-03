@@ -175,7 +175,7 @@ export function ProjectBoard({ projectSlug, filters }: ProjectBoardProps) {
                     <span className="text-[11px] font-semibold text-[var(--text-faint)] uppercase tracking-[0.06em]">
                       {cancelledCards.length}
                     </span>
-                    <ChevronRight size={12} className="text-[var(--text-faint)] group-hover:text-[var(--text-muted)] transition-colors duration-100" />
+                    <ChevronRight size={14} className="text-[var(--text-faint)] group-hover:text-[var(--text-muted)] transition-colors duration-100" />
                   </div>
                 </button>
               )
@@ -185,10 +185,10 @@ export function ProjectBoard({ projectSlug, filters }: ProjectBoardProps) {
               <div className="flex flex-col min-w-0 flex-1 max-w-[280px] relative">
                 <button
                   onClick={() => setShowCancelled(false)}
-                  className="absolute top-0 right-2 p-[2px] text-[var(--text-faint)] hover:text-[var(--text-muted)] cursor-pointer transition-colors duration-100 z-10"
+                  className="absolute top-0 right-2 p-1 text-[var(--text-faint)] hover:text-[var(--text-muted)] cursor-pointer transition-colors duration-100 z-10"
                   title="Hide cancelled cards"
                 >
-                  <ChevronLeft size={12} />
+                  <ChevronLeft size={14} />
                 </button>
                 <BoardColumn
                   label="Cancelled"

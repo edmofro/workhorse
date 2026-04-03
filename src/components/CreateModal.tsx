@@ -212,6 +212,7 @@ export function CreateModal({
                 placeholder={isCard ? 'Describe what needs to be done...' : 'What would you like to discuss?'}
                 disabled={busy}
                 className={`flex-1 border-none bg-transparent outline-none resize-none text-[14px] leading-[1.5] placeholder:text-[var(--text-faint)] ${isCard ? 'min-h-[96px] py-0' : 'min-h-[24px] py-2'}`}
+                style={{ maxHeight: '200px', overflowY: 'auto' }}
               />
               <div className={`flex items-center ${isCard ? 'justify-between mt-3' : ''}`}>
                 {isCard && (

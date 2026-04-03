@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useRef, useEffect, useTransition } from 'react'
+import { useState, useRef, useEffect, useTransition, useMemo } from 'react'
 import Link from 'next/link'
 import { MoreHorizontal, ChevronRight } from 'lucide-react'
+import { useDroppable, useDraggable } from '@dnd-kit/core'
 import { cn } from '../lib/cn'
 import { StatusDot } from './StatusDot'
 import { Avatar } from './Avatar'
@@ -29,9 +30,15 @@ interface BoardColumnProps {
   dotState: StatusDotState
   cards: CardData[]
   projectName: string
+  statusKey: string
 }
 
-export function BoardColumn({ label, dotState, cards, projectName }: BoardColumnProps) {
+export function BoardColumn({ label, dotState, cards, projectName, statusKey }: BoardColumnProps) {
+  const { setNodeRef, isOver } = useDroppable({
+    id: `column-${statusKey}`,
+    data: { type: 'column', status: statusKey },
+  })
+
   return (
     <div className="flex flex-col min-w-0 flex-1">
       {/* Column header */}
@@ -45,15 +52,21 @@ export function BoardColumn({ label, dotState, cards, projectName }: BoardColumn
         </span>
       </div>
 
-      {/* Card stack */}
-      <div className="flex-1 overflow-y-auto px-2 pb-4 space-y-2">
+      {/* Card stack — droppable zone */}
+      <div
+        ref={setNodeRef}
+        className={cn(
+          'flex-1 overflow-y-auto px-2 pb-4 space-y-2 rounded-[var(--radius-lg)] transition-colors duration-100',
+          isOver && 'bg-[var(--bg-hover)]',
+        )}
+      >
         {cards.length === 0 ? (
-          <div className="flex items-center justify-center py-8">
+          <div className="flex items-center justify-center py-8 rounded-[var(--radius-lg)]">
             <span className="text-[12px] text-[var(--text-faint)]">No cards</span>
           </div>
         ) : (
           cards.map((card) => (
-            <BoardCard key={card.id} card={card} projectName={projectName} />
+            <DraggableBoardCard key={card.id} card={card} projectName={projectName} />
           ))
         )}
       </div>
@@ -61,19 +74,88 @@ export function BoardColumn({ label, dotState, cards, projectName }: BoardColumn
   )
 }
 
-function BoardCard({ card, projectName }: { card: CardData; projectName: string }) {
+/** Draggable wrapper around BoardCard using dnd-kit useDraggable */
+function DraggableBoardCard({ card, projectName }: { card: CardData; projectName: string }) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    isDragging,
+  } = useDraggable({
+    id: card.id,
+    data: { type: 'card', card },
+  })
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={cn(isDragging && 'opacity-30')}
+      {...attributes}
+      {...listeners}
+    >
+      <BoardCard card={card} projectName={projectName} isDragging={isDragging} />
+    </div>
+  )
+}
+
+/** Shared card content used by both inline cards and the drag overlay */
+function CardContent({ card }: { card: CardData }) {
+  const tags = useMemo(() => {
+    try { return JSON.parse(card.tags) as string[] } catch { return [] }
+  }, [card.tags])
+
+  return (
+    <>
+      <div className="flex items-center justify-between mb-1">
+        <span className="text-[12px] text-[var(--text-muted)] font-mono font-medium">
+          {card.identifier}
+        </span>
+      </div>
+      <div className={cn(
+        'text-[14px] font-medium leading-[1.4] text-[var(--text-primary)]',
+        card.status === 'CANCELLED' && 'line-through text-[var(--text-muted)]',
+      )}>
+        {card.title}
+      </div>
+      {(tags.length > 0 || card.assignee) && (
+        <div className="flex items-center gap-2 mt-2">
+          {tags.map((tag) => (
+            <Tag key={tag} variant={tag === 'future' ? 'future' : 'core'}>
+              {tag}
+            </Tag>
+          ))}
+          {card.assignee && (
+            <div className="ml-auto">
+              <Avatar variant="human" initial={card.assignee.displayName} size="sm" />
+            </div>
+          )}
+        </div>
+      )}
+    </>
+  )
+}
+
+/** Card overlay shown during drag */
+export function BoardCardOverlay({ card }: { card: CardData }) {
+  return (
+    <div
+      className={cn(
+        'block bg-[var(--bg-surface)] border border-[var(--border-default)]',
+        'rounded-[var(--radius-lg)] shadow-[var(--shadow-lg)]',
+        'py-3 px-4 w-[260px] cursor-grabbing',
+        card.status === 'CANCELLED' && 'opacity-60',
+      )}
+    >
+      <CardContent card={card} />
+    </div>
+  )
+}
+
+function BoardCard({ card, projectName, isDragging }: { card: CardData; projectName: string; isDragging?: boolean }) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [statusSubmenuOpen, setStatusSubmenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
   const [, startTransition] = useTransition()
-
-  const tags: string[] = (() => {
-    try {
-      return JSON.parse(card.tags)
-    } catch {
-      return []
-    }
-  })()
 
   const href = `/${encodeURIComponent(projectName.toLowerCase())}/cards/${card.identifier}`
 
@@ -113,37 +195,14 @@ function BoardCard({ card, projectName }: { card: CardData; projectName: string 
           'hover:border-[var(--border-default)] hover:shadow-[var(--shadow-md)]',
           'py-3 px-4',
           card.status === 'CANCELLED' && 'opacity-60',
+          isDragging && 'invisible',
         )}
+        onClick={(e) => {
+          if (isDragging) e.preventDefault()
+        }}
+        draggable={false}
       >
-        <div className="flex items-center justify-between mb-1">
-          <span className="text-[12px] text-[var(--text-muted)] font-mono font-medium">
-            {card.identifier}
-          </span>
-        </div>
-        <div className={cn(
-          'text-[14px] font-medium leading-[1.4] text-[var(--text-primary)]',
-          card.status === 'CANCELLED' && 'line-through text-[var(--text-muted)]',
-        )}>
-          {card.title}
-        </div>
-        {(tags.length > 0 || card.assignee) && (
-          <div className="flex items-center gap-2 mt-2">
-            {tags.map((tag) => (
-              <Tag key={tag} variant={tag === 'future' ? 'future' : 'core'}>
-                {tag}
-              </Tag>
-            ))}
-            {card.assignee && (
-              <div className="ml-auto">
-                <Avatar
-                  variant="human"
-                  initial={card.assignee.displayName}
-                  size="sm"
-                />
-              </div>
-            )}
-          </div>
-        )}
+        <CardContent card={card} />
       </Link>
 
       {/* Overflow menu trigger */}

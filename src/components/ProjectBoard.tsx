@@ -8,7 +8,7 @@ import { useProjectBoard, NotFoundError } from '../lib/hooks/queries'
 import { Topbar, TopbarRight } from './Topbar'
 import { BoardColumn } from './BoardColumn'
 import { StatusDot } from './StatusDot'
-import { CreateCardDialog } from './CreateCardDialog'
+import { CreateModal } from './CreateModal'
 import { FilterPanel } from './FilterPanel'
 import { ProjectSelector } from './ProjectSelector'
 import { IconButton } from './IconButton'
@@ -202,12 +202,14 @@ export function ProjectBoard({ projectSlug, filters }: ProjectBoardProps) {
         </div>
       )}
 
-      <CreateCardDialog
-        teams={project.teams}
-        projectName={project.name}
-        open={showCreate}
-        onClose={() => setShowCreate(false)}
-      />
+      {showCreate && (
+        <CreateModal
+          projectSlug={projectPath}
+          defaultTeamId={project.teams[0]?.id}
+          defaultMode="card"
+          onClose={() => setShowCreate(false)}
+        />
+      )}
     </>
   )
 }

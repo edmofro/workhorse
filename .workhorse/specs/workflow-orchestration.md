@@ -18,9 +18,8 @@ A skill is an action that can be performed on a card. Skills are the atomic unit
 
 Skills can be triggered from multiple surfaces:
 
-- [ ] **Pills** — contextual action buttons above the chat input. Clicking a pill triggers the corresponding skill inline
+- [ ] **Pills** — contextual action buttons above the chat input. Clicking a pill triggers the corresponding skill
 - [ ] **Journey bar** — clicking a suggested "Up next" item in the expanded journey bar triggers that skill
-- [ ] **Orchestration rules** — per-project configuration that auto-triggers skills after other skills complete (see "Orchestration" section)
 
 ### Built-in skills
 
@@ -189,25 +188,6 @@ The prompt explains the Workhorse system and gives the card's context, but does 
 - [ ] A handoff button in the topbar (alongside the card title and other actions)
 - [ ] One click copies the prompt to the clipboard
 - [ ] A toast confirms: "Handoff prompt copied"
-
-## Orchestration
-
-Per-project rules that auto-trigger skills after other skills complete. These give teams a "sequence" feel without baking rigid workflows into the card model.
-
-### Rule format
-
-Each rule specifies: a trigger skill (what just completed), a target skill (what to run next), and a mode (auto or prompt).
-
-- [ ] **Auto mode** — the target skill runs without asking the user
-- [ ] **Prompt mode** — the user sees a suggestion (via pill or notification) but decides whether to proceed
-- [ ] Rules are defined per-project in a configuration file
-- [ ] Rules are optional — a project with no rules still works; the jockey suggests next steps based on the journal
-
-### Example rules
-
-- After implementation completes, auto-run design audit
-- After PR is created, auto-enable fix-ci
-- After PR is created, prompt user to trigger a custom review skill
 
 ## Card statuses
 

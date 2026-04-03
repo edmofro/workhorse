@@ -18,15 +18,16 @@ Conversations are the primary interaction model in Workhorse. A conversation ses
 
 ```prisma
 model ConversationSession {
-  id              String   @id @default(cuid())
-  cardId          String?  // null for standalone sessions
-  teamId          String?  // for standalone sessions, determines which team's board context
-  userId          String   // who created this session
-  agentSessionId  String?  // Agent SDK session ID for resumption
-  title           String?  // auto-generated from first exchange
-  messageCount    Int      @default(0)
-  lastMessageAt   DateTime @default(now())
-  createdAt       DateTime @default(now())
+  id                 String    @id @default(cuid())
+  cardId             String?   // null for standalone sessions
+  teamId             String?   // for standalone sessions, determines which team's board context
+  userId             String    // who created this session
+  agentSessionId     String?   // Agent SDK session ID for resumption
+  title              String?   // auto-generated from first exchange
+  messageCount       Int       @default(0)
+  lastMessageAt      DateTime  @default(now())
+  streamingStartedAt DateTime? // non-null while an agent query is in flight (see agent-streaming-status.md)
+  createdAt          DateTime  @default(now())
 
   card Card? @relation(fields: [cardId], references: [id], onDelete: Cascade)
   team Team? @relation(fields: [teamId], references: [id], onDelete: SetNull)
@@ -186,7 +187,7 @@ The sidebar shows a "Recent" section with the most recently active conversation 
 - [ ] **Standalone sessions** show a `MessageCircle` icon (from Lucide, muted colour) followed by the session title — visually distinct from card-bound sessions
 - [ ] Each item is a deep link. Card-bound sessions link to `/:projectSlug/cards/:identifier?session=:sessionId`. Standalone sessions link to `/:projectSlug/sessions/:sessionId`
 - [ ] Clicking a recent item navigates directly to that conversation, preserving context
-- [ ] The "Recent" section updates reactively: when a new session is created or receives messages, the sidebar refreshes via `router.refresh()`. Active/streaming sessions show a subtle pulsing indicator on their title text to signal ongoing work
+- [ ] The "Recent" section updates reactively: when a new session is created or receives messages, the sidebar refreshes via real-time SSE events. Streaming status indicators and reconnection behaviour are covered in `agent-streaming-status.md`
 - [ ] When navigating to a card via a sidebar session deep link (`?session=`), the card page auto-opens the chat zone for that session (not just the card home)
 
 ### New conversation / card creation

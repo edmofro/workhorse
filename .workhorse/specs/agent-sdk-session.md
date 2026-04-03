@@ -143,14 +143,10 @@ Each skill maps to a system prompt fragment that shapes the agent's behaviour. T
 
 A single user message may trigger a long sequence of internal work — thinking, reading files, searching code, writing specs — that can take 30 seconds or more. The user doesn't need to see the machinery. They need reassurance that the agent is working, and then the response when it arrives.
 
-- [ ] While the agent is working, a progress indicator appears below the user's message: a gently pulsing dot in the accent colour next to the word "Thinking..."
-- [ ] Below the indicator, a short snippet from the agent's thinking stream cycles every 1–2 seconds — a raw snatch of whatever the agent is currently thinking, truncated to a single line
-- [ ] Each snippet replaces the previous one with a quick fade transition. They stay just long enough to register movement, not long enough to read carefully
-- [ ] The snippets are not selectable or interactive — they are ephemeral texture, not content. They convey busy-ness, not information
-- [ ] Thinking events, tool calls, file reads, and searches are not shown individually — all internal activity is behind the progress indicator
+- [ ] Thinking events, tool calls, file reads, and searches are not shown individually — all internal activity is behind a thinking indicator (see `agent-streaming-status.md` for indicator behaviour, streaming lifecycle, and recovery on navigation)
 - [ ] File write/edit operations are the one exception: these appear as persistent notifications (e.g. "Updated specs/patient/allergies.md") since they represent meaningful output the user may want to act on
-- [ ] When the agent produces text, the progress indicator disappears and the response streams in character by character
-- [ ] If the agent produces text partway through and then continues working (more tool calls, more thinking), the text stays visible and the progress indicator reappears below it
+- [ ] When the agent produces text, the thinking indicator disappears and the response streams in character by character
+- [ ] If the agent produces text partway through and then continues working (more tool calls, more thinking), the text stays visible and the thinking indicator reappears below it
 - [ ] All text the agent produces across the full query is collected into a single assistant message — the internal structure is not exposed
 - [ ] Soft-lock on the spec editor during active work ("Agent is working...")
 

@@ -531,6 +531,24 @@ export async function readWorktreeFile(
 }
 
 /**
+ * Delete a file from the worktree, ignoring errors if it doesn't exist.
+ */
+export async function deleteWorktreeFile(
+  owner: string,
+  repo: string,
+  cardIdentifier: string,
+  filePath: string,
+): Promise<void> {
+  const wtPath = worktreePath(owner, repo, cardIdentifier)
+  const fullPath = safeResolvePath(wtPath, filePath)
+  try {
+    await fs.unlink(fullPath)
+  } catch {
+    // Already gone — ignore
+  }
+}
+
+/**
  * Write a file to the worktree.
  */
 export async function writeWorktreeFile(

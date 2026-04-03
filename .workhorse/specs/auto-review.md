@@ -7,7 +7,7 @@ A fresh-context AI agent reviews the draft specs and posts its findings into the
 
 ## Triggering a review
 
-- [ ] The spec review is a subagent skill (see `workflow-orchestration.md`) — triggered via pills, the journey bar, or scheduling
+- [ ] The spec review is a subagent skill (see `workflow-orchestration.md`) — triggered via pills, the journey section, or scheduling
 - [ ] The jockey suggests the review skill when specs exist on the card and a review has not yet been run
 - [ ] Each review spins up a fresh AI context with no access to the conversation history
 

@@ -114,13 +114,6 @@ interface CardActivity {
   user: { displayName: string; avatarUrl: string | null } | null
 }
 
-interface CardMockup {
-  id: string
-  title: string
-  html: string
-  filePath: string
-}
-
 interface CardDetailData {
   card: {
     id: string
@@ -140,7 +133,6 @@ interface CardDetailData {
     attachments: CardAttachment[]
     activities: CardActivity[]
     comments: CardComment[]
-    mockups: CardMockup[]
   }
   users: { id: string; displayName: string }[]
   teams: { id: string; name: string; colour: string }[]
@@ -219,6 +211,5 @@ export type {
   CardAttachment,
   CardComment,
   CardActivity,
-  CardMockup,
   ProjectInfo,
 }

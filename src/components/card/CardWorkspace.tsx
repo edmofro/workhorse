@@ -40,13 +40,6 @@ interface SpecFileData {
   content: string
 }
 
-interface MockupData {
-  id: string
-  title: string
-  html: string
-  filePath: string
-}
-
 interface ProjectSpecData {
   filePath: string
   content: string
@@ -73,7 +66,6 @@ interface CardWorkspaceProps {
   initialFiles: SpecFileData[]
   initialCodeFiles?: { filePath: string; isNew: boolean; linesAdded?: number; linesRemoved?: number }[]
   filesLoading?: boolean
-  mockups: MockupData[]
   projectSpecs: ProjectSpecData[]
   sessions: ConversationSessionData[]
   initialSessionId?: string | null
@@ -85,7 +77,6 @@ export function CardWorkspace({
   initialFiles,
   initialCodeFiles = [],
   filesLoading = false,
-  mockups,
   projectSpecs,
   sessions: initialSessions,
   initialSessionId,

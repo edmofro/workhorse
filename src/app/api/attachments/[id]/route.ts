@@ -5,7 +5,7 @@ import path from 'path'
 import { prisma } from '../../../../lib/prisma'
 import { requireUser } from '../../../../lib/auth/session'
 
-const ATTACHMENTS_DIR = path.resolve(process.env.ATTACHMENTS_DIR ?? '/data/attachments')
+const ATTACHMENTS_DIR = path.resolve(/* turbopackIgnore: true */ process.env.ATTACHMENTS_DIR ?? '/data/attachments')
 
 export async function GET(
   _request: NextRequest,

@@ -32,7 +32,6 @@ export async function GET(request: NextRequest) {
       assignee: true,
       dependsOn: { include: { parent: { select: { identifier: true, title: true } } } },
       attachments: { where: { commentId: null }, orderBy: { createdAt: 'asc' } },
-      mockups: true,
       activities: {
         orderBy: { createdAt: 'desc' },
         take: 20,
@@ -130,12 +129,6 @@ export async function GET(request: NextRequest) {
           mimeType: a.mimeType,
           fileSize: a.fileSize,
         })),
-      })),
-      mockups: card.mockups.map((m) => ({
-        id: m.id,
-        title: m.title,
-        html: m.html,
-        filePath: `.workhorse/design/mockups/${card.identifier.toLowerCase()}/${m.title.toLowerCase().replace(/\s+/g, '-')}.html`,
       })),
     },
     users: users.map((u) => ({ id: u.id, displayName: u.displayName })),

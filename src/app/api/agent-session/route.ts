@@ -20,8 +20,6 @@ import {
   readWorktreeFile,
   getPendingChanges,
 } from '../../../lib/git/worktree'
-import { isMockupPath } from '../../../lib/paths'
-import { extractHtmlTitle, humaniseFilename } from '../../../lib/labels'
 import { branchNameFromCard } from '../../../lib/git/branchNaming'
 
 import { safeParseTouchedFiles } from '../../../lib/safeParseTouchedFiles'

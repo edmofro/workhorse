@@ -17,7 +17,6 @@ import {
   createWorktree,
   worktreePath,
   autoCommit,
-  readWorktreeFile,
   getPendingChanges,
 } from '../../../lib/git/worktree'
 import { branchNameFromCard } from '../../../lib/git/branchNaming'

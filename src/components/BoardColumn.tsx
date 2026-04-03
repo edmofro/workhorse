@@ -64,13 +64,8 @@ export function BoardColumn({ label, dotState, cards, projectName, statusKey, is
         )}
       >
         {cards.length === 0 ? (
-          <div className={cn(
-            'flex items-center justify-center py-8 rounded-[var(--radius-lg)]',
-            (isOver || isDropTarget) && 'border border-dashed border-[var(--border-default)]',
-          )}>
-            <span className="text-[12px] text-[var(--text-faint)]">
-              {isOver || isDropTarget ? 'Drop here' : 'No cards'}
-            </span>
+          <div className="flex items-center justify-center py-8 rounded-[var(--radius-lg)]">
+            <span className="text-[12px] text-[var(--text-faint)]">No cards</span>
           </div>
         ) : (
           cards.map((card) => (
@@ -128,7 +123,6 @@ export const BoardCardOverlay = forwardRef<HTMLDivElement, { card: CardData; pro
           'block bg-[var(--bg-surface)] border border-[var(--border-default)]',
           'rounded-[var(--radius-lg)] shadow-[var(--shadow-lg)]',
           'py-3 px-4 w-[260px] cursor-grabbing',
-          'rotate-[1.5deg]',
           card.status === 'CANCELLED' && 'opacity-60',
         )}
       >

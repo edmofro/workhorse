@@ -4,6 +4,7 @@ import { useState, useCallback } from 'react'
 import { notFound } from 'next/navigation'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { SlidersHorizontal, Plus, ChevronRight, ChevronLeft } from 'lucide-react'
+import { cn } from '../lib/cn'
 import {
   DndContext,
   DragOverlay,
@@ -315,10 +316,13 @@ function CancelledColumn({
 
   if (!expanded) {
     return (
-      <div
+      <button
         ref={setNodeRef}
         onClick={onToggle}
-        className={`flex flex-col items-center gap-2 py-3 px-2 shrink-0 cursor-pointer group rounded-[var(--radius-lg)] transition-colors duration-100 ${isOver || isDropTarget ? 'bg-[var(--bg-hover)]' : ''}`}
+        className={cn(
+          'flex flex-col items-center gap-2 py-3 px-2 shrink-0 cursor-pointer group rounded-[var(--radius-lg)] transition-colors duration-100',
+          (isOver || isDropTarget) && 'bg-[var(--bg-hover)]',
+        )}
         title={isDragging ? 'Drop to cancel' : 'Show cancelled cards'}
       >
         <div className="flex items-center gap-1">
@@ -328,10 +332,7 @@ function CancelledColumn({
           </span>
           <ChevronRight size={14} className="text-[var(--text-faint)] group-hover:text-[var(--text-muted)] transition-colors duration-100" />
         </div>
-        {(isOver || isDropTarget) && (
-          <span className="text-[10px] text-[var(--text-muted)] whitespace-nowrap">Cancel</span>
-        )}
-      </div>
+      </button>
     )
   }
 

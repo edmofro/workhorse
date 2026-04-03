@@ -121,6 +121,7 @@ export function SpecDiffView({ cardId, filePath, currentContent }: SpecDiffViewP
 /** Renders a brand-new spec with all content highlighted as additions. */
 function NewSpecView({ content }: { content: string }) {
   const parsed = parseSpec(content)
+  const html = useMemo(() => renderMarkdown(parsed.content), [parsed.content])
   return (
     <div className="flex-1 overflow-y-auto flex justify-center">
       <div className="w-full" style={{ maxWidth: '720px', padding: '48px 40px 80px' }}>
@@ -128,9 +129,7 @@ function NewSpecView({ content }: { content: string }) {
           <span className="diff-added">{parsed.frontmatter.title || 'Untitled spec'}</span>
         </h1>
         <div className="text-[14px] text-[var(--text-secondary)] leading-[1.75] prose-workhorse">
-          <div className="diff-added">
-            <DiffMarkdown content={parsed.content} />
-          </div>
+          <div className="diff-added" dangerouslySetInnerHTML={{ __html: html }} />
         </div>
       </div>
     </div>
@@ -144,9 +143,11 @@ function DiffRenderedSpec({ baseContent, currentContent }: { baseContent: string
 
   const titleChanged = baseParsed.frontmatter.title !== currentParsed.frontmatter.title
 
-  const bodySegments = useMemo(() => {
+  const bodyHtml = useMemo(() => {
     const raw = diffWords(baseParsed.content, currentParsed.content)
-    return collapseShortUnchangedRuns(raw)
+    const segments = collapseShortUnchangedRuns(raw)
+    const lines = segmentsToLines(segments)
+    return renderDiffLines(lines)
   }, [baseParsed.content, currentParsed.content])
 
   return (
@@ -165,118 +166,373 @@ function DiffRenderedSpec({ baseContent, currentContent }: { baseContent: string
         </h1>
 
         {/* Body with inline diff */}
-        <div className="text-[14px] text-[var(--text-secondary)] leading-[1.75] prose-workhorse">
-          <DiffMarkdownSegments segments={bodySegments} />
-        </div>
+        <div
+          className="text-[14px] text-[var(--text-secondary)] leading-[1.75] prose-workhorse"
+          dangerouslySetInnerHTML={{ __html: bodyHtml }}
+        />
       </div>
     </div>
   )
 }
 
-/**
- * Renders markdown content (used for new files where everything is an addition).
- */
-function DiffMarkdown({ content }: { content: string }) {
-  const html = useMemo(() => renderDiffMarkdown(content), [content])
-  return <div dangerouslySetInnerHTML={{ __html: html }} />
+// ---------------------------------------------------------------------------
+// Line-by-line rendering — splits diff segments into lines, detects block
+// types from clean text, then renders each line with proper markdown
+// formatting and inline diff spans.
+// ---------------------------------------------------------------------------
+
+interface DiffLine {
+  segments: Segment[]
+  /** Concatenated text of all segments (for type detection) */
+  rawText: string
 }
 
 /**
- * Renders diff segments as formatted markdown with inline change markers.
- * Wraps added/removed runs in placeholder markers, renders the whole thing
- * as markdown, then replaces markers with HTML spans.
+ * Split diff segments into lines. Each DiffLine contains the segments that
+ * make up one visual line, with newlines used as split points.
  */
-function DiffMarkdownSegments({ segments }: { segments: Segment[] }) {
-  const html = useMemo(() => {
-    let annotated = ''
-    for (const seg of segments) {
-      if (seg.type === 'unchanged') {
-        annotated += seg.text
-      } else if (seg.type === 'added') {
-        annotated += `\x01ADD_START\x01${seg.text}\x01ADD_END\x01`
-      } else if (seg.type === 'removed') {
-        annotated += `\x01DEL_START\x01${seg.text}\x01DEL_END\x01`
+function segmentsToLines(segments: Segment[]): DiffLine[] {
+  const lines: DiffLine[] = [{ segments: [], rawText: '' }]
+
+  for (const seg of segments) {
+    const parts = seg.text.split('\n')
+    for (let p = 0; p < parts.length; p++) {
+      if (p > 0) {
+        lines.push({ segments: [], rawText: '' })
+      }
+      const text = parts[p]
+      if (text !== '') {
+        const current = lines[lines.length - 1]
+        current.segments.push({ type: seg.type, text })
+        current.rawText += text
       }
     }
-
-    let rendered = renderDiffMarkdown(annotated)
-
-    rendered = rendered
-      .replace(/\x01ADD_START\x01/g, '<span class="diff-added">')
-      .replace(/\x01ADD_END\x01/g, '</span>')
-      .replace(/\x01DEL_START\x01/g, '<span class="diff-removed">')
-      .replace(/\x01DEL_END\x01/g, '</span>')
-
-    return rendered
-  }, [segments])
-
-  return <div dangerouslySetInnerHTML={{ __html: html }} />
-}
-
-// --- Markdown renderer (simplified from MarkdownContent.tsx) ---
-
-function renderDiffMarkdown(md: string): string {
-  if (!md) return ''
-
-  let html = md
-
-  const placeholders: string[] = []
-  function placeholder(content: string): string {
-    const idx = placeholders.length
-    placeholders.push(content)
-    return `\x00PH${idx}\x00`
   }
 
-  // Extract fenced code blocks
-  html = html.replace(
-    /```(\w*)\n([\s\S]*?)```/g,
-    (_match, _lang: string, code: string) =>
-      placeholder(`<pre class="code-block"><code>${escapeHtml(code)}</code></pre>`),
-  )
+  return lines
+}
 
-  // Extract markdown tables
-  html = html.replace(
-    /(?:^\|.+\|[ \t]*\n\|[ \t]*[-:]+[-| :\t]*\|[ \t]*\n(?:\|.+\|[ \t]*\n?)*)/gm,
-    (match) => {
-      const rows = match.trim().split('\n')
-      if (rows.length < 2) return match
-      const parseRow = (row: string) =>
-        row.split('|').slice(1, -1).map((cell) => cell.trim())
-      const headerCells = parseRow(rows[0])
-      const alignRow = parseRow(rows[1])
-      const aligns = alignRow.map((cell) => {
-        if (cell.startsWith(':') && cell.endsWith(':')) return 'center'
-        if (cell.endsWith(':')) return 'right'
-        return 'left'
-      })
-      const thead = `<thead><tr>${headerCells.map((c, i) => `<th style="text-align:${aligns[i] ?? 'left'}">${escapeHtml(c)}</th>`).join('')}</tr></thead>`
-      const bodyRows = rows.slice(2).map((row) => {
-        const cells = parseRow(row)
-        return `<tr>${cells.map((c, i) => `<td style="text-align:${aligns[i] ?? 'left'}">${escapeHtml(c)}</td>`).join('')}</tr>`
-      }).join('')
-      const tbody = bodyRows ? `<tbody>${bodyRows}</tbody>` : ''
-      return placeholder(`<table class="md-table">${thead}${tbody}</table>`)
-    },
-  )
+/**
+ * Get the "current version" of a line's text (non-removed segments).
+ * Falls back to the "base version" (non-added) if the line is entirely removed.
+ */
+function detectText(segments: Segment[]): string {
+  const current = segments.filter(s => s.type !== 'removed').map(s => s.text).join('')
+  if (current) return current
+  return segments.filter(s => s.type !== 'added').map(s => s.text).join('')
+}
 
-  // Escape remaining text (preserving \x00 and \x01 markers)
-  html = escapeHtmlPreserveMarkers(html)
+/**
+ * Strip a prefix of `prefixLen` characters from the "current" (non-removed)
+ * segments. Removed segments in the prefix area are dropped (they were part
+ * of the old block prefix, e.g. an old checkbox state).
+ */
+function stripCurrentPrefix(segments: Segment[], prefixLen: number): Segment[] {
+  const result: Segment[] = []
+  let remaining = prefixLen
 
-  // Restore placeholders
-  html = html.replace(/\x00PH(\d+)\x00/g, (_match, idx: string) => {
-    const i = parseInt(idx, 10)
-    return placeholders[i] ?? _match
-  })
+  for (const seg of segments) {
+    if (seg.type === 'removed') {
+      if (remaining > 0) {
+        // Removed content in the prefix area — skip (old prefix)
+        continue
+      }
+      result.push({ type: seg.type, text: seg.text })
+      continue
+    }
 
-  // Markdown formatting
+    // Unchanged or added segments count toward the prefix
+    if (remaining <= 0) {
+      result.push({ type: seg.type, text: seg.text })
+    } else if (seg.text.length <= remaining) {
+      remaining -= seg.text.length
+    } else {
+      result.push({ type: seg.type, text: seg.text.slice(remaining) })
+      remaining = 0
+    }
+  }
+
+  return result
+}
+
+/**
+ * Render segments as inline HTML with diff spans and inline markdown.
+ * Uses \x01 markers around diff spans so that inline markdown formatting
+ * (bold, italic, code) can be applied across segment boundaries.
+ */
+function renderInlineSegments(segments: Segment[]): string {
+  if (segments.length === 0) return ''
+
+  let html = ''
+  for (const seg of segments) {
+    const escaped = escapeHtml(seg.text)
+    if (seg.type === 'added') html += `\x01AS\x01${escaped}\x01AE\x01`
+    else if (seg.type === 'removed') html += `\x01DS\x01${escaped}\x01DE\x01`
+    else html += escaped
+  }
+
+  // Apply inline markdown formatting — markers survive these replacements
   html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
   html = html.replace(/\*(.+?)\*/g, '<em>$1</em>')
   html = html.replace(/`([^`]+)`/g, '<code>$1</code>')
+
+  // Replace markers with HTML spans
+  html = html
+    .replace(/\x01AS\x01/g, '<span class="diff-added">')
+    .replace(/\x01AE\x01/g, '</span>')
+    .replace(/\x01DS\x01/g, '<span class="diff-removed">')
+    .replace(/\x01DE\x01/g, '</span>')
+
+  return html
+}
+
+/**
+ * Render an array of DiffLines as HTML with proper block-level markdown
+ * formatting and inline diff spans.
+ */
+function renderDiffLines(lines: DiffLine[]): string {
+  let html = ''
+  let i = 0
+  let inCodeBlock = false
+  let codeSegments: Segment[][] = []
+
+  while (i < lines.length) {
+    const line = lines[i]
+    const text = detectText(line.segments)
+
+    // --- Code blocks ---
+    if (text.trimStart().startsWith('```')) {
+      if (!inCodeBlock) {
+        inCodeBlock = true
+        codeSegments = []
+        i++
+        continue
+      } else {
+        // Render accumulated code block
+        const allSegs = codeSegments.flatMap((segs, idx) => {
+          const result: Segment[] = [...segs]
+          if (idx < codeSegments.length - 1) {
+            result.push({ type: 'unchanged', text: '\n' })
+          }
+          return result
+        })
+        const inner = allSegs.length > 0
+          ? renderCodeSegments(allSegs)
+          : ''
+        html += `<pre class="code-block"><code>${inner}</code></pre>`
+        inCodeBlock = false
+        i++
+        continue
+      }
+    }
+
+    if (inCodeBlock) {
+      codeSegments.push(line.segments)
+      i++
+      continue
+    }
+
+    // --- Empty line (paragraph separator) ---
+    if (!line.rawText.trim()) {
+      i++
+      continue
+    }
+
+    // --- Headings ---
+    const headingMatch = text.match(/^(#{1,3})\s+/)
+    if (headingMatch) {
+      const level = headingMatch[1].length
+      const content = stripCurrentPrefix(line.segments, headingMatch[0].length)
+      const inner = renderInlineSegments(content)
+      html += `<h${level}>${inner}</h${level}>`
+      i++
+      continue
+    }
+
+    // --- Checkbox lists ---
+    if (text.match(/^- \[[ xX]\]\s+/)) {
+      const items: string[] = []
+      while (i < lines.length) {
+        const l = lines[i]
+        const t = detectText(l.segments)
+        const cbMatch = t.match(/^- \[[ xX]\]\s+/)
+        if (!cbMatch) break
+        const checked = !!t.match(/^- \[[xX]\]/)
+        const content = stripCurrentPrefix(l.segments, cbMatch[0].length)
+        const inner = renderInlineSegments(content)
+        const cls = checked ? 'check-item done' : 'check-item'
+        const box = checked ? '<span class="check-box done">✓</span>' : '<span class="check-box"></span>'
+        items.push(`<li class="${cls}">${box}${inner}</li>`)
+        i++
+      }
+      html += `<ul class="checklist">${items.join('')}</ul>`
+      continue
+    }
+
+    // --- Ordered lists ---
+    if (text.match(/^\d+\.\s+/)) {
+      const items: string[] = []
+      while (i < lines.length) {
+        const l = lines[i]
+        const t = detectText(l.segments)
+        const olMatch = t.match(/^\d+\.\s+/)
+        if (!olMatch) break
+        const content = stripCurrentPrefix(l.segments, olMatch[0].length)
+        items.push(`<li>${renderInlineSegments(content)}</li>`)
+        i++
+      }
+      html += `<ol>${items.join('')}</ol>`
+      continue
+    }
+
+    // --- Unordered lists ---
+    if (text.match(/^[-*]\s+/)) {
+      const items: string[] = []
+      while (i < lines.length) {
+        const l = lines[i]
+        const t = detectText(l.segments)
+        const ulMatch = t.match(/^[-*]\s+/)
+        if (!ulMatch) break
+        const content = stripCurrentPrefix(l.segments, ulMatch[0].length)
+        items.push(`<li>${renderInlineSegments(content)}</li>`)
+        i++
+      }
+      html += `<ul>${items.join('')}</ul>`
+      continue
+    }
+
+    // --- Tables ---
+    if (text.match(/^\|/)) {
+      const rows: DiffLine[] = []
+      while (i < lines.length) {
+        const l = lines[i]
+        const t = detectText(l.segments)
+        if (!t.match(/^\|/)) break
+        rows.push(l)
+        i++
+      }
+      html += renderDiffTable(rows)
+      continue
+    }
+
+    // --- Paragraph: collect consecutive text lines ---
+    {
+      const paraLines: DiffLine[] = []
+      while (i < lines.length) {
+        const l = lines[i]
+        const t = detectText(l.segments)
+        if (!t.trim()) break
+        if (t.match(/^#{1,3}\s+/)) break
+        if (t.match(/^[-*]\s+/)) break
+        if (t.match(/^\d+\.\s+/)) break
+        if (t.match(/^\|/)) break
+        if (t.trimStart().startsWith('```')) break
+        paraLines.push(l)
+        i++
+      }
+
+      if (paraLines.length > 0) {
+        const inner = paraLines
+          .map(l => renderInlineSegments(l.segments))
+          .join('<br/>')
+        html += `<p>${inner}</p>`
+      }
+    }
+  }
+
+  // Handle unclosed code block
+  if (inCodeBlock && codeSegments.length > 0) {
+    const allSegs = codeSegments.flatMap((segs, idx) => {
+      const result: Segment[] = [...segs]
+      if (idx < codeSegments.length - 1) {
+        result.push({ type: 'unchanged', text: '\n' })
+      }
+      return result
+    })
+    html += `<pre class="code-block"><code>${renderCodeSegments(allSegs)}</code></pre>`
+  }
+
+  return html
+}
+
+/** Render code block segments with diff spans but no markdown formatting. */
+function renderCodeSegments(segments: Segment[]): string {
+  return segments.map(seg => {
+    const escaped = escapeHtml(seg.text)
+    if (seg.type === 'added') return `<span class="diff-added">${escaped}</span>`
+    if (seg.type === 'removed') return `<span class="diff-removed">${escaped}</span>`
+    return escaped
+  }).join('')
+}
+
+/** Render a markdown table from DiffLines, with inline diff in cells. */
+function renderDiffTable(rows: DiffLine[]): string {
+  if (rows.length < 2) return ''
+
+  // Parse cells from raw text for structure, but we'll render with segments
+  const parseRowCells = (raw: string) =>
+    raw.split('|').slice(1, -1).map(c => c.trim())
+
+  const headerText = detectText(rows[0].segments)
+  const sepText = rows.length > 1 ? detectText(rows[1].segments) : ''
+
+  const headerCells = parseRowCells(headerText)
+  const sepCells = parseRowCells(sepText)
+  const isSepRow = sepCells.every(c => /^[-:]+$/.test(c))
+
+  if (!isSepRow) {
+    // Not a proper table — render as paragraph
+    return rows.map(r => `<p>${renderInlineSegments(r.segments)}</p>`).join('')
+  }
+
+  const aligns = sepCells.map(cell => {
+    if (cell.startsWith(':') && cell.endsWith(':')) return 'center'
+    if (cell.endsWith(':')) return 'right'
+    return 'left'
+  })
+
+  const thead = `<thead><tr>${headerCells.map((c, idx) =>
+    `<th style="text-align:${aligns[idx] ?? 'left'}">${escapeHtml(c)}</th>`
+  ).join('')}</tr></thead>`
+
+  const bodyRows = rows.slice(2).map(row => {
+    const cellTexts = parseRowCells(detectText(row.segments))
+    return `<tr>${cellTexts.map((c, idx) =>
+      `<td style="text-align:${aligns[idx] ?? 'left'}">${escapeHtml(c)}</td>`
+    ).join('')}</tr>`
+  }).join('')
+
+  const tbody = bodyRows ? `<tbody>${bodyRows}</tbody>` : ''
+  return `<table class="md-table">${thead}${tbody}</table>`
+}
+
+// ---------------------------------------------------------------------------
+// Plain markdown renderer (used for new-file view where there are no diffs)
+// ---------------------------------------------------------------------------
+
+function renderMarkdown(md: string): string {
+  if (!md) return ''
+
+  let html = escapeHtml(md)
+
+  // Fenced code blocks
+  html = html.replace(
+    /```(\w*)\n([\s\S]*?)```/g,
+    (_match, _lang: string, code: string) =>
+      `<pre class="code-block"><code>${code}</code></pre>`,
+  )
+
+  // Inline formatting
+  html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+  html = html.replace(/\*(.+?)\*/g, '<em>$1</em>')
+  html = html.replace(/`([^`]+)`/g, '<code>$1</code>')
+
+  // Headings
   html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>')
   html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>')
   html = html.replace(/^# (.+)$/gm, '<h1>$1</h1>')
 
-  // Checkbox lists (must come before regular lists)
+  // Checkbox lists
   html = html.replace(
     /(?:^- \[[ xX]\] .+$\n?)+/gm,
     (match) => {
@@ -291,7 +547,7 @@ function renderDiffMarkdown(md: string): string {
     },
   )
 
-  // Numbered lists
+  // Ordered lists
   html = html.replace(
     /(?:^\d+\.\s+.+$\n?)+/gm,
     (match) => {
@@ -323,6 +579,10 @@ function renderDiffMarkdown(md: string): string {
   return html
 }
 
+// ---------------------------------------------------------------------------
+// HTML escaping
+// ---------------------------------------------------------------------------
+
 function escapeHtml(str: string): string {
   return str
     .replace(/&/g, '&amp;')
@@ -331,21 +591,12 @@ function escapeHtml(str: string): string {
     .replace(/"/g, '&quot;')
 }
 
-/** Escape HTML but preserve \x00 (placeholder) and \x01 (diff marker) bytes. */
-function escapeHtmlPreserveMarkers(str: string): string {
-  return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-}
-
-// --- Diff algorithm ---
+// ---------------------------------------------------------------------------
+// Diff algorithm
+// ---------------------------------------------------------------------------
 
 /**
- * Compute a word-level diff between two strings using LCS, then collapse
- * short unchanged runs between changed segments so the result reads as
- * sensibly grouped changes rather than word-by-word flicker.
+ * Compute a word-level diff between two strings using LCS.
  */
 function diffWords(oldText: string, newText: string): Segment[] {
   const oldTokens = tokenize(oldText)
@@ -408,16 +659,12 @@ function diffWords(oldText: string, newText: string): Segment[] {
 /**
  * Post-process word-level diff segments to collapse short unchanged runs
  * between two changed segments of the same type. This makes the diff read
- * as grouped changes — a word or two that didn't change won't break up an
- * otherwise contiguous removed or added block.
+ * as grouped changes rather than word-by-word flicker.
  *
  * Only same-type neighbours are collapsed. An unchanged bridge between a
- * removed and an added segment is left alone: absorbing it into both spans
- * would render it as simultaneously deleted and inserted, misrepresenting
- * the diff.
+ * removed and an added segment is left alone.
  *
- * Runs that cross a line boundary are never collapsed — a newline inside a
- * diff span can break heading/list rendering.
+ * Runs that cross a line boundary are never collapsed.
  */
 function collapseShortUnchangedRuns(segments: Segment[]): Segment[] {
   const COLLAPSE_THRESHOLD = 3
@@ -426,7 +673,6 @@ function collapseShortUnchangedRuns(segments: Segment[]): Segment[] {
   for (let i = 0; i < segments.length; i++) {
     const seg = segments[i]
 
-    // Try to collapse a short unchanged bridge between two same-type changed segments.
     if (
       seg.type === 'unchanged' &&
       result.length > 0 &&
@@ -528,7 +774,6 @@ function greedyWordDiff(oldTokens: string[], newTokens: string[]): Segment[] {
 
 /**
  * Tokenize text into words and whitespace as separate tokens.
- * This keeps whitespace in the diff so spacing is preserved exactly.
  */
 function tokenize(text: string): string[] {
   const tokens: string[] = []

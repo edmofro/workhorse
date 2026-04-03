@@ -343,7 +343,7 @@ export function CardWorkspace({
     return () => clearInterval(interval)
   }, [card.id])
 
-  // Track file writes from the agent — add new files to the list and fetch content
+  // Track file writes from the agent — add or update files in the list
   useEffect(() => {
     for (const fw of fileWrites) {
       if (fw.filePath.startsWith('.workhorse/specs/') || isMockupPath(fw.filePath)) {
@@ -351,14 +351,14 @@ export function CardWorkspace({
           if (prev.some((f) => f.filePath === fw.filePath)) return prev
           return [...prev, { filePath: fw.filePath, isNew: true, content: '' }]
         })
-        // Immediately fetch the file content from the worktree so mockups
-        // and specs are not blank when first added to the sidebar
+        // Fetch the latest file content from the worktree — both for newly
+        // added files and for existing files the agent has just edited
         fetch(`/api/worktree-files?cardId=${card.id}&filePath=${encodeURIComponent(fw.filePath)}`)
           .then((res) => res.ok ? res.json() : null)
           .then((data) => {
             if (data?.content) {
               setFiles((prev) =>
-                prev.map((f) => f.filePath === fw.filePath && !f.content ? { ...f, content: data.content as string } : f),
+                prev.map((f) => f.filePath === fw.filePath ? { ...f, content: data.content as string } : f),
               )
             }
           })

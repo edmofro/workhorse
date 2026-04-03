@@ -299,7 +299,7 @@ export function PropertiesBar({
 
               {/* Active step */}
               {activeStep && (
-                <div className="flex items-center gap-2 px-3 py-[5px] text-[12px] text-[var(--text-primary)] font-medium">
+                <div className="flex items-center gap-2 px-3 py-1 text-[12px] text-[var(--text-primary)] font-medium">
                   <span className="w-4 flex justify-center shrink-0">
                     <span className="w-[6px] h-[6px] rounded-full bg-[var(--accent)]" />
                   </span>
@@ -311,14 +311,14 @@ export function PropertiesBar({
               {/* Scheduled */}
               {scheduledSteps.length > 0 && (
                 <>
-                  <div className="h-px bg-[var(--border-subtle)] my-[6px]" />
-                  <div className="px-3 pt-1 pb-[2px] text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-[0.06em]">
+                  <div className="h-px bg-[var(--border-subtle)] my-2" />
+                  <div className="px-3 pt-1 pb-[2px] text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-[0.06em]">
                     Scheduled
                   </div>
                   {scheduledSteps.map((step) => (
                     <div
                       key={step.id}
-                      className="flex items-center gap-2 px-3 py-[5px] text-[12px] text-[var(--text-secondary)] group"
+                      className="flex items-center gap-2 px-3 py-1 text-[12px] text-[var(--text-secondary)] group"
                     >
                       <span className="w-4 flex justify-center shrink-0">
                         <span className="w-[6px] h-[6px] rounded-full border border-[var(--border-default)]" />
@@ -342,14 +342,14 @@ export function PropertiesBar({
               {/* Suggestions */}
               {suggestions.length > 0 && (
                 <>
-                  <div className="h-px bg-[var(--border-subtle)] my-[6px]" />
-                  <div className="px-3 pt-1 pb-[2px] text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-[0.06em]">
+                  <div className="h-px bg-[var(--border-subtle)] my-2" />
+                  <div className="px-3 pt-1 pb-[2px] text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-[0.06em]">
                     Suggestions
                   </div>
                   {suggestions.map((suggestion, i) => (
                     <div
                       key={`${suggestion.skillId}-${i}`}
-                      className="flex items-center gap-2 px-3 py-[5px] text-[12px] text-[var(--text-muted)] group"
+                      className="flex items-center gap-2 px-3 py-1 text-[12px] text-[var(--text-muted)] group"
                     >
                       <span className="w-4 flex justify-center shrink-0">
                         <span className="w-[6px] h-[6px] rounded-full border border-dashed border-[var(--text-faint)]" />

@@ -356,7 +356,7 @@ export function CardWorkspace({
     return () => clearInterval(interval)
   }, [card.id])
 
-  // Track file writes from the agent — add new files to the list
+  // Track file writes from the agent — add new files to the list and fetch content
   useEffect(() => {
     for (const fw of fileWrites) {
       if (fw.filePath.startsWith('.workhorse/specs/') || isMockupPath(fw.filePath)) {
@@ -364,6 +364,18 @@ export function CardWorkspace({
           if (prev.some((f) => f.filePath === fw.filePath)) return prev
           return [...prev, { filePath: fw.filePath, isNew: true, content: '' }]
         })
+        // Immediately fetch the file content from the worktree so mockups
+        // and specs are not blank when first added to the sidebar
+        fetch(`/api/worktree-files?cardId=${card.id}&filePath=${encodeURIComponent(fw.filePath)}`)
+          .then((res) => res.ok ? res.json() : null)
+          .then((data) => {
+            if (data?.content) {
+              setFiles((prev) =>
+                prev.map((f) => f.filePath === fw.filePath && !f.content ? { ...f, content: data.content as string } : f),
+              )
+            }
+          })
+          .catch(() => { /* best-effort */ })
       } else {
         // Track code file changes
         setCodeFiles((prev) => {
@@ -372,7 +384,7 @@ export function CardWorkspace({
         })
       }
     }
-  }, [fileWrites])
+  }, [fileWrites, card.id])
 
   // Open a file from card home in expanded mode (chat contracted)
   const openFileExpanded = useCallback(

@@ -14,6 +14,14 @@ Navigation structure: a global project switcher sets the context, and the sideba
 - [ ] Keyboard shortcuts allow quick switching between recent projects (e.g. Cmd+1, Cmd+2)
 - [ ] The most recently used projects appear first in the list
 
+## Default project on load
+
+- [ ] When a user opens Workhorse, the active project defaults to the project they most recently had selected
+- [ ] This preference is stored per user and persists across sessions and browser restarts
+- [ ] If the user's most recently used project is no longer accessible (e.g. GitHub access was revoked), the system falls back to the first accessible project in the list
+- [ ] If the user has no previously selected project (first sign-in), the system selects the first accessible project automatically
+- [ ] If the user has no accessible projects, the project switcher shows an empty state prompting them to add a project
+
 ## Sidebar structure
 
 Within the active project, the sidebar shows these sections top to bottom:

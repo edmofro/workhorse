@@ -56,7 +56,7 @@ export function CreateModal({
 
     try {
       if (isCard) {
-        let title: string
+        const title = value.trim()
         let description: string
 
         const uploaded = attachments.getUploadedAttachments()
@@ -72,12 +72,8 @@ export function CreateModal({
           })
           const data = await res.json()
           if (!res.ok) throw new Error(data.error ?? 'Generation failed')
-          title = data.title
           description = data.description ?? ''
         } catch {
-          title = value.trim().length > 60
-            ? value.trim().slice(0, 57) + '...'
-            : value.trim()
           description = value.trim()
         }
 

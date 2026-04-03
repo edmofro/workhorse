@@ -72,6 +72,11 @@ Summary paragraph describing what this area covers.
 - **No implementation details.** No function names, database fields, model names, enum values. Write "the system checks whether all parent cards have been committed" not "checks for a non-null \`specBranch\`".
 - **No IDs on individual criteria** — keep it human-readable.
 - **Information hierarchy.** Each spec contains only sections directly related to its title. Use cross-references (e.g. "see \`editor/spec-editor.md\`") rather than duplicating.
+- **No specifying absences.** Document what the system does, not what it doesn't. Don't write "we don't support X" — if it's not in the spec, it's not in the system.
+- **No point-in-time language.** Don't document transitions ("this replaces X", "no longer does Y"). Each spec is a snapshot of the desired system.
+- **No stacking adjectives.** Don't describe behaviour with chains of near-synonyms ("seamless, invisible, frictionless"). One precise word or the concrete behaviour.
+- **No exact measurements in prose.** Pixel widths and precise benchmarks belong in mockups or the design system, not specs.
+- **Nail down open questions before committing.** Resolve unknowns with the user first. A spec with open questions is a draft.
 - **Australian/NZ English** spelling (colour, organisation, finalise).
 - **No redundancy.** Don't state what's already visible from context.
 

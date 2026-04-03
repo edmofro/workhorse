@@ -11,6 +11,7 @@ import { requireUser, requireCardAccess } from '../../../lib/auth/session'
 import { buildSessionInstructions } from '../../../lib/ai/sessionPrompt'
 import { isValidSkillId } from '../../../lib/skills/registry'
 import { runJockeyAssessment } from '../../../lib/jockey/assess'
+import { detectSkillIntent } from '../../../lib/jockey/detectIntent'
 import type { JockeyAssessment } from '../../../lib/jockey/types'
 import {
   ensureBareClone,
@@ -155,6 +156,25 @@ export async function POST(request: NextRequest) {
   // Build deduplicated attachment file list for the prompt context
   const allAttachmentFiles = [...new Set(allAttachments.map((a) => a.fileName))]
 
+  // Resolve skill: explicit pill/journey trigger takes precedence; otherwise ask the
+  // jockey to detect intent from the incoming message (pre-turn pass).
+  let resolvedSkillId = isValidSkillId(skillId) ? skillId : undefined
+
+  if (!resolvedSkillId) {
+    const journalEntries = await prisma.journalEntry.findMany({
+      where: { cardId },
+      orderBy: { createdAt: 'asc' },
+      select: { type: true, summary: true },
+      take: 20,
+    })
+    resolvedSkillId = (await detectSkillIntent({
+      userMessage: message,
+      cardTitle: card.title,
+      cardStatus: card.status,
+      journalEntries,
+    })) ?? undefined
+  }
+
   // Build session instructions with skill-specific context
   const sessionInstructions = buildSessionInstructions({
     cardTitle: card.title,
@@ -164,7 +184,7 @@ export async function POST(request: NextRequest) {
     repoOwner: owner,
     repoName,
     attachmentFiles: allAttachmentFiles.length > 0 ? allAttachmentFiles : undefined,
-    skillId: isValidSkillId(skillId) ? skillId : undefined,
+    skillId: resolvedSkillId,
   })
 
   // Build multimodal prompt if there are raster image attachments (exclude SVG — not a valid

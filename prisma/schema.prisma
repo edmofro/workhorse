@@ -84,9 +84,11 @@ model Card {
   mockups      Mockup[]
   comments     CardComment[]
   attachments  Attachment[]
-  dependsOn    CardDependency[] @relation("dependent")
-  dependedOnBy CardDependency[] @relation("parent")
-  sessions     ConversationSession[]
+  dependsOn      CardDependency[] @relation("dependent")
+  dependedOnBy   CardDependency[] @relation("parent")
+  sessions       ConversationSession[]
+  journalEntries JournalEntry[]
+  scheduledSteps ScheduledStep[]
 
   @@index([teamId])
   @@index([assigneeId])
@@ -171,6 +173,30 @@ model Attachment {
   @@index([uploadedById])
 }
 
+model JournalEntry {
+  id        String   @id @default(cuid())
+  cardId    String
+  type      String   // skill name or general type: workshop, interview, spec-draft, spec-review, implementation, design-audit, etc.
+  summary   String   // human-readable: "Spec interview completed — 2 specs written"
+  createdAt DateTime @default(now())
+
+  card Card @relation(fields: [cardId], references: [id], onDelete: Cascade)
+
+  @@index([cardId, createdAt])
+}
+
+model ScheduledStep {
+  id        String   @id @default(cuid())
+  cardId    String
+  skillId   String   // which skill to run
+  position  Int      // order in the queue
+  createdAt DateTime @default(now())
+
+  card Card @relation(fields: [cardId], references: [id], onDelete: Cascade)
+
+  @@index([cardId, position])
+}
+
 model ConversationSession {
   id              String   @id @default(cuid())
   cardId          String?
@@ -179,8 +205,10 @@ model ConversationSession {
   agentSessionId  String?  // Agent SDK session ID for resumption
   title           String?  // Auto-generated from first exchange
   messageCount    Int      @default(0)
-  lastMessageAt   DateTime @default(now())
-  createdAt       DateTime @default(now())
+  jockeyCursor         Int      @default(0)  // Index of last message assessed by jockey
+  dismissedFromRecent  Boolean  @default(false)
+  lastMessageAt        DateTime @default(now())
+  createdAt            DateTime @default(now())
 
   card Card? @relation(fields: [cardId], references: [id], onDelete: Cascade)
   team Team? @relation(fields: [teamId], references: [id], onDelete: SetNull)

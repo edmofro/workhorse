@@ -25,7 +25,11 @@ export interface FileWriteNotification {
   timestamp: string
 }
 
-export function useAgentSession(cardId: string, sessionId: string | null) {
+export function useAgentSession(
+  cardId: string,
+  sessionId: string | null,
+  onJockeyEvent?: (event: Record<string, unknown>) => void,
+) {
   const [messages, setMessages] = useState<SessionMessage[]>([])
   const [isStreaming, setIsStreaming] = useState(false)
   const isStreamingRef = useRef(false)
@@ -41,6 +45,8 @@ export function useAgentSession(cardId: string, sessionId: string | null) {
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(sessionId)
   const currentSessionIdRef = useRef<string | null>(sessionId)
   const [currentSessionTitle, setCurrentSessionTitle] = useState<string | null>(null)
+  const onJockeyEventRef = useRef(onJockeyEvent)
+  onJockeyEventRef.current = onJockeyEvent
 
   // Text buffering for smooth streaming — accumulate deltas and flush every ~60ms
   const textBufferRef = useRef('')
@@ -92,6 +98,9 @@ export function useAgentSession(cardId: string, sessionId: string | null) {
     // Sync history once per session switch — never overwrite after that, because
     // streaming and local state may have added messages the server doesn't know about.
     if (historySessionIdRef.current === sessionId) return
+    // Never overwrite local messages while actively streaming — the local state
+    // is more up-to-date than the server history (which may not be persisted yet).
+    if (isStreamingRef.current) return
     // Wait for the fetch to settle so we don't apply stale cached data from a
     // previously-viewed session while the fresh fetch is still in flight.
     if (isHistoryFetching) return
@@ -116,7 +125,7 @@ export function useAgentSession(cardId: string, sessionId: string | null) {
   }, [])
 
   const sendMessage = useCallback(
-    async (content: string, userName: string, attachments?: AttachmentData[], mode?: string) => {
+    async (content: string, userName: string, attachments?: AttachmentData[], skillId?: string) => {
       if ((!content.trim() && (!attachments || attachments.length === 0)) || isStreamingRef.current) return
 
       // Add user message
@@ -191,7 +200,7 @@ export function useAgentSession(cardId: string, sessionId: string | null) {
             sessionId: currentSessionIdRef.current,
             message: content,
             attachmentIds,
-            mode,
+            skillId,
           }),
           signal: abortRef.current.signal,
         })
@@ -398,6 +407,11 @@ export function useAgentSession(cardId: string, sessionId: string | null) {
     if (event.type === 'commit') {
       const files = event.files as string[]
       setCommittedFiles(files)
+    }
+
+    // Handle jockey assessment event
+    if (event.type === 'jockey') {
+      onJockeyEventRef.current?.(event)
     }
   }
 

@@ -9,16 +9,22 @@ import path from 'path'
 import { prisma } from '../../../lib/prisma'
 import { requireUser, requireCardAccess } from '../../../lib/auth/session'
 import { buildSessionInstructions } from '../../../lib/ai/sessionPrompt'
-import { isValidAgentMode } from '../../../lib/ai/workhorseContext'
+import { isValidSkillId } from '../../../lib/skills/registry'
+import { runJockeyAssessment } from '../../../lib/jockey/assess'
+import type { JockeyAssessment } from '../../../lib/jockey/types'
 import {
   ensureBareClone,
   createWorktree,
   worktreePath,
   autoCommit,
+  readWorktreeFile,
 } from '../../../lib/git/worktree'
+import { isMockupPath } from '../../../lib/paths'
+import { extractHtmlTitle, humaniseFilename } from '../../../lib/labels'
 import { branchNameFromCard } from '../../../lib/git/branchNaming'
 
 import { safeParseTouchedFiles } from '../../../lib/safeParseTouchedFiles'
+import { emit as emitSidebarEvent, type SidebarEvent } from '../../../lib/sidebarEvents'
 
 class StaleSessionError extends Error {
   constructor() {
@@ -30,12 +36,12 @@ export async function POST(request: NextRequest) {
   const user = await requireUser()
 
   const body = await request.json()
-  const { cardId, sessionId: incomingSessionId, message, attachmentIds, mode } = body as {
+  const { cardId, sessionId: incomingSessionId, message, attachmentIds, skillId } = body as {
     cardId: string
     sessionId?: string
     message: string
     attachmentIds?: string[]
-    mode?: string
+    skillId?: string
   }
 
   if (!cardId || !message) {
@@ -71,6 +77,21 @@ export async function POST(request: NextRequest) {
       },
     })
   }
+
+  // Helper to build sidebar event payload
+  const sidebarSession = (overrides?: Partial<SidebarEvent['session']>): SidebarEvent['session'] => ({
+    id: convSession.id,
+    title: convSession.title,
+    messageCount: convSession.messageCount,
+    lastMessageAt: new Date().toISOString(),
+    cardId: card.id,
+    cardIdentifier: card.identifier,
+    cardTitle: card.title,
+    cardStatus: card.status,
+    teamColour: card.team.colour,
+    projectName: card.team.project.name,
+    ...overrides,
+  })
 
   const { project } = card.team
   const { owner, repoName, defaultBranch } = project
@@ -134,7 +155,7 @@ export async function POST(request: NextRequest) {
   // Build deduplicated attachment file list for the prompt context
   const allAttachmentFiles = [...new Set(allAttachments.map((a) => a.fileName))]
 
-  // Build session instructions with mode-specific context
+  // Build session instructions with skill-specific context
   const sessionInstructions = buildSessionInstructions({
     cardTitle: card.title,
     cardDescription: card.description,
@@ -143,7 +164,7 @@ export async function POST(request: NextRequest) {
     repoOwner: owner,
     repoName,
     attachmentFiles: allAttachmentFiles.length > 0 ? allAttachmentFiles : undefined,
-    mode: isValidAgentMode(mode) ? mode : undefined,
+    skillId: isValidSkillId(skillId) ? skillId : undefined,
   })
 
   // Build multimodal prompt if there are raster image attachments (exclude SVG — not a valid
@@ -227,6 +248,13 @@ export async function POST(request: NextRequest) {
             `data: ${JSON.stringify({ type: 'session', sessionId: convSessionId })}\n\n`,
           ),
         )
+
+        // Notify sidebar: new/active session is streaming
+        emitSidebarEvent({
+          type: isFirstMessage ? 'session_created' : 'streaming_start',
+          userId: user.id,
+          session: sidebarSession(),
+        })
 
         let agentQuery: ReturnType<typeof query>
 
@@ -323,7 +351,30 @@ export async function POST(request: NextRequest) {
           message,
           cardTitle: card.title,
           assistantText,
+          sidebarSession,
         })
+
+        // Run jockey assessment and send before [DONE] so the client
+        // always receives it before the stream is considered complete.
+        try {
+          const jockeyResult = await runJockeyAfterExchange(
+            cardId,
+            convSessionId,
+            card.title,
+            card.status,
+            message,
+            assistantText,
+          )
+          if (jockeyResult) {
+            controller.enqueue(
+              encoder.encode(
+                `data: ${JSON.stringify({ type: 'jockey', ...jockeyResult })}\n\n`,
+              ),
+            )
+          }
+        } catch (jockeyErr) {
+          console.warn('[jockey] Post-exchange assessment failed:', jockeyErr)
+        }
 
         controller.enqueue(encoder.encode('data: [DONE]\n\n'))
         controller.close()
@@ -360,13 +411,14 @@ async function finaliseSessionAfterExchange(
     repoName: string
     card: { identifier: string }
     cardId: string
-    user: { displayName: string; githubUsername: string; accessToken: string }
+    user: { id: string; displayName: string; githubUsername: string; accessToken: string }
     convSessionId: string
     isFirstMessage: boolean
     convSessionTitle: string | null
     message: string
     cardTitle: string
     assistantText: string
+    sidebarSession: (overrides?: Partial<SidebarEvent['session']>) => SidebarEvent['session']
   },
 ) {
   try {
@@ -394,6 +446,31 @@ async function finaliseSessionAfterExchange(
           `data: ${JSON.stringify({ type: 'commit', files: changedFiles })}\n\n`,
         ),
       )
+
+      // Persist any new mockup files to the database so they survive page
+      // refreshes and appear with correct titles in the artifacts sidebar
+      const mockupFiles = changedFiles.filter(isMockupPath)
+      for (const filePath of mockupFiles) {
+        try {
+          const html = await readWorktreeFile(ctx.owner, ctx.repoName, ctx.card.identifier, filePath)
+          if (!html) continue
+          const htmlTitle = extractHtmlTitle(html)
+          const filename = filePath.split('/').pop() ?? filePath
+          const title = htmlTitle || humaniseFilename(filename)
+
+          // Upsert: if a mockup with this title already exists for the card, update it
+          const existing = await prisma.mockup.findFirst({
+            where: { cardId: ctx.cardId, title },
+          })
+          if (existing) {
+            await prisma.mockup.update({ where: { id: existing.id }, data: { html } })
+          } else {
+            await prisma.mockup.create({ data: { cardId: ctx.cardId, title, html } })
+          }
+        } catch {
+          // Best-effort — don't fail the session over mockup persistence
+        }
+      }
     }
   } catch (commitErr) {
     console.error('Auto-commit failed:', commitErr)
@@ -428,6 +505,16 @@ async function finaliseSessionAfterExchange(
       ),
     )
   }
+
+  // Notify sidebar: streaming finished, update title/messageCount
+  emitSidebarEvent({
+    type: 'streaming_stop',
+    userId: ctx.user.id,
+    session: ctx.sidebarSession({
+      title: updatedSession.title,
+      lastMessageAt: now.toISOString(),
+    }),
+  })
 }
 
 /** Known action pill messages that make poor session titles. */
@@ -501,4 +588,105 @@ function truncateTitle(text: string): string {
   const truncated = sentence.slice(0, 60)
   const lastSpace = truncated.lastIndexOf(' ')
   return (lastSpace > 20 ? truncated.slice(0, lastSpace) : truncated).trim() + '…'
+}
+
+/**
+ * Run the jockey after an agent exchange. Reads the card's journal and recent
+ * conversation, calls Haiku for an assessment, and persists any new journal entries.
+ */
+async function runJockeyAfterExchange(
+  cardId: string,
+  convSessionId: string,
+  cardTitle: string,
+  cardStatus: string,
+  userMessage: string,
+  assistantText: string,
+): Promise<JockeyAssessment | null> {
+  try {
+    // Fetch current state
+    const [journalEntries, scheduledSteps, card] = await Promise.all([
+      prisma.journalEntry.findMany({
+        where: { cardId },
+        orderBy: { createdAt: 'asc' },
+        select: { type: true, summary: true, createdAt: true },
+        take: 100,
+      }),
+      prisma.scheduledStep.findMany({
+        where: { cardId },
+        orderBy: { position: 'asc' },
+        select: { id: true, skillId: true, position: true },
+      }),
+      prisma.card.findUnique({
+        where: { id: cardId },
+        select: { touchedFiles: true, prUrl: true },
+      }),
+    ])
+
+    const touchedFiles = safeParseTouchedFiles(card?.touchedFiles ?? '[]')
+    const hasSpecs = touchedFiles.some(f => f.startsWith('.workhorse/specs/'))
+    const hasCodeChanges = touchedFiles.some(f => !f.startsWith('.workhorse/'))
+
+    // Build recent messages from the current exchange
+    // (We don't have the full transcript here, so we use the current user + assistant messages)
+    const recentMessages: { role: 'user' | 'assistant'; content: string }[] = [
+      { role: 'user', content: userMessage },
+    ]
+    if (assistantText) {
+      recentMessages.push({ role: 'assistant', content: assistantText })
+    }
+
+    const assessment = await runJockeyAssessment({
+      journalEntries,
+      scheduledSteps,
+      recentMessages,
+      newMessageCount: recentMessages.length,
+      cardTitle,
+      cardStatus,
+      hasSpecs,
+      hasCodeChanges,
+      hasPr: !!card?.prUrl,
+    })
+
+    // Persist new journal entries — sanitise LLM output before storing
+    if (assessment.journalEntries.length > 0) {
+      await prisma.journalEntry.createMany({
+        data: assessment.journalEntries.map(entry => ({
+          cardId,
+          // Constrain type to alphanumeric + hyphens, max 50 chars
+          type: entry.type.replace(/[^a-z0-9-]/gi, '').slice(0, 50) || 'general',
+          // Length-limit summary to prevent unbounded storage
+          summary: entry.summary.slice(0, 500),
+        })),
+      })
+    }
+
+    // Update jockey cursor atomically — messageCount may have been
+    // incremented by finaliseSessionAfterExchange since we read it.
+    await prisma.conversationSession.update({
+      where: { id: convSessionId },
+      data: { jockeyCursor: { increment: recentMessages.length } },
+    }).catch(() => {
+      // Session may have been deleted concurrently
+    })
+
+    // Handle scheduled step auto-start
+    if (assessment.startNextScheduled && scheduledSteps.length > 0) {
+      // Remove the first scheduled step (it's being started)
+      await prisma.scheduledStep.delete({
+        where: { id: scheduledSteps[0].id },
+      }).catch(() => {
+        // Step may have been cancelled concurrently, ignore
+      })
+    }
+
+    // Sanitise activeStep — strip any HTML tags as defence-in-depth
+    if (assessment.activeStep) {
+      assessment.activeStep = assessment.activeStep.replace(/<[^>]*>/g, '').slice(0, 200)
+    }
+
+    return assessment
+  } catch (error) {
+    console.warn('[jockey] Post-exchange assessment failed:', error)
+    return null
+  }
 }

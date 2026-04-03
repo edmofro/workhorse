@@ -310,7 +310,7 @@ function CancelledColumn({
         ref={setNodeRef}
         onClick={onToggle}
         className={cn(
-          'flex flex-col items-center gap-2 py-3 px-2 shrink-0 cursor-pointer group rounded-[var(--radius-lg)] transition-colors duration-100',
+          'flex flex-col items-center gap-2 py-3 px-2 shrink-0 self-start cursor-pointer group rounded-[var(--radius-lg)] transition-colors duration-100',
           isOver && 'bg-[var(--bg-hover)]',
         )}
         title={isDragging ? 'Drop to cancel' : 'Show cancelled cards'}
@@ -327,7 +327,7 @@ function CancelledColumn({
   }
 
   return (
-    <div className="flex flex-col min-w-0 flex-1 max-w-[280px] relative">
+    <div className="flex flex-col min-w-0 min-h-0 flex-1 max-w-[280px] relative">
       <button
         onClick={onToggle}
         className="absolute top-0 right-2 p-1 text-[var(--text-faint)] hover:text-[var(--text-muted)] cursor-pointer transition-colors duration-100 z-10"

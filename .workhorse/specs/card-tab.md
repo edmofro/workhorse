@@ -49,3 +49,8 @@ The property strip is a single horizontal row of interactive pills showing statu
 - [ ] Each comment shows the author's avatar, display name, and timestamp
 - [ ] Comments are attributed to the user who wrote them
 - [ ] Comments are not included in the AI agent session context
+
+## Activity log
+
+- [ ] An activity log records deterministic events on the card: creation, status changes, spec updates, commits, dependency changes
+- [ ] The activity log is stored for auditing but is not shown in the card view — the journey bar (see `workflow-orchestration.md`) is the user-facing record of progress

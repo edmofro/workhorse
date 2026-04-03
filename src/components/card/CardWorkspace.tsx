@@ -10,7 +10,11 @@ import { useAttachments } from '../../lib/hooks/useAttachments'
 import { useViewNavigation } from '../../lib/hooks/useViewNavigation'
 import { SpecHeaderBar } from './SpecHeaderBar'
 import type { DeviceKey } from './SpecHeaderBar'
-import { ActionPills, getPillsForContext, type ActionPill } from './ActionPills'
+import { ActionPills, type ActionPill } from './ActionPills'
+import { JourneyBar } from './JourneyBar'
+import { PrBar } from './PrBar'
+import { useJockeyState } from '../../lib/hooks/useJockeyState'
+import { BUILT_IN_SKILLS } from '../../lib/skills/registry'
 import { ChatMessage } from './ChatMessage'
 import { ChatInput } from './ChatInput'
 import { ThinkingIndicator } from './ThinkingIndicator'
@@ -63,6 +67,7 @@ interface CardWorkspaceProps {
     title: string
     status: string
     cardBranch: string | null
+    prUrl?: string | null
   }
   cardTabContent: React.ReactNode
   initialFiles: SpecFileData[]
@@ -126,6 +131,9 @@ export function CardWorkspace({
   const [expanded, setExpanded] = useState(false)
   const [showChanges, setShowChanges] = useState(true)
 
+  // Jockey state — journal, pills, suggestions, scheduling
+  const jockey = useJockeyState(card.id)
+
   // Agent session state — uses activeSessionId for history loading
   const {
     messages,
@@ -135,7 +143,7 @@ export function CardWorkspace({
     currentSessionId,
     currentSessionTitle,
     sendMessage: rawSendMessage,
-  } = useAgentSession(card.id, activeSessionId)
+  } = useAgentSession(card.id, activeSessionId, jockey.handleJockeyEvent)
 
   // Sync back the session ID from the hook (set after first message creates a session)
   const activeSessionIdRef = useRef(activeSessionId)
@@ -348,7 +356,7 @@ export function CardWorkspace({
     return () => clearInterval(interval)
   }, [card.id])
 
-  // Track file writes from the agent — add new files to the list
+  // Track file writes from the agent — add new files to the list and fetch content
   useEffect(() => {
     for (const fw of fileWrites) {
       if (fw.filePath.startsWith('.workhorse/specs/') || isMockupPath(fw.filePath)) {
@@ -356,6 +364,18 @@ export function CardWorkspace({
           if (prev.some((f) => f.filePath === fw.filePath)) return prev
           return [...prev, { filePath: fw.filePath, isNew: true, content: '' }]
         })
+        // Immediately fetch the file content from the worktree so mockups
+        // and specs are not blank when first added to the sidebar
+        fetch(`/api/worktree-files?cardId=${card.id}&filePath=${encodeURIComponent(fw.filePath)}`)
+          .then((res) => res.ok ? res.json() : null)
+          .then((data) => {
+            if (data?.content) {
+              setFiles((prev) =>
+                prev.map((f) => f.filePath === fw.filePath && !f.content ? { ...f, content: data.content as string } : f),
+              )
+            }
+          })
+          .catch(() => { /* best-effort */ })
       } else {
         // Track code file changes
         setCodeFiles((prev) => {
@@ -364,7 +384,7 @@ export function CardWorkspace({
         })
       }
     }
-  }, [fileWrites])
+  }, [fileWrites, card.id])
 
   // Open a file from card home in expanded mode (chat contracted)
   const openFileExpanded = useCallback(
@@ -389,11 +409,11 @@ export function CardWorkspace({
     [sessions, navigateTo],
   )
 
-  // Send message with mode support
+  // Send message with optional skill
   const handleSendMessage = useCallback(
-    (content: string, mode?: string) => {
+    (content: string, skillId?: string) => {
       const uploaded = chatAttachments.getUploadedAttachments()
-      rawSendMessage(content, user.displayName, uploaded.length > 0 ? uploaded : undefined, mode)
+      rawSendMessage(content, user.displayName, uploaded.length > 0 ? uploaded : undefined, skillId)
       chatAttachments.clear()
 
       if (view.type === 'card') {
@@ -407,10 +427,27 @@ export function CardWorkspace({
 
   const handlePillSelect = useCallback(
     (pill: ActionPill) => {
-      handleSendMessage(pill.message, pill.mode)
+      handleSendMessage(pill.message, pill.skillId)
     },
     [handleSendMessage],
   )
+
+  /** Trigger a skill from the journey bar */
+  const handleTriggerSkill = useCallback(
+    (skillId: string, label: string) => {
+      const skill = BUILT_IN_SKILLS[skillId]
+      const message = skill?.description ?? `Run ${label}`
+      handleSendMessage(message, skillId)
+    },
+    [handleSendMessage],
+  )
+
+  /** Handle PR creation — update local state with the new PR URL */
+  const [localPrUrl, setLocalPrUrl] = useState<string | null>(card.prUrl ?? null)
+  const handlePrCreated = useCallback((prUrl: string) => {
+    setLocalPrUrl(prUrl)
+    router.refresh()
+  }, [router])
 
   // Spec operations
   const ensureWorktree = useCallback(async () => {
@@ -514,18 +551,35 @@ export function CardWorkspace({
 
   const extractedAreas = extractAreas(projectSpecs)
 
-  // Determine pill context using discriminated union so isMockup is only
-  // expressible when the view is 'artifact'.
-  const pillView = view.type === 'artifact'
-    ? { type: 'artifact' as const, isMockup: isMockupFile }
-    : { type: view.type as 'card' | 'chat' }
-  const pills = getPillsForContext(card.status, messages.length > 0, pillView)
+  // Convert jockey pill suggestions to ActionPill format
+  const pills: ActionPill[] = jockey.pills.map(p => {
+    const skill = BUILT_IN_SKILLS[p.skillId]
+    return {
+      label: p.label,
+      message: skill?.description ?? `Run ${p.label}`,
+      skillId: p.skillId,
+    }
+  })
+
+  // Deduplicate: remove suggestions that already appear in pills
+  const pillSkillIds = new Set(jockey.pills.map(p => p.skillId))
+  const dedupedSuggestions = jockey.suggestions.filter(s => !pillSkillIds.has(s.skillId))
 
   // --- Chat column (shared between chat mode and artifact mode) ---
   const chatColumn = (
     <div className="flex-1 flex flex-col overflow-hidden">
+      {/* Journey bar — between topbar and chat */}
+      <JourneyBar
+        journalEntries={jockey.journalEntries}
+        scheduledSteps={jockey.scheduledSteps}
+        suggestions={dedupedSuggestions}
+        activeStep={jockey.activeStep}
+        onTriggerSkill={handleTriggerSkill}
+        onScheduleStep={jockey.scheduleStep}
+        onUnscheduleStep={jockey.unscheduleStep}
+      />
       <div ref={chatScrollRef} className="flex-1 overflow-y-auto flex justify-center">
-        <div className="w-full" style={{ maxWidth: '680px', padding: '32px 24px 32px' }}>
+        <div className="w-full" style={{ maxWidth: '680px', padding: '32px 24px 80px' }}>
           {messages.length === 0 && (
             <div className="text-center py-16">
               <p className="text-[14px] text-[var(--text-muted)] mb-1">
@@ -597,6 +651,13 @@ export function CardWorkspace({
           isUploading={chatAttachments.isUploading}
         />
       </div>
+      {/* PR bar — bottom of chat area */}
+      <PrBar
+        cardId={card.id}
+        hasCodeChanges={jockey.hasCodeChanges}
+        prUrl={localPrUrl}
+        onPrCreated={handlePrCreated}
+      />
     </div>
   )
 
@@ -689,6 +750,15 @@ export function CardWorkspace({
       {view.type === 'card' && (
         <>
           <div className="flex-1 flex flex-col overflow-hidden">
+            <JourneyBar
+              journalEntries={jockey.journalEntries}
+              scheduledSteps={jockey.scheduledSteps}
+              suggestions={dedupedSuggestions}
+              activeStep={jockey.activeStep}
+              onTriggerSkill={handleTriggerSkill}
+              onScheduleStep={jockey.scheduleStep}
+              onUnscheduleStep={jockey.unscheduleStep}
+            />
             <div className="flex-1 overflow-y-auto">
               {cardTabContent}
 

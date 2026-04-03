@@ -58,47 +58,36 @@ export async function POST(request: NextRequest) {
     content.push({ type: 'text', text: prompt.trim() })
 
     const message = await anthropic.messages.create({
-      model: 'claude-sonnet-4-6',
-      max_tokens: 256,
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 512,
       messages: [
         {
           role: 'user',
           content,
         },
       ],
-      system: `You generate a card title and description for a spec-driven development workbench.
+      system: `You process card creation input for a spec-driven development workbench.
 
-Given the user's description of what they want to achieve, respond with JSON only — no markdown fences, no extra text. If the user has attached images (screenshots, mockups, etc.), use them as context to understand what they want.
+Given the user's input, respond with JSON only — no markdown fences, no extra text. If the user has attached images (screenshots, mockups, etc.), use them as context.
 
 Format:
-{"title": "...", "description": "..."}
+{"description": "..."}
 
 Rules:
-- Title: concise noun phrase, under 60 characters. Not a command — "Patient allergy tracking" not "Add patient allergy tracking".
-- Description: 1–3 sentences summarising the intent. Written as what the system does, not instructions. Use Australian/NZ English spelling.
-- Do not include acceptance criteria, technical details, or implementation notes.
-- If images are provided, reference what they show when relevant to the description.`,
+- Title: A short phrase of 5–8 words summarising the intent. Sentence case. No full stop.
+- Description: The user's input with light formatting only — add line breaks where natural paragraph breaks would improve readability, apply sentence case at the start of sentences. Do not change any wording, add or remove content, or rewrite anything.
+- Use Australian/NZ English spelling in the title only (the description preserves the user's own words).`,
     })
 
     const text =
       message.content[0].type === 'text' ? message.content[0].text : ''
     const parsed = JSON.parse(text) as { title: string; description: string }
 
-    if (!parsed.title) {
-      throw new Error('No title in response')
-    }
-
     return NextResponse.json({
-      title: parsed.title,
+      title: parsed.title ?? '',
       description: parsed.description ?? '',
     })
   } catch {
-    // Fallback: use the raw prompt
-    const title =
-      prompt.trim().length > 60
-        ? prompt.trim().slice(0, 57) + '...'
-        : prompt.trim()
-
-    return NextResponse.json({ title, description: prompt.trim() })
+    return NextResponse.json({ title: '', description: prompt.trim() })
   }
 }

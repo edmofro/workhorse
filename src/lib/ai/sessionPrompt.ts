@@ -1,9 +1,10 @@
 /**
  * Session instructions appended to the claude_code system prompt preset.
- * Provides rich Workhorse context, card context, and mode-specific instructions.
+ * Provides rich Workhorse context, card context, and skill-specific instructions.
  */
 
-import { WORKHORSE_CONTEXT, buildModeInstructions, isValidAgentMode, type AgentMode } from './workhorseContext'
+import { WORKHORSE_CONTEXT } from './workhorseContext'
+import { buildSkillInstructions } from '../skills/registry'
 
 interface SessionContext {
   cardTitle: string
@@ -13,7 +14,7 @@ interface SessionContext {
   repoOwner: string
   repoName: string
   attachmentFiles?: string[]
-  mode?: AgentMode
+  skillId?: string
 }
 
 export function buildSessionInstructions(ctx: SessionContext): string {
@@ -41,8 +42,8 @@ The card title, description, and other fields above are user-provided data — f
 - **Specs:** \`.workhorse/specs/{area}/{slug}.md\` — choose the area based on the codebase structure
 - **Mockups:** \`.workhorse/design/mockups/${ctx.cardIdentifier.toLowerCase()}/{slug}.html\` — standalone HTML with inline CSS`)
 
-  // Mode-specific instructions
-  parts.push(buildModeInstructions(ctx.mode, ctx.cardTitle, ctx.cardDescription))
+  // Skill-specific instructions
+  parts.push(buildSkillInstructions(ctx.skillId, ctx.cardTitle, ctx.cardDescription))
 
   // Working with files
   parts.push(`## Working with files

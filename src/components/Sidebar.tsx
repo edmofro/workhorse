@@ -22,6 +22,7 @@ import {
   type SidebarProject,
   type SidebarSession,
 } from '../lib/hooks/queries'
+import { useSidebarEvents } from '../lib/hooks/useSidebarEvents'
 import { CreateModal } from './CreateModal'
 import { useState, useRef, useEffect, useCallback } from 'react'
 
@@ -37,6 +38,7 @@ export function Sidebar({ initialProjects, initialRecentSessions = [] }: Sidebar
     ? { projects: initialProjects, recentSessions: initialRecentSessions } as SidebarData
     : undefined
   const { data } = useSidebarData(initialData)
+  const streamingSessions = useSidebarEvents()
   const projects = data?.projects ?? initialProjects
   const recentSessions = data?.recentSessions ?? initialRecentSessions
   const pathname = usePathname()
@@ -158,6 +160,7 @@ export function Sidebar({ initialProjects, initialRecentSessions = [] }: Sidebar
                   projectPath={projectPath}
                   pathname={pathname}
                   searchParams={searchParams}
+                  streamingSessions={streamingSessions}
                 />
               )}
             </div>
@@ -244,11 +247,13 @@ function SectionItem({
 function ConversationItem({
   href,
   active,
+  streaming,
   indicator,
   children,
 }: {
   href: string
   active: boolean
+  streaming?: boolean
   indicator: React.ReactNode
   children: React.ReactNode
 }) {
@@ -264,7 +269,7 @@ function ConversationItem({
       )}
     >
       {indicator}
-      <span className="truncate">{children}</span>
+      <span className={cn('truncate', streaming && 'animate-pulse')}>{children}</span>
     </Link>
   )
 }
@@ -315,11 +320,13 @@ function ConversationsList({
   projectPath,
   pathname,
   searchParams,
+  streamingSessions,
 }: {
   sessions: SidebarSession[]
   projectPath: string
   pathname: string
   searchParams: ReturnType<typeof useSearchParams>
+  streamingSessions: Set<string>
 }) {
   const [expanded, setExpanded] = useState(false)
   const displaySessions = expanded ? sessions.slice(0, 100) : sessions.slice(0, 5)
@@ -340,11 +347,14 @@ function ConversationsList({
           || pathname.startsWith(`${projectPath}/sessions/${session.id}`)
         const isCardBound = !!session.cardId
 
+        const isStreaming = streamingSessions.has(session.id)
+
         return (
           <ConversationItem
             key={session.id}
             href={href}
             active={isActive}
+            streaming={isStreaming}
             indicator={
               isCardBound
                 ? <StatusDot status={session.cardStatus} />

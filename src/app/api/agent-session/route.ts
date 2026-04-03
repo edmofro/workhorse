@@ -19,6 +19,7 @@ import {
 import { branchNameFromCard } from '../../../lib/git/branchNaming'
 
 import { safeParseTouchedFiles } from '../../../lib/safeParseTouchedFiles'
+import { emit as emitSidebarEvent, type SidebarEvent } from '../../../lib/sidebarEvents'
 
 class StaleSessionError extends Error {
   constructor() {
@@ -71,6 +72,21 @@ export async function POST(request: NextRequest) {
       },
     })
   }
+
+  // Helper to build sidebar event payload
+  const sidebarSession = (overrides?: Partial<SidebarEvent['session']>): SidebarEvent['session'] => ({
+    id: convSession.id,
+    title: convSession.title,
+    messageCount: convSession.messageCount,
+    lastMessageAt: new Date().toISOString(),
+    cardId: card.id,
+    cardIdentifier: card.identifier,
+    cardTitle: card.title,
+    cardStatus: card.status,
+    teamColour: card.team.colour,
+    projectName: card.team.project.name,
+    ...overrides,
+  })
 
   const { project } = card.team
   const { owner, repoName, defaultBranch } = project
@@ -228,6 +244,13 @@ export async function POST(request: NextRequest) {
           ),
         )
 
+        // Notify sidebar: new/active session is streaming
+        emitSidebarEvent({
+          type: isFirstMessage ? 'session_created' : 'streaming_start',
+          userId: user.id,
+          session: sidebarSession(),
+        })
+
         let agentQuery: ReturnType<typeof query>
 
         try {
@@ -323,6 +346,7 @@ export async function POST(request: NextRequest) {
           message,
           cardTitle: card.title,
           assistantText,
+          sidebarSession,
         })
 
         controller.enqueue(encoder.encode('data: [DONE]\n\n'))
@@ -360,13 +384,14 @@ async function finaliseSessionAfterExchange(
     repoName: string
     card: { identifier: string }
     cardId: string
-    user: { displayName: string; githubUsername: string; accessToken: string }
+    user: { id: string; displayName: string; githubUsername: string; accessToken: string }
     convSessionId: string
     isFirstMessage: boolean
     convSessionTitle: string | null
     message: string
     cardTitle: string
     assistantText: string
+    sidebarSession: (overrides?: Partial<SidebarEvent['session']>) => SidebarEvent['session']
   },
 ) {
   try {
@@ -428,6 +453,16 @@ async function finaliseSessionAfterExchange(
       ),
     )
   }
+
+  // Notify sidebar: streaming finished, update title/messageCount
+  emitSidebarEvent({
+    type: 'streaming_stop',
+    userId: ctx.user.id,
+    session: ctx.sidebarSession({
+      title: updatedSession.title,
+      lastMessageAt: now.toISOString(),
+    }),
+  })
 }
 
 /** Known action pill messages that make poor session titles. */

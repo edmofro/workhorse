@@ -37,6 +37,7 @@ export function CreateModal({
   const attachments = useAttachments()
 
   const isCard = defaultMode === 'card'
+  const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform)
 
   const onCloseRef = useRef(onClose)
   useEffect(() => { onCloseRef.current = onClose }, [onClose])
@@ -223,7 +224,13 @@ export function CreateModal({
                       {isCard ? 'Creating...' : 'Starting...'}
                     </span>
                   ) : (
-                    isCard ? 'Create card' : 'Send'
+                    <span className="flex items-center gap-2">
+                      {isCard ? 'Create card' : 'Send'}
+                      <kbd className="flex items-center gap-0.5 font-sans text-[10px] opacity-60">
+                        <span>{isMac ? '⌘' : 'Ctrl'}</span>
+                        <span>↵</span>
+                      </kbd>
+                    </span>
                   )}
                 </button>
               </div>

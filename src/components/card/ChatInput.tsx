@@ -83,51 +83,50 @@ export function ChatInput({
   const hasContent = !!(value.trim() || hasAttachments)
   const canSend = hasContent && !disabled && !isUploading
 
-  // Icon button shared styles
-  const iconBtnBase = 'flex items-center justify-center shrink-0 rounded-[var(--radius-default)] transition-[background,opacity] duration-100 cursor-pointer'
+  const sendButton = compact ? (
+    <button
+      onClick={handleSubmit}
+      disabled={!canSend}
+      className="px-[6px] py-[6px] bg-[var(--accent)] text-white rounded-[var(--radius-default)] cursor-pointer disabled:opacity-40 shrink-0 transition-colors duration-100"
+      title="Send"
+    >
+      <ArrowUp size={14} strokeWidth={2.5} />
+    </button>
+  ) : (
+    <button
+      onClick={handleSubmit}
+      disabled={!canSend}
+      className="px-2 py-2 bg-[var(--accent)] text-white rounded-[var(--radius-default)] cursor-pointer disabled:opacity-40 shrink-0 transition-colors duration-100"
+      title="Send"
+    >
+      <ArrowUp size={16} strokeWidth={2.5} />
+    </button>
+  )
 
-  const sendButton = (size: 'compact' | 'full') => {
-    const px = size === 'compact' ? 'w-[28px] h-[28px]' : 'w-[32px] h-[32px]'
-    const iconSize = size === 'compact' ? 14 : 16
-    return (
-      <button
-        onClick={handleSubmit}
-        disabled={!canSend}
-        className={`${iconBtnBase} ${px} bg-[var(--accent)] text-white disabled:opacity-35`}
-        title="Send"
-      >
-        <ArrowUp size={iconSize} strokeWidth={2.5} />
-      </button>
-    )
-  }
+  const stopBtn = compact ? (
+    <button
+      onClick={onStop}
+      className="px-[6px] py-[6px] bg-[var(--bg-surface)] text-[var(--text-secondary)] border border-[var(--border-default)] rounded-[var(--radius-default)] shadow-[var(--shadow-sm)] cursor-pointer hover:border-[var(--border-default)] hover:bg-[var(--bg-hover)] shrink-0 transition-colors duration-100"
+      title="Stop"
+    >
+      <Square size={12} fill="currentColor" />
+    </button>
+  ) : (
+    <button
+      onClick={onStop}
+      className="px-2 py-2 bg-[var(--bg-surface)] text-[var(--text-secondary)] border border-[var(--border-default)] rounded-[var(--radius-default)] shadow-[var(--shadow-sm)] cursor-pointer hover:bg-[var(--bg-hover)] shrink-0 transition-colors duration-100"
+      title="Stop"
+    >
+      <Square size={14} fill="currentColor" />
+    </button>
+  )
 
-  const stopButton = (size: 'compact' | 'full') => {
-    const px = size === 'compact' ? 'w-[28px] h-[28px]' : 'w-[32px] h-[32px]'
-    const iconSize = size === 'compact' ? 12 : 14
-    return (
-      <button
-        onClick={onStop}
-        className={`${iconBtnBase} ${px} bg-[var(--bg-inset)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]`}
-        title="Stop"
-      >
-        <Square size={iconSize} fill="currentColor" />
-      </button>
-    )
-  }
-
-  const renderButtons = (size: 'compact' | 'full') => {
-    if (isStreaming) {
-      // State 3 or 4: show stop, and send if there's content
-      return (
-        <>
-          {stopButton(size)}
-          {hasContent && sendButton(size)}
-        </>
-      )
-    }
-    // State 1 or 2: just the send button
-    return sendButton(size)
-  }
+  const buttons = isStreaming ? (
+    <>
+      {stopBtn}
+      {hasContent && sendButton}
+    </>
+  ) : sendButton
 
   if (compact) {
     return (
@@ -141,8 +140,8 @@ export function ChatInput({
             />
           </div>
         )}
-        <div className="flex items-end bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-[var(--radius-lg)] shadow-[var(--shadow-sm)] transition-[border-color,box-shadow] duration-150 focus-within:border-[var(--accent)] focus-within:shadow-[var(--shadow-input-focus)]"
-          style={{ padding: '4px 4px 4px 12px', gap: '4px' }}
+        <div className="flex items-end gap-1 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-[var(--radius-lg)] shadow-[var(--shadow-sm)] transition-[border-color,box-shadow] duration-150 focus-within:border-[var(--accent)] focus-within:shadow-[var(--shadow-input-focus)]"
+          style={{ padding: '4px 4px 4px 12px' }}
         >
           {onAddFiles && (
             <AttachmentButton onFiles={onAddFiles} disabled={disabled} compact />
@@ -158,7 +157,7 @@ export function ChatInput({
             className="flex-1 border-none bg-transparent outline-none resize-none text-[13px] leading-[1.5] min-h-[24px]"
             style={{ padding: '6px 0', maxHeight: '160px', overflowY: 'auto' }}
           />
-          {renderButtons('compact')}
+          {buttons}
         </div>
       </div>
     )
@@ -174,8 +173,8 @@ export function ChatInput({
           />
         </div>
       )}
-      <div className="flex items-end bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] transition-[border-color,box-shadow] duration-150 focus-within:border-[var(--accent)] focus-within:shadow-[var(--shadow-input-focus)]"
-        style={{ padding: '6px 6px 6px 16px', gap: '4px' }}
+      <div className="flex items-end gap-1 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] transition-[border-color,box-shadow] duration-150 focus-within:border-[var(--accent)] focus-within:shadow-[var(--shadow-input-focus)]"
+        style={{ padding: '6px 6px 6px 16px' }}
       >
         {onAddFiles && (
           <AttachmentButton onFiles={onAddFiles} disabled={disabled} />
@@ -192,7 +191,7 @@ export function ChatInput({
           className="flex-1 border-none bg-transparent outline-none resize-none text-[14px] leading-[1.5] min-h-[24px] placeholder:text-[var(--text-faint)]"
           style={{ padding: '8px 0', maxHeight: '200px', overflowY: 'auto' }}
         />
-        {renderButtons('full')}
+        {buttons}
       </div>
     </div>
   )

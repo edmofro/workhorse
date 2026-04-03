@@ -367,10 +367,7 @@ function ConversationsList({
           : session.projectName
             ? `/${encodeURIComponent(session.projectName.toLowerCase())}/sessions/${session.id}`
             : '#'
-        const sessionLabel = session.cardTitle ?? session.title ?? 'New conversation'
-        const label = session.cardIdentifier
-          ? `${session.cardIdentifier}: ${sessionLabel}`
-          : sessionLabel
+        const label = session.cardTitle ?? session.title ?? 'New conversation'
         const isActive = searchParams.get('session') === session.id
           || pathname.startsWith(`${projectPath}/sessions/${session.id}`)
         const isCardBound = !!session.cardId

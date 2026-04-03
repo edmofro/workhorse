@@ -10,6 +10,7 @@ import {
   ChevronDown,
   Ellipsis,
   Plus,
+  Search,
   LayoutList,
   MessageCircle,
   X,
@@ -119,41 +120,41 @@ export function Sidebar({ initialProjects, initialRecentSessions = [] }: Sidebar
         {projectPath && (
           <>
             {/* Cards link */}
-            <SectionItem
+            <NavRow
               href={projectPath}
               icon={<LayoutList size={14} />}
               active={pathname === projectPath && !searchParams.has('session')}
               onAdd={() => setCreateModal('card')}
             >
               Cards
-            </SectionItem>
+            </NavRow>
 
             {/* Specs link */}
-            <SectionItem
+            <NavRow
               href={`${projectPath}/specs`}
               icon={<FileText size={14} />}
               active={pathname.startsWith(`${projectPath}/specs`)}
             >
               Specs
-            </SectionItem>
+            </NavRow>
 
-            <SectionItem
+            <NavRow
               href={`${projectPath}/design`}
               icon={<Palette size={14} />}
               active={pathname.startsWith(`${projectPath}/design`)}
             >
               Design
-            </SectionItem>
+            </NavRow>
 
             {/* Conversations section with recent items */}
             <div className="mt-3 pt-3 border-t border-[var(--border-subtle)]">
-              <SectionHeader
+              <NavRow
                 icon={<MessageCircle size={14} />}
                 active={pathname.startsWith(`${projectPath}/sessions/`)}
                 onAdd={() => setCreateModal('chat')}
               >
                 Conversations
-              </SectionHeader>
+              </NavRow>
 
               {filteredSessions.length > 0 && (
                 <ConversationsList
@@ -185,8 +186,8 @@ export function Sidebar({ initialProjects, initialRecentSessions = [] }: Sidebar
   )
 }
 
-/** A section row with icon, label (navigable), and hover action ([+]). */
-function SectionItem({
+/** Unified nav row — handles both navigable section items and non-navigating section headers. */
+function NavRow({
   href,
   icon,
   active,
@@ -194,51 +195,62 @@ function SectionItem({
   onAdd,
   children,
 }: {
-  href: string
+  href?: string
   icon: React.ReactNode
   active: boolean
   disabled?: boolean
   onAdd?: () => void
   children: React.ReactNode
 }) {
-  if (disabled) {
-    return (
-      <div className="group flex items-center rounded-[var(--radius-md)]">
-        <span
-          className="flex items-center gap-2 flex-1 min-w-0 px-3 py-2 rounded-[var(--radius-md)] text-[13px] text-[var(--text-muted)] font-[450] cursor-default"
-          aria-disabled="true"
-        >
+  const labelClass = cn(
+    'flex items-center gap-2 flex-1 min-w-0 px-3 py-2 text-[13px]',
+    disabled
+      ? 'text-[var(--text-muted)] font-[450] cursor-default'
+      : active
+        ? 'text-[var(--text-primary)] font-medium'
+        : href
+          ? 'text-[var(--text-secondary)] font-[450] cursor-pointer'
+          : 'text-[var(--text-secondary)] font-[450] cursor-default',
+  )
+
+  return (
+    <div
+      className={cn(
+        'group flex items-center rounded-[var(--radius-md)] transition-colors duration-100',
+        !disabled && (active
+          ? 'bg-[var(--bg-surface)] shadow-[var(--shadow-sm)]'
+          : 'hover:bg-[var(--bg-hover)]'),
+      )}
+    >
+      {href && !disabled ? (
+        <Link href={href} className={labelClass}>
+          {icon}
+          <span className="truncate">{children}</span>
+        </Link>
+      ) : (
+        <span className={labelClass} aria-disabled={disabled || undefined}>
           {icon}
           <span className="truncate">{children}</span>
         </span>
-      </div>
-    )
-  }
-
-  return (
-    <div className="group relative flex items-center rounded-[var(--radius-md)] transition-colors duration-100">
-      <Link
-        href={href}
-        className={cn(
-          'flex items-center gap-2 flex-1 min-w-0 px-3 py-2 rounded-[var(--radius-md)]',
-          'text-[13px] cursor-pointer transition-colors duration-100',
-          active
-            ? 'bg-[var(--bg-surface)] text-[var(--text-primary)] font-medium shadow-[var(--shadow-sm)]'
-            : 'text-[var(--text-secondary)] font-[450] hover:bg-[var(--bg-hover)]',
-        )}
-      >
-        {icon}
-        <span className="truncate">{children}</span>
-      </Link>
-      {onAdd && (
-        <button
-          type="button"
-          className="absolute right-1 p-1 rounded-[var(--radius-sm)] text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity duration-100"
-          title="New"
-          onClick={onAdd}
-        >
-          <Plus size={12} />
-        </button>
+      )}
+      {!disabled && onAdd && (
+        <div className="flex items-center shrink-0 gap-1 pr-2 opacity-0 group-hover:opacity-100 transition-opacity duration-100">
+          <button
+            type="button"
+            className="p-1 rounded-[var(--radius-sm)] text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] cursor-pointer transition-colors duration-100"
+            title="New"
+            onClick={onAdd}
+          >
+            <Plus size={12} />
+          </button>
+          <button
+            type="button"
+            className="p-1 rounded-[var(--radius-sm)] text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] cursor-pointer transition-colors duration-100"
+            title="Search"
+          >
+            <Search size={12} />
+          </button>
+        </div>
       )}
     </div>
   )
@@ -287,46 +299,6 @@ function ConversationItem({
           <X size={11} />
         </button>
       </div>
-    </div>
-  )
-}
-
-/** A non-navigating section header with icon, label, and hover [+] action. */
-function SectionHeader({
-  icon,
-  active,
-  onAdd,
-  children,
-}: {
-  icon: React.ReactNode
-  active: boolean
-  onAdd?: () => void
-  children: React.ReactNode
-}) {
-  return (
-    <div className="group relative flex items-center rounded-[var(--radius-md)] transition-colors duration-100">
-      <span
-        className={cn(
-          'flex items-center gap-2 flex-1 min-w-0 px-3 py-2 rounded-[var(--radius-md)]',
-          'text-[13px] cursor-default',
-          active
-            ? 'text-[var(--text-primary)] font-medium'
-            : 'text-[var(--text-secondary)] font-[450]',
-        )}
-      >
-        {icon}
-        <span className="truncate">{children}</span>
-      </span>
-      {onAdd && (
-        <button
-          type="button"
-          className="absolute right-1 p-1 rounded-[var(--radius-sm)] text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity duration-100"
-          title="New"
-          onClick={onAdd}
-        >
-          <Plus size={12} />
-        </button>
-      )}
     </div>
   )
 }
@@ -417,6 +389,11 @@ function StatusDot({ status }: { status: string | null }) {
       <span className="w-[8px] h-[8px] rounded-full shrink-0 bg-[var(--amber)]" />
     )
   }
+  if (status === 'IMPLEMENTING') {
+    return (
+      <span className="w-[8px] h-[8px] rounded-full shrink-0 bg-[var(--blue,#2563eb)]" />
+    )
+  }
   // NOT_STARTED or unknown — hollow dot
   return (
     <span className="w-[8px] h-[8px] rounded-full shrink-0 border border-[var(--border-default)]" />
@@ -477,4 +454,3 @@ function UserMenu({ user }: { user: { displayName: string; avatarUrl: string | n
     </div>
   )
 }
-

@@ -24,6 +24,8 @@ interface FloatingChatProps {
   height?: number
   placeholder?: string
   disabled?: boolean
+  /** Called when the user clicks the stop button */
+  onStop?: () => void
   // Attachment support
   pendingAttachments?: PendingAttachment[]
   onAddFiles?: (files: FileList) => void
@@ -44,6 +46,7 @@ export function FloatingChat({
   height = 200,
   placeholder,
   disabled,
+  onStop,
   pendingAttachments,
   onAddFiles,
   onRemoveAttachment,
@@ -137,7 +140,9 @@ export function FloatingChat({
         )}
         <ChatInput
           onSend={onSend}
-          disabled={disabled || isStreaming}
+          disabled={disabled}
+          isStreaming={isStreaming}
+          onStop={onStop}
           placeholder={placeholder ?? 'Ask something...'}
           compact
           pendingAttachments={pendingAttachments}

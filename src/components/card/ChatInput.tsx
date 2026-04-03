@@ -10,6 +10,7 @@ interface ChatInputProps {
   disabled?: boolean
   placeholder?: string
   compact?: boolean
+  autoFocus?: boolean
   /** Pending attachments managed by parent */
   pendingAttachments?: PendingAttachment[]
   /** Called when user selects files */
@@ -25,6 +26,7 @@ export function ChatInput({
   disabled = false,
   placeholder = 'Continue the conversation...',
   compact = false,
+  autoFocus = false,
   pendingAttachments,
   onAddFiles,
   onRemoveAttachment,
@@ -100,6 +102,7 @@ export function ChatInput({
             onPaste={handlePaste}
             placeholder="Ask to refine..."
             rows={1}
+            autoFocus={autoFocus}
             className="flex-1 border-none bg-transparent outline-none resize-none text-[13px] leading-[1.5] min-h-[24px]"
             style={{ padding: '6px 0' }}
           />
@@ -140,6 +143,7 @@ export function ChatInput({
           placeholder={placeholder}
           rows={1}
           disabled={disabled}
+          autoFocus={autoFocus}
           className="flex-1 border-none bg-transparent outline-none resize-none text-[14px] leading-[1.5] min-h-[24px] placeholder:text-[var(--text-faint)]"
           style={{ padding: '8px 0' }}
         />

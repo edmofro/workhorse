@@ -21,6 +21,11 @@ interface Segment {
  * Inline tracked-changes view for spec files. Renders the spec with full
  * markdown formatting (headings, lists, checkboxes), with additions shown
  * in green and deletions in red with strikethrough — like Slab or Google Docs.
+ *
+ * Changes are grouped sensibly: a single changed word appears inline, a run of
+ * changed words appears as a contiguous block, and short unchanged runs between
+ * changes are absorbed so the diff reads as one grouped change rather than
+ * alternating flickers.
  */
 export function SpecDiffView({ cardId, filePath, currentContent }: SpecDiffViewProps) {
   const [baseContent, setBaseContent] = useState<string | null | undefined>(undefined)
@@ -132,18 +137,17 @@ function NewSpecView({ content }: { content: string }) {
   )
 }
 
-/** Renders a spec with inline tracked changes (word-level diff). */
+/** Renders a spec with inline tracked changes. */
 function DiffRenderedSpec({ baseContent, currentContent }: { baseContent: string; currentContent: string }) {
   const baseParsed = useMemo(() => parseSpec(baseContent), [baseContent])
   const currentParsed = useMemo(() => parseSpec(currentContent), [currentContent])
 
   const titleChanged = baseParsed.frontmatter.title !== currentParsed.frontmatter.title
 
-  // Compute word-level diff of the body content
-  const bodySegments = useMemo(
-    () => diffWords(baseParsed.content, currentParsed.content),
-    [baseParsed.content, currentParsed.content],
-  )
+  const bodySegments = useMemo(() => {
+    const raw = diffWords(baseParsed.content, currentParsed.content)
+    return collapseShortUnchangedRuns(raw)
+  }, [baseParsed.content, currentParsed.content])
 
   return (
     <div className="flex-1 overflow-y-auto flex justify-center">
@@ -171,7 +175,6 @@ function DiffRenderedSpec({ baseContent, currentContent }: { baseContent: string
 
 /**
  * Renders markdown content (used for new files where everything is an addition).
- * Simple markdown rendering inline.
  */
 function DiffMarkdown({ content }: { content: string }) {
   const html = useMemo(() => renderDiffMarkdown(content), [content])
@@ -179,14 +182,12 @@ function DiffMarkdown({ content }: { content: string }) {
 }
 
 /**
- * Renders word-level diff segments as formatted markdown with inline change markers.
- * Processes the segments to produce markdown with <ins> and <del> annotations.
+ * Renders diff segments as formatted markdown with inline change markers.
+ * Wraps added/removed runs in placeholder markers, renders the whole thing
+ * as markdown, then replaces markers with HTML spans.
  */
 function DiffMarkdownSegments({ segments }: { segments: Segment[] }) {
-  // Merge segments back into annotated markdown, then render
   const html = useMemo(() => {
-    // Build annotated text: wrap added/removed in placeholder markers,
-    // then render the whole thing as markdown, preserving the markers.
     let annotated = ''
     for (const seg of segments) {
       if (seg.type === 'unchanged') {
@@ -198,10 +199,8 @@ function DiffMarkdownSegments({ segments }: { segments: Segment[] }) {
       }
     }
 
-    // Render the annotated markdown
     let rendered = renderDiffMarkdown(annotated)
 
-    // Replace markers with HTML spans
     rendered = rendered
       .replace(/\x01ADD_START\x01/g, '<span class="diff-added">')
       .replace(/\x01ADD_END\x01/g, '</span>')
@@ -341,21 +340,20 @@ function escapeHtmlPreserveMarkers(str: string): string {
     .replace(/"/g, '&quot;')
 }
 
-// --- Word-level diff algorithm ---
+// --- Diff algorithm ---
 
 /**
- * Compute a word-level diff between two strings.
- * Uses a simple LCS-based approach on word tokens.
+ * Compute a word-level diff between two strings using LCS, then collapse
+ * short unchanged runs between changed segments so the result reads as
+ * sensibly grouped changes rather than word-by-word flicker.
  */
 function diffWords(oldText: string, newText: string): Segment[] {
   const oldTokens = tokenize(oldText)
   const newTokens = tokenize(newText)
 
-  // Compute LCS table
   const m = oldTokens.length
   const n = newTokens.length
 
-  // For large inputs, use a greedy approach instead of full DP
   if (m * n > 1_000_000) {
     return greedyWordDiff(oldTokens, newTokens)
   }
@@ -373,13 +371,9 @@ function diffWords(oldText: string, newText: string): Segment[] {
     }
   }
 
-  // Backtrack to get the diff
-  const segments: Segment[] = []
+  const ops: Array<{ type: SegmentType; text: string }> = []
   let i = m
   let j = n
-
-  // Collect operations in reverse, then reverse
-  const ops: Array<{ type: SegmentType; text: string }> = []
 
   while (i > 0 || j > 0) {
     if (i > 0 && j > 0 && oldTokens[i - 1] === newTokens[j - 1]) {
@@ -398,6 +392,7 @@ function diffWords(oldText: string, newText: string): Segment[] {
   ops.reverse()
 
   // Merge consecutive segments of the same type
+  const segments: Segment[] = []
   for (const op of ops) {
     const last = segments[segments.length - 1]
     if (last && last.type === op.type) {
@@ -411,8 +406,63 @@ function diffWords(oldText: string, newText: string): Segment[] {
 }
 
 /**
+ * Post-process word-level diff segments to collapse short unchanged runs
+ * between two changed segments of the same type. This makes the diff read
+ * as grouped changes — a word or two that didn't change won't break up an
+ * otherwise contiguous removed or added block.
+ *
+ * Only same-type neighbours are collapsed. An unchanged bridge between a
+ * removed and an added segment is left alone: absorbing it into both spans
+ * would render it as simultaneously deleted and inserted, misrepresenting
+ * the diff.
+ *
+ * Runs that cross a line boundary are never collapsed — a newline inside a
+ * diff span can break heading/list rendering.
+ */
+function collapseShortUnchangedRuns(segments: Segment[]): Segment[] {
+  const COLLAPSE_THRESHOLD = 3
+  const result: Segment[] = []
+
+  for (let i = 0; i < segments.length; i++) {
+    const seg = segments[i]
+
+    // Try to collapse a short unchanged bridge between two same-type changed segments.
+    if (
+      seg.type === 'unchanged' &&
+      result.length > 0 &&
+      result[result.length - 1].type !== 'unchanged' &&
+      i + 1 < segments.length
+    ) {
+      const prevType = result[result.length - 1].type
+      const next = segments[i + 1]
+      const words = seg.text.match(/\S+/g) ?? []
+
+      if (
+        next.type === prevType &&
+        words.length > 0 &&
+        words.length <= COLLAPSE_THRESHOLD &&
+        !seg.text.includes('\n')
+      ) {
+        result[result.length - 1].text += seg.text + next.text
+        i++ // consume the next same-type segment
+        continue
+      }
+    }
+
+    // Normal path: merge with last segment if same type, otherwise push
+    const last = result[result.length - 1]
+    if (last && last.type === seg.type) {
+      last.text += seg.text
+    } else {
+      result.push({ ...seg })
+    }
+  }
+
+  return result
+}
+
+/**
  * Greedy word diff for large inputs — trades optimality for speed.
- * Scans forward matching equal words, collecting runs of removed/added.
  */
 function greedyWordDiff(oldTokens: string[], newTokens: string[]): Segment[] {
   const segments: Segment[] = []
@@ -430,7 +480,6 @@ function greedyWordDiff(oldTokens: string[], newTokens: string[]): Segment[] {
       i++
       j++
     } else {
-      // Look ahead to find next common word
       const lookAhead = 20
       let foundOld = -1
       let foundNew = -1
@@ -447,17 +496,14 @@ function greedyWordDiff(oldTokens: string[], newTokens: string[]): Segment[] {
       }
 
       if (foundNew >= 0) {
-        // Added words
         let added = ''
         while (j < foundNew) { added += newTokens[j]; j++ }
         segments.push({ type: 'added', text: added })
       } else if (foundOld >= 0) {
-        // Removed words
         let removed = ''
         while (i < foundOld) { removed += oldTokens[i]; i++ }
         segments.push({ type: 'removed', text: removed })
       } else {
-        // No match found nearby — emit as removed + added
         segments.push({ type: 'removed', text: oldTokens[i] })
         segments.push({ type: 'added', text: newTokens[j] })
         i++
@@ -466,7 +512,6 @@ function greedyWordDiff(oldTokens: string[], newTokens: string[]): Segment[] {
     }
   }
 
-  // Remaining
   if (i < oldTokens.length) {
     let removed = ''
     while (i < oldTokens.length) { removed += oldTokens[i]; i++ }
@@ -482,8 +527,8 @@ function greedyWordDiff(oldTokens: string[], newTokens: string[]): Segment[] {
 }
 
 /**
- * Tokenize text into words, preserving whitespace and newlines as separate tokens.
- * This ensures diff granularity at the word level while preserving formatting.
+ * Tokenize text into words and whitespace as separate tokens.
+ * This keeps whitespace in the diff so spacing is preserved exactly.
  */
 function tokenize(text: string): string[] {
   const tokens: string[] = []

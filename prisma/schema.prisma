@@ -205,9 +205,10 @@ model ConversationSession {
   agentSessionId  String?  // Agent SDK session ID for resumption
   title           String?  // Auto-generated from first exchange
   messageCount    Int      @default(0)
-  jockeyCursor    Int      @default(0)  // Index of last message assessed by jockey
-  lastMessageAt   DateTime @default(now())
-  createdAt       DateTime @default(now())
+  jockeyCursor         Int      @default(0)  // Index of last message assessed by jockey
+  dismissedFromRecent  Boolean  @default(false)
+  lastMessageAt        DateTime @default(now())
+  createdAt            DateTime @default(now())
 
   card Card? @relation(fields: [cardId], references: [id], onDelete: Cascade)
   team Team? @relation(fields: [teamId], references: [id], onDelete: SetNull)

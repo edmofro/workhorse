@@ -117,27 +117,24 @@ export function useJockeyState(cardId: string) {
 
   /** Unschedule a step (return to suggestions) */
   const unscheduleStep = useCallback(async (stepId: string) => {
-    const step = state.scheduledSteps.find(s => s.id === stepId)
-    if (!step) return
-
-    await fetch('/api/scheduled-steps', {
+    // Fire-and-forget the API call
+    fetch('/api/scheduled-steps', {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ cardId, stepId }),
-    })
+    }).catch(() => { /* best effort */ })
 
+    // Update state entirely inside the updater to avoid stale closures
     setState(prev => {
       const removed = prev.scheduledSteps.find(s => s.id === stepId)
+      if (!removed) return prev
       return {
         ...prev,
         scheduledSteps: prev.scheduledSteps.filter(s => s.id !== stepId),
-        // Add back to suggestions if we know the skill
-        suggestions: removed
-          ? [...prev.suggestions, { skillId: removed.skillId, label: BUILT_IN_SKILLS[removed.skillId]?.label ?? removed.skillId }]
-          : prev.suggestions,
+        suggestions: [...prev.suggestions, { skillId: removed.skillId, label: BUILT_IN_SKILLS[removed.skillId]?.label ?? removed.skillId }],
       }
     })
-  }, [cardId, state.scheduledSteps])
+  }, [cardId])
 
   return {
     ...state,

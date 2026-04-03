@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '../../../lib/prisma'
 import { requireUser, requireCardAccess } from '../../../lib/auth/session'
+import { isValidSkillId } from '../../../lib/skills/registry'
 
 export async function POST(request: NextRequest) {
   const user = await requireUser()
@@ -13,6 +14,11 @@ export async function POST(request: NextRequest) {
 
   if (!cardId || !skillId) {
     return NextResponse.json({ error: 'Missing cardId or skillId' }, { status: 400 })
+  }
+
+  // Validate skillId against the registry to prevent arbitrary strings in DB
+  if (!isValidSkillId(skillId)) {
+    return NextResponse.json({ error: 'Invalid skillId' }, { status: 400 })
   }
 
   await requireCardAccess(user.id, cardId)
@@ -49,13 +55,9 @@ export async function DELETE(request: NextRequest) {
 
   await requireCardAccess(user.id, cardId)
 
-  await prisma.scheduledStep.delete({
-    where: { id: stepId },
-  }).catch((err: { code?: string }) => {
-    // P2025 = record not found, safe to ignore (already deleted)
-    if (err.code !== 'P2025') {
-      console.warn('[scheduled-steps] Delete error:', err)
-    }
+  // Use compound where to ensure step belongs to the specified card
+  await prisma.scheduledStep.deleteMany({
+    where: { id: stepId, cardId },
   })
 
   return NextResponse.json({ ok: true })

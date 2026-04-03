@@ -327,24 +327,32 @@ export async function POST(request: NextRequest) {
           assistantText,
         })
 
-        // Run jockey assessment after the exchange
-        const jockeyResult = await runJockeyAfterExchange(
-          cardId,
-          convSessionId,
-          card.title,
-          card.status,
-          message,
-          assistantText,
-        )
-        if (jockeyResult) {
-          controller.enqueue(
-            encoder.encode(
-              `data: ${JSON.stringify({ type: 'jockey', ...jockeyResult })}\n\n`,
-            ),
+        // Send [DONE] immediately so the client knows the agent exchange
+        // is complete — don't block on the jockey LLM assessment.
+        controller.enqueue(encoder.encode('data: [DONE]\n\n'))
+
+        // Run jockey assessment after [DONE]. The client still receives
+        // the jockey event via the open stream before it closes.
+        try {
+          const jockeyResult = await runJockeyAfterExchange(
+            cardId,
+            convSessionId,
+            card.title,
+            card.status,
+            message,
+            assistantText,
           )
+          if (jockeyResult) {
+            controller.enqueue(
+              encoder.encode(
+                `data: ${JSON.stringify({ type: 'jockey', ...jockeyResult })}\n\n`,
+              ),
+            )
+          }
+        } catch (jockeyErr) {
+          console.warn('[jockey] Post-exchange assessment failed:', jockeyErr)
         }
 
-        controller.enqueue(encoder.encode('data: [DONE]\n\n'))
         controller.close()
       } catch (err) {
         const errorMsg = err instanceof Error ? err.message : 'Interview failed'

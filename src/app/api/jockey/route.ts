@@ -1,13 +1,14 @@
 /**
  * GET /api/jockey?cardId=xxx
  * Returns the current jockey state for a card (journal, scheduled steps, pills, suggestions).
- * Used on initial card load — the SSE stream handles updates during conversation.
+ * Used on initial card load — uses deterministic defaults for pills/suggestions
+ * to keep page load fast. The LLM-based assessment runs after each conversation exchange.
  */
 
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '../../../lib/prisma'
 import { requireUser, requireCardAccess } from '../../../lib/auth/session'
-import { runJockeyAssessment } from '../../../lib/jockey/assess'
+import { getDefaultPills, getDefaultSuggestions } from '../../../lib/jockey/assess'
 import { safeParseTouchedFiles } from '../../../lib/safeParseTouchedFiles'
 
 export async function GET(request: NextRequest) {
@@ -39,26 +40,12 @@ export async function GET(request: NextRequest) {
   const touchedFiles = safeParseTouchedFiles(card.touchedFiles ?? '[]')
   const hasSpecs = touchedFiles.some(f => f.startsWith('.workhorse/specs/'))
   const hasCodeChanges = touchedFiles.some(f => !f.startsWith('.workhorse/'))
+  const hasPr = !!card.prUrl
 
-  // Run a quick assessment to get current pills and suggestions
-  const assessment = await runJockeyAssessment({
-    journalEntries: journalEntries.map(e => ({
-      type: e.type,
-      summary: e.summary,
-      createdAt: e.createdAt,
-    })),
-    scheduledSteps: scheduledSteps.map(s => ({
-      skillId: s.skillId,
-      position: s.position,
-    })),
-    recentMessages: [],
-    newMessageCount: 0,
-    cardTitle: card.title,
-    cardStatus: card.status,
-    hasSpecs,
-    hasCodeChanges,
-    hasPr: !!card.prUrl,
-  })
+  // Use deterministic defaults for fast initial load — no LLM call.
+  // The first conversation exchange triggers a full jockey assessment.
+  const pills = getDefaultPills({ hasCodeChanges, hasPr, hasSpecs, journalEntries })
+  const suggestions = getDefaultSuggestions({ hasSpecs, journalEntries })
 
   return NextResponse.json({
     journalEntries: journalEntries.map(e => ({
@@ -72,9 +59,9 @@ export async function GET(request: NextRequest) {
       skillId: s.skillId,
       position: s.position,
     })),
-    pills: assessment.pills,
-    suggestions: assessment.suggestions,
-    activeStep: assessment.activeStep,
+    pills,
+    suggestions,
+    activeStep: null,
     hasCodeChanges,
   })
 }

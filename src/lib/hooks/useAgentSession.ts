@@ -307,6 +307,10 @@ export function useAgentSession(
     async (content: string, userName: string, attachments?: AttachmentData[], skillId?: string) => {
       if (!content.trim() && (!attachments || attachments.length === 0)) return
 
+      // Cancel any active recovery stream — sendMessage takes over
+      recoveryAbortRef.current?.abort()
+      recoveryAbortRef.current = null
+
       // If already streaming, queue the message for after the current turn
       if (isStreamingRef.current) {
         const tempId = `temp-${Date.now()}-queued`

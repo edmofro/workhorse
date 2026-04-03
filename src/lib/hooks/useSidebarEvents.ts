@@ -71,8 +71,6 @@ export function useSidebarEvents() {
               ...old,
               recentSessions: [{ ...existing, ...session }, ...filtered],
             }
-              ),
-            }
           })
           setStreamingSessions((prev) => {
             const next = new Set(prev)

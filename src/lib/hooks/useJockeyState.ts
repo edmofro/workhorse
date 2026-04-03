@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { BUILT_IN_SKILLS } from '../skills/registry'
 
@@ -52,9 +52,11 @@ export function useJockeyState(cardId: string) {
     staleTime: 30_000,
   })
 
-  // Sync initial data once
+  // Sync initial data exactly once — never overwrite local optimistic updates
+  const syncedRef = useRef(false)
   useEffect(() => {
-    if (initialData) {
+    if (initialData && !syncedRef.current) {
+      syncedRef.current = true
       setState(initialData)
     }
   }, [initialData])

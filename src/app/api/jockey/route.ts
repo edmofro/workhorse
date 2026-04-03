@@ -29,6 +29,7 @@ export async function GET(request: NextRequest) {
       where: { cardId },
       orderBy: { createdAt: 'asc' },
       select: { id: true, type: true, summary: true, createdAt: true },
+      take: 100,
     }),
     prisma.scheduledStep.findMany({
       where: { cardId },

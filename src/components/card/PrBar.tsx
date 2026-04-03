@@ -9,7 +9,18 @@ interface PrBarProps {
   onCreatePr: () => void
 }
 
+function isSafeUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url)
+    return parsed.protocol === 'https:'
+  } catch {
+    return false
+  }
+}
+
 export function PrBar({ hasCodeChanges, prUrl, onCreatePr }: PrBarProps) {
+  // Sanitise: only render as link if it's a valid HTTPS URL
+  const safePrUrl = prUrl && isSafeUrl(prUrl) ? prUrl : null
   // Always render the container to prevent layout shift.
   // When no code changes, render a zero-height placeholder with the border.
   if (!hasCodeChanges) {
@@ -23,10 +34,10 @@ export function PrBar({ hasCodeChanges, prUrl, onCreatePr }: PrBarProps) {
         'border-t border-[var(--border-subtle)] bg-[var(--bg-surface)]',
       )}
     >
-      {prUrl ? (
+      {safePrUrl ? (
         <>
           <a
-            href={prUrl}
+            href={safePrUrl}
             target="_blank"
             rel="noopener noreferrer"
             className={cn(

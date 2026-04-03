@@ -549,6 +549,7 @@ async function runJockeyAfterExchange(
         where: { cardId },
         orderBy: { createdAt: 'asc' },
         select: { type: true, summary: true, createdAt: true },
+        take: 100,
       }),
       prisma.scheduledStep.findMany({
         where: { cardId },
@@ -590,22 +591,26 @@ async function runJockeyAfterExchange(
       hasPr: !!card?.prUrl,
     })
 
-    // Persist new journal entries
+    // Persist new journal entries — sanitise LLM output before storing
     if (assessment.journalEntries.length > 0) {
       await prisma.journalEntry.createMany({
         data: assessment.journalEntries.map(entry => ({
           cardId,
-          type: entry.type,
-          summary: entry.summary,
+          // Constrain type to alphanumeric + hyphens, max 50 chars
+          type: entry.type.replace(/[^a-z0-9-]/gi, '').slice(0, 50) || 'general',
+          // Length-limit summary to prevent unbounded storage
+          summary: entry.summary.slice(0, 500),
         })),
       })
     }
 
-    // Update jockey cursor
-    await prisma.conversationSession.update({
-      where: { id: convSessionId },
-      data: { jockeyCursor: (session?.messageCount ?? 0) + 2 },
-    })
+    // Update jockey cursor — advance by the actual number of new messages
+    if (session) {
+      await prisma.conversationSession.update({
+        where: { id: convSessionId },
+        data: { jockeyCursor: session.messageCount + recentMessages.length },
+      })
+    }
 
     // Handle scheduled step auto-start
     if (assessment.startNextScheduled && scheduledSteps.length > 0) {

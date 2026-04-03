@@ -49,8 +49,8 @@ export async function DELETE(request: NextRequest) {
   const user = await requireUser()
   const { cardId, stepId } = await request.json()
 
-  if (!cardId || !stepId) {
-    return NextResponse.json({ error: 'Missing cardId or stepId' }, { status: 400 })
+  if (!cardId || !stepId || typeof cardId !== 'string' || typeof stepId !== 'string') {
+    return NextResponse.json({ error: 'Missing or invalid cardId or stepId' }, { status: 400 })
   }
 
   await requireCardAccess(user.id, cardId)

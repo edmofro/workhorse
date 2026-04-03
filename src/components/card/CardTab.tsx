@@ -26,12 +26,7 @@ interface CardData {
   identifier: string
   title: string
   description: string | null
-  status: string
-  priority: string
   tags: string
-  team: { id: string; name: string; colour: string }
-  assignee: { id: string; displayName: string } | null
-  dependsOn: { identifier: string; title: string }[]
   attachments: CardAttachment[]
   comments: {
     id: string
@@ -40,19 +35,10 @@ interface CardData {
     user: { displayName: string; avatarUrl?: string | null }
     attachments: CardAttachment[]
   }[]
-  activities: {
-    id: string
-    action: string
-    details: string | null
-    createdAt: string
-    user: { displayName: string } | null
-  }[]
 }
 
 interface CardTabProps {
   card: CardData
-  users: { id: string; displayName: string }[]
-  teams: { id: string; name: string; colour: string }[]
 }
 
 const VISIBLE_TAG_COUNT = 3
@@ -118,7 +104,7 @@ function TagOverflowDropdown({
   )
 }
 
-export function CardTab({ card, users, teams }: CardTabProps) {
+export function CardTab({ card }: CardTabProps) {
   const { user } = useUser()
   const [title, setTitle] = useState(card.title)
   const [description, setDescription] = useState(card.description ?? '')

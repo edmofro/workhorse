@@ -66,18 +66,10 @@ export function CardDetailPage({ cardId, initialSessionId }: Props) {
         identifier: card.identifier,
         title: card.title,
         description: card.description,
-        status: card.status,
-        priority: card.priority,
         tags: card.tags,
-        team: card.team,
-        assignee: card.assignee,
-        dependsOn: card.dependsOn,
         attachments: card.attachments,
-        activities: card.activities,
         comments: card.comments,
       }}
-      users={users}
-      teams={teams}
     />
   )
 

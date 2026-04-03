@@ -81,7 +81,7 @@ export function CreateModal({
           description = value.trim()
         }
 
-        const card = await createCard({ title, description: description || undefined, teamId: defaultTeamId })
+        const card = await createCard({ title, description: description || undefined, teamId: defaultTeamId! })
 
         if (uploaded.length > 0) {
           try {

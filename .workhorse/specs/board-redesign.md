@@ -58,4 +58,6 @@ This spec uses the **future naming convention**: "workspace" for the top-level r
 
 ## Status column order
 
-Left to right: Specifying, Implementing, Not started, Complete. Active work on the left, backlog and done on the right.
+Left to right: Not started, Specifying, Implementing, Complete. Active work in the middle, backlog on the left and done on the right.
+
+A hidden Cancelled column sits at the far right, collapsed by default. It shows a count badge when cancelled cards exist and can be expanded to view them. See `card-cancellation.md`.

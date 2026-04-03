@@ -1,6 +1,6 @@
 import { cn } from '../lib/cn'
 
-type StatusDotState = 'not-started' | 'specifying' | 'implementing' | 'complete'
+type StatusDotState = 'not-started' | 'specifying' | 'implementing' | 'complete' | 'cancelled'
 
 interface StatusDotProps {
   state: StatusDotState
@@ -10,7 +10,8 @@ interface StatusDotProps {
 /**
  * Status dot indicator for card progress.
  * 'not-started' renders as hollow, 'specifying' as amber filled,
- * 'implementing' as blue filled, 'complete' as green filled.
+ * 'implementing' as blue filled, 'complete' as green filled,
+ * 'cancelled' as muted filled.
  */
 export function StatusDot({ state, className }: StatusDotProps) {
   return (
@@ -22,6 +23,7 @@ export function StatusDot({ state, className }: StatusDotProps) {
         state === 'specifying' && 'bg-[var(--amber)]',
         state === 'implementing' && 'bg-[var(--blue,#2563eb)]',
         state === 'complete' && 'bg-[var(--green)]',
+        state === 'cancelled' && 'bg-[var(--text-muted)]',
         className,
       )}
       style={{

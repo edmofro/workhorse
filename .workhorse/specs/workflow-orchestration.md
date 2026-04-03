@@ -40,8 +40,8 @@ Skills can be triggered from multiple surfaces:
 Projects can define custom skills as prompt files in `.workhorse/skills/`. Each file defines a skill with a name, execution mode, and prompt.
 
 - [ ] Custom skills appear alongside built-in skills — the jockey can suggest them in pills and in the journey bar
-- [ ] A custom skill can define a multi-step recipe (e.g. "check a special box in the PR description, wait for a review bot to post comments, then assess and fix those comments")
-- [ ] Custom skills use the same execution modes as built-in skills (inline, subagent, external)
+- [ ] A custom skill can define a tailored prompt for a specific project need (e.g. "review all acceptance criteria against the codebase and flag any that are already implemented")
+- [ ] Custom skills use the same execution modes as built-in skills (inline, subagent)
 
 ### Skills and agent modes
 
@@ -53,27 +53,25 @@ The jockey is a lightweight observer that watches the card's conversation and ma
 
 Named after the rider who guides a workhorse — it doesn't do the work, but it knows where the work is headed.
 
-### What the jockey does
+### When the jockey runs
 
-- [ ] Reads each message as it's posted (user or agent) against the current journal state
-- [ ] Decides: did something just finish? Did something just start? Has the user's intent shifted?
-- [ ] Writes journal entries when something noteworthy happens (see "Journal" section)
-- [ ] Updates the suggested steps — the expected remaining sequence
+The jockey runs a Haiku LLM pass in response to two kinds of trigger:
+
+- [ ] **Every message** (user or agent) posted to the conversation
+- [ ] **External state changes** detected by background polling — new commits on the card's branch, PR status updates, CI results
+
+Both triggers feed into the same assessment. The jockey reads the new input (message, or description of the external change) plus a few recent messages for context, against the current journal.
+
+### What the jockey does on each pass
+
+- [ ] Decides whether anything noteworthy just happened — did something finish? Did something start? Has the user's intent shifted? Did an external event change the picture?
+- [ ] Writes journal entries when warranted (see "Journal" section)
+- [ ] Updates the suggested steps in the journey bar
 - [ ] Updates pill suggestions — the most relevant 2-4 actions for right now
+- [ ] Starts the next scheduled skill if the current step just completed (see "Scheduling" under Journey bar)
 - [ ] Detects when the conversation diverges from the spec (e.g. user directs the agent to implement something the spec doesn't cover) and surfaces "Update spec" in pills
 
-### Two tiers
-
-| Tier | Trigger | What it does | Cost |
-|------|---------|--------------|------|
-| **Detect** | Branch changes, PR events, CI status changes | Deterministic checks — git diff, GitHub API polling, flag checks | Free |
-| **Assess** | Every message; after Detect finds something | LLM pass (Haiku) — reads the message and recent context against the journal, updates journal/pills/suggestions | Cheap, fast |
-
-The Detect tier runs in the background and watches for external state changes (new commits on the card's branch, PR status updates, CI results). When it finds something, it triggers an Assess pass.
-
-The Assess tier runs on every message posted to the conversation. It reads the new message (plus a few recent messages for context) against the current journal. Most of the time, the assessment is "nothing noteworthy happened" and no journal entry is written. The jockey maintains a cursor tracking which message it last assessed, so it only processes new messages — not the full transcript.
-
-When a user returns to a card after being away, the jockey catches up on any messages since its last cursor position.
+Most of the time, the assessment is "nothing noteworthy happened" and no changes are made. The jockey maintains a cursor tracking which message it last assessed, so it only processes new input — not the full transcript. When a user returns to a card after being away, the jockey catches up on any input since its last cursor position.
 
 ### Pills vs suggestions
 

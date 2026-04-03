@@ -99,59 +99,57 @@ Each entry has:
 - [ ] The journal is append-only. Entries are never rewritten or reordered
 - [ ] The journal is the input the jockey uses to determine suggestions and pills
 
-## Journey bar
+## Journey section
 
-The journey bar is the visual representation of the journal. It sits between the topbar and the chat area, always visible in a compact collapsed state, expandable to show the full journey.
+The journey section is the visual representation of the journal. It occupies the right side of the properties bar (see `card-navigation.md`) and is visible in all card views — card home, chat, and artifact mode.
 
 ### Collapsed state
 
 ```
-┌──────────────────────────────────────────────────────────────┐
-│  ✓ ✓ ● ◌ ◌   Implementing                            ▾     │
-└──────────────────────────────────────────────────────────────┘
+[● ● ○ ◌ ◌]   Implementing   ▾
 ```
 
-- [ ] Shows progress dots: solid (✓) for completed steps, filled (●) for active step, hollow (◌) for suggested next steps
-- [ ] Current step label beside the dots
-- [ ] Expand chevron (▾) on the right
-- [ ] The journey bar does not appear on fresh cards with no completed steps. It appears after the first journal entry is written
+- [ ] Shows progress dots: green filled for completed steps, accent filled for the active step, hollow border for scheduled steps, dashed border for jockey suggestions
+- [ ] When a step is actively running, the step name is shown beside the dots and pulses to indicate activity
+- [ ] When no step is currently running (idle), only the dots are shown — no label
+- [ ] Expand chevron (▾) indicates the section is expandable
+- [ ] The journey section is hidden entirely on cards with no journal entries — the bar shows only properties until activity begins
 
 ### Expanded state
 
-The expanded journey overlays the top of the chat area. It's meant to be opened briefly and closed — not left open during normal work.
+Clicking the journey section opens a compact dropdown anchored to the section. It is not a full-width overlay.
 
 ```
-┌──────────────────────────────────────────────────────────────┐
-│  ✓ Spec interview              2 Apr                        │
-│  ✓ Spec review                 3 Apr                        │
-│  ● Implementing                In progress                  │
-│                                                              │
-│  Scheduled                                                   │
-│  ○ Design audit                                        ✕     │
-│  ○ Code review                                         ✕     │
-│                                                              │
-│  Suggestions                                                     │
-│  ◌ Create PR                                          ▴     │
-└──────────────────────────────────────────────────────────────┘
+  ✓ Spec interview     2 Apr
+  ✓ Spec review        3 Apr
+  ● Implementing       In progress
+
+  Scheduled
+  ○ Design audit                  ✕
+  ○ Code review                   ✕
+
+  Suggestions
+  ◌ Create PR                     →
 ```
 
 - [ ] Completed entries show at full opacity with timestamps
-- [ ] Scheduled items use a solid outline circle (○) — visually distinct from the dotted/hollow suggested items (◌), communicating that these are committed to
-- [ ] Suggested items under "Suggestions" are visually muted (lower opacity, dotted/hollow icons) to communicate that they are the jockey's guesses, not commitments
-- [ ] Clicking a suggested step triggers that skill immediately (same as clicking a pill)
+- [ ] The active step (if any) is shown at full weight with "In progress"
+- [ ] Scheduled items use a solid outline dot (○) — visually distinct from the dashed suggested dots (◌), communicating that these are committed to run
+- [ ] Suggested items are visually muted to communicate they are the jockey's guesses, not commitments
+- [ ] Clicking a suggested step triggers that skill immediately and closes the dropdown
 - [ ] Clicking a completed step does nothing
-- [ ] The overlay closes when the user clicks outside it, presses Escape, or triggers an action
+- [ ] The dropdown closes on click outside, Escape, or when an action is triggered
 
 ### Scheduling
 
 Users can schedule suggested steps to run automatically in sequence, rather than triggering them one at a time.
 
-- [ ] Each suggested item has a "schedule" affordance (e.g. a secondary action alongside the click-to-start-now behaviour)
+- [ ] Each suggested item has a schedule affordance alongside the direct-trigger action
 - [ ] Scheduling an item moves it from "Suggestions" into the "Scheduled" section
 - [ ] Scheduled items run in order: when the jockey assesses that the current step has completed, it auto-starts the next scheduled item
 - [ ] Each scheduled item has a cancel (✕) button to remove it from the schedule and return it to "Suggestions"
 - [ ] Multiple instances of the same skill can be scheduled in sequence (e.g. design audit, resolve findings, design audit again)
-- [ ] The collapsed journey bar reflects scheduled items with solid outline dots, distinct from the dotted suggested dots
+- [ ] Scheduled items are represented in the collapsed dots with solid outline dots, distinct from the dashed suggestion dots
 
 ## PR bar
 
@@ -212,7 +210,7 @@ Card statuses are decoupled from skills and the journey. Any skill can be trigge
 
 - `auto-review.md` — the spec-review skill uses the fresh-eyes review mechanism defined there
 - `agent-sdk-session.md` — skills use the same Agent SDK infrastructure and system prompt injection described there; inline skills run in the card's primary session, subagent skills run in ephemeral sessions
-- `card-navigation.md` — the journey bar and PR bar are new UI elements in the card workspace; pills are now generated by the jockey rather than hardcoded by status
+- `card-navigation.md` — the properties bar (which contains the journey section) and PR bar are UI elements in the card workspace; pills are now generated by the jockey rather than hardcoded by status
 - `conversation-sessions.md` — the primary conversation model remains; subagent skills create ephemeral sessions that post results back to the primary conversation
 - `commit-specs.md` — auto-commit behaviour continues to apply to all file changes made by skills
 - `quality-gates.md` — soft gates are informed by the journal (whether review/audit skills have run) rather than separate boolean flags

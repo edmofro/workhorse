@@ -42,11 +42,12 @@ export function useAgentSession(
   const historySessionIdRef = useRef<string | null>(null)
   const abortRef = useRef<AbortController | null>(null)
   const wasAbortedRef = useRef(false)
-  const queuedMessageRef = useRef<{
+  const [queuedMessage, setQueuedMessage] = useState<{
     content: string
     userName: string
     attachments?: AttachmentData[]
     skillId?: string
+    tempId: string
   } | null>(null)
   // Track the conversation session ID and title (may be set after first message)
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(sessionId)
@@ -117,6 +118,17 @@ export function useAgentSession(
     }
   }, [sessionId, historyData, isHistoryFetching])
 
+  // Dispatch queued message when streaming stops
+  useEffect(() => {
+    if (!isStreaming && queuedMessage) {
+      const { content, userName, attachments, skillId, tempId } = queuedMessage
+      setQueuedMessage(null)
+      // Remove the optimistic preview — sendMessage will add its own user message
+      setMessages((prev) => prev.filter((m) => m.id !== tempId))
+      sendMessage(content, userName, attachments, skillId)
+    }
+  }, [isStreaming, queuedMessage, sendMessage])
+
   // Clean up timers on unmount
   useEffect(() => {
     return () => {
@@ -137,9 +149,10 @@ export function useAgentSession(
 
       // If already streaming, queue the message for after the current turn
       if (isStreamingRef.current) {
-        queuedMessageRef.current = { content, userName, attachments, skillId }
+        const tempId = `temp-${Date.now()}-queued`
+        setQueuedMessage({ content, userName, attachments, skillId, tempId })
         const userMsg: SessionMessage = {
-          id: `temp-${Date.now()}`,
+          id: tempId,
           role: 'user',
           content,
           userName,
@@ -303,13 +316,6 @@ export function useAgentSession(
           thinkingTimerRef.current = null
         }
         abortRef.current = null
-
-        // Dispatch queued message if one was buffered during this turn
-        const queued = queuedMessageRef.current
-        if (queued) {
-          queuedMessageRef.current = null
-          setTimeout(() => sendMessage(queued.content, queued.userName, queued.attachments, queued.skillId), 0)
-        }
       }
     },
     [cardId],

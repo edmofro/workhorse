@@ -83,41 +83,27 @@ export function ChatInput({
   const hasContent = !!(value.trim() || hasAttachments)
   const canSend = hasContent && !disabled && !isUploading
 
-  const sendButton = compact ? (
+  const iconSize = compact ? 14 : 16
+  const btnPad = compact ? 'p-1' : 'p-2'
+
+  const sendButton = (
     <button
       onClick={handleSubmit}
       disabled={!canSend}
-      className="px-[6px] py-[6px] bg-[var(--accent)] text-white rounded-[var(--radius-default)] cursor-pointer disabled:opacity-40 shrink-0 transition-colors duration-100"
+      className={`${btnPad} bg-[var(--accent)] text-white rounded-[var(--radius-default)] cursor-pointer disabled:opacity-40 shrink-0 transition-colors duration-100`}
       title="Send"
     >
-      <ArrowUp size={14} strokeWidth={2.5} />
-    </button>
-  ) : (
-    <button
-      onClick={handleSubmit}
-      disabled={!canSend}
-      className="px-2 py-2 bg-[var(--accent)] text-white rounded-[var(--radius-default)] cursor-pointer disabled:opacity-40 shrink-0 transition-colors duration-100"
-      title="Send"
-    >
-      <ArrowUp size={16} strokeWidth={2.5} />
+      <ArrowUp size={iconSize} strokeWidth={2.5} />
     </button>
   )
 
-  const stopBtn = compact ? (
+  const stopBtn = (
     <button
       onClick={onStop}
-      className="px-[6px] py-[6px] bg-[var(--bg-surface)] text-[var(--text-secondary)] border border-[var(--border-default)] rounded-[var(--radius-default)] shadow-[var(--shadow-sm)] cursor-pointer hover:border-[var(--border-default)] hover:bg-[var(--bg-hover)] shrink-0 transition-colors duration-100"
+      className={`${btnPad} bg-[var(--bg-surface)] text-[var(--text-secondary)] border border-[var(--border-default)] rounded-[var(--radius-default)] shadow-[var(--shadow-sm)] cursor-pointer hover:bg-[var(--bg-hover)] shrink-0 transition-colors duration-100`}
       title="Stop"
     >
-      <Square size={12} fill="currentColor" />
-    </button>
-  ) : (
-    <button
-      onClick={onStop}
-      className="px-2 py-2 bg-[var(--bg-surface)] text-[var(--text-secondary)] border border-[var(--border-default)] rounded-[var(--radius-default)] shadow-[var(--shadow-sm)] cursor-pointer hover:bg-[var(--bg-hover)] shrink-0 transition-colors duration-100"
-      title="Stop"
-    >
-      <Square size={14} fill="currentColor" />
+      <Square size={iconSize - 2} fill="currentColor" />
     </button>
   )
 

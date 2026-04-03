@@ -101,7 +101,7 @@ export function ChatInput({
             placeholder="Ask to refine..."
             rows={1}
             className="flex-1 border-none bg-transparent outline-none resize-none text-[13px] leading-[1.5] min-h-[24px]"
-            style={{ padding: '6px 0' }}
+            style={{ padding: '6px 0', maxHeight: '160px', overflowY: 'auto' }}
           />
           <button
             onClick={handleSubmit}
@@ -141,7 +141,7 @@ export function ChatInput({
           rows={1}
           disabled={disabled}
           className="flex-1 border-none bg-transparent outline-none resize-none text-[14px] leading-[1.5] min-h-[24px] placeholder:text-[var(--text-faint)]"
-          style={{ padding: '8px 0' }}
+          style={{ padding: '8px 0', maxHeight: '200px', overflowY: 'auto' }}
         />
         <button
           onClick={handleSubmit}

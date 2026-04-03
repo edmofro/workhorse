@@ -25,7 +25,11 @@ export interface FileWriteNotification {
   timestamp: string
 }
 
-export function useAgentSession(cardId: string, sessionId: string | null) {
+export function useAgentSession(
+  cardId: string,
+  sessionId: string | null,
+  onJockeyEvent?: (event: Record<string, unknown>) => void,
+) {
   const [messages, setMessages] = useState<SessionMessage[]>([])
   const [isStreaming, setIsStreaming] = useState(false)
   const isStreamingRef = useRef(false)
@@ -41,6 +45,8 @@ export function useAgentSession(cardId: string, sessionId: string | null) {
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(sessionId)
   const currentSessionIdRef = useRef<string | null>(sessionId)
   const [currentSessionTitle, setCurrentSessionTitle] = useState<string | null>(null)
+  const onJockeyEventRef = useRef(onJockeyEvent)
+  onJockeyEventRef.current = onJockeyEvent
 
   // Text buffering for smooth streaming — accumulate deltas and flush every ~60ms
   const textBufferRef = useRef('')
@@ -398,6 +404,11 @@ export function useAgentSession(cardId: string, sessionId: string | null) {
     if (event.type === 'commit') {
       const files = event.files as string[]
       setCommittedFiles(files)
+    }
+
+    // Handle jockey assessment event
+    if (event.type === 'jockey') {
+      onJockeyEventRef.current?.(event)
     }
   }
 

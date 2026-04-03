@@ -118,16 +118,9 @@ export function useAgentSession(
     }
   }, [sessionId, historyData, isHistoryFetching])
 
-  // Dispatch queued message when streaming stops
-  useEffect(() => {
-    if (!isStreaming && queuedMessage) {
-      const { content, userName, attachments, skillId, tempId } = queuedMessage
-      setQueuedMessage(null)
-      // Remove the optimistic preview — sendMessage will add its own user message
-      setMessages((prev) => prev.filter((m) => m.id !== tempId))
-      sendMessage(content, userName, attachments, skillId)
-    }
-  }, [isStreaming, queuedMessage, sendMessage])
+  // Stable ref for sendMessage — initialised after sendMessage is defined (below),
+  // kept in sync every render so the dispatch effect doesn't depend on callback identity
+  const sendMessageRef = useRef<typeof sendMessage | null>(null)
 
   // Clean up timers on unmount
   useEffect(() => {
@@ -150,7 +143,13 @@ export function useAgentSession(
       // If already streaming, queue the message for after the current turn
       if (isStreamingRef.current) {
         const tempId = `temp-${Date.now()}-queued`
-        setQueuedMessage({ content, userName, attachments, skillId, tempId })
+        // Remove the previous queued message's optimistic preview if overwriting
+        setQueuedMessage((prev) => {
+          if (prev) {
+            setMessages((msgs) => msgs.filter((m) => m.id !== prev.tempId))
+          }
+          return { content, userName, attachments, skillId, tempId }
+        })
         const userMsg: SessionMessage = {
           id: tempId,
           role: 'user',
@@ -320,6 +319,18 @@ export function useAgentSession(
     },
     [cardId],
   )
+  sendMessageRef.current = sendMessage
+
+  // Dispatch queued message when streaming stops
+  useEffect(() => {
+    if (!isStreaming && queuedMessage) {
+      const { content, userName, attachments, skillId, tempId } = queuedMessage
+      setQueuedMessage(null)
+      // Remove the optimistic preview — sendMessage will add its own user message
+      setMessages((prev) => prev.filter((m) => m.id !== tempId))
+      sendMessageRef.current?.(content, userName, attachments, skillId)
+    }
+  }, [isStreaming, queuedMessage])
 
   function processEvent(
     event: Record<string, unknown>,
@@ -464,6 +475,13 @@ export function useAgentSession(
 
   const interrupt = useCallback(() => {
     abortRef.current?.abort()
+    // Clear any queued message so it doesn't fire after the abort settles
+    setQueuedMessage((prev) => {
+      if (prev) {
+        setMessages((msgs) => msgs.filter((m) => m.id !== prev.tempId))
+      }
+      return null
+    })
   }, [])
 
   return {

@@ -81,7 +81,7 @@ export function ChatSidebar({
       </div>
       <ChatInput
         onSend={(content) => sendMessage(content, userName)}
-        isStreaming={isStreaming}
+        disabled={isStreaming}
         compact
       />
     </aside>

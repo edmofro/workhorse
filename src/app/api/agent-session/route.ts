@@ -249,7 +249,11 @@ export async function POST(request: NextRequest) {
   // client's request signal so disconnecting the SSE stream also halts
   // the SDK's agent loop (tool calls, API requests, etc).
   const agentAbort = new AbortController()
-  request.signal.addEventListener('abort', () => agentAbort.abort())
+  if (request.signal.aborted) {
+    agentAbort.abort()
+  } else {
+    request.signal.addEventListener('abort', () => agentAbort.abort(), { once: true })
+  }
 
   const stream = new ReadableStream({
     async start(controller) {

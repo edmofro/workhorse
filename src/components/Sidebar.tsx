@@ -275,14 +275,18 @@ function ConversationItem({
         {indicator}
         <span className={cn('truncate', streaming && 'animate-pulse')}>{children}</span>
       </Link>
-      <button
-        type="button"
-        onClick={(e) => { e.preventDefault(); onDismiss() }}
-        className="absolute right-1 p-1 rounded-[var(--radius-sm)] text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity duration-100"
-        title="Dismiss"
+      <div className="absolute right-0 flex items-center justify-end opacity-0 group-hover:opacity-100 transition-opacity duration-100"
+        style={{ background: 'linear-gradient(to right, transparent, var(--bg-sidebar) 40%)', paddingLeft: '16px', paddingRight: '4px' }}
       >
-        <X size={11} />
-      </button>
+        <button
+          type="button"
+          onClick={(e) => { e.preventDefault(); onDismiss() }}
+          className="p-1 rounded-[var(--radius-sm)] text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] cursor-pointer"
+          title="Dismiss"
+        >
+          <X size={11} />
+        </button>
+      </div>
     </div>
   )
 }

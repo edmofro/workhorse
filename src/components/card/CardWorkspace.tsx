@@ -547,6 +547,10 @@ export function CardWorkspace({
     }
   })
 
+  // Deduplicate: remove suggestions that already appear in pills
+  const pillSkillIds = new Set(jockey.pills.map(p => p.skillId))
+  const dedupedSuggestions = jockey.suggestions.filter(s => !pillSkillIds.has(s.skillId))
+
   // --- Chat column (shared between chat mode and artifact mode) ---
   const chatColumn = (
     <div className="flex-1 flex flex-col overflow-hidden">
@@ -554,7 +558,7 @@ export function CardWorkspace({
       <JourneyBar
         journalEntries={jockey.journalEntries}
         scheduledSteps={jockey.scheduledSteps}
-        suggestions={jockey.suggestions}
+        suggestions={dedupedSuggestions}
         activeStep={jockey.activeStep}
         onTriggerSkill={handleTriggerSkill}
         onScheduleStep={jockey.scheduleStep}

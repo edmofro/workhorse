@@ -10,8 +10,11 @@ interface PrBarProps {
 }
 
 export function PrBar({ hasCodeChanges, prUrl, onCreatePr }: PrBarProps) {
-  // Don't show if no code changes outside .workhorse/
-  if (!hasCodeChanges) return null
+  // Always render the container to prevent layout shift.
+  // When no code changes, render a zero-height placeholder with the border.
+  if (!hasCodeChanges) {
+    return <div className="border-t border-[var(--border-subtle)]" />
+  }
 
   return (
     <div
@@ -27,7 +30,7 @@ export function PrBar({ hasCodeChanges, prUrl, onCreatePr }: PrBarProps) {
             target="_blank"
             rel="noopener noreferrer"
             className={cn(
-              'inline-flex items-center gap-1.5 px-3 py-[6px]',
+              'inline-flex items-center gap-1.5 px-[14px] py-[7px]',
               'rounded-[var(--radius-default)] text-[12px] font-medium',
               'bg-[var(--accent)] text-white',
               'hover:bg-[var(--accent-hover)] transition-colors duration-100',
@@ -51,7 +54,7 @@ export function PrBar({ hasCodeChanges, prUrl, onCreatePr }: PrBarProps) {
         <button
           onClick={onCreatePr}
           className={cn(
-            'inline-flex items-center gap-1.5 px-3 py-[6px]',
+            'inline-flex items-center gap-1.5 px-[14px] py-[7px]',
             'rounded-[var(--radius-default)] text-[12px] font-medium',
             'bg-[var(--accent)] text-white',
             'hover:bg-[var(--accent-hover)] transition-colors duration-100 cursor-pointer',

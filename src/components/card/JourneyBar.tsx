@@ -66,14 +66,17 @@ export function JourneyBar({
     }
   }, [expanded])
 
-  // Don't render if no journal entries yet
-  if (journalEntries.length === 0 && !activeStep) {
-    return null
-  }
+  const isEmpty = journalEntries.length === 0 && !activeStep
 
   const completedCount = journalEntries.length
   const scheduledCount = scheduledSteps.length
   const suggestedCount = suggestions.length
+
+  // Always render the container to prevent layout shift.
+  // When empty, render a zero-height placeholder with the border.
+  if (isEmpty) {
+    return <div className="border-b border-[var(--border-subtle)]" />
+  }
 
   return (
     <div className="relative">
@@ -180,7 +183,7 @@ export function JourneyBar({
                         e.stopPropagation()
                         onUnscheduleStep(step.id)
                       }}
-                      className="p-0.5 rounded text-[var(--text-faint)] hover:text-[var(--text-muted)] transition-colors duration-100 cursor-pointer"
+                      className="p-1.5 -m-1 rounded text-[var(--text-faint)] hover:text-[var(--text-muted)] transition-colors duration-100 cursor-pointer"
                       title="Remove from schedule"
                     >
                       <X size={11} />
@@ -219,7 +222,7 @@ export function JourneyBar({
                         e.stopPropagation()
                         onScheduleStep(suggestion.skillId, suggestion.label)
                       }}
-                      className="p-0.5 rounded text-[var(--text-faint)] opacity-0 group-hover:opacity-100 hover:text-[var(--text-muted)] transition-all duration-100 cursor-pointer"
+                      className="p-1.5 -m-1 rounded text-[var(--text-faint)] opacity-0 group-hover:opacity-100 hover:text-[var(--text-muted)] transition-all duration-100 cursor-pointer"
                       title="Schedule this step"
                     >
                       <CalendarPlus size={11} />

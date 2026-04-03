@@ -735,6 +735,15 @@ export function CardWorkspace({
       {view.type === 'card' && (
         <>
           <div className="flex-1 flex flex-col overflow-hidden">
+            <JourneyBar
+              journalEntries={jockey.journalEntries}
+              scheduledSteps={jockey.scheduledSteps}
+              suggestions={dedupedSuggestions}
+              activeStep={jockey.activeStep}
+              onTriggerSkill={handleTriggerSkill}
+              onScheduleStep={jockey.scheduleStep}
+              onUnscheduleStep={jockey.unscheduleStep}
+            />
             <div className="flex-1 overflow-y-auto">
               {cardTabContent}
 

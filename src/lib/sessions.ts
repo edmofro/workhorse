@@ -6,7 +6,7 @@ import { prisma } from './prisma'
  */
 export async function getRecentSessions(userId: string, limit: number = 8) {
   return prisma.conversationSession.findMany({
-    where: { userId },
+    where: { userId, dismissedFromRecent: false },
     orderBy: { lastMessageAt: 'desc' },
     take: limit,
     select: {

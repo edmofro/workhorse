@@ -92,6 +92,9 @@ export function useAgentSession(cardId: string, sessionId: string | null) {
     // Sync history once per session switch — never overwrite after that, because
     // streaming and local state may have added messages the server doesn't know about.
     if (historySessionIdRef.current === sessionId) return
+    // Never overwrite local messages while actively streaming — the local state
+    // is more up-to-date than the server history (which may not be persisted yet).
+    if (isStreamingRef.current) return
     // Wait for the fetch to settle so we don't apply stale cached data from a
     // previously-viewed session while the fresh fetch is still in flight.
     if (isHistoryFetching) return

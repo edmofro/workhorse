@@ -56,7 +56,8 @@ export function CreateModal({
 
     try {
       if (isCard) {
-        const title = value.trim()
+        const input = value.trim()
+        let title: string
         let description: string
 
         const uploaded = attachments.getUploadedAttachments()
@@ -66,15 +67,17 @@ export function CreateModal({
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              prompt: value.trim(),
+              prompt: input,
               attachmentIds: uploaded.map((a) => a.id),
             }),
           })
           const data = await res.json()
           if (!res.ok) throw new Error(data.error ?? 'Generation failed')
-          description = data.description ?? ''
+          description = data.description || input
+          title = data.title || input.split(/[.!?\n]/)[0].slice(0, 60).trim()
         } catch {
-          description = value.trim()
+          description = input
+          title = input.split(/[.!?\n]/)[0].slice(0, 60).trim()
         }
 
         const card = await createCard({ title, description: description || undefined, teamId: defaultTeamId! })

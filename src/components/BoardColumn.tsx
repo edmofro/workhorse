@@ -10,7 +10,7 @@ import { Tag } from './Tag'
 import { updateCard } from '../lib/actions/cards'
 import { STATUS_OPTIONS } from '../lib/status'
 
-interface CardData {
+export interface CardData {
   id: string
   identifier: string
   title: string
@@ -95,8 +95,8 @@ function BoardCard({ card, projectName }: { card: CardData; projectName: string 
     startTransition(async () => {
       try {
         await updateCard(card.id, { status })
-      } catch {
-        // Re-open menu so the user can see the change didn't stick
+      } catch (error) {
+        console.error('Failed to update card status:', error)
         setMenuOpen(true)
       }
     })
@@ -171,7 +171,7 @@ function BoardCard({ card, projectName }: { card: CardData; projectName: string 
           className="absolute top-8 right-2 z-50 w-[160px] bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-[var(--radius-xl)] shadow-[var(--shadow-lg)] py-1"
         >
           <div
-            className="relative"
+            className="relative pr-1"
             onMouseEnter={() => setStatusSubmenuOpen(true)}
             onMouseLeave={() => setStatusSubmenuOpen(false)}
           >
@@ -185,7 +185,7 @@ function BoardCard({ card, projectName }: { card: CardData; projectName: string 
 
             {/* Status submenu */}
             {statusSubmenuOpen && (
-              <div className="absolute left-full top-0 ml-1 w-[152px] bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-[var(--radius-xl)] shadow-[var(--shadow-lg)] py-1">
+              <div className="absolute left-full top-0 w-[152px] bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-[var(--radius-xl)] shadow-[var(--shadow-lg)] py-1">
                 {STATUS_OPTIONS.map((opt) => (
                   <button
                     key={opt.value}

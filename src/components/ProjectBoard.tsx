@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { SlidersHorizontal, Plus, ChevronRight, ChevronLeft } from 'lucide-react'
 import { useProjectBoard, NotFoundError } from '../lib/hooks/queries'
 import { Topbar, TopbarRight } from './Topbar'
-import { BoardColumn } from './BoardColumn'
+import { BoardColumn, type CardData } from './BoardColumn'
 import { StatusDot } from './StatusDot'
 import { CreateModal } from './CreateModal'
 import { FilterPanel } from './FilterPanel'
@@ -179,19 +179,7 @@ export function ProjectBoard({ projectSlug, filters }: ProjectBoardProps) {
   )
 }
 
-interface BoardCardData {
-  id: string
-  identifier: string
-  title: string
-  description: string | null
-  status: string
-  priority: string
-  tags: string
-  assignee: { id: string; displayName: string } | null
-  team: { id: string; name: string; colour: string }
-}
-
-function CancelledColumn({ cards, projectName, expanded, onToggle }: { cards: BoardCardData[]; projectName: string; expanded: boolean; onToggle: () => void }) {
+function CancelledColumn({ cards, projectName, expanded, onToggle }: { cards: CardData[]; projectName: string; expanded: boolean; onToggle: () => void }) {
   if (cards.length === 0 && !expanded) return null
 
   if (!expanded) {

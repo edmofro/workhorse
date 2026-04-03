@@ -1,6 +1,7 @@
 'use client'
 
 import { useRouter, useSearchParams } from 'next/navigation'
+import { STATUS_OPTIONS } from '../lib/status'
 
 interface User {
   id: string
@@ -57,11 +58,11 @@ export function FilterPanel({ users, basePath, onClose }: FilterPanelProps) {
             className="w-full px-2 py-1 text-[12px] bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-[var(--radius-default)] outline-none"
           >
             <option value="">All</option>
-            <option value="NOT_STARTED">Not started</option>
-            <option value="SPECIFYING">Specifying</option>
-            <option value="IMPLEMENTING">Implementing</option>
-            <option value="COMPLETE">Complete</option>
-            <option value="CANCELLED">Cancelled</option>
+            {STATUS_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
           </select>
         </div>
 

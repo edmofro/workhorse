@@ -626,8 +626,10 @@ export function CardWorkspace({
           </div>
         )}
         <ChatInput
+          key={activeSessionId ?? 'new'}
           onSend={(content) => handleSendMessage(content)}
           disabled={isStreaming}
+          autoFocus
           pendingAttachments={chatAttachments.pending}
           onAddFiles={chatAttachments.addFiles}
           onRemoveAttachment={chatAttachments.removeAttachment}

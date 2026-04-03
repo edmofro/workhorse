@@ -40,9 +40,10 @@ When editing an existing spec, the user can see what they've changed relative to
 
 - [ ] The spec editor shows a "Show changes" toggle when editing an existing spec (one that was pulled from the main branch, not created new)
 - [ ] When "Show changes" is active, the editor switches to a tracked-changes view:
-  - Deleted text is shown with a strikethrough and a muted red/pink background
-  - Added text is shown with a green/teal background
-  - Unchanged text is shown normally
+  - Changes are grouped line-by-line, not word-by-word — each changed line (or run of changed lines) is highlighted as a block
+  - Deleted lines are shown with a muted red background, left border, and strikethrough
+  - Added lines are shown with a muted green background and left border
+  - Unchanged lines are shown normally
   - Changes are rendered inline within the document flow (not side-by-side panels)
 - [ ] The tracked-changes view is read-only — the user toggles back to the normal editor to make further changes
 - [ ] The comparison baseline is the content from the main branch at the time the spec was attached to the card
@@ -58,5 +59,3 @@ Auto-save writes to the Workhorse database continuously — the user never loses
 ## Open questions
 
 > **Editor framework:** Consider TipTap or Plate for the rich text foundation. McBean uses Loro CRDT for collaborative editing — worth evaluating.
-
-> **Diff algorithm:** For the tracked-changes view, what diffing approach works best for prose? The diff should understand document structure rather than treating content as flat text.

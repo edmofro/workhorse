@@ -197,7 +197,7 @@ body {
   background: var(--green); border-color: var(--green); color: white;
 }
 
-/* Inline diff annotations (tracked changes) */
+/* Inline diff annotations (tracked changes — used for title diffs) */
 .diff-added {
   background: rgba(22, 163, 74, 0.07);
   color: #16a34a;
@@ -210,6 +210,23 @@ body {
   text-decoration: line-through;
   border-radius: 2px;
   padding: 0 2px;
+}
+
+/* Block-level diff annotations (line-by-line diff in spec body) */
+.diff-block-added {
+  background: rgba(22, 163, 74, 0.07);
+  border-left: 2px solid #16a34a;
+  margin-left: -13px;
+  padding-left: 11px;
+  color: #16a34a;
+}
+.diff-block-removed {
+  background: rgba(220, 38, 38, 0.07);
+  border-left: 2px solid #dc2626;
+  margin-left: -13px;
+  padding-left: 11px;
+  color: #9f1717;
+  text-decoration: line-through;
 }
 
 /* Spec extract block in chat */

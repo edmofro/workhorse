@@ -20,7 +20,7 @@ interface Segment {
 /**
  * Inline tracked-changes view for spec files. Renders the spec with full
  * markdown formatting (headings, lists, checkboxes), with additions shown
- * in green and deletions in red with strikethrough — like Slab or Google Docs.
+ * in green and deletions in red — grouped line-by-line rather than word-by-word.
  */
 export function SpecDiffView({ cardId, filePath, currentContent }: SpecDiffViewProps) {
   const [baseContent, setBaseContent] = useState<string | null | undefined>(undefined)
@@ -116,6 +116,7 @@ export function SpecDiffView({ cardId, filePath, currentContent }: SpecDiffViewP
 /** Renders a brand-new spec with all content highlighted as additions. */
 function NewSpecView({ content }: { content: string }) {
   const parsed = parseSpec(content)
+  const html = useMemo(() => renderDiffMarkdown(parsed.content), [parsed.content])
   return (
     <div className="flex-1 overflow-y-auto flex justify-center">
       <div className="w-full" style={{ maxWidth: '720px', padding: '48px 40px 80px' }}>
@@ -123,25 +124,22 @@ function NewSpecView({ content }: { content: string }) {
           <span className="diff-added">{parsed.frontmatter.title || 'Untitled spec'}</span>
         </h1>
         <div className="text-[14px] text-[var(--text-secondary)] leading-[1.75] prose-workhorse">
-          <div className="diff-added">
-            <DiffMarkdown content={parsed.content} />
-          </div>
+          <div className="diff-block-added" dangerouslySetInnerHTML={{ __html: html }} />
         </div>
       </div>
     </div>
   )
 }
 
-/** Renders a spec with inline tracked changes (word-level diff). */
+/** Renders a spec with line-level tracked changes. */
 function DiffRenderedSpec({ baseContent, currentContent }: { baseContent: string; currentContent: string }) {
   const baseParsed = useMemo(() => parseSpec(baseContent), [baseContent])
   const currentParsed = useMemo(() => parseSpec(currentContent), [currentContent])
 
   const titleChanged = baseParsed.frontmatter.title !== currentParsed.frontmatter.title
 
-  // Compute word-level diff of the body content
   const bodySegments = useMemo(
-    () => diffWords(baseParsed.content, currentParsed.content),
+    () => diffLines(baseParsed.content, currentParsed.content),
     [baseParsed.content, currentParsed.content],
   )
 
@@ -153,6 +151,7 @@ function DiffRenderedSpec({ baseContent, currentContent }: { baseContent: string
           {titleChanged ? (
             <>
               <span className="diff-removed">{baseParsed.frontmatter.title}</span>
+              {' '}
               <span className="diff-added">{currentParsed.frontmatter.title}</span>
             </>
           ) : (
@@ -160,7 +159,7 @@ function DiffRenderedSpec({ baseContent, currentContent }: { baseContent: string
           )}
         </h1>
 
-        {/* Body with inline diff */}
+        {/* Body with line-level diff */}
         <div className="text-[14px] text-[var(--text-secondary)] leading-[1.75] prose-workhorse">
           <DiffMarkdownSegments segments={bodySegments} />
         </div>
@@ -170,51 +169,28 @@ function DiffRenderedSpec({ baseContent, currentContent }: { baseContent: string
 }
 
 /**
- * Renders markdown content (used for new files where everything is an addition).
- * Simple markdown rendering inline.
- */
-function DiffMarkdown({ content }: { content: string }) {
-  const html = useMemo(() => renderDiffMarkdown(content), [content])
-  return <div dangerouslySetInnerHTML={{ __html: html }} />
-}
-
-/**
- * Renders word-level diff segments as formatted markdown with inline change markers.
- * Processes the segments to produce markdown with <ins> and <del> annotations.
+ * Renders line-level diff segments. Each segment's text is passed through the
+ * markdown renderer independently, then wrapped in a block-level div with the
+ * appropriate diff class. This avoids marker injection entirely.
  */
 function DiffMarkdownSegments({ segments }: { segments: Segment[] }) {
-  // Merge segments back into annotated markdown, then render
-  const html = useMemo(() => {
-    // Build annotated text: wrap added/removed in placeholder markers,
-    // then render the whole thing as markdown, preserving the markers.
-    let annotated = ''
-    for (const seg of segments) {
-      if (seg.type === 'unchanged') {
-        annotated += seg.text
-      } else if (seg.type === 'added') {
-        annotated += `\x01ADD_START\x01${seg.text}\x01ADD_END\x01`
-      } else if (seg.type === 'removed') {
-        annotated += `\x01DEL_START\x01${seg.text}\x01DEL_END\x01`
-      }
-    }
-
-    // Render the annotated markdown
-    let rendered = renderDiffMarkdown(annotated)
-
-    // Replace markers with HTML spans
-    rendered = rendered
-      .replace(/\x01ADD_START\x01/g, '<span class="diff-added">')
-      .replace(/\x01ADD_END\x01/g, '</span>')
-      .replace(/\x01DEL_START\x01/g, '<span class="diff-removed">')
-      .replace(/\x01DEL_END\x01/g, '</span>')
-
-    return rendered
-  }, [segments])
-
-  return <div dangerouslySetInnerHTML={{ __html: html }} />
+  return (
+    <>
+      {segments.map((seg, i) => {
+        const html = renderDiffMarkdown(seg.text)
+        if (seg.type === 'unchanged') {
+          return <div key={i} dangerouslySetInnerHTML={{ __html: html }} />
+        } else if (seg.type === 'added') {
+          return <div key={i} className="diff-block-added" dangerouslySetInnerHTML={{ __html: html }} />
+        } else {
+          return <div key={i} className="diff-block-removed" dangerouslySetInnerHTML={{ __html: html }} />
+        }
+      })}
+    </>
+  )
 }
 
-// --- Markdown renderer (simplified from MarkdownContent.tsx) ---
+// --- Markdown renderer ---
 
 function renderDiffMarkdown(md: string): string {
   if (!md) return ''
@@ -260,8 +236,8 @@ function renderDiffMarkdown(md: string): string {
     },
   )
 
-  // Escape remaining text (preserving \x00 and \x01 markers)
-  html = escapeHtmlPreserveMarkers(html)
+  // Escape HTML (placeholders use \x00 which is unaffected)
+  html = escapeHtml(html)
 
   // Restore placeholders
   html = html.replace(/\x00PH(\d+)\x00/g, (_match, idx: string) => {
@@ -332,40 +308,37 @@ function escapeHtml(str: string): string {
     .replace(/"/g, '&quot;')
 }
 
-/** Escape HTML but preserve \x00 (placeholder) and \x01 (diff marker) bytes. */
-function escapeHtmlPreserveMarkers(str: string): string {
-  return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-}
-
-// --- Word-level diff algorithm ---
+// --- Line-level diff algorithm ---
 
 /**
- * Compute a word-level diff between two strings.
- * Uses a simple LCS-based approach on word tokens.
+ * Split text into lines, each line retaining its trailing newline
+ * (except the final line if the text doesn't end with one).
  */
-function diffWords(oldText: string, newText: string): Segment[] {
-  const oldTokens = tokenize(oldText)
-  const newTokens = tokenize(newText)
+function splitIntoLines(text: string): string[] {
+  const lines = text.split('\n')
+  return lines.map((line, i) => (i < lines.length - 1 ? line + '\n' : line))
+}
 
-  // Compute LCS table
-  const m = oldTokens.length
-  const n = newTokens.length
+/**
+ * Compute a line-level diff between two strings using LCS.
+ * Returns segments of unchanged, added, and removed lines.
+ */
+function diffLines(oldText: string, newText: string): Segment[] {
+  const oldLines = splitIntoLines(oldText)
+  const newLines = splitIntoLines(newText)
+  const m = oldLines.length
+  const n = newLines.length
 
-  // For large inputs, use a greedy approach instead of full DP
-  if (m * n > 1_000_000) {
-    return greedyWordDiff(oldTokens, newTokens)
+  if (m * n > 500_000) {
+    return greedyLineDiff(oldLines, newLines)
   }
 
-  // Standard LCS DP
+  // Standard LCS DP on lines
   const dp: number[][] = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0))
 
   for (let i = 1; i <= m; i++) {
     for (let j = 1; j <= n; j++) {
-      if (oldTokens[i - 1] === newTokens[j - 1]) {
+      if (oldLines[i - 1] === newLines[j - 1]) {
         dp[i][j] = dp[i - 1][j - 1] + 1
       } else {
         dp[i][j] = Math.max(dp[i - 1][j], dp[i][j - 1])
@@ -374,23 +347,20 @@ function diffWords(oldText: string, newText: string): Segment[] {
   }
 
   // Backtrack to get the diff
-  const segments: Segment[] = []
+  const ops: Array<{ type: SegmentType; text: string }> = []
   let i = m
   let j = n
 
-  // Collect operations in reverse, then reverse
-  const ops: Array<{ type: SegmentType; text: string }> = []
-
   while (i > 0 || j > 0) {
-    if (i > 0 && j > 0 && oldTokens[i - 1] === newTokens[j - 1]) {
-      ops.push({ type: 'unchanged', text: oldTokens[i - 1] })
+    if (i > 0 && j > 0 && oldLines[i - 1] === newLines[j - 1]) {
+      ops.push({ type: 'unchanged', text: oldLines[i - 1] })
       i--
       j--
     } else if (j > 0 && (i === 0 || dp[i][j - 1] >= dp[i - 1][j])) {
-      ops.push({ type: 'added', text: newTokens[j - 1] })
+      ops.push({ type: 'added', text: newLines[j - 1] })
       j--
     } else {
-      ops.push({ type: 'removed', text: oldTokens[i - 1] })
+      ops.push({ type: 'removed', text: oldLines[i - 1] })
       i--
     }
   }
@@ -398,6 +368,7 @@ function diffWords(oldText: string, newText: string): Segment[] {
   ops.reverse()
 
   // Merge consecutive segments of the same type
+  const segments: Segment[] = []
   for (const op of ops) {
     const last = segments[segments.length - 1]
     if (last && last.type === op.type) {
@@ -411,86 +382,66 @@ function diffWords(oldText: string, newText: string): Segment[] {
 }
 
 /**
- * Greedy word diff for large inputs — trades optimality for speed.
- * Scans forward matching equal words, collecting runs of removed/added.
+ * Greedy line diff for large inputs — trades optimality for speed.
  */
-function greedyWordDiff(oldTokens: string[], newTokens: string[]): Segment[] {
+function greedyLineDiff(oldLines: string[], newLines: string[]): Segment[] {
   const segments: Segment[] = []
   let i = 0
   let j = 0
 
-  while (i < oldTokens.length && j < newTokens.length) {
-    if (oldTokens[i] === newTokens[j]) {
+  while (i < oldLines.length && j < newLines.length) {
+    if (oldLines[i] === newLines[j]) {
       const last = segments[segments.length - 1]
       if (last && last.type === 'unchanged') {
-        last.text += oldTokens[i]
+        last.text += oldLines[i]
       } else {
-        segments.push({ type: 'unchanged', text: oldTokens[i] })
+        segments.push({ type: 'unchanged', text: oldLines[i] })
       }
       i++
       j++
     } else {
-      // Look ahead to find next common word
-      const lookAhead = 20
-      let foundOld = -1
+      const lookAhead = 10
       let foundNew = -1
+      let foundOld = -1
 
       for (let k = 1; k <= lookAhead; k++) {
-        if (j + k < newTokens.length && oldTokens[i] === newTokens[j + k]) {
+        if (j + k < newLines.length && oldLines[i] === newLines[j + k]) {
           foundNew = j + k
           break
         }
-        if (i + k < oldTokens.length && oldTokens[i + k] === newTokens[j]) {
+        if (i + k < oldLines.length && oldLines[i + k] === newLines[j]) {
           foundOld = i + k
           break
         }
       }
 
       if (foundNew >= 0) {
-        // Added words
         let added = ''
-        while (j < foundNew) { added += newTokens[j]; j++ }
+        while (j < foundNew) { added += newLines[j]; j++ }
         segments.push({ type: 'added', text: added })
       } else if (foundOld >= 0) {
-        // Removed words
         let removed = ''
-        while (i < foundOld) { removed += oldTokens[i]; i++ }
+        while (i < foundOld) { removed += oldLines[i]; i++ }
         segments.push({ type: 'removed', text: removed })
       } else {
-        // No match found nearby — emit as removed + added
-        segments.push({ type: 'removed', text: oldTokens[i] })
-        segments.push({ type: 'added', text: newTokens[j] })
+        segments.push({ type: 'removed', text: oldLines[i] })
+        segments.push({ type: 'added', text: newLines[j] })
         i++
         j++
       }
     }
   }
 
-  // Remaining
-  if (i < oldTokens.length) {
+  if (i < oldLines.length) {
     let removed = ''
-    while (i < oldTokens.length) { removed += oldTokens[i]; i++ }
+    while (i < oldLines.length) { removed += oldLines[i]; i++ }
     segments.push({ type: 'removed', text: removed })
   }
-  if (j < newTokens.length) {
+  if (j < newLines.length) {
     let added = ''
-    while (j < newTokens.length) { added += newTokens[j]; j++ }
+    while (j < newLines.length) { added += newLines[j]; j++ }
     segments.push({ type: 'added', text: added })
   }
 
   return segments
-}
-
-/**
- * Tokenize text into words, preserving whitespace and newlines as separate tokens.
- * This ensures diff granularity at the word level while preserving formatting.
- */
-function tokenize(text: string): string[] {
-  const tokens: string[] = []
-  const regex = /(\S+|\s+)/g
-  let match: RegExpExecArray | null
-  while ((match = regex.exec(text)) !== null) {
-    tokens.push(match[0])
-  }
-  return tokens
 }

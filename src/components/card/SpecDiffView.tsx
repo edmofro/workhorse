@@ -407,55 +407,54 @@ function diffWords(oldText: string, newText: string): Segment[] {
 
 /**
  * Post-process word-level diff segments to collapse short unchanged runs
- * between changed segments. This makes the diff read as grouped changes —
- * a word or two that didn't change won't break up an otherwise contiguous diff.
+ * between two changed segments of the same type. This makes the diff read
+ * as grouped changes — a word or two that didn't change won't break up an
+ * otherwise contiguous removed or added block.
  *
- * - unchanged run between two same-type segments → merge all three into one
- * - unchanged run between two different-type segments → absorb the unchanged
- *   text into both neighbours (it appears in the removed span and the added span)
+ * Only same-type neighbours are collapsed. An unchanged bridge between a
+ * removed and an added segment is left alone: absorbing it into both spans
+ * would render it as simultaneously deleted and inserted, misrepresenting
+ * the diff.
  *
- * Newline-only runs are never collapsed — they provide structural separation
- * that should be preserved.
+ * Runs that cross a line boundary are never collapsed — a newline inside a
+ * diff span can break heading/list rendering.
  */
-function collapseShortUnchangedRuns(segments: Segment[], maxWords = 3): Segment[] {
-  const result = segments.map((s) => ({ ...s }))
+function collapseShortUnchangedRuns(segments: Segment[]): Segment[] {
+  const COLLAPSE_THRESHOLD = 3
+  const result: Segment[] = []
 
-  let i = 1
-  while (i < result.length - 1) {
-    const seg = result[i]
+  for (let i = 0; i < segments.length; i++) {
+    const seg = segments[i]
 
-    if (seg.type !== 'unchanged') {
-      i++
-      continue
+    // Try to collapse a short unchanged bridge between two same-type changed segments.
+    if (
+      seg.type === 'unchanged' &&
+      result.length > 0 &&
+      result[result.length - 1].type !== 'unchanged' &&
+      i + 1 < segments.length
+    ) {
+      const prevType = result[result.length - 1].type
+      const next = segments[i + 1]
+      const words = seg.text.match(/\S+/g) ?? []
+
+      if (
+        next.type === prevType &&
+        words.length > 0 &&
+        words.length <= COLLAPSE_THRESHOLD &&
+        !seg.text.includes('\n')
+      ) {
+        result[result.length - 1].text += seg.text + next.text
+        i++ // consume the next same-type segment
+        continue
+      }
     }
 
-    const prev = result[i - 1]
-    const next = result[i + 1]
-
-    // Only collapse when both neighbours are changed segments
-    if (prev.type === 'unchanged' || next.type === 'unchanged') {
-      i++
-      continue
-    }
-
-    // Count non-whitespace words; never collapse pure-whitespace/newline runs
-    const words = seg.text.match(/\S+/g) ?? []
-    if (words.length === 0 || words.length > maxWords) {
-      i++
-      continue
-    }
-
-    if (prev.type === next.type) {
-      // Both neighbours are the same type — merge all three into prev
-      prev.text += seg.text + next.text
-      result.splice(i, 2)
-      // Don't advance i; the merged segment may now be adjacent to another collapsible run
+    // Normal path: merge with last segment if same type, otherwise push
+    const last = result[result.length - 1]
+    if (last && last.type === seg.type) {
+      last.text += seg.text
     } else {
-      // Different types — absorb unchanged text into both neighbours so the
-      // change reads as one contiguous group
-      prev.text += seg.text
-      next.text = seg.text + next.text
-      result.splice(i, 1)
+      result.push({ ...seg })
     }
   }
 

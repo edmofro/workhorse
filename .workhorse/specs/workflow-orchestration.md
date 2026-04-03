@@ -71,7 +71,7 @@ Both triggers feed into the same assessment. The jockey reads the new input (mes
 - [ ] Starts the next scheduled skill if the current step just completed (see "Scheduling" under Journey bar)
 - [ ] Detects when the conversation diverges from the spec (e.g. user directs the agent to implement something the spec doesn't cover) and surfaces "Update spec" in pills
 
-Most of the time, the assessment is "nothing noteworthy happened" and no changes are made. The jockey maintains a cursor tracking which message it last assessed, so it only processes new input — not the full transcript. When a user returns to a card after being away, the jockey catches up on any input since its last cursor position.
+Most of the time, the assessment is "nothing noteworthy happened" and no changes are made. The jockey receives the journal (which provides a compressed history of the card's progress) plus a sliding window of recent conversation for context. A cursor tracks which messages have already been assessed, so the jockey knows what's new — but the context window extends further back than just the new messages, so it can recognise significance that only becomes apparent in hindsight.
 
 ### Pills vs suggestions
 

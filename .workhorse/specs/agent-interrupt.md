@@ -34,7 +34,7 @@ When the user clicks the stop button:
 
 ### Server side
 
-The abort is client-side only. The server-side `query()` call has no abort signal passed to it, so the agent turn may continue briefly on the server and auto-commit any completed file writes. From the user's perspective the agent stops immediately; the server cleans up in the background.
+The API route creates an `AbortController` and passes it to the SDK's `query()` call via the `abortController` option. The controller is wired to `request.signal`, so when the client disconnects (fetch aborted), the SDK's agent loop is also halted — it stops making API calls and running tools. Any file writes already completed are preserved; incomplete writes are discarded by the SDK.
 
 ## Send while streaming
 

@@ -245,6 +245,12 @@ export async function POST(request: NextRequest) {
   const convSessionId = convSession.id
   const isFirstMessage = convSession.messageCount === 0
 
+  // AbortController for server-side agent cancellation — wired to the
+  // client's request signal so disconnecting the SSE stream also halts
+  // the SDK's agent loop (tool calls, API requests, etc).
+  const agentAbort = new AbortController()
+  request.signal.addEventListener('abort', () => agentAbort.abort())
+
   const stream = new ReadableStream({
     async start(controller) {
       try {
@@ -266,7 +272,7 @@ export async function POST(request: NextRequest) {
         let agentQuery: ReturnType<typeof query>
 
         try {
-          agentQuery = query({ prompt: promptInput, options })
+          agentQuery = query({ prompt: promptInput, options: { ...options, abortController: agentAbort } })
           // Eagerly pull the first event to detect stale session errors early
           const firstChunk = await (agentQuery as AsyncIterable<unknown>)[Symbol.asyncIterator]().next()
           if (!firstChunk.done) {
@@ -306,7 +312,7 @@ export async function POST(request: NextRequest) {
               data: { agentSessionId: null },
             })
             // Retry without resume
-            const freshOptions = { ...options }
+            const freshOptions = { ...options, abortController: agentAbort }
             delete (freshOptions as Record<string, unknown>).resume
             agentQuery = query({ prompt: promptInput, options: freshOptions })
           } else {

@@ -46,17 +46,31 @@ export function useSidebarEvents() {
         }
 
         if (event.type === 'streaming_start') {
+          // Move to top of the list when it becomes active
+          queryClient.setQueryData<SidebarData>(['sidebar-data'], (old) => {
+            if (!old) return old
+            const idx = old.recentSessions.findIndex((s) => s.id === session.id)
+            if (idx <= 0) return old // already at top or not found
+            const updated = [...old.recentSessions]
+            updated.splice(idx, 1)
+            return {
+              ...old,
+              recentSessions: [{ ...old.recentSessions[idx], ...session }, ...updated],
+            }
+          })
           setStreamingSessions((prev) => new Set(prev).add(session.id))
         }
 
         if (event.type === 'streaming_stop') {
-          // Update session data (title, messageCount, lastMessageAt)
+          // Update session data and move to top
           queryClient.setQueryData<SidebarData>(['sidebar-data'], (old) => {
             if (!old) return old
+            const filtered = old.recentSessions.filter((s) => s.id !== session.id)
+            const existing = old.recentSessions.find((s) => s.id === session.id)
             return {
               ...old,
-              recentSessions: old.recentSessions.map((s) =>
-                s.id === session.id ? { ...s, ...session } : s,
+              recentSessions: [{ ...existing, ...session }, ...filtered],
+            }
               ),
             }
           })

@@ -525,7 +525,7 @@ export function CardWorkspace({
   const chatColumn = (
     <div className="flex-1 flex flex-col overflow-hidden">
       <div ref={chatScrollRef} className="flex-1 overflow-y-auto flex justify-center">
-        <div className="w-full" style={{ maxWidth: '680px', padding: '32px 24px 32px' }}>
+        <div className="w-full" style={{ maxWidth: '680px', padding: '32px 24px 80px' }}>
           {messages.length === 0 && (
             <div className="text-center py-16">
               <p className="text-[14px] text-[var(--text-muted)] mb-1">

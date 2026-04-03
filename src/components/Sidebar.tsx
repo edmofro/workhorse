@@ -61,6 +61,13 @@ export function Sidebar({ initialProjects, initialRecentSessions = [] }: Sidebar
 
   const handleCloseModal = useCallback(() => setCreateModal(null), [])
 
+  // Persist the active project so the home page can redirect back to it
+  useEffect(() => {
+    if (activeProject) {
+      document.cookie = `workhorse_last_project=${encodeURIComponent(activeProject.name.toLowerCase())}; path=/; max-age=31536000; SameSite=Lax`
+    }
+  }, [activeProject?.id])
+
   return (
     <aside
       className="flex flex-col shrink-0 bg-[var(--bg-sidebar)] border-r border-[var(--border-subtle)]"

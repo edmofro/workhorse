@@ -417,6 +417,11 @@ function StatusDot({ status }: { status: string | null }) {
       <span className="w-[8px] h-[8px] rounded-full shrink-0 bg-[var(--amber)]" />
     )
   }
+  if (status === 'IMPLEMENTING') {
+    return (
+      <span className="w-[8px] h-[8px] rounded-full shrink-0 bg-[var(--blue,#2563eb)]" />
+    )
+  }
   // NOT_STARTED or unknown — hollow dot
   return (
     <span className="w-[8px] h-[8px] rounded-full shrink-0 border border-[var(--border-default)]" />

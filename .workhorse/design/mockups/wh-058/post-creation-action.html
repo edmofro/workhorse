@@ -64,6 +64,17 @@
   }
   kbd.on-accent { background: rgba(255,255,255,0.2); opacity: 0.75; }
 
+  /* ⌘N hints on action buttons — hidden by default, revealed on ⌘ hold */
+  .act-btn kbd {
+    max-width: 0; overflow: hidden; opacity: 0;
+    padding: 0; margin-left: 0;
+    transition: max-width 80ms ease, opacity 80ms ease, margin-left 80ms ease, padding 80ms ease;
+  }
+  .cmd-held .act-btn kbd {
+    max-width: 40px; opacity: 0.55;
+    padding: 1px 3px; margin-left: 3px;
+  }
+
   /* ─── Status dots (exact match to StatusDot.tsx) ─── */
   .sdot {
     display: inline-block; width: 8px; height: 8px;

@@ -18,12 +18,11 @@ import {
   worktreePath,
   autoCommit,
   readWorktreeFile,
+  getChangedFiles,
 } from '../../../lib/git/worktree'
 import { isMockupPath } from '../../../lib/paths'
 import { extractHtmlTitle, humaniseFilename } from '../../../lib/labels'
 import { branchNameFromCard } from '../../../lib/git/branchNaming'
-
-import { getChangedFiles } from '../../../lib/git/worktree'
 import { emit as emitSidebarEvent, type SidebarEvent } from '../../../lib/sidebarEvents'
 
 class StaleSessionError extends Error {

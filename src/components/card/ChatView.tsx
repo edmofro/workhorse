@@ -85,7 +85,7 @@ export function ChatView({ cardId, initialMessages }: ChatViewProps) {
           )}
         </div>
       </div>
-      <ChatInput onSend={handleSend} disabled={isStreaming} />
+      <ChatInput onSend={handleSend} isStreaming={isStreaming} />
     </div>
   )
 }

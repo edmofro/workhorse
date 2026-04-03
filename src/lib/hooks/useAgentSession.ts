@@ -41,6 +41,13 @@ export function useAgentSession(
   const thinkingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const historySessionIdRef = useRef<string | null>(null)
   const abortRef = useRef<AbortController | null>(null)
+  const wasAbortedRef = useRef(false)
+  const queuedMessageRef = useRef<{
+    content: string
+    userName: string
+    attachments?: AttachmentData[]
+    skillId?: string
+  } | null>(null)
   // Track the conversation session ID and title (may be set after first message)
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(sessionId)
   const currentSessionIdRef = useRef<string | null>(sessionId)
@@ -126,7 +133,22 @@ export function useAgentSession(
 
   const sendMessage = useCallback(
     async (content: string, userName: string, attachments?: AttachmentData[], skillId?: string) => {
-      if ((!content.trim() && (!attachments || attachments.length === 0)) || isStreamingRef.current) return
+      if (!content.trim() && (!attachments || attachments.length === 0)) return
+
+      // If already streaming, queue the message for after the current turn
+      if (isStreamingRef.current) {
+        queuedMessageRef.current = { content, userName, attachments, skillId }
+        const userMsg: SessionMessage = {
+          id: `temp-${Date.now()}`,
+          role: 'user',
+          content,
+          userName,
+          createdAt: new Date().toISOString(),
+          attachments,
+        }
+        setMessages((prev) => [...prev, userMsg])
+        return
+      }
 
       // Add user message
       const userMsg: SessionMessage = {
@@ -156,6 +178,7 @@ export function useAgentSession(
       assistantIdRef.current = assistantId
       turnConfirmedRef.current = false
       abortRef.current = new AbortController()
+      wasAbortedRef.current = false
 
       // Flush buffered text to React state — called on a 60ms throttle
       // so multiple small deltas batch into one smooth render.
@@ -236,7 +259,10 @@ export function useAgentSession(
           }
         }
       } catch (err) {
-        if (err instanceof DOMException && err.name === 'AbortError') return
+        if (err instanceof DOMException && err.name === 'AbortError') {
+          wasAbortedRef.current = true
+          return
+        }
         setMessages((prev) =>
           prev.map((m) =>
             m.id === assistantId
@@ -259,6 +285,14 @@ export function useAgentSession(
             prev.map((m) => (m.id === id ? { ...m, content: finalContent } : m)),
           )
         }
+        // If aborted with no content, show "Stopped." notice
+        if (wasAbortedRef.current && !assistantContentRef.current) {
+          const id = assistantIdRef.current
+          setMessages((prev) =>
+            prev.map((m) => (m.id === id ? { ...m, content: 'Stopped.' } : m)),
+          )
+        }
+
         setIsStreaming(false)
         isStreamingRef.current = false
         setActiveToolCalls([])
@@ -269,6 +303,13 @@ export function useAgentSession(
           thinkingTimerRef.current = null
         }
         abortRef.current = null
+
+        // Dispatch queued message if one was buffered during this turn
+        const queued = queuedMessageRef.current
+        if (queued) {
+          queuedMessageRef.current = null
+          setTimeout(() => sendMessage(queued.content, queued.userName, queued.attachments, queued.skillId), 0)
+        }
       }
     },
     [cardId],

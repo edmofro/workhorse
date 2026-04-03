@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>WH-062 — Stop button &amp; input states</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg-page: #f8f7f4;
+    --bg-surface: #ffffff;
+    --bg-hover: #edeae5;
+    --bg-inset: #e8e5df;
+    --text-primary: #1c1917;
+    --text-secondary: #57534e;
+    --text-muted: #a8a29e;
+    --text-faint: #d1cdc6;
+    --border-default: #d6d3cd;
+    --border-subtle: #e8e5df;
+    --accent: #c2410c;
+    --accent-hover: #9a3412;
+    --radius-default: 8px;
+    --radius-lg: 12px;
+    --radius-xl: 16px;
+    --shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
+    --shadow-input-focus: 0 0 0 3px rgba(194,65,12,0.08);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Inter', system-ui, sans-serif; background: var(--bg-page); color: var(--text-primary); padding: 40px; }
+
+  h1 { font-size: 18px; font-weight: 600; margin-bottom: 8px; }
+  .subtitle { font-size: 13px; color: var(--text-muted); margin-bottom: 32px; }
+
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; max-width: 960px; }
+  .card { background: var(--bg-surface); border: 1px solid var(--border-default); border-radius: var(--radius-xl); padding: 20px; }
+  .card h2 { font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+  .card .state-label { font-size: 11px; color: var(--text-muted); margin-bottom: 16px; }
+
+  /* Chat input mockup */
+  .input-row {
+    display: flex;
+    align-items: flex-end;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-lg);
+    padding: 6px 6px 6px 16px;
+    box-shadow: var(--shadow-sm);
+    gap: 4px;
+  }
+  .input-row.focused {
+    border-color: var(--accent);
+    box-shadow: var(--shadow-input-focus);
+  }
+  .input-text {
+    flex: 1;
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--text-primary);
+    padding: 8px 0;
+    min-height: 24px;
+  }
+  .input-text.placeholder { color: var(--text-faint); }
+
+  /* Icon buttons */
+  .btn-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-default);
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background 0.1s, opacity 0.1s;
+  }
+  .btn-send {
+    background: var(--accent);
+  }
+  .btn-send:hover { background: var(--accent-hover); }
+  .btn-send.disabled {
+    background: var(--accent);
+    opacity: 0.35;
+    cursor: default;
+  }
+  .btn-stop {
+    background: var(--bg-inset);
+  }
+  .btn-stop:hover { background: var(--bg-hover); }
+
+  /* Icons (inline SVG) */
+  .icon { width: 16px; height: 16px; }
+  .icon-white { color: #fff; }
+  .icon-muted { color: var(--text-secondary); }
+
+  /* Scenario sections */
+  .scenario { margin-top: 40px; max-width: 480px; }
+  .scenario h2 { font-size: 14px; font-weight: 600; margin-bottom: 6px; }
+  .scenario .desc { font-size: 12px; color: var(--text-muted); margin-bottom: 16px; }
+  .scenario .chat-area {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-xl);
+    padding: 16px;
+  }
+
+  .message { margin-bottom: 12px; }
+  .message .role { font-size: 11px; font-weight: 500; color: var(--text-muted); margin-bottom: 2px; }
+  .message .body { font-size: 13px; color: var(--text-secondary); line-height: 1.5; }
+  .message .body.faint { color: var(--text-faint); font-style: italic; }
+
+  .thinking-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: var(--bg-page);
+    border-radius: var(--radius-default);
+    margin-bottom: 12px;
+  }
+  .thinking-bar .dots { display: flex; gap: 3px; }
+  .thinking-bar .dot {
+    width: 4px; height: 4px; border-radius: 50%;
+    background: var(--text-muted);
+    animation: pulse 1.4s ease-in-out infinite;
+  }
+  .thinking-bar .dot:nth-child(2) { animation-delay: 0.2s; }
+  .thinking-bar .dot:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes pulse { 0%,80%,100% { opacity: 0.3; } 40% { opacity: 1; } }
+  .thinking-bar .snippet { font-size: 11px; color: var(--text-muted); }
+</style>
+</head>
+<body>
+
+<h1>WH-062 — Stop button &amp; input states</h1>
+<p class="subtitle">Four input states and two interaction scenarios</p>
+
+<!-- Four states -->
+<div class="grid">
+
+  <!-- State 1: Idle, empty -->
+  <div class="card">
+    <h2>State 1 — Idle, empty</h2>
+    <p class="state-label">No text entered, agent not running</p>
+    <div class="input-row">
+      <div class="input-text placeholder">Continue the conversation...</div>
+      <button class="btn-icon btn-send disabled" title="Send">
+        <svg class="icon icon-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5"/><path d="m5 12 7-7 7 7"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- State 2: Ready to send -->
+  <div class="card">
+    <h2>State 2 — Ready to send</h2>
+    <p class="state-label">Text entered, agent not running</p>
+    <div class="input-row focused">
+      <div class="input-text">Can you also add error handling for the API route?</div>
+      <button class="btn-icon btn-send" title="Send">
+        <svg class="icon icon-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5"/><path d="m5 12 7-7 7 7"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- State 3: Agent working, no text -->
+  <div class="card">
+    <h2>State 3 — Agent working</h2>
+    <p class="state-label">No text entered, agent running</p>
+    <div class="input-row">
+      <div class="input-text placeholder">Continue the conversation...</div>
+      <button class="btn-icon btn-stop" title="Stop">
+        <svg class="icon icon-muted" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- State 4: Agent working + text entered -->
+  <div class="card">
+    <h2>State 4 — Agent working + text</h2>
+    <p class="state-label">Text entered, agent running — send queues</p>
+    <div class="input-row focused">
+      <div class="input-text">Actually, use zod for validation instead</div>
+      <button class="btn-icon btn-stop" title="Stop">
+        <svg class="icon icon-muted" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
+      </button>
+      <button class="btn-icon btn-send" title="Send (queues)">
+        <svg class="icon icon-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5"/><path d="m5 12 7-7 7 7"/></svg>
+      </button>
+    </div>
+  </div>
+
+</div>
+
+<!-- Scenario A: Queued send -->
+<div class="scenario">
+  <h2>Scenario — Queued send</h2>
+  <p class="desc">User sends a message while agent is working. It appears immediately and is dispatched when the current turn ends.</p>
+  <div class="chat-area">
+    <div class="message">
+      <div class="role">You</div>
+      <div class="body">Implement the stop button for the chat input</div>
+    </div>
+    <div class="message">
+      <div class="role">Workhorse</div>
+      <div class="body">I'll add a stop button that appears when the agent is streaming. Let me update the ChatInput component first...</div>
+    </div>
+    <div class="thinking-bar">
+      <div class="dots"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
+      <span class="snippet">Editing useAgentSession.ts...</span>
+    </div>
+    <div class="message">
+      <div class="role">You</div>
+      <div class="body">Actually, use zod for validation instead</div>
+    </div>
+    <div style="margin-top: 12px;">
+      <div class="input-row">
+        <div class="input-text placeholder">Continue the conversation...</div>
+        <button class="btn-icon btn-stop" title="Stop">
+          <svg class="icon icon-muted" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Scenario B: Stop with partial output -->
+<div class="scenario">
+  <h2>Scenario — Stop with partial output</h2>
+  <p class="desc">User stops the agent mid-response. Partial text is preserved, input becomes available.</p>
+  <div class="chat-area">
+    <div class="message">
+      <div class="role">You</div>
+      <div class="body">Refactor the authentication module to use JWT</div>
+    </div>
+    <div class="message">
+      <div class="role">Workhorse</div>
+      <div class="body">I'll restructure the auth module. Here's the plan:<br/><br/>1. Replace session tokens with JWT<br/>2. Add token refresh logic</div>
+    </div>
+    <div style="margin-top: 12px;">
+      <div class="input-row">
+        <div class="input-text placeholder">Continue the conversation...</div>
+        <button class="btn-icon btn-send disabled" title="Send">
+          <svg class="icon icon-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5"/><path d="m5 12 7-7 7 7"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

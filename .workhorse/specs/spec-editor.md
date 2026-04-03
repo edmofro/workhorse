@@ -40,10 +40,10 @@ When editing an existing spec, the user can see what they've changed relative to
 
 - [ ] The spec editor shows a "Show changes" toggle when editing an existing spec (one that was pulled from the main branch, not created new)
 - [ ] When "Show changes" is active, the editor switches to a tracked-changes view:
-  - Changes are grouped line-by-line, not word-by-word — each changed line (or run of changed lines) is highlighted as a block
-  - Deleted lines are shown with a muted red background, left border, and strikethrough
-  - Added lines are shown with a muted green background and left border
-  - Unchanged lines are shown normally
+  - Deleted text is shown with a strikethrough and a muted red background
+  - Added text is shown with a muted green background
+  - Changes are grouped sensibly: a single changed word appears inline, a run of changed words appears as a contiguous block, and short unchanged runs (a word or two) between changes are absorbed into the surrounding group rather than breaking it up
+  - Unchanged text is shown normally
   - Changes are rendered inline within the document flow (not side-by-side panels)
 - [ ] The tracked-changes view is read-only — the user toggles back to the normal editor to make further changes
 - [ ] The comparison baseline is the content from the main branch at the time the spec was attached to the card

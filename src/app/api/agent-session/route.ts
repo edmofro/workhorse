@@ -17,11 +17,8 @@ import {
   createWorktree,
   worktreePath,
   autoCommit,
-  readWorktreeFile,
   getPendingChanges,
 } from '../../../lib/git/worktree'
-import { isMockupPath } from '../../../lib/paths'
-import { extractHtmlTitle, humaniseFilename } from '../../../lib/labels'
 import { branchNameFromCard } from '../../../lib/git/branchNaming'
 
 import { safeParseTouchedFiles } from '../../../lib/safeParseTouchedFiles'
@@ -457,30 +454,6 @@ async function finaliseSessionAfterExchange(
         ),
       )
 
-      // Persist any new mockup files to the database so they survive page
-      // refreshes and appear with correct titles in the artifacts sidebar
-      const mockupFiles = changedFiles.filter(isMockupPath)
-      for (const filePath of mockupFiles) {
-        try {
-          const html = await readWorktreeFile(ctx.owner, ctx.repoName, ctx.card.identifier, filePath)
-          if (!html) continue
-          const htmlTitle = extractHtmlTitle(html)
-          const filename = filePath.split('/').pop() ?? filePath
-          const title = htmlTitle || humaniseFilename(filename)
-
-          // Upsert: if a mockup with this title already exists for the card, update it
-          const existing = await prisma.mockup.findFirst({
-            where: { cardId: ctx.cardId, title },
-          })
-          if (existing) {
-            await prisma.mockup.update({ where: { id: existing.id }, data: { html } })
-          } else {
-            await prisma.mockup.create({ data: { cardId: ctx.cardId, title, html } })
-          }
-        } catch {
-          // Best-effort — don't fail the session over mockup persistence
-        }
-      }
     }
   } catch (commitErr) {
     console.error('Auto-commit failed:', commitErr)

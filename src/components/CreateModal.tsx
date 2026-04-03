@@ -76,6 +76,7 @@ export function CreateModal({
           if (!res.ok) throw new Error(data.error ?? 'Generation failed')
           description = data.description || input
           title = data.title || input.split(/[.!?\n]/)[0].slice(0, 60).trim()
+          if (data._error) console.warn('[generate-card] API error:', data._error)
         } catch {
           description = input
           title = input.split(/[.!?\n]/)[0].slice(0, 60).trim()

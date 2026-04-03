@@ -23,7 +23,7 @@ import { isMockupPath } from '../../../lib/paths'
 import { extractHtmlTitle, humaniseFilename } from '../../../lib/labels'
 import { branchNameFromCard } from '../../../lib/git/branchNaming'
 
-import { safeParseTouchedFiles } from '../../../lib/safeParseTouchedFiles'
+import { getChangedFiles } from '../../../lib/git/worktree'
 import { emit as emitSidebarEvent, type SidebarEvent } from '../../../lib/sidebarEvents'
 
 class StaleSessionError extends Error {
@@ -370,6 +370,7 @@ export async function POST(request: NextRequest) {
             card.status,
             message,
             assistantText,
+            { owner, repoName, cardIdentifier: card.identifier, defaultBranch },
           )
           if (jockeyResult) {
             controller.enqueue(
@@ -439,14 +440,6 @@ async function finaliseSessionAfterExchange(
     )
 
     if (changedFiles.length > 0) {
-      const freshCard = await prisma.card.findUnique({ where: { id: ctx.cardId } })
-      const existingFiles = safeParseTouchedFiles(freshCard?.touchedFiles ?? '[]')
-      const allFiles = [...new Set([...existingFiles, ...changedFiles])]
-      await prisma.card.update({
-        where: { id: ctx.cardId },
-        data: { touchedFiles: JSON.stringify(allFiles) },
-      })
-
       controller.enqueue(
         encoder.encode(
           `data: ${JSON.stringify({ type: 'commit', files: changedFiles })}\n\n`,
@@ -607,10 +600,11 @@ async function runJockeyAfterExchange(
   cardStatus: string,
   userMessage: string,
   assistantText: string,
+  repo: { owner: string; repoName: string; cardIdentifier: string; defaultBranch: string },
 ): Promise<JockeyAssessment | null> {
   try {
     // Fetch current state
-    const [journalEntries, scheduledSteps, card] = await Promise.all([
+    const [journalEntries, scheduledSteps, card, { workhorseFiles, codeFiles: changedCodeFiles }] = await Promise.all([
       prisma.journalEntry.findMany({
         where: { cardId },
         orderBy: { createdAt: 'asc' },
@@ -624,13 +618,13 @@ async function runJockeyAfterExchange(
       }),
       prisma.card.findUnique({
         where: { id: cardId },
-        select: { touchedFiles: true, prUrl: true },
+        select: { prUrl: true },
       }),
+      getChangedFiles(repo.owner, repo.repoName, repo.cardIdentifier, repo.defaultBranch),
     ])
 
-    const touchedFiles = safeParseTouchedFiles(card?.touchedFiles ?? '[]')
-    const hasSpecs = touchedFiles.some(f => f.startsWith('.workhorse/specs/'))
-    const hasCodeChanges = touchedFiles.some(f => !f.startsWith('.workhorse/'))
+    const hasSpecs = workhorseFiles.some(f => f.filePath.startsWith('.workhorse/specs/'))
+    const hasCodeChanges = changedCodeFiles.length > 0
 
     // Build recent messages from the current exchange
     // (We don't have the full transcript here, so we use the current user + assistant messages)

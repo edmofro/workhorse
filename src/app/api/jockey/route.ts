@@ -38,9 +38,12 @@ export async function GET(request: NextRequest) {
     }),
   ])
 
-  const touchedFiles = safeParseTouchedFiles(card.touchedFiles ?? '[]')
-  const hasSpecs = touchedFiles.some(f => f.startsWith('.workhorse/specs/'))
-  const hasCodeChanges = touchedFiles.some(f => !f.startsWith('.workhorse/'))
+  const { owner, repoName, defaultBranch } = card.team.project
+  const { workhorseFiles, codeFiles } = await getChangedFiles(
+    owner, repoName, card.identifier, defaultBranch,
+  )
+  const hasSpecs = workhorseFiles.some(f => f.filePath.startsWith('.workhorse/specs/'))
+  const hasCodeChanges = codeFiles.length > 0
   const hasPr = !!card.prUrl
 
   // Use deterministic defaults for fast initial load — no LLM call.

@@ -132,7 +132,6 @@ interface CardDetailData {
     tags: string
     cardBranch: string | null
     prUrl: string | null
-    touchedFiles: string[]
     team: { id: string; name: string; colour: string }
     project: { id: string; name: string; owner: string; repoName: string; defaultBranch: string }
     assignee: { id: string; displayName: string } | null

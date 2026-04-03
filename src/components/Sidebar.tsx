@@ -14,7 +14,6 @@ import {
   MessageCircle,
   X,
 } from 'lucide-react'
-import { createPortal } from 'react-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { cn } from '../lib/cn'
 import { Avatar } from './Avatar'
@@ -27,26 +26,18 @@ import {
 } from '../lib/hooks/queries'
 import { useSidebarEvents } from '../lib/hooks/useSidebarEvents'
 import { CreateModal } from './CreateModal'
-import { usePortalMenu } from './PropertyDropdown'
-import { StatusDot } from './StatusDot'
+import { PropertyDropdown, type PropertyOption } from './PropertyDropdown'
+import { StatusDot, statusToDotState } from './StatusDot'
+import { STATUS_OPTIONS } from '../lib/status'
 import { updateCard } from '../lib/actions/cards'
 import { useState, useRef, useEffect, useCallback, useTransition } from 'react'
 
-const STATUS_OPTIONS = [
-  { value: 'NOT_STARTED', label: 'Not started', dotState: 'not-started' as const },
-  { value: 'SPECIFYING', label: 'Specifying', dotState: 'specifying' as const },
-  { value: 'IMPLEMENTING', label: 'Implementing', dotState: 'implementing' as const },
-  { value: 'COMPLETE', label: 'Complete', dotState: 'complete' as const },
-  { value: 'CANCELLED', label: 'Cancelled', dotState: 'cancelled' as const },
-] as const
-
-function statusToDotState(status: string | null): 'not-started' | 'specifying' | 'implementing' | 'complete' | 'cancelled' {
-  if (status === 'COMPLETE' || status === 'SPEC_COMPLETE') return 'complete'
-  if (status === 'IN_PROGRESS' || status === 'SPECIFYING') return 'specifying'
-  if (status === 'IMPLEMENTING') return 'implementing'
-  if (status === 'CANCELLED') return 'cancelled'
-  return 'not-started'
-}
+/** Pre-built dropdown options for the status picker — stable reference, no per-render allocation. */
+const STATUS_DROPDOWN_OPTIONS: PropertyOption[] = STATUS_OPTIONS.map((opt) => ({
+  value: opt.value,
+  label: opt.label,
+  icon: <StatusDot state={statusToDotState(opt.value)} />,
+}))
 
 export type RecentSession = SidebarSession
 
@@ -332,63 +323,14 @@ function ClickableStatusDot({
   cardId: string
   onStatusChange: (cardId: string, newStatus: string) => void
 }) {
-  const { open, setOpen, toggle, triggerRef, menuRef, pos } = usePortalMenu()
-  const dotState = statusToDotState(status)
-
-  useEffect(() => {
-    if (!open) return
-    function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === 'Escape') setOpen(false)
-    }
-    document.addEventListener('keydown', handleKeyDown)
-    return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [open, setOpen])
-
   return (
-    <>
-      <button
-        ref={triggerRef}
-        type="button"
-        onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggle() }}
-        title="Change status"
-        className={cn(
-          'flex items-center justify-center w-5 h-5 rounded-full cursor-pointer transition-colors duration-100',
-          open ? 'bg-[var(--bg-inset)]' : 'hover:bg-[var(--bg-inset)]',
-        )}
-      >
-        <StatusDot state={dotState} />
-      </button>
-
-      {open && pos && createPortal(
-        <div
-          ref={menuRef}
-          style={{ position: 'fixed', top: pos.top, left: pos.left }}
-          className="z-50 min-w-[152px] bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-[var(--radius-xl)] shadow-[var(--shadow-lg)] py-1"
-        >
-          {STATUS_OPTIONS.map((opt) => (
-            <button
-              key={opt.value}
-              type="button"
-              onClick={() => {
-                onStatusChange(cardId, opt.value)
-                setOpen(false)
-              }}
-              className={cn(
-                'w-full text-left px-3 py-2 text-[12px] flex items-center gap-2',
-                'hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer',
-                status === opt.value
-                  ? 'text-[var(--text-primary)] font-medium'
-                  : 'text-[var(--text-secondary)]',
-              )}
-            >
-              <StatusDot state={opt.dotState} />
-              {opt.label}
-            </button>
-          ))}
-        </div>,
-        document.body,
-      )}
-    </>
+    <PropertyDropdown
+      trigger={<StatusDot state={statusToDotState(status ?? 'NOT_STARTED')} />}
+      options={STATUS_DROPDOWN_OPTIONS}
+      value={status ?? ''}
+      onChange={(newStatus) => onStatusChange(cardId, newStatus)}
+      className="p-0 w-5 h-5 rounded-full justify-center hover:bg-[var(--bg-inset)]"
+    />
   )
 }
 
@@ -448,7 +390,10 @@ function ConversationsList({
 }) {
   const [expanded, setExpanded] = useState(false)
   const [dismissed, setDismissed] = useState<Set<string>>(new Set())
+  // Keyed by cardId so all sessions sharing a card reflect the same optimistic status.
   const [statusOverrides, setStatusOverrides] = useState<Record<string, string>>({})
+  // Per-cardId sequence counter — guards rollback against concurrent in-flight requests.
+  const changeCounterRef = useRef<Record<string, number>>({})
   const queryClient = useQueryClient()
   const [, startTransition] = useTransition()
 
@@ -466,18 +411,20 @@ function ConversationsList({
     })
   }
 
-  async function handleStatusChange(cardId: string, newStatus: string, sessionId: string) {
-    setStatusOverrides((prev) => ({ ...prev, [sessionId]: newStatus }))
+  async function handleStatusChange(cardId: string, newStatus: string) {
+    const seq = (changeCounterRef.current[cardId] = (changeCounterRef.current[cardId] ?? 0) + 1)
+    setStatusOverrides((prev) => ({ ...prev, [cardId]: newStatus }))
     try {
       await updateCard(cardId, { status: newStatus })
-      queryClient.invalidateQueries({ queryKey: ['sidebar-data'] })
-    } catch {
-      console.error('Failed to update card status')
-      setStatusOverrides((prev) => {
-        const next = { ...prev }
-        if (next[sessionId] === newStatus) delete next[sessionId]
-        return next
-      })
+      if (changeCounterRef.current[cardId] === seq) {
+        setStatusOverrides((prev) => { const next = { ...prev }; delete next[cardId]; return next })
+        queryClient.invalidateQueries({ queryKey: ['sidebar-data'] })
+      }
+    } catch (err) {
+      console.error('Failed to update card status', err)
+      if (changeCounterRef.current[cardId] === seq) {
+        setStatusOverrides((prev) => { const next = { ...prev }; delete next[cardId]; return next })
+      }
     }
   }
 
@@ -494,7 +441,7 @@ function ConversationsList({
           || pathname.startsWith(`${projectPath}/sessions/${session.id}`)
         const isCardBound = !!session.cardId
         const isStreaming = streamingSessions.has(session.id)
-        const effectiveStatus = statusOverrides[session.id] ?? session.cardStatus
+        const effectiveStatus = (session.cardId ? statusOverrides[session.cardId] : null) ?? session.cardStatus
 
         return (
           <ConversationItem
@@ -508,9 +455,7 @@ function ConversationsList({
                 ? <ClickableStatusDot
                     status={effectiveStatus}
                     cardId={session.cardId}
-                    onStatusChange={(cardId, newStatus) =>
-                      handleStatusChange(cardId, newStatus, session.id)
-                    }
+                    onStatusChange={handleStatusChange}
                   />
                 : <div className="flex items-center justify-center w-5 h-5">
                     <MessageCircle size={11} className="text-[var(--text-muted)]" />

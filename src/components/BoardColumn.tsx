@@ -24,7 +24,6 @@ export interface CardData {
   team: { id: string; name: string; colour: string }
 }
 
-type StatusDotState = 'not-started' | 'specifying' | 'implementing' | 'complete' | 'cancelled'
 
 interface BoardColumnProps {
   label: string

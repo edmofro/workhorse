@@ -430,10 +430,12 @@ export function CardWorkspace({
     [handleSendMessage],
   )
 
-  /** Create PR from the PR bar */
-  const handleCreatePr = useCallback(() => {
-    handleSendMessage('Create a pull request for this card', 'create_pr')
-  }, [handleSendMessage])
+  /** Handle PR creation — update local state with the new PR URL */
+  const [localPrUrl, setLocalPrUrl] = useState<string | null>(card.prUrl ?? null)
+  const handlePrCreated = useCallback((prUrl: string) => {
+    setLocalPrUrl(prUrl)
+    router.refresh()
+  }, [router])
 
   // Spec operations
   const ensureWorktree = useCallback(async () => {
@@ -639,9 +641,10 @@ export function CardWorkspace({
       </div>
       {/* PR bar — bottom of chat area */}
       <PrBar
+        cardId={card.id}
         hasCodeChanges={jockey.hasCodeChanges}
-        prUrl={card.prUrl ?? null}
-        onCreatePr={handleCreatePr}
+        prUrl={localPrUrl}
+        onPrCreated={handlePrCreated}
       />
     </div>
   )

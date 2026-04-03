@@ -16,21 +16,20 @@
     flex-wrap: wrap;
     justify-content: center;
     align-items: flex-start;
-    gap: 40px;
+    gap: 48px;
     padding: 56px 40px 100px;
     color: #1c1917;
     -webkit-font-smoothing: antialiased;
   }
 
-  .variant {
+  .col {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 10px;
-    width: 460px;
+    gap: 12px;
+    width: 480px;
   }
-
-  .variant-label {
+  .col-label {
     font-size: 11px;
     font-weight: 600;
     letter-spacing: 0.07em;
@@ -38,67 +37,46 @@
     color: #a8a29e;
     text-align: center;
   }
-  .variant-note {
+  .col-note {
     font-size: 12px;
     color: #78716c;
     text-align: center;
-    max-width: 380px;
+    max-width: 400px;
     line-height: 1.5;
+    margin-bottom: 4px;
   }
 
   svg { display: block; }
 
   kbd {
     font-family: inherit;
-    font-size: 10px;
-    opacity: 0.6;
-    background: rgba(255,255,255,0.18);
+    font-size: 9px;
+    opacity: 0.55;
+    background: rgba(0,0,0,0.07);
     border-radius: 3px;
-    padding: 1px 4px;
+    padding: 1px 3px;
+    margin-left: 3px;
+    letter-spacing: 0;
+  }
+  kbd.white {
+    background: rgba(255,255,255,0.18);
+    opacity: 0.65;
   }
 
-  /* ─── Shared pill style (matches ActionPills.tsx) ── */
-  .pill {
-    display: inline-flex;
-    align-items: center;
-    height: 28px;
-    padding: 0 11px;
-    border-radius: 9999px;
-    border: 1px solid #eae7e1;
-    background: #f8f7f4;
-    font-size: 12px;
-    font-weight: 500;
-    color: #57534e;
-    cursor: pointer;
-    white-space: nowrap;
-    transition: background 100ms, border-color 100ms, color 100ms;
-    flex-shrink: 0;
-  }
-  .pill:hover {
-    background: #edeae5;
-    border-color: #dfdcd5;
-    color: #1c1917;
-  }
-  /* pill on a white background — slightly more definition */
-  .pill-on-white {
-    background: #f8f7f4;
-    border-color: #e8e5df;
-  }
-
-  /* ─── Modal chrome ── */
+  /* ─── Modal chrome ───────────────────────────────── */
   .modal {
-    width: 460px;
+    width: 480px;
     background: #ffffff;
     border-radius: 12px;
     border: 1px solid #eae7e1;
-    box-shadow: 0 8px 40px rgba(28,25,23,0.14), 0 2px 8px rgba(28,25,23,0.05);
+    box-shadow: 0 8px 40px rgba(28,25,23,0.13), 0 2px 8px rgba(28,25,23,0.05);
     overflow: hidden;
   }
   .modal-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 14px 18px 8px;
+    padding: 14px 16px 10px;
   }
   .modal-title {
     font-size: 13px;
@@ -113,39 +91,97 @@
   }
   .modal-close:hover { background: #f1efeb; }
 
-  textarea {
-    width: 100%;
-    border: none; outline: none; resize: none;
-    font-family: inherit;
-    font-size: 14px; line-height: 1.5;
-    color: #1c1917; background: transparent;
+  /* ─── Property strip (matches CardTab.tsx PropertyDropdown style) ─── */
+  /* bare text, px-2 py-1, radius-md, text-secondary, hover:bg-hover */
+  .prop-strip {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 2px;
+    padding: 0 14px 10px;
   }
-  textarea::placeholder { color: #d1cdc6; }
+  .prop {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 8px;
+    border-radius: 6px;
+    border: none;
+    background: transparent;
+    font-size: 12px;
+    font-weight: 500;
+    color: #57534e;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 100ms;
+  }
+  .prop:hover { background: #edeae5; }
+  .prop.unset { color: #a8a29e; }
+  .prop.unset:hover { color: #57534e; background: #edeae5; }
 
-  /* ─── Shared input container ── */
+  /* status dot */
+  .dot {
+    width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+  }
+  .dot-not-started { background: #d1cdc6; }
+  .dot-specifying { border: 2px solid #c2410c; background: transparent; }
+  .dot-implementing { background: #c2410c; }
+
+  /* avatar placeholder */
+  .mini-avatar {
+    width: 16px; height: 16px; border-radius: 50%;
+    background: #e8e5df;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 8px; font-weight: 600; color: #78716c;
+    flex-shrink: 0;
+  }
+
+  .prop-divider {
+    width: 1px; height: 12px; background: #e8e5df;
+    margin: 0 4px; flex-shrink: 0;
+  }
+
+  /* ─── Input box ──────────────────────────────────── */
   .input-box {
-    margin: 0 18px 16px;
+    margin: 0 14px 14px;
     border: 1px solid #dfdcd5;
     border-radius: 10px;
-    box-shadow: 0 1px 3px rgba(28,25,23,0.04);
     overflow: hidden;
     transition: border-color 150ms, box-shadow 150ms;
   }
   .input-box:focus-within {
     border-color: #c2410c;
-    box-shadow: 0 0 0 3px rgba(194,65,12,0.09);
+    box-shadow: 0 0 0 3px rgba(194,65,12,0.08);
   }
+  .textarea-pad {
+    padding: 13px 13px 8px;
+  }
+  textarea {
+    width: 100%;
+    border: none; outline: none; resize: none;
+    font-family: inherit;
+    font-size: 13px; line-height: 1.55;
+    color: #1c1917; background: transparent;
+    min-height: 80px;
+  }
+  textarea::placeholder { color: #d1cdc6; }
 
-  .textarea-pad { padding: 14px 14px 10px; }
-
-  /* standard bottom action row inside the box */
+  /* pill strip inside box */
+  .pill-strip {
+    display: flex;
+    gap: 5px;
+    padding: 0 10px 8px;
+    flex-wrap: wrap;
+  }
+  .box-rule {
+    height: 1px; background: #eae7e1; margin: 0;
+  }
   .box-actions {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 8px 10px 10px;
+    padding: 7px 10px 10px;
   }
-
   .attach-btn {
     width: 26px; height: 26px;
     display: flex; align-items: center; justify-content: center;
@@ -154,6 +190,30 @@
   }
   .attach-btn:hover { background: #f1efeb; color: #57534e; }
 
+  /* ─── Skill pills (inside box, with shortcut hints) ─ */
+  .skill-pill {
+    display: inline-flex;
+    align-items: center;
+    height: 27px;
+    padding: 0 10px;
+    border-radius: 9999px;
+    border: 1px solid #e8e5df;
+    background: #f8f7f4;
+    font-size: 12px;
+    font-weight: 500;
+    color: #57534e;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 100ms, border-color 100ms, color 100ms;
+    gap: 0;
+  }
+  .skill-pill:hover {
+    background: #edeae5;
+    border-color: #dfdcd5;
+    color: #1c1917;
+  }
+
+  /* ─── Primary button ─────────────────────────────── */
   .btn-create {
     height: 30px;
     padding: 0 13px;
@@ -166,161 +226,131 @@
     cursor: pointer;
     display: flex; align-items: center; gap: 6px;
     white-space: nowrap;
-    flex-shrink: 0;
   }
   .btn-create:hover { background: #b33b09; }
-  .btn-create.dark { background: #1c1917; }
-  .btn-create.dark:hover { background: #292524; }
+  .btn-create kbd { background: rgba(255,255,255,0.18); opacity: 0.7; font-size: 9px; }
 
 
-  /* ══════════════════════════════════════════════
-     VARIANT 1 — Pills inside the input box
-     Between textarea and action row, separated
-     by a subtle internal divider
-  ══════════════════════════════════════════════ */
-
-  .v1-pill-strip {
-    display: flex;
-    gap: 5px;
-    padding: 0 10px 8px;
-    flex-wrap: wrap;
-  }
-  .v1-divider {
-    height: 1px;
-    background: #eae7e1;
-    margin: 0 0 8px;
-  }
-
-
-  /* ══════════════════════════════════════════════
-     VARIANT 2 — Pills in the action row
-     Left side of the same bar as the button.
-     Pills and Create card live on one line.
-  ══════════════════════════════════════════════ */
-
-  .v2-actions {
+  /* ─── DIRECTION B: unified meta+skill row ─────────── */
+  /* A single strip below the textarea, inside the box */
+  .unified-row {
     display: flex;
     align-items: center;
-    gap: 6px;
-    padding: 8px 10px 10px;
+    gap: 4px;
+    padding: 6px 10px 9px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
   }
-  .v2-sep {
-    width: 1px;
-    height: 16px;
-    background: #e8e5df;
-    flex-shrink: 0;
-    margin: 0 2px;
+  .row-divider {
+    width: 1px; height: 14px; background: #e8e5df;
+    flex-shrink: 0; margin: 0 3px;
   }
-
-
-  /* ══════════════════════════════════════════════
-     VARIANT 3 — Pills as a bottom strip on the modal
-     Full-width row pinned to the bottom of the modal,
-     outside the input box. Flush with modal edges.
-  ══════════════════════════════════════════════ */
-
-  .v3-strip {
-    display: flex;
+  /* compact prop for the unified row */
+  .prop-sm {
+    display: inline-flex;
     align-items: center;
-    gap: 0;
-    border-top: 1px solid #eae7e1;
-    background: #fafaf9;
-    overflow: hidden;
-  }
-  .v3-strip-pill {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    height: 38px;
-    font-size: 12px;
+    gap: 4px;
+    padding: 3px 7px;
+    border-radius: 6px;
+    border: none;
+    background: transparent;
+    font-size: 11px;
     font-weight: 500;
     color: #78716c;
     cursor: pointer;
-    transition: background 80ms, color 80ms;
-    border-right: 1px solid #eae7e1;
     white-space: nowrap;
+    flex-shrink: 0;
+    transition: background 100ms, color 100ms;
   }
-  .v3-strip-pill:last-child { border-right: none; }
-  .v3-strip-pill:hover {
-    background: #f1efeb;
-    color: #1c1917;
-  }
-  .v3-strip-pill.primary {
-    color: #c2410c;
-    font-weight: 600;
-  }
-  .v3-strip-pill.primary:hover { background: #fef3ee; }
-
-
-  /* ══════════════════════════════════════════════
-     VARIANT 4 — Pills float above the modal
-     Contextual chip row floating just above the
-     modal surface, like a launcher row.
-  ══════════════════════════════════════════════ */
-
-  .v4-float {
-    display: flex;
-    gap: 6px;
-    align-items: center;
-    justify-content: center;
-    margin-bottom: -2px;
-    flex-wrap: wrap;
-  }
-  /* floating pills are slightly more prominent */
-  .pill-float {
+  .prop-sm:hover { background: #f1efeb; color: #1c1917; }
+  .prop-sm.unset { color: #b8b3ac; }
+  /* skill pill for unified row — slightly smaller */
+  .skill-sm {
     display: inline-flex;
     align-items: center;
-    height: 30px;
-    padding: 0 12px;
+    height: 24px;
+    padding: 0 9px;
     border-radius: 9999px;
-    border: 1px solid #dfdcd5;
-    background: #ffffff;
-    font-size: 12px;
+    border: 1px solid #e8e5df;
+    background: #f8f7f4;
+    font-size: 11px;
     font-weight: 500;
     color: #57534e;
     cursor: pointer;
     white-space: nowrap;
-    box-shadow: 0 1px 4px rgba(28,25,23,0.08);
-    transition: background 100ms, border-color 100ms, color 100ms, box-shadow 100ms;
     flex-shrink: 0;
+    transition: background 100ms, border-color 100ms, color 100ms;
   }
-  .pill-float:hover {
-    background: #f8f7f4;
-    border-color: #c9c5be;
-    color: #1c1917;
-    box-shadow: 0 2px 6px rgba(28,25,23,0.10);
-  }
+  .skill-sm:hover { background: #edeae5; border-color: #dfdcd5; color: #1c1917; }
 
+  /* ─── Annotations ─────────────────────────────────── */
+  .ann-block {
+    width: 480px;
+    background: #fff;
+    border: 1px solid #eae7e1;
+    border-radius: 8px;
+    padding: 11px 14px;
+    font-size: 12px;
+    line-height: 1.55;
+    color: #57534e;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .ann-row { display: flex; gap: 10px; }
+  .ann-title {
+    font-size: 10px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.06em;
+    color: #a8a29e; flex-shrink: 0; padding-top: 1px;
+    min-width: 72px;
+  }
 </style>
 </head>
 <body>
 
 
-<!-- ══════════════════════
-  VARIANT 1
-  Pills inside the input box
-══════════════════════ -->
+<!-- ══════════════════════════════════════════════════
+  DIRECTION A
+  Property strip above input, skills inside input box
+  Clear separation: "set properties" vs "then do what"
+══════════════════════════════════════════════════ -->
 
-<div class="variant">
-  <div class="variant-label">1 — Inside the box</div>
-  <div class="variant-note">Pills live within the input container, between the textarea and the action row. Everything feels like one unified control.</div>
+<div class="col">
+  <div class="col-label">A — property strip + pills inside box</div>
+  <div class="col-note">Properties sit between header and input, matching the card view's strip. Skills inside the box. Two distinct zones.</div>
 
+  <!-- filled in state -->
   <div class="modal">
     <div class="modal-header">
       <span class="modal-title">New card</span>
       <button class="modal-close"><svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M1 1l9 9M10 1L1 10" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></button>
     </div>
+    <!-- property strip, identical treatment to CardTab -->
+    <div class="prop-strip">
+      <button class="prop">
+        <span class="dot dot-not-started"></span>
+        Not started
+      </button>
+      <div class="prop-divider"></div>
+      <button class="prop">Medium</button>
+      <div class="prop-divider"></div>
+      <button class="prop">
+        <div class="mini-avatar">E</div>
+        Edwin
+      </button>
+      <div class="prop-divider"></div>
+      <button class="prop">Tamanu</button>
+    </div>
     <div class="input-box">
       <div class="textarea-pad">
-        <textarea rows="4">The allergies panel is not showing the warning icon when two conflicting meds are prescribed together.</textarea>
+        <textarea rows="3">The allergies panel is not showing the warning icon when two conflicting meds are prescribed together.</textarea>
       </div>
-      <div class="v1-divider"></div>
-      <div class="v1-pill-strip">
-        <div class="pill pill-on-white">Workshop</div>
-        <div class="pill pill-on-white">Interview</div>
-        <div class="pill pill-on-white">Draft spec</div>
-        <div class="pill pill-on-white">Implement</div>
+      <div class="box-rule"></div>
+      <div class="pill-strip">
+        <div class="skill-pill">Workshop<kbd>⌘1</kbd></div>
+        <div class="skill-pill">Interview<kbd>⌘2</kbd></div>
+        <div class="skill-pill">Draft spec<kbd>⌘3</kbd></div>
+        <div class="skill-pill">Implement<kbd>⌘4</kbd></div>
       </div>
       <div class="box-actions">
         <button class="attach-btn">
@@ -331,22 +361,37 @@
     </div>
   </div>
 
-  <!-- empty state -->
+  <!-- empty / default state -->
   <div class="modal">
     <div class="modal-header">
       <span class="modal-title">New card</span>
       <button class="modal-close"><svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M1 1l9 9M10 1L1 10" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></button>
     </div>
+    <div class="prop-strip">
+      <button class="prop unset">
+        <span class="dot dot-not-started"></span>
+        Not started
+      </button>
+      <div class="prop-divider"></div>
+      <button class="prop unset">No priority</button>
+      <div class="prop-divider"></div>
+      <button class="prop unset">
+        <div class="mini-avatar" style="background:#f1efeb;"></div>
+        Unassigned
+      </button>
+      <div class="prop-divider"></div>
+      <button class="prop unset">No team</button>
+    </div>
     <div class="input-box">
       <div class="textarea-pad">
-        <textarea rows="4" placeholder="Describe what needs to be done…"></textarea>
+        <textarea rows="3" placeholder="Describe what needs to be done…"></textarea>
       </div>
-      <div class="v1-divider"></div>
-      <div class="v1-pill-strip">
-        <div class="pill pill-on-white">Workshop</div>
-        <div class="pill pill-on-white">Interview</div>
-        <div class="pill pill-on-white">Draft spec</div>
-        <div class="pill pill-on-white">Implement</div>
+      <div class="box-rule"></div>
+      <div class="pill-strip">
+        <div class="skill-pill">Workshop<kbd>⌘1</kbd></div>
+        <div class="skill-pill">Interview<kbd>⌘2</kbd></div>
+        <div class="skill-pill">Draft spec<kbd>⌘3</kbd></div>
+        <div class="skill-pill">Implement<kbd>⌘4</kbd></div>
       </div>
       <div class="box-actions">
         <button class="attach-btn">
@@ -356,18 +401,36 @@
       </div>
     </div>
   </div>
+
+  <div class="ann-block">
+    <div class="ann-row">
+      <span class="ann-title">Properties</span>
+      <span>Same bare-text pill style as the card view property strip. Consistent with what the user will see after creation. Unset properties are muted; set ones are text-secondary weight.</span>
+    </div>
+    <div class="ann-row">
+      <span class="ann-title">Skills</span>
+      <span>Inside the input box, below a hairline. Clicking a pill creates the card with the selected metadata and immediately launches that skill. ⌘1–⌘4 shortcuts shown as hints. ⌘↵ creates without a follow-on skill.</span>
+    </div>
+    <div class="ann-row">
+      <span class="ann-title">Reading order</span>
+      <span>Properties → describe → then do. Logically top-down. Two clear sections.</span>
+    </div>
+  </div>
 </div>
 
 
-<!-- ══════════════════════
-  VARIANT 2
-  Pills in the action row
-══════════════════════ -->
+<!-- ══════════════════════════════════════════════════
+  DIRECTION B
+  Everything in one unified row beneath the textarea.
+  Properties left, divider, skill pills right.
+  Maximally compact.
+══════════════════════════════════════════════════ -->
 
-<div class="variant">
-  <div class="variant-label">2 — Same row as button</div>
-  <div class="variant-note">Pills share the action bar with the create button, separated by a hair rule. Maximally compact — no extra height.</div>
+<div class="col">
+  <div class="col-label">B — unified row beneath textarea</div>
+  <div class="col-note">Properties and skills share one compact row inside the input box. No extra height. Props on the left, skills on the right.</div>
 
+  <!-- filled in -->
   <div class="modal">
     <div class="modal-header">
       <span class="modal-title">New card</span>
@@ -375,171 +438,81 @@
     </div>
     <div class="input-box">
       <div class="textarea-pad">
-        <textarea rows="4">The allergies panel is not showing the warning icon when two conflicting meds are prescribed together.</textarea>
+        <textarea rows="3">The allergies panel is not showing the warning icon when two conflicting meds are prescribed together.</textarea>
       </div>
-      <div class="v2-actions">
-        <button class="attach-btn" style="margin-right:2px;">
+      <div class="box-rule"></div>
+      <!-- unified row: props | divider | skills | spacer | action -->
+      <div class="unified-row">
+        <button class="prop-sm">
+          <span class="dot dot-not-started" style="width:7px;height:7px;"></span>
+          Not started
+        </button>
+        <button class="prop-sm">
+          <div class="mini-avatar" style="width:14px;height:14px;font-size:7px;">E</div>
+          Edwin
+        </button>
+        <div class="row-divider"></div>
+        <div class="skill-sm">Workshop<kbd>⌘1</kbd></div>
+        <div class="skill-sm">Interview<kbd>⌘2</kbd></div>
+        <div class="skill-sm">Draft spec<kbd>⌘3</kbd></div>
+        <div class="skill-sm">Implement<kbd>⌘4</kbd></div>
+      </div>
+      <div class="box-actions" style="padding-top:2px;">
+        <button class="attach-btn">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </button>
-        <div class="v2-sep"></div>
-        <div class="pill pill-on-white">Workshop</div>
-        <div class="pill pill-on-white">Interview</div>
-        <div class="pill pill-on-white">Draft spec</div>
-        <div class="pill pill-on-white">Implement</div>
-        <div style="flex:1;"></div>
         <button class="btn-create">Create card <kbd>⌘↵</kbd></button>
-      </div>
-    </div>
-  </div>
-
-  <!-- empty / tight -->
-  <div class="modal">
-    <div class="modal-header">
-      <span class="modal-title">New card</span>
-      <button class="modal-close"><svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M1 1l9 9M10 1L1 10" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></button>
-    </div>
-    <div class="input-box">
-      <div class="textarea-pad">
-        <textarea rows="4" placeholder="Describe what needs to be done…"></textarea>
-      </div>
-      <div class="v2-actions">
-        <button class="attach-btn" style="margin-right:2px;">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        </button>
-        <div class="v2-sep"></div>
-        <div class="pill pill-on-white">Workshop</div>
-        <div class="pill pill-on-white">Interview</div>
-        <div class="pill pill-on-white">Draft spec</div>
-        <div class="pill pill-on-white">Implement</div>
-        <div style="flex:1;"></div>
-        <button class="btn-create" style="opacity:0.4;">Create card <kbd>⌘↵</kbd></button>
-      </div>
-    </div>
-  </div>
-</div>
-
-
-<!-- ══════════════════════
-  VARIANT 3
-  Full-width bottom strip
-══════════════════════ -->
-
-<div class="variant">
-  <div class="variant-label">3 — Bottom strip</div>
-  <div class="variant-note">Actions span the full modal width below the input. Tabbar-like. Create card is the leftmost (default). Clicking any option creates and launches.</div>
-
-  <div class="modal">
-    <div class="modal-header">
-      <span class="modal-title">New card</span>
-      <button class="modal-close"><svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M1 1l9 9M10 1L1 10" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></button>
-    </div>
-    <div class="input-box" style="margin-bottom:0; border-radius:10px 10px 0 0; border-bottom:none; box-shadow:none;">
-      <div class="textarea-pad">
-        <textarea rows="4">The allergies panel is not showing the warning icon when two conflicting meds are prescribed together.</textarea>
-      </div>
-      <div class="box-actions" style="padding-top:4px;">
-        <button class="attach-btn">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        </button>
-        <span style="font-size:11px;color:#d1cdc6;font-variant-numeric:tabular-nums;">⌘↵ to create</span>
-      </div>
-    </div>
-    <div class="v3-strip">
-      <div class="v3-strip-pill primary">Create card</div>
-      <div class="v3-strip-pill">Workshop</div>
-      <div class="v3-strip-pill">Interview</div>
-      <div class="v3-strip-pill">Draft spec</div>
-      <div class="v3-strip-pill">Implement</div>
-    </div>
-  </div>
-
-  <!-- empty state -->
-  <div class="modal">
-    <div class="modal-header">
-      <span class="modal-title">New card</span>
-      <button class="modal-close"><svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M1 1l9 9M10 1L1 10" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></button>
-    </div>
-    <div class="input-box" style="margin-bottom:0; border-radius:10px 10px 0 0; border-bottom:none; box-shadow:none;">
-      <div class="textarea-pad">
-        <textarea rows="4" placeholder="Describe what needs to be done…"></textarea>
-      </div>
-      <div class="box-actions" style="padding-top:4px;">
-        <button class="attach-btn">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        </button>
-        <span style="font-size:11px;color:#d1cdc6;font-variant-numeric:tabular-nums;">⌘↵ to create</span>
-      </div>
-    </div>
-    <div class="v3-strip" style="opacity:0.45;">
-      <div class="v3-strip-pill primary">Create card</div>
-      <div class="v3-strip-pill">Workshop</div>
-      <div class="v3-strip-pill">Interview</div>
-      <div class="v3-strip-pill">Draft spec</div>
-      <div class="v3-strip-pill">Implement</div>
-    </div>
-  </div>
-</div>
-
-
-<!-- ══════════════════════
-  VARIANT 4
-  Pills floating above the modal
-══════════════════════ -->
-
-<div class="variant">
-  <div class="variant-label">4 — Floating above</div>
-  <div class="variant-note">Skill pills hover above the modal like a launcher row. Modal itself stays clean. Pills feel like entry points rather than an afterthought.</div>
-
-  <div style="display:flex; flex-direction:column; align-items:center; gap:0; width:460px;">
-    <div class="v4-float">
-      <div class="pill-float">Workshop</div>
-      <div class="pill-float">Interview</div>
-      <div class="pill-float">Draft spec</div>
-      <div class="pill-float">Implement</div>
-    </div>
-    <div class="modal">
-      <div class="modal-header">
-        <span class="modal-title">New card</span>
-        <button class="modal-close"><svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M1 1l9 9M10 1L1 10" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></button>
-      </div>
-      <div class="input-box">
-        <div class="textarea-pad">
-          <textarea rows="4">The allergies panel is not showing the warning icon when two conflicting meds are prescribed together.</textarea>
-        </div>
-        <div class="box-actions">
-          <button class="attach-btn">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          </button>
-          <button class="btn-create">Create card <kbd>⌘↵</kbd></button>
-        </div>
       </div>
     </div>
   </div>
 
   <!-- empty -->
-  <div style="display:flex; flex-direction:column; align-items:center; gap:0; width:460px;">
-    <div class="v4-float">
-      <div class="pill-float">Workshop</div>
-      <div class="pill-float">Interview</div>
-      <div class="pill-float">Draft spec</div>
-      <div class="pill-float">Implement</div>
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">New card</span>
+      <button class="modal-close"><svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M1 1l9 9M10 1L1 10" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></button>
     </div>
-    <div class="modal">
-      <div class="modal-header">
-        <span class="modal-title">New card</span>
-        <button class="modal-close"><svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M1 1l9 9M10 1L1 10" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></button>
+    <div class="input-box">
+      <div class="textarea-pad">
+        <textarea rows="3" placeholder="Describe what needs to be done…"></textarea>
       </div>
-      <div class="input-box">
-        <div class="textarea-pad">
-          <textarea rows="4" placeholder="Describe what needs to be done…"></textarea>
-        </div>
-        <div class="box-actions">
-          <button class="attach-btn">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          </button>
-          <button class="btn-create" style="opacity:0.4;">Create card <kbd>⌘↵</kbd></button>
-        </div>
+      <div class="box-rule"></div>
+      <div class="unified-row">
+        <button class="prop-sm unset">
+          <span class="dot dot-not-started" style="width:7px;height:7px;"></span>
+          Not started
+        </button>
+        <button class="prop-sm unset">
+          <div class="mini-avatar" style="width:14px;height:14px;background:#f1efeb;"></div>
+          Unassigned
+        </button>
+        <div class="row-divider"></div>
+        <div class="skill-sm">Workshop<kbd>⌘1</kbd></div>
+        <div class="skill-sm">Interview<kbd>⌘2</kbd></div>
+        <div class="skill-sm">Draft spec<kbd>⌘3</kbd></div>
+        <div class="skill-sm">Implement<kbd>⌘4</kbd></div>
       </div>
+      <div class="box-actions" style="padding-top:2px;">
+        <button class="attach-btn">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <button class="btn-create" style="opacity:0.4;">Create card <kbd>⌘↵</kbd></button>
+      </div>
+    </div>
+  </div>
+
+  <div class="ann-block">
+    <div class="ann-row">
+      <span class="ann-title">Compact</span>
+      <span>Same total height as the current modal — no extra rows. Tight but scannable. Properties trimmed to the two most useful at creation time (status and assignee). Priority and team can always be set after.</span>
+    </div>
+    <div class="ann-row">
+      <span class="ann-title">Risk</span>
+      <span>The unified row can get crowded, especially with four skill pills. Overflow or wrapping will need handling. Might be worth showing only two or three skills here if space is tight.</span>
+    </div>
+    <div class="ann-row">
+      <span class="ann-title">Question</span>
+      <span>Should priority and team be accessible from this modal too, or is assignee + status enough? If more properties are needed, Direction A scales better.</span>
     </div>
   </div>
 </div>

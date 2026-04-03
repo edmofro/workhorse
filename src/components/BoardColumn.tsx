@@ -1,11 +1,9 @@
 'use client'
 
-import { useState, useRef, useEffect, useTransition, forwardRef } from 'react'
+import { useState, useRef, useEffect, useTransition, useMemo } from 'react'
 import Link from 'next/link'
 import { MoreHorizontal, ChevronRight } from 'lucide-react'
-import { useDroppable } from '@dnd-kit/core'
-import { useSortable } from '@dnd-kit/sortable'
-import { CSS } from '@dnd-kit/utilities'
+import { useDroppable, useDraggable } from '@dnd-kit/core'
 import { cn } from '../lib/cn'
 import { StatusDot } from './StatusDot'
 import { Avatar } from './Avatar'
@@ -33,10 +31,9 @@ interface BoardColumnProps {
   cards: CardData[]
   projectName: string
   statusKey: string
-  isDropTarget?: boolean
 }
 
-export function BoardColumn({ label, dotState, cards, projectName, statusKey, isDropTarget }: BoardColumnProps) {
+export function BoardColumn({ label, dotState, cards, projectName, statusKey }: BoardColumnProps) {
   const { setNodeRef, isOver } = useDroppable({
     id: `column-${statusKey}`,
     data: { type: 'column', status: statusKey },
@@ -60,7 +57,7 @@ export function BoardColumn({ label, dotState, cards, projectName, statusKey, is
         ref={setNodeRef}
         className={cn(
           'flex-1 overflow-y-auto px-2 pb-4 space-y-2 rounded-[var(--radius-lg)] transition-colors duration-100',
-          (isOver || isDropTarget) && 'bg-[var(--bg-hover)]',
+          isOver && 'bg-[var(--bg-hover)]',
         )}
       >
         {cards.length === 0 ? (
@@ -77,29 +74,21 @@ export function BoardColumn({ label, dotState, cards, projectName, statusKey, is
   )
 }
 
-/** Draggable wrapper around BoardCard using dnd-kit sortable */
+/** Draggable wrapper around BoardCard using dnd-kit useDraggable */
 function DraggableBoardCard({ card, projectName }: { card: CardData; projectName: string }) {
   const {
     attributes,
     listeners,
     setNodeRef,
-    transform,
-    transition,
     isDragging,
-  } = useSortable({
+  } = useDraggable({
     id: card.id,
     data: { type: 'card', card },
   })
 
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-  }
-
   return (
     <div
       ref={setNodeRef}
-      style={style}
       className={cn(isDragging && 'opacity-30')}
       {...attributes}
       {...listeners}
@@ -109,66 +98,64 @@ function DraggableBoardCard({ card, projectName }: { card: CardData; projectName
   )
 }
 
-/** Static card rendering — used both inline and in the DragOverlay */
-export const BoardCardOverlay = forwardRef<HTMLDivElement, { card: CardData; projectName: string }>(
-  function BoardCardOverlay({ card }, ref) {
-    const tags: string[] = (() => {
-      try { return JSON.parse(card.tags) } catch { return [] }
-    })()
+/** Shared card content used by both inline cards and the drag overlay */
+function CardContent({ card }: { card: CardData }) {
+  const tags = useMemo(() => {
+    try { return JSON.parse(card.tags) as string[] } catch { return [] }
+  }, [card.tags])
 
-    return (
-      <div
-        ref={ref}
-        className={cn(
-          'block bg-[var(--bg-surface)] border border-[var(--border-default)]',
-          'rounded-[var(--radius-lg)] shadow-[var(--shadow-lg)]',
-          'py-3 px-4 w-[260px] cursor-grabbing',
-          card.status === 'CANCELLED' && 'opacity-60',
-        )}
-      >
-        <div className="flex items-center justify-between mb-1">
-          <span className="text-[12px] text-[var(--text-muted)] font-mono font-medium">
-            {card.identifier}
-          </span>
-        </div>
-        <div className={cn(
-          'text-[14px] font-medium leading-[1.4] text-[var(--text-primary)]',
-          card.status === 'CANCELLED' && 'line-through text-[var(--text-muted)]',
-        )}>
-          {card.title}
-        </div>
-        {(tags.length > 0 || card.assignee) && (
-          <div className="flex items-center gap-2 mt-2">
-            {tags.map((tag) => (
-              <Tag key={tag} variant={tag === 'future' ? 'future' : 'core'}>
-                {tag}
-              </Tag>
-            ))}
-            {card.assignee && (
-              <div className="ml-auto">
-                <Avatar variant="human" initial={card.assignee.displayName} size="sm" />
-              </div>
-            )}
-          </div>
-        )}
+  return (
+    <>
+      <div className="flex items-center justify-between mb-1">
+        <span className="text-[12px] text-[var(--text-muted)] font-mono font-medium">
+          {card.identifier}
+        </span>
       </div>
-    )
-  },
-)
+      <div className={cn(
+        'text-[14px] font-medium leading-[1.4] text-[var(--text-primary)]',
+        card.status === 'CANCELLED' && 'line-through text-[var(--text-muted)]',
+      )}>
+        {card.title}
+      </div>
+      {(tags.length > 0 || card.assignee) && (
+        <div className="flex items-center gap-2 mt-2">
+          {tags.map((tag) => (
+            <Tag key={tag} variant={tag === 'future' ? 'future' : 'core'}>
+              {tag}
+            </Tag>
+          ))}
+          {card.assignee && (
+            <div className="ml-auto">
+              <Avatar variant="human" initial={card.assignee.displayName} size="sm" />
+            </div>
+          )}
+        </div>
+      )}
+    </>
+  )
+}
+
+/** Card overlay shown during drag */
+export function BoardCardOverlay({ card }: { card: CardData }) {
+  return (
+    <div
+      className={cn(
+        'block bg-[var(--bg-surface)] border border-[var(--border-default)]',
+        'rounded-[var(--radius-lg)] shadow-[var(--shadow-lg)]',
+        'py-3 px-4 w-[260px] cursor-grabbing',
+        card.status === 'CANCELLED' && 'opacity-60',
+      )}
+    >
+      <CardContent card={card} />
+    </div>
+  )
+}
 
 function BoardCard({ card, projectName, isDragging }: { card: CardData; projectName: string; isDragging?: boolean }) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [statusSubmenuOpen, setStatusSubmenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
   const [, startTransition] = useTransition()
-
-  const tags: string[] = (() => {
-    try {
-      return JSON.parse(card.tags)
-    } catch {
-      return []
-    }
-  })()
 
   const href = `/${encodeURIComponent(projectName.toLowerCase())}/cards/${card.identifier}`
 
@@ -211,40 +198,11 @@ function BoardCard({ card, projectName, isDragging }: { card: CardData; projectN
           isDragging && 'invisible',
         )}
         onClick={(e) => {
-          // Prevent navigation when dragging
           if (isDragging) e.preventDefault()
         }}
         draggable={false}
       >
-        <div className="flex items-center justify-between mb-1">
-          <span className="text-[12px] text-[var(--text-muted)] font-mono font-medium">
-            {card.identifier}
-          </span>
-        </div>
-        <div className={cn(
-          'text-[14px] font-medium leading-[1.4] text-[var(--text-primary)]',
-          card.status === 'CANCELLED' && 'line-through text-[var(--text-muted)]',
-        )}>
-          {card.title}
-        </div>
-        {(tags.length > 0 || card.assignee) && (
-          <div className="flex items-center gap-2 mt-2">
-            {tags.map((tag) => (
-              <Tag key={tag} variant={tag === 'future' ? 'future' : 'core'}>
-                {tag}
-              </Tag>
-            ))}
-            {card.assignee && (
-              <div className="ml-auto">
-                <Avatar
-                  variant="human"
-                  initial={card.assignee.displayName}
-                  size="sm"
-                />
-              </div>
-            )}
-          </div>
-        )}
+        <CardContent card={card} />
       </Link>
 
       {/* Overflow menu trigger */}

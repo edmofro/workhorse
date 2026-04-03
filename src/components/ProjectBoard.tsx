@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo, useRef } from 'react'
 import { notFound } from 'next/navigation'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { SlidersHorizontal, Plus, ChevronRight, ChevronLeft } from 'lucide-react'
@@ -9,13 +9,12 @@ import {
   DndContext,
   DragOverlay,
   PointerSensor,
+  useDroppable,
   useSensor,
   useSensors,
   type DragStartEvent,
-  type DragOverEvent,
   type DragEndEvent,
 } from '@dnd-kit/core'
-import { useDroppable } from '@dnd-kit/core'
 import { useProjectBoard, NotFoundError } from '../lib/hooks/queries'
 import { updateCard } from '../lib/actions/cards'
 import { Topbar, TopbarRight } from './Topbar'
@@ -81,9 +80,10 @@ export function ProjectBoard({ projectSlug, filters }: ProjectBoardProps) {
 
   // Drag state
   const [activeCard, setActiveCard] = useState<CardData | null>(null)
-  const [overColumnStatus, setOverColumnStatus] = useState<string | null>(null)
   // Optimistic status overrides: cardId -> new status
   const [optimisticMoves, setOptimisticMoves] = useState<Record<string, string>>({})
+  // Concurrency guard: sequence counter to ignore stale refetch results
+  const dragSeqRef = useRef(0)
 
   // Require 5px movement before starting drag to avoid accidental drags on click
   const sensors = useSensors(
@@ -93,62 +93,43 @@ export function ProjectBoard({ projectSlug, filters }: ProjectBoardProps) {
   )
 
   const handleDragStart = useCallback((event: DragStartEvent) => {
-    const { active } = event
-    const card = active.data.current?.card as CardData | undefined
-    if (card) {
-      setActiveCard(card)
-    }
-  }, [])
-
-  const handleDragOver = useCallback((event: DragOverEvent) => {
-    const { over } = event
-    if (!over) {
-      setOverColumnStatus(null)
-      return
-    }
-    // Extract the target status from the droppable
-    const overData = over.data.current
-    if (overData?.type === 'column') {
-      setOverColumnStatus(overData.status as string)
-    } else if (overData?.type === 'card') {
-      // Hovering over a card — use its column's status
-      setOverColumnStatus((overData.card as CardData).status)
-    } else {
-      setOverColumnStatus(null)
-    }
+    const card = event.active.data.current?.card as CardData | undefined
+    if (card) setActiveCard(card)
   }, [])
 
   const handleDragEnd = useCallback(async (event: DragEndEvent) => {
     const { active, over } = event
     setActiveCard(null)
-    setOverColumnStatus(null)
 
     if (!over) return
 
     const card = active.data.current?.card as CardData | undefined
     if (!card) return
 
-    // Determine target status
-    let targetStatus: string | null = null
+    // Determine target status from the droppable
     const overData = over.data.current
-    if (overData?.type === 'column') {
-      targetStatus = overData.status as string
-    } else if (overData?.type === 'card') {
-      targetStatus = (overData.card as CardData).status
-    }
+    const targetStatus = overData?.type === 'column'
+      ? overData.status as string
+      : null
 
     if (!targetStatus || targetStatus === card.status) return
 
     // Optimistic update
+    const seq = ++dragSeqRef.current
     setOptimisticMoves((prev) => ({ ...prev, [card.id]: targetStatus }))
 
     try {
       await updateCard(card.id, { status: targetStatus })
-      await refetch()
+      // Only refetch if no newer drag has started
+      if (dragSeqRef.current === seq) {
+        await refetch()
+      }
     } catch (error) {
       console.error('Failed to update card status:', error)
     } finally {
+      // Only clear this card's optimistic move if no newer drag has overwritten it
       setOptimisticMoves((prev) => {
+        if (prev[card.id] !== targetStatus) return prev
         const next = { ...prev }
         delete next[card.id]
         return next
@@ -156,11 +137,31 @@ export function ProjectBoard({ projectSlug, filters }: ProjectBoardProps) {
     }
   }, [refetch])
 
+  // Apply optimistic status moves and group by status in a single pass
+  const cardsByStatus = useMemo(() => {
+    if (!data) return {}
+    const allCards = data.cards
+    let cards = allCards
+    const selectedTeamId = filters.team ?? null
+    if (selectedTeamId) cards = cards.filter((c) => c.team.id === selectedTeamId)
+    if (filters.status) cards = cards.filter((c) => c.status === filters.status)
+    if (filters.assignee) cards = cards.filter((c) => c.assignee?.id === filters.assignee)
+
+    const grouped: Record<string, CardData[]> = {}
+    for (const c of cards) {
+      const status = optimisticMoves[c.id] ?? c.status
+      ;(grouped[status] ??= []).push(
+        optimisticMoves[c.id] ? { ...c, status: optimisticMoves[c.id] } : c,
+      )
+    }
+    return grouped
+  }, [data, filters.team, filters.status, filters.assignee, optimisticMoves])
+
   if (isLoading) return <BoardSkeleton />
   if (error instanceof NotFoundError) notFound()
   if (error || !data) return <BoardSkeleton />
 
-  const { project, cards: allCards, users } = data
+  const { project, users } = data
 
   const selectedTeamId = filters.team ?? null
   const projectPath = `/${encodeURIComponent(project.name.toLowerCase())}`
@@ -176,17 +177,8 @@ export function ProjectBoard({ projectSlug, filters }: ProjectBoardProps) {
     router.push(`${projectPath}${qs ? `?${qs}` : ''}`)
   }
 
-  let cards = allCards
-  if (selectedTeamId) cards = cards.filter((c) => c.team.id === selectedTeamId)
-  if (filters.status) cards = cards.filter((c) => c.status === filters.status)
-  if (filters.assignee) cards = cards.filter((c) => c.assignee?.id === filters.assignee)
-
-  // Apply optimistic status moves
-  const resolvedCards = cards.map((c) =>
-    optimisticMoves[c.id] ? { ...c, status: optimisticMoves[c.id] } : c,
-  )
-
   const hasActiveFilters = !!selectedTeamId || !!filters.status || !!filters.assignee
+  const totalCards = Object.values(cardsByStatus).reduce((sum, arr) => sum + arr.length, 0)
 
   return (
     <>
@@ -226,7 +218,7 @@ export function ProjectBoard({ projectSlug, filters }: ProjectBoardProps) {
       </Topbar>
 
       {/* Kanban columns */}
-      {resolvedCards.length === 0 && !hasActiveFilters ? (
+      {totalCards === 0 && !hasActiveFilters ? (
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
             <p className="text-[14px] text-[var(--text-muted)] mb-1">No cards yet</p>
@@ -235,7 +227,7 @@ export function ProjectBoard({ projectSlug, filters }: ProjectBoardProps) {
             </p>
           </div>
         </div>
-      ) : resolvedCards.length === 0 ? (
+      ) : totalCards === 0 ? (
         <div className="flex-1 flex items-center justify-center">
           <p className="text-[13px] text-[var(--text-muted)]">
             No cards match the current filters.
@@ -245,7 +237,6 @@ export function ProjectBoard({ projectSlug, filters }: ProjectBoardProps) {
         <DndContext
           sensors={sensors}
           onDragStart={handleDragStart}
-          onDragOver={handleDragOver}
           onDragEnd={handleDragEnd}
         >
           <div className="flex-1 flex gap-4 overflow-hidden px-6 pt-5">
@@ -254,26 +245,24 @@ export function ProjectBoard({ projectSlug, filters }: ProjectBoardProps) {
                 key={col.key}
                 label={col.label}
                 dotState={col.dotState}
-                cards={resolvedCards.filter((c) => c.status === col.key)}
+                cards={cardsByStatus[col.key] ?? []}
                 projectName={project.name}
                 statusKey={col.key}
-                isDropTarget={overColumnStatus === col.key && activeCard?.status !== col.key}
               />
             ))}
 
             <CancelledColumn
-              cards={resolvedCards.filter((c) => c.status === 'CANCELLED')}
+              cards={cardsByStatus['CANCELLED'] ?? []}
               projectName={project.name}
               expanded={showCancelled}
               onToggle={() => setShowCancelled(!showCancelled)}
-              isDropTarget={overColumnStatus === 'CANCELLED' && activeCard?.status !== 'CANCELLED'}
               isDragging={!!activeCard}
             />
           </div>
 
           <DragOverlay dropAnimation={null}>
             {activeCard ? (
-              <BoardCardOverlay card={activeCard} projectName={project.name} />
+              <BoardCardOverlay card={activeCard} />
             ) : null}
           </DragOverlay>
         </DndContext>
@@ -296,19 +285,20 @@ function CancelledColumn({
   projectName,
   expanded,
   onToggle,
-  isDropTarget,
   isDragging,
 }: {
   cards: CardData[]
   projectName: string
   expanded: boolean
   onToggle: () => void
-  isDropTarget?: boolean
   isDragging?: boolean
 }) {
+  // Only register droppable when collapsed — when expanded, the inner
+  // BoardColumn registers its own droppable with the same status key.
   const { setNodeRef, isOver } = useDroppable({
-    id: 'column-CANCELLED',
+    id: 'column-CANCELLED-collapsed',
     data: { type: 'column', status: 'CANCELLED' },
+    disabled: expanded,
   })
 
   // Show the collapsed indicator when: cards exist, or we're actively dragging (so user can drop here)
@@ -321,7 +311,7 @@ function CancelledColumn({
         onClick={onToggle}
         className={cn(
           'flex flex-col items-center gap-2 py-3 px-2 shrink-0 cursor-pointer group rounded-[var(--radius-lg)] transition-colors duration-100',
-          (isOver || isDropTarget) && 'bg-[var(--bg-hover)]',
+          isOver && 'bg-[var(--bg-hover)]',
         )}
         title={isDragging ? 'Drop to cancel' : 'Show cancelled cards'}
       >
@@ -351,7 +341,6 @@ function CancelledColumn({
         cards={cards}
         projectName={projectName}
         statusKey="CANCELLED"
-        isDropTarget={isDropTarget}
       />
     </div>
   )

@@ -14,7 +14,6 @@ import { ActionPills, type ActionPill } from './ActionPills'
 import { JourneyBar } from './JourneyBar'
 import { PrBar } from './PrBar'
 import { useJockeyState } from '../../lib/hooks/useJockeyState'
-import { BUILT_IN_SKILLS } from '../../lib/skills/registry'
 import { ChatMessage } from './ChatMessage'
 import { ChatInput } from './ChatInput'
 import { ThinkingIndicator } from './ThinkingIndicator'
@@ -435,9 +434,7 @@ export function CardWorkspace({
   /** Trigger a skill from the journey bar */
   const handleTriggerSkill = useCallback(
     (skillId: string, label: string) => {
-      const skill = BUILT_IN_SKILLS[skillId]
-      const message = skill?.description ?? `Run ${label}`
-      handleSendMessage(message, skillId)
+      handleSendMessage(label, skillId)
     },
     [handleSendMessage],
   )
@@ -552,14 +549,11 @@ export function CardWorkspace({
   const extractedAreas = extractAreas(projectSpecs)
 
   // Convert jockey pill suggestions to ActionPill format
-  const pills: ActionPill[] = jockey.pills.map(p => {
-    const skill = BUILT_IN_SKILLS[p.skillId]
-    return {
-      label: p.label,
-      message: skill?.description ?? `Run ${p.label}`,
-      skillId: p.skillId,
-    }
-  })
+  const pills: ActionPill[] = jockey.pills.map(p => ({
+    label: p.label,
+    message: p.label,
+    skillId: p.skillId,
+  }))
 
   // Deduplicate: remove suggestions that already appear in pills
   const pillSkillIds = new Set(jockey.pills.map(p => p.skillId))

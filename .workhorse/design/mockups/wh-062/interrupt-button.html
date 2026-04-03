@@ -1,0 +1,356 @@
+<!-- spec: agent-interrupt.md -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WH-062 — Interrupt AI agent</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #f8f7f4;
+      color: #1c1917;
+      font-size: 14px;
+      line-height: 1.5;
+      padding: 40px;
+      display: flex;
+      flex-direction: column;
+      gap: 40px;
+    }
+
+    h2 {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: #a8a29e;
+      margin-bottom: 16px;
+    }
+
+    /* ── Input state grid ── */
+    .states-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+    }
+
+    .state-card {
+      background: #ffffff;
+      border: 1px solid #eae7e1;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    .state-label {
+      padding: 10px 14px 8px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: #a8a29e;
+      border-bottom: 1px solid #eae7e1;
+    }
+
+    .state-body {
+      padding: 12px;
+    }
+
+    .input-row {
+      display: flex;
+      align-items: flex-end;
+      gap: 6px;
+      background: #f8f7f4;
+      border: 1px solid #dfdcd5;
+      border-radius: 8px;
+      padding: 8px 8px 8px 12px;
+    }
+
+    .input-text {
+      flex: 1;
+      font-size: 13px;
+      padding: 2px 0;
+      line-height: 1.4;
+    }
+
+    .input-text.placeholder { color: #d1cdc6; }
+    .input-text.filled { color: #1c1917; }
+
+    /* Icon buttons */
+    .btn-icon {
+      width: 30px;
+      height: 30px;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: background 0.1s;
+    }
+
+    .btn-send-disabled {
+      background: #e8e5df;
+    }
+    .btn-send-disabled svg { color: #c4bfb8; }
+
+    .btn-send-enabled {
+      background: #1c1917;
+    }
+    .btn-send-enabled svg { color: #fff; }
+
+    .btn-send-queued {
+      background: #e8e5df;
+    }
+    .btn-send-queued svg { color: #a8a29e; }
+
+    .btn-stop {
+      background: #ffffff;
+      border: 1.5px solid #dfdcd5 !important;
+    }
+    .btn-stop svg { color: #57534e; }
+
+    /* ── Chat scenario ── */
+    .scenario {
+      max-width: 560px;
+    }
+
+    .card-shell {
+      background: #ffffff;
+      border: 1px solid #eae7e1;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 16px;
+      border-bottom: 1px solid #eae7e1;
+    }
+    .topbar-back { font-size: 13px; color: #a8a29e; }
+    .topbar-id { font-size: 13px; color: #a8a29e; }
+    .topbar-title { font-size: 13px; font-weight: 500; color: #1c1917; }
+
+    .messages {
+      padding: 20px 20px 4px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .msg-row { display: flex; gap: 10px; align-items: flex-start; }
+    .msg-row.user { flex-direction: row-reverse; }
+
+    .avatar {
+      width: 26px; height: 26px; border-radius: 50%; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 600;
+    }
+    .avatar-ai { background: #e8e5df; color: #57534e; }
+    .avatar-user { background: #c2410c; color: #fff; }
+
+    .bubble {
+      max-width: 360px;
+      padding: 9px 13px;
+      border-radius: 10px;
+      font-size: 13px;
+      line-height: 1.55;
+    }
+    .bubble-ai {
+      background: #f8f7f4;
+      border: 1px solid #eae7e1;
+      border-top-left-radius: 3px;
+      color: #57534e;
+    }
+    .bubble-user {
+      background: #1c1917;
+      color: #e7e5e4;
+      border-top-right-radius: 3px;
+    }
+
+    .progress-row {
+      display: flex; align-items: center; gap: 8px;
+      padding: 6px 0 0 36px;
+    }
+    .pulse-dot {
+      width: 7px; height: 7px; border-radius: 50%; background: #c2410c;
+      animation: pulse 1.4s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50%       { opacity: 0.4; transform: scale(0.8); }
+    }
+    .progress-label { font-size: 12px; color: #a8a29e; }
+    .thinking { font-size: 11.5px; color: #d1cdc6; font-style: italic; padding-left: 44px; padding-top: 2px; }
+
+    .stopped-notice {
+      font-size: 12px; color: #a8a29e;
+      padding: 4px 0 0 36px;
+    }
+
+    .input-area {
+      padding: 10px 12px 14px;
+      border-top: 1px solid #eae7e1;
+      margin-top: 12px;
+    }
+
+    .input-area .input-row { gap: 6px; }
+  </style>
+</head>
+<body>
+
+  <!-- Four input states -->
+  <div>
+    <h2>Input states</h2>
+    <div class="states-grid">
+
+      <!-- 1. Empty, idle -->
+      <div class="state-card">
+        <div class="state-label">Idle, empty</div>
+        <div class="state-body">
+          <div class="input-row">
+            <div class="input-text placeholder">Ask anything…</div>
+            <button class="btn-icon btn-send-disabled" disabled>
+              <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="8" y1="13" x2="8" y2="3"/><polyline points="3,8 8,3 13,8"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. Text entered, idle -->
+      <div class="state-card">
+        <div class="state-label">Idle, text entered</div>
+        <div class="state-body">
+          <div class="input-row">
+            <div class="input-text filled">What about date of birth?</div>
+            <button class="btn-icon btn-send-enabled">
+              <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="8" y1="13" x2="8" y2="3"/><polyline points="3,8 8,3 13,8"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. No text, agent running -->
+      <div class="state-card">
+        <div class="state-label">Agent running, empty</div>
+        <div class="state-body">
+          <div class="input-row">
+            <div class="input-text placeholder">Ask anything…</div>
+            <button class="btn-icon btn-stop" style="border: 1.5px solid #dfdcd5;">
+              <svg width="10" height="10" viewBox="0 0 10 10" fill="#57534e">
+                <rect x="1" y="1" width="8" height="8" rx="1.5"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 4. Text entered, agent running -->
+      <div class="state-card">
+        <div class="state-label">Agent running, text entered</div>
+        <div class="state-body">
+          <div class="input-row">
+            <div class="input-text filled">What about date of birth?</div>
+            <button class="btn-icon btn-stop" style="border: 1.5px solid #dfdcd5;">
+              <svg width="10" height="10" viewBox="0 0 10 10" fill="#57534e">
+                <rect x="1" y="1" width="8" height="8" rx="1.5"/>
+              </svg>
+            </button>
+            <button class="btn-icon btn-send-queued" title="Queued — will send after agent finishes">
+              <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="8" y1="13" x2="8" y2="3"/><polyline points="3,8 8,3 13,8"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Scenario: agent running, user has typed a follow-up -->
+  <div class="scenario">
+    <h2>Agent running — follow-up queued</h2>
+    <div class="card-shell">
+      <div class="topbar">
+        <span class="topbar-back">← </span>
+        <span class="topbar-id">WH-042</span>
+        <span class="topbar-title">Fix patient search</span>
+      </div>
+      <div class="messages">
+        <div class="msg-row user">
+          <div class="avatar avatar-user">F</div>
+          <div class="bubble bubble-user">Full dates only. Handle misformatted input gracefully.</div>
+        </div>
+        <div>
+          <div class="progress-row">
+            <div class="pulse-dot"></div>
+            <span class="progress-label">Thinking…</span>
+          </div>
+          <div class="thinking">reading .workhorse/specs/patients/search.md…</div>
+        </div>
+      </div>
+      <div class="input-area">
+        <div class="input-row">
+          <div class="input-text filled">What about partial date searches?</div>
+          <button class="btn-icon btn-stop" style="border: 1.5px solid #dfdcd5;">
+            <svg width="10" height="10" viewBox="0 0 10 10" fill="#57534e">
+              <rect x="1" y="1" width="8" height="8" rx="1.5"/>
+            </svg>
+          </button>
+          <button class="btn-icon btn-send-queued" title="Queued">
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="8" y1="13" x2="8" y2="3"/><polyline points="3,8 8,3 13,8"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scenario: after stop, partial output kept -->
+  <div class="scenario">
+    <h2>After stop — partial output preserved</h2>
+    <div class="card-shell">
+      <div class="topbar">
+        <span class="topbar-back">← </span>
+        <span class="topbar-id">WH-042</span>
+        <span class="topbar-title">Fix patient search</span>
+      </div>
+      <div class="messages">
+        <div class="msg-row user">
+          <div class="avatar avatar-user">F</div>
+          <div class="bubble bubble-user">Full dates only. Handle misformatted input gracefully.</div>
+        </div>
+        <div class="msg-row">
+          <div class="avatar avatar-ai">W</div>
+          <div class="bubble bubble-ai">
+            Makes sense — an inline validation hint on the search field would be clearer than silently returning no results. The user knows to correct the format rather than assume no patient exists.
+          </div>
+        </div>
+        <div class="stopped-notice">Stopped</div>
+      </div>
+      <div class="input-area">
+        <div class="input-row">
+          <div class="input-text placeholder">Ask anything…</div>
+          <button class="btn-icon btn-send-disabled" disabled>
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="8" y1="13" x2="8" y2="3"/><polyline points="3,8 8,3 13,8"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>

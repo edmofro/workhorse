@@ -18,6 +18,7 @@ import {
   worktreePath,
   autoCommit,
   readWorktreeFile,
+  getPendingChanges,
 } from '../../../lib/git/worktree'
 import { isMockupPath } from '../../../lib/paths'
 import { extractHtmlTitle, humaniseFilename } from '../../../lib/labels'
@@ -422,11 +423,14 @@ async function finaliseSessionAfterExchange(
   },
 ) {
   try {
+    const pending = await getPendingChanges(ctx.owner, ctx.repoName, ctx.card.identifier)
+    const commitMessage = buildCommitMessage(ctx.card.identifier, pending)
+
     const changedFiles = await autoCommit(
       ctx.owner,
       ctx.repoName,
       ctx.card.identifier,
-      'Update specs from interview',
+      commitMessage,
       ctx.user.displayName,
       `${ctx.user.githubUsername}@users.noreply.github.com`,
       ctx.user.accessToken,
@@ -515,6 +519,63 @@ async function finaliseSessionAfterExchange(
       lastMessageAt: now.toISOString(),
     }),
   })
+}
+
+/**
+ * Build a meaningful commit message from the list of pending changed files.
+ *
+ * Examples:
+ *   WH-042: add allergies spec
+ *   WH-042: update 3 specs
+ *   WH-048: add ward-overview mockup
+ *   WH-042: update commit-messages spec and add mockup
+ */
+function buildCommitMessage(
+  cardIdentifier: string,
+  pending: { filePath: string; isNew: boolean }[],
+): string {
+  const prefix = cardIdentifier.toUpperCase()
+
+  if (pending.length === 0) return `${prefix}: update files`
+
+  const specs = pending.filter((f) => f.filePath.startsWith('.workhorse/specs/'))
+  const mockups = pending.filter((f) => f.filePath.startsWith('.workhorse/design/mockups/'))
+  const codeFiles = pending.filter((f) => !f.filePath.startsWith('.workhorse/'))
+
+  const parts: string[] = []
+
+  // Specs
+  if (specs.length === 1) {
+    const slug = specs[0].filePath.split('/').pop()?.replace(/\.md$/, '') ?? 'spec'
+    const verb = specs[0].isNew ? 'add' : 'update'
+    parts.push(`${verb} ${slug} spec`)
+  } else if (specs.length > 1) {
+    const verb = specs.every((f) => f.isNew) ? 'add' : 'update'
+    parts.push(`${verb} ${specs.length} specs`)
+  }
+
+  // Mockups
+  if (mockups.length === 1) {
+    const slug = mockups[0].filePath.split('/').pop()?.replace(/\.html$/, '') ?? 'mockup'
+    const verb = mockups[0].isNew ? 'add' : 'update'
+    parts.push(`${verb} ${slug} mockup`)
+  } else if (mockups.length > 1) {
+    const allNew = mockups.every((f) => f.isNew)
+    const verb = allNew ? 'add' : 'update'
+    parts.push(`${verb} ${mockups.length} mockups`)
+  }
+
+  // Code files (non-.workhorse)
+  if (codeFiles.length > 0) {
+    parts.push(`update code`)
+  }
+
+  // Fallback for .workhorse files that aren't specs or mockups
+  if (parts.length === 0) {
+    parts.push('update files')
+  }
+
+  return `${prefix}: ${parts.join(', ')}`
 }
 
 /** Known action pill messages that make poor session titles. */

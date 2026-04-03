@@ -51,8 +51,11 @@ export async function DELETE(request: NextRequest) {
 
   await prisma.scheduledStep.delete({
     where: { id: stepId },
-  }).catch(() => {
-    // Already deleted, ignore
+  }).catch((err: { code?: string }) => {
+    // P2025 = record not found, safe to ignore (already deleted)
+    if (err.code !== 'P2025') {
+      console.warn('[scheduled-steps] Delete error:', err)
+    }
   })
 
   return NextResponse.json({ ok: true })

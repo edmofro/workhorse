@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { BUILT_IN_SKILLS } from '../skills/registry'
 
 export interface JournalEntryData {
   id: string
@@ -132,7 +133,7 @@ export function useJockeyState(cardId: string) {
         scheduledSteps: prev.scheduledSteps.filter(s => s.id !== stepId),
         // Add back to suggestions if we know the skill
         suggestions: removed
-          ? [...prev.suggestions, { skillId: removed.skillId, label: removed.skillId }]
+          ? [...prev.suggestions, { skillId: removed.skillId, label: BUILT_IN_SKILLS[removed.skillId]?.label ?? removed.skillId }]
           : prev.suggestions,
       }
     })

@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
     return new Response('Card not found', { status: 404 })
   }
 
-  const touchedFiles = safeParseTouchedFiles(card.touchedFiles)
+  const touchedFiles = safeParseTouchedFiles(card.touchedFiles ?? '[]')
 
   // Get attachment file paths and journal entries for the handoff prompt
   const [attachments, journalEntries] = await Promise.all([

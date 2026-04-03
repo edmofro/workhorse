@@ -115,11 +115,13 @@ export async function runJockeyAssessment(input: JockeyInput): Promise<JockeyAss
 
     const text = response.content
       .filter(block => block.type === 'text')
-      .map(block => block.type === 'text' ? block.text : '')
+      .map(block => ('text' in block ? block.text : ''))
       .join('')
 
-    // Extract JSON from the response (might be wrapped in ```json blocks)
-    const jsonMatch = text.match(/\{[\s\S]*\}/)
+    // Extract JSON from the response — strip markdown code fences first,
+    // then find the outermost { ... } block.
+    const stripped = text.replace(/```(?:json)?\s*/g, '').replace(/```/g, '')
+    const jsonMatch = stripped.match(/\{[\s\S]*\}/)
     if (!jsonMatch) {
       console.warn('[jockey] No JSON found in response, using defaults')
       return defaultAssessment

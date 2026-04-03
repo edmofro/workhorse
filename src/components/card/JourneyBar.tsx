@@ -39,11 +39,6 @@ export function JourneyBar({
   const [expanded, setExpanded] = useState(false)
   const overlayRef = useRef<HTMLDivElement>(null)
 
-  // Don't render if no journal entries yet
-  if (journalEntries.length === 0 && !activeStep) {
-    return null
-  }
-
   // Close on Escape or click outside
   useEffect(() => {
     if (!expanded) return
@@ -61,17 +56,20 @@ export function JourneyBar({
     }
 
     window.addEventListener('keydown', handleKeyDown)
-    // Delay click listener to avoid closing immediately on the expand click
-    const timer = setTimeout(() => {
-      window.addEventListener('click', handleClickOutside)
-    }, 0)
+    // Use mousedown instead of click — fires before the click event completes,
+    // and avoids needing setTimeout to dodge the expand button's own click.
+    window.addEventListener('mousedown', handleClickOutside)
 
     return () => {
       window.removeEventListener('keydown', handleKeyDown)
-      window.removeEventListener('click', handleClickOutside)
-      clearTimeout(timer)
+      window.removeEventListener('mousedown', handleClickOutside)
     }
   }, [expanded])
+
+  // Don't render if no journal entries yet
+  if (journalEntries.length === 0 && !activeStep) {
+    return null
+  }
 
   const completedCount = journalEntries.length
   const scheduledCount = scheduledSteps.length

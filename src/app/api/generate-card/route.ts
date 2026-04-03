@@ -73,11 +73,19 @@ Given the user's input, respond with JSON only — no markdown fences, no extra 
 Format:
 {"title": "...", "description": "..."}
 
-Rules:
-- Title: A short phrase of 5–8 words summarising the intent. Sentence case. No full stop.
-- Description: The user's input with light formatting only — use \n for line breaks where natural paragraph breaks improve readability, apply sentence case at the start of sentences. Do not change any wording, add or remove content, or rewrite anything.
-- Use Australian/NZ English spelling in the title only (the description preserves the user's own words).
-- JSON string values must use \n for newlines — never literal newline characters.`,
+Rules for title:
+- A short phrase of 5–8 words summarising the intent.
+- Sentence case. No full stop.
+- Use Australian/NZ English spelling.
+
+Rules for description:
+- Copy the user's input verbatim. Do NOT rephrase, summarise, expand, reorder, or rewrite any part of it.
+- The ONLY changes you may make: capitalise the first letter of sentences, and insert \n where a natural paragraph break improves readability.
+- Do not add words, remove words, change tense, change voice, fix grammar, or "improve" the text in any way.
+- If in doubt, return the input unchanged.
+
+JSON encoding:
+- String values must use \n for newlines — never literal newline characters.`,
     })
 
     const raw =

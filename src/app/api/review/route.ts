@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
             permissionMode: 'dontAsk' as const,
             persistSession: false,
             includePartialMessages: true,
-            model: 'claude-sonnet-4-6',
+            model: 'claude-opus-4-6',
             maxTurns: 2,
             systemPrompt: {
               type: 'preset' as const,

@@ -230,7 +230,7 @@ export async function POST(request: NextRequest) {
     },
     settingSources: ['project' as const],
     includePartialMessages: true,
-    model: 'claude-sonnet-4-6',
+    model: 'claude-opus-4-6',
     ...(maxTurns !== undefined ? { maxTurns } : {}),
     persistSession: true,
     ...(convSession.agentSessionId ? { resume: convSession.agentSessionId } : {}),

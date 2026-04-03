@@ -13,7 +13,6 @@ A skill is an action that can be performed on a card. Skills are the atomic unit
 
 - **Inline** — runs in the card's primary conversation. The agent adopts the skill's behaviour (e.g. interview mode, implementation mode) within the ongoing chat thread.
 - **Subagent** — forks a separate AI context with no conversation history, runs independently, and posts a summary back to the primary conversation as a system message. The primary agent sees the summary and can work through the findings with the user.
-- **External** — not an AI action. Performs a concrete operation like creating a GitHub PR, toggling a CI setting, or triggering a webhook.
 
 ### Triggering skills
 
@@ -33,7 +32,7 @@ Skills can be triggered from multiple surfaces:
 - [ ] **Design audit** (subagent) — reviews implementation against the project's design system in `.workhorse/design/`. Checks component usage, spacing, colour palette, interaction patterns
 - [ ] **Security audit** (subagent) — reviews implementation for OWASP top 10, injection vulnerabilities, auth/authz issues, data exposure, input validation
 - [ ] **Code review** (subagent) — reviews implementation code against the spec acceptance criteria. Focuses on whether the code correctly implements the spec
-- [ ] **Create PR** (external) — creates a GitHub pull request from the card's branch. Links the PR to the card
+- [ ] **Create PR** (inline) — creates a GitHub pull request from the card's branch. The agent decides the PR title and description; the backend executes the GitHub API call using the user's OAuth token (same pattern as auto-commit). Links the PR to the card
 - [ ] **Fix CI** (inline) — reads CI failure output, diagnoses the issue, and pushes fixes. Runs when auto-fix is enabled and CI fails on the card's PR
 - [ ] **Update spec** (inline) — the agent updates spec files to reflect the current state of the implementation or new decisions made during development
 

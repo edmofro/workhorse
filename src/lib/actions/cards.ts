@@ -86,30 +86,34 @@ export async function updateCard(
 ) {
   const user = await requireUser()
 
-  // Fetch current card for activity logging
-  const currentCard = data.status ? await prisma.card.findUnique({ where: { id } }) : null
-
   const updateData: Record<string, unknown> = { ...data }
   if (data.tags) {
     updateData.tags = JSON.stringify(data.tags)
   }
 
-  const card = await prisma.card.update({
-    where: { id },
-    data: updateData,
-  })
+  const card = await prisma.$transaction(async (tx) => {
+    const current = data.status
+      ? await tx.card.findUnique({ where: { id }, select: { status: true } })
+      : null
 
-  // Log status change activity
-  if (data.status && currentCard && currentCard.status !== data.status) {
-    await prisma.cardActivity.create({
-      data: {
-        cardId: id,
-        userId: user.id,
-        action: 'status_changed',
-        details: JSON.stringify({ from: currentCard.status, to: data.status }),
-      },
+    const updated = await tx.card.update({
+      where: { id },
+      data: updateData,
     })
-  }
+
+    if (data.status && current && current.status !== data.status) {
+      await tx.cardActivity.create({
+        data: {
+          cardId: id,
+          userId: user.id,
+          action: 'status_changed',
+          details: JSON.stringify({ from: current.status, to: data.status }),
+        },
+      })
+    }
+
+    return updated
+  })
 
   revalidatePath('/')
   return card

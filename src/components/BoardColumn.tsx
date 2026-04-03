@@ -2,12 +2,13 @@
 
 import { useState, useRef, useEffect, useTransition } from 'react'
 import Link from 'next/link'
-import { MoreHorizontal } from 'lucide-react'
+import { MoreHorizontal, ChevronRight } from 'lucide-react'
 import { cn } from '../lib/cn'
 import { StatusDot } from './StatusDot'
 import { Avatar } from './Avatar'
 import { Tag } from './Tag'
 import { updateCard } from '../lib/actions/cards'
+import { STATUS_OPTIONS } from '../lib/status'
 
 interface CardData {
   id: string
@@ -60,14 +61,6 @@ export function BoardColumn({ label, dotState, cards, projectName }: BoardColumn
   )
 }
 
-const STATUS_MENU_OPTIONS = [
-  { value: 'NOT_STARTED', label: 'Not started' },
-  { value: 'SPECIFYING', label: 'Specifying' },
-  { value: 'IMPLEMENTING', label: 'Implementing' },
-  { value: 'COMPLETE', label: 'Complete' },
-  { value: 'CANCELLED', label: 'Cancelled' },
-]
-
 function BoardCard({ card, projectName }: { card: CardData; projectName: string }) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [statusSubmenuOpen, setStatusSubmenuOpen] = useState(false)
@@ -97,11 +90,16 @@ function BoardCard({ card, projectName }: { card: CardData; projectName: string 
   }, [menuOpen])
 
   function handleStatusChange(status: string) {
-    startTransition(async () => {
-      await updateCard(card.id, { status })
-    })
     setMenuOpen(false)
     setStatusSubmenuOpen(false)
+    startTransition(async () => {
+      try {
+        await updateCard(card.id, { status })
+      } catch {
+        // Re-open menu so the user can see the change didn't stick
+        setMenuOpen(true)
+      }
+    })
   }
 
   return (
@@ -182,13 +180,13 @@ function BoardCard({ card, projectName }: { card: CardData; projectName: string 
               onClick={() => setStatusSubmenuOpen(!statusSubmenuOpen)}
             >
               Status
-              <span className="text-[var(--text-faint)]">&#8250;</span>
+              <ChevronRight size={12} className="text-[var(--text-faint)]" />
             </button>
 
             {/* Status submenu */}
             {statusSubmenuOpen && (
               <div className="absolute left-full top-0 ml-1 w-[152px] bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-[var(--radius-xl)] shadow-[var(--shadow-lg)] py-1">
-                {STATUS_MENU_OPTIONS.map((opt) => (
+                {STATUS_OPTIONS.map((opt) => (
                   <button
                     key={opt.value}
                     onClick={() => handleStatusChange(opt.value)}

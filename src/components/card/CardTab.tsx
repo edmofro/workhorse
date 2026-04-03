@@ -9,6 +9,7 @@ import { useAttachments } from '../../lib/hooks/useAttachments'
 import { AttachmentButton } from './AttachmentButton'
 import { AttachmentPreview } from './AttachmentPreview'
 import { X, Plus } from 'lucide-react'
+import { STATUS_OPTIONS } from '../../lib/status'
 import type { AttachmentData } from '../../lib/attachments'
 
 interface CardAttachment {
@@ -51,14 +52,6 @@ interface CardTabProps {
   users: { id: string; displayName: string }[]
   teams: { id: string; name: string; colour: string }[]
 }
-
-const STATUS_OPTIONS = [
-  { value: 'NOT_STARTED', label: 'Not started' },
-  { value: 'SPECIFYING', label: 'Specifying' },
-  { value: 'IMPLEMENTING', label: 'Implementing' },
-  { value: 'COMPLETE', label: 'Complete' },
-  { value: 'CANCELLED', label: 'Cancelled' },
-]
 
 const PRIORITY_OPTIONS = [
   { value: 'URGENT', label: 'Urgent' },

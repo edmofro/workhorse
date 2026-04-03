@@ -405,6 +405,12 @@ export async function POST(request: NextRequest) {
         }
 
         enqueue(encoder.encode('data: [DONE]\n\n'))
+        // Clear streaming status and close session channel
+        await prisma.conversationSession.update({
+          where: { id: convSessionId },
+          data: { streamingStartedAt: null },
+        }).catch(() => {})
+        closeSessionChannel(convSessionId)
         controller.close()
       } catch (err) {
         const errorMsg = err instanceof Error ? err.message : 'Interview failed'
@@ -413,6 +419,12 @@ export async function POST(request: NextRequest) {
             `data: ${JSON.stringify({ type: 'error', message: errorMsg })}\n\n`,
           ),
         )
+        // Clear streaming status and close session channel on error too
+        await prisma.conversationSession.update({
+          where: { id: convSessionId },
+          data: { streamingStartedAt: null },
+        }).catch(() => {})
+        closeSessionChannel(convSessionId)
         controller.close()
       }
     },

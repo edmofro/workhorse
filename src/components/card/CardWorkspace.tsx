@@ -609,7 +609,7 @@ export function CardWorkspace({
             </div>
           )}
 
-          {isStreaming && thinkingSnippet && (
+          {isStreaming && messages[messages.length - 1]?.content === '' && (
             <ThinkingIndicator snippet={thinkingSnippet} />
           )}
         </div>

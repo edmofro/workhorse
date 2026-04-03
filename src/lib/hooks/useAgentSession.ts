@@ -124,6 +124,9 @@ export function useAgentSession(
   // kept in sync every render so the dispatch effect doesn't depend on callback identity
   const sendMessageRef = useRef<typeof sendMessage | null>(null)
 
+  // Track whether recovery is active so sendMessage doesn't conflict
+  const recoveryAbortRef = useRef<AbortController | null>(null)
+
   // Clean up timers on unmount
   useEffect(() => {
     return () => {
@@ -135,8 +138,170 @@ export function useAgentSession(
         clearTimeout(flushTimerRef.current)
         flushTimerRef.current = null
       }
+      recoveryAbortRef.current?.abort()
     }
   }, [])
+
+  // Recovery on return — when mounting with a sessionId, check if it's
+  // actively streaming and reconnect to the live event stream if so.
+  useEffect(() => {
+    if (!sessionId || isStreamingRef.current) return
+
+    const abort = new AbortController()
+    recoveryAbortRef.current = abort
+
+    async function tryRecover() {
+      try {
+        const res = await fetch(`/api/sessions/${sessionId}/events`, {
+          signal: abort.signal,
+        })
+        if (!res.ok || !res.body) return
+
+        const reader = res.body.getReader()
+        const decoder = new TextDecoder()
+        let buf = ''
+
+        // Read the first event to check status
+        const firstChunk = await reader.read()
+        if (firstChunk.done || abort.signal.aborted) return
+
+        buf += decoder.decode(firstChunk.value, { stream: true })
+        const firstLines = buf.split('\n')
+        buf = firstLines.pop() ?? ''
+
+        let isLiveStreaming = false
+        for (const line of firstLines) {
+          if (!line.startsWith('data: ')) continue
+          try {
+            const event = JSON.parse(line.slice(6))
+            if (event.type === 'status' && event.status === 'idle') return
+            if (event.type === 'status' && event.status === 'streaming') {
+              isLiveStreaming = true
+              break
+            }
+          } catch { /* skip */ }
+        }
+
+        if (!isLiveStreaming || abort.signal.aborted) return
+
+        // Session is actively streaming — set up recovery state
+        const recoveryAssistantId = `recovery-${Date.now()}-assistant`
+        setMessages((prev) => {
+          // Only add placeholder if there isn't already an empty assistant msg
+          const last = prev[prev.length - 1]
+          if (last?.role === 'assistant' && last.content === '') return prev
+          return [...prev, { id: recoveryAssistantId, role: 'assistant', content: '', userName: 'Workhorse' }]
+        })
+
+        setIsStreaming(true)
+        isStreamingRef.current = true
+        assistantContentRef.current = ''
+        assistantIdRef.current = recoveryAssistantId
+        textBufferRef.current = ''
+        thinkingBufferRef.current = ''
+        turnConfirmedRef.current = false
+
+        function flushTextBuffer() {
+          if (!textBufferRef.current) return
+          const flushed = assistantContentRef.current + textBufferRef.current
+          assistantContentRef.current = flushed
+          textBufferRef.current = ''
+          const id = assistantIdRef.current
+          setMessages((prev) =>
+            prev.map((m) => (m.id === id ? { ...m, content: flushed } : m)),
+          )
+        }
+
+        function scheduleFlush() {
+          if (flushTimerRef.current) return
+          flushTimerRef.current = setTimeout(() => {
+            flushTimerRef.current = null
+            flushTextBuffer()
+          }, 60)
+        }
+
+        // Start thinking snippet sampler
+        thinkingTimerRef.current = setInterval(() => {
+          const b = thinkingBufferRef.current
+          if (!b) return
+          const tail = b.slice(-120)
+          const lastNewline = tail.lastIndexOf('\n')
+          const line = lastNewline >= 0 ? tail.slice(lastNewline + 1) : tail
+          const snippet = line.trim().slice(0, 80)
+          if (snippet) setThinkingSnippet(snippet)
+        }, 1500)
+
+        // Process remaining buffered data and continue reading
+        const processLines = (text: string) => {
+          const lines = text.split('\n')
+          const remainder = lines.pop() ?? ''
+          for (const line of lines) {
+            if (!line.startsWith('data: ')) continue
+            const data = line.slice(6)
+            if (data === '[DONE]') continue
+            try {
+              const event = JSON.parse(data)
+              if (event.type === 'status' && event.status === 'idle') {
+                // Stream ended
+                return { remainder, done: true }
+              }
+              processEvent(event, recoveryAssistantId, scheduleFlush)
+            } catch { /* skip */ }
+          }
+          return { remainder, done: false }
+        }
+
+        // Process any replay events still in buffer
+        const initial = processLines(buf)
+        buf = initial.remainder
+        if (initial.done) {
+          // Clean up
+          setIsStreaming(false)
+          isStreamingRef.current = false
+          setThinkingSnippet(null)
+          if (thinkingTimerRef.current) { clearInterval(thinkingTimerRef.current); thinkingTimerRef.current = null }
+          return
+        }
+
+        // Continue reading live events
+        while (!abort.signal.aborted) {
+          const { done, value } = await reader.read()
+          if (done) break
+
+          buf += decoder.decode(value, { stream: true })
+          const result = processLines(buf)
+          buf = result.remainder
+          if (result.done) break
+        }
+
+        // Flush remaining text
+        if (flushTimerRef.current) { clearTimeout(flushTimerRef.current); flushTimerRef.current = null }
+        if (textBufferRef.current) {
+          const finalContent = assistantContentRef.current + textBufferRef.current
+          textBufferRef.current = ''
+          assistantContentRef.current = finalContent
+          const id = assistantIdRef.current
+          setMessages((prev) =>
+            prev.map((m) => (m.id === id ? { ...m, content: finalContent } : m)),
+          )
+        }
+
+        setIsStreaming(false)
+        isStreamingRef.current = false
+        setActiveToolCalls([])
+        setThinkingSnippet(null)
+        thinkingBufferRef.current = ''
+        if (thinkingTimerRef.current) { clearInterval(thinkingTimerRef.current); thinkingTimerRef.current = null }
+      } catch (err) {
+        if (err instanceof DOMException && err.name === 'AbortError') return
+        // Recovery is best-effort — if it fails, the user just doesn't see the in-progress stream
+      }
+    }
+
+    tryRecover()
+
+    return () => { abort.abort() }
+  }, [sessionId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const sendMessage = useCallback(
     async (content: string, userName: string, attachments?: AttachmentData[], skillId?: string) => {

@@ -14,6 +14,8 @@ import {
   MessageCircle,
   X,
 } from 'lucide-react'
+import { createPortal } from 'react-dom'
+import { useQueryClient } from '@tanstack/react-query'
 import { cn } from '../lib/cn'
 import { Avatar } from './Avatar'
 import { useUser } from './UserProvider'
@@ -25,7 +27,26 @@ import {
 } from '../lib/hooks/queries'
 import { useSidebarEvents } from '../lib/hooks/useSidebarEvents'
 import { CreateModal } from './CreateModal'
+import { usePortalMenu } from './PropertyDropdown'
+import { StatusDot } from './StatusDot'
+import { updateCard } from '../lib/actions/cards'
 import { useState, useRef, useEffect, useCallback, useTransition } from 'react'
+
+const STATUS_OPTIONS = [
+  { value: 'NOT_STARTED', label: 'Not started', dotState: 'not-started' as const },
+  { value: 'SPECIFYING', label: 'Specifying', dotState: 'specifying' as const },
+  { value: 'IMPLEMENTING', label: 'Implementing', dotState: 'implementing' as const },
+  { value: 'COMPLETE', label: 'Complete', dotState: 'complete' as const },
+  { value: 'CANCELLED', label: 'Cancelled', dotState: 'cancelled' as const },
+] as const
+
+function statusToDotState(status: string | null): 'not-started' | 'specifying' | 'implementing' | 'complete' | 'cancelled' {
+  if (status === 'COMPLETE' || status === 'SPEC_COMPLETE') return 'complete'
+  if (status === 'IN_PROGRESS' || status === 'SPECIFYING') return 'specifying'
+  if (status === 'IMPLEMENTING') return 'implementing'
+  if (status === 'CANCELLED') return 'cancelled'
+  return 'not-started'
+}
 
 export type RecentSession = SidebarSession
 
@@ -261,18 +282,28 @@ function ConversationItem({
   children: React.ReactNode
 }) {
   return (
-    <div className="group relative flex items-center">
+    <div
+      className={cn(
+        'group relative flex items-center rounded-[var(--radius-md)] transition-colors duration-100',
+        active
+          ? 'bg-[var(--bg-surface)] shadow-[var(--shadow-sm)]'
+          : 'hover:bg-[var(--bg-hover)]',
+      )}
+    >
+      {/* Indicator sits outside the link so it can be independently interactive */}
+      <div className="flex items-center shrink-0 pl-3">
+        {indicator}
+      </div>
       <Link
         href={href}
         className={cn(
-          'flex items-center gap-2 px-3 py-1 rounded-[var(--radius-md)] flex-1 min-w-0',
+          'flex items-center flex-1 min-w-0 pl-2 pr-3 py-1',
           'text-[12px] cursor-pointer transition-colors duration-100',
           active
-            ? 'bg-[var(--bg-surface)] text-[var(--text-primary)] font-medium shadow-[var(--shadow-sm)]'
-            : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]',
+            ? 'text-[var(--text-primary)] font-medium'
+            : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]',
         )}
       >
-        {indicator}
         <span className={cn('truncate', streaming && 'animate-pulse')}>{children}</span>
       </Link>
       <div className="absolute right-0 flex items-center justify-end opacity-0 group-hover:opacity-100 transition-opacity duration-100"
@@ -288,6 +319,76 @@ function ConversationItem({
         </button>
       </div>
     </div>
+  )
+}
+
+/** Clickable status dot for card-bound sessions — opens a status picker dropdown. */
+function ClickableStatusDot({
+  status,
+  cardId,
+  onStatusChange,
+}: {
+  status: string | null
+  cardId: string
+  onStatusChange: (cardId: string, newStatus: string) => void
+}) {
+  const { open, setOpen, toggle, triggerRef, menuRef, pos } = usePortalMenu()
+  const dotState = statusToDotState(status)
+
+  useEffect(() => {
+    if (!open) return
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') setOpen(false)
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [open, setOpen])
+
+  return (
+    <>
+      <button
+        ref={triggerRef}
+        type="button"
+        onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggle() }}
+        title="Change status"
+        className={cn(
+          'flex items-center justify-center w-5 h-5 rounded-full cursor-pointer transition-colors duration-100',
+          open ? 'bg-[var(--bg-inset)]' : 'hover:bg-[var(--bg-inset)]',
+        )}
+      >
+        <StatusDot state={dotState} />
+      </button>
+
+      {open && pos && createPortal(
+        <div
+          ref={menuRef}
+          style={{ position: 'fixed', top: pos.top, left: pos.left }}
+          className="z-50 min-w-[160px] bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-[var(--radius-xl)] shadow-[var(--shadow-lg)] py-1"
+        >
+          {STATUS_OPTIONS.map((opt) => (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => {
+                onStatusChange(cardId, opt.value)
+                setOpen(false)
+              }}
+              className={cn(
+                'w-full text-left px-3 py-2 text-[12px] flex items-center gap-2',
+                'hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer',
+                status === opt.value
+                  ? 'text-[var(--text-primary)] font-medium'
+                  : 'text-[var(--text-secondary)]',
+              )}
+            >
+              <StatusDot state={opt.dotState} />
+              {opt.label}
+            </button>
+          ))}
+        </div>,
+        document.body,
+      )}
+    </>
   )
 }
 
@@ -347,6 +448,8 @@ function ConversationsList({
 }) {
   const [expanded, setExpanded] = useState(false)
   const [dismissed, setDismissed] = useState<Set<string>>(new Set())
+  const [statusOverrides, setStatusOverrides] = useState<Record<string, string>>({})
+  const queryClient = useQueryClient()
   const [, startTransition] = useTransition()
 
   const visibleSessions = sessions.filter((s) => !dismissed.has(s.id))
@@ -363,6 +466,21 @@ function ConversationsList({
     })
   }
 
+  async function handleStatusChange(cardId: string, newStatus: string, sessionId: string) {
+    setStatusOverrides((prev) => ({ ...prev, [sessionId]: newStatus }))
+    try {
+      await updateCard(cardId, { status: newStatus })
+      queryClient.invalidateQueries({ queryKey: ['sidebar-data'] })
+    } catch {
+      console.error('Failed to update card status')
+      setStatusOverrides((prev) => {
+        const next = { ...prev }
+        if (next[sessionId] === newStatus) delete next[sessionId]
+        return next
+      })
+    }
+  }
+
   return (
     <div className="ml-1">
       {displaySessions.map((session) => {
@@ -376,6 +494,7 @@ function ConversationsList({
           || pathname.startsWith(`${projectPath}/sessions/${session.id}`)
         const isCardBound = !!session.cardId
         const isStreaming = streamingSessions.has(session.id)
+        const effectiveStatus = statusOverrides[session.id] ?? session.cardStatus
 
         return (
           <ConversationItem
@@ -385,8 +504,14 @@ function ConversationsList({
             streaming={isStreaming}
             onDismiss={() => handleDismiss(session.id)}
             indicator={
-              isCardBound
-                ? <StatusDot status={session.cardStatus} />
+              isCardBound && session.cardId
+                ? <ClickableStatusDot
+                    status={effectiveStatus}
+                    cardId={session.cardId}
+                    onStatusChange={(cardId, newStatus) =>
+                      handleStatusChange(cardId, newStatus, session.id)
+                    }
+                  />
                 : <MessageCircle size={11} className="text-[var(--text-muted)] shrink-0" />
             }
           >
@@ -406,27 +531,6 @@ function ConversationsList({
   )
 }
 
-function StatusDot({ status }: { status: string | null }) {
-  if (status === 'COMPLETE' || status === 'SPEC_COMPLETE') {
-    return (
-      <span className="w-[8px] h-[8px] rounded-full shrink-0 bg-[var(--green)]" />
-    )
-  }
-  if (status === 'IN_PROGRESS' || status === 'SPECIFYING') {
-    return (
-      <span className="w-[8px] h-[8px] rounded-full shrink-0 bg-[var(--amber)]" />
-    )
-  }
-  if (status === 'IMPLEMENTING') {
-    return (
-      <span className="w-[8px] h-[8px] rounded-full shrink-0 bg-[var(--blue,#2563eb)]" />
-    )
-  }
-  // NOT_STARTED or unknown — hollow dot
-  return (
-    <span className="w-[8px] h-[8px] rounded-full shrink-0 border border-[var(--border-default)]" />
-  )
-}
 
 function UserMenu({ user }: { user: { displayName: string; avatarUrl: string | null } }) {
   const [open, setOpen] = useState(false)

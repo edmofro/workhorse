@@ -10,33 +10,22 @@ export interface PropertyOption {
   icon?: React.ReactNode
 }
 
-interface PropertyDropdownProps {
-  /** Content rendered inside the pill trigger button */
-  trigger: React.ReactNode
-  options: PropertyOption[]
-  value: string
-  onChange: (value: string) => void
-  className?: string
-}
-
 /**
- * A pill trigger that opens a portal dropdown using the same visual shell as
- * the board card overflow menu. Use this for all property selectors in the
- * card view so they match the board's interaction pattern.
+ * Shared hook for portal-anchored dropdown menus. Handles open state,
+ * position calculation, click-outside dismissal, and scroll-to-close.
+ * Used by PropertyDropdown and any custom pill that needs its own menu body.
  */
-export function PropertyDropdown({
-  trigger,
-  options,
-  value,
-  onChange,
-  className,
-}: PropertyDropdownProps) {
+export function usePortalMenu() {
   const [open, setOpen] = useState(false)
   const triggerRef = useRef<HTMLButtonElement>(null)
   const menuRef = useRef<HTMLDivElement>(null)
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null)
 
-  function openMenu() {
+  function toggle() {
+    if (open) {
+      setOpen(false)
+      return
+    }
     if (!triggerRef.current) return
     const rect = triggerRef.current.getBoundingClientRect()
     setPos({ top: rect.bottom + 4, left: rect.left })
@@ -66,11 +55,37 @@ export function PropertyDropdown({
     }
   }, [open])
 
+  return { open, setOpen, toggle, triggerRef, menuRef, pos }
+}
+
+interface PropertyDropdownProps {
+  /** Content rendered inside the pill trigger button */
+  trigger: React.ReactNode
+  options: PropertyOption[]
+  value: string
+  onChange: (value: string) => void
+  className?: string
+}
+
+/**
+ * A pill trigger that opens a portal dropdown using the same visual shell as
+ * the board card overflow menu. Use this for all property selectors in the
+ * card view so they match the board's interaction pattern.
+ */
+export function PropertyDropdown({
+  trigger,
+  options,
+  value,
+  onChange,
+  className,
+}: PropertyDropdownProps) {
+  const { open, setOpen, toggle, triggerRef, menuRef, pos } = usePortalMenu()
+
   return (
     <>
       <button
         ref={triggerRef}
-        onClick={() => (open ? setOpen(false) : openMenu())}
+        onClick={toggle}
         className={cn(
           'inline-flex items-center gap-1.5 px-2 py-1 rounded-[var(--radius-md)]',
           'text-[12px] text-[var(--text-secondary)]',

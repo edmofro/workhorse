@@ -1,18 +1,19 @@
 'use client'
 
-import { useState, useRef, useEffect, useTransition } from 'react'
+import { useState, useRef, useEffect, useMemo, useTransition } from 'react'
 import { createPortal } from 'react-dom'
 import { X, Plus } from 'lucide-react'
 import { updateCard, addComment } from '../../lib/actions/cards'
 import { associateAttachmentsWithCard } from '../../lib/actions/attachments'
 import { Avatar } from '../Avatar'
 import { StatusDot } from '../StatusDot'
-import { PropertyDropdown, type PropertyOption } from '../PropertyDropdown'
+import { PropertyDropdown, usePortalMenu, type PropertyOption } from '../PropertyDropdown'
 import { useUser } from '../UserProvider'
 import { useAttachments } from '../../lib/hooks/useAttachments'
 import { AttachmentButton } from './AttachmentButton'
 import { AttachmentPreview } from './AttachmentPreview'
 import { STATUS_OPTIONS } from '../../lib/status'
+import { cn } from '../../lib/cn'
 
 interface CardAttachment {
   id: string
@@ -62,6 +63,8 @@ const PRIORITY_OPTIONS: PropertyOption[] = [
   { value: 'LOW', label: 'Low' },
 ]
 
+const VISIBLE_TAG_COUNT = 3
+
 type StatusDotState = 'not-started' | 'specifying' | 'implementing' | 'complete' | 'cancelled'
 
 function statusToDotState(status: string): StatusDotState {
@@ -85,9 +88,7 @@ function toAttachmentData(att: CardAttachment) {
   }
 }
 
-const VISIBLE_TAG_COUNT = 3
-
-/** Portal dropdown for +N more tags */
+/** Portal dropdown listing hidden overflow tags, each with a remove button. */
 function TagOverflowDropdown({
   tags,
   onRemove,
@@ -95,45 +96,14 @@ function TagOverflowDropdown({
   tags: string[]
   onRemove: (tag: string) => void
 }) {
-  const [open, setOpen] = useState(false)
-  const triggerRef = useRef<HTMLButtonElement>(null)
-  const menuRef = useRef<HTMLDivElement>(null)
-  const [pos, setPos] = useState<{ top: number; left: number } | null>(null)
-
-  function openMenu() {
-    if (!triggerRef.current) return
-    const rect = triggerRef.current.getBoundingClientRect()
-    setPos({ top: rect.bottom + 4, left: rect.left })
-    setOpen(true)
-  }
-
-  useEffect(() => {
-    if (!open) return
-    function handleClickOutside(e: MouseEvent) {
-      if (
-        menuRef.current &&
-        !menuRef.current.contains(e.target as Node) &&
-        triggerRef.current &&
-        !triggerRef.current.contains(e.target as Node)
-      ) {
-        setOpen(false)
-      }
-    }
-    function handleScroll() { setOpen(false) }
-    document.addEventListener('mousedown', handleClickOutside)
-    window.addEventListener('scroll', handleScroll, true)
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside)
-      window.removeEventListener('scroll', handleScroll, true)
-    }
-  }, [open])
+  const { open, toggle, triggerRef, menuRef, pos } = usePortalMenu()
 
   return (
     <>
       <button
         ref={triggerRef}
-        onClick={() => (open ? setOpen(false) : openMenu())}
-        className="inline-flex items-center px-2 py-1 rounded-[var(--radius-md)] text-[12px] text-[var(--text-muted)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer"
+        onClick={toggle}
+        className="inline-flex items-center px-2 py-1 rounded-[var(--radius-md)] text-[11px] font-medium text-[var(--text-muted)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer"
       >
         +{tags.length} more
       </button>
@@ -149,7 +119,7 @@ function TagOverflowDropdown({
             {tags.map((tag) => (
               <div
                 key={tag}
-                className="flex items-center justify-between px-3 py-2 text-[12px] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-colors duration-100"
+                className="flex items-center justify-between px-3 py-2 text-[11px] font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-colors duration-100"
               >
                 <span>{tag}</span>
                 <button
@@ -173,38 +143,64 @@ export function CardTab({ card, users, teams }: CardTabProps) {
   const [description, setDescription] = useState(card.description ?? '')
   const [status, setStatus] = useState(card.status)
   const [priority, setPriority] = useState(card.priority)
+  const [teamId, setTeamId] = useState(card.team.id)
+  const [assigneeId, setAssigneeId] = useState(card.assignee?.id ?? '')
   const [newTag, setNewTag] = useState('')
   const [addingTag, setAddingTag] = useState(false)
   const [newComment, setNewComment] = useState('')
   const [, startTransition] = useTransition()
+
   const tagInputRef = useRef<HTMLInputElement>(null)
   const descTextareaRef = useRef<HTMLTextAreaElement>(null)
+  // Prevents the blur event firing after Enter from re-submitting the tag
+  const tagCommittingRef = useRef(false)
 
   const descAttachments = useAttachments(card.id)
   const commentAttachments = useAttachments(card.id)
 
-  const tags: string[] = (() => {
-    try {
-      return JSON.parse(card.tags)
-    } catch {
-      return []
-    }
-  })()
+  const tags: string[] = useMemo(() => {
+    try { return JSON.parse(card.tags) } catch { return [] }
+  }, [card.tags])
 
   const visibleTags = tags.slice(0, VISIBLE_TAG_COUNT)
   const hiddenTags = tags.slice(VISIBLE_TAG_COUNT)
+
+  // Build dropdown option lists — memoised since they depend on stable props
+  const statusOptions = useMemo<PropertyOption[]>(() => (
+    STATUS_OPTIONS.map((opt) => ({
+      value: opt.value,
+      label: opt.label,
+      icon: <StatusDot state={statusToDotState(opt.value)} />,
+    }))
+  ), [])
+
+  const teamOptions = useMemo<PropertyOption[]>(() => (
+    teams.map((t) => ({ value: t.id, label: t.name }))
+  ), [teams])
+
+  const assigneeOptions = useMemo<PropertyOption[]>(() => ([
+    { value: '', label: 'Unassigned' },
+    ...users.map((u) => ({ value: u.id, label: u.displayName })),
+  ]), [users])
+
+  // Derive display labels from local state so they stay current after changes
+  const currentStatusLabel = STATUS_OPTIONS.find((o) => o.value === status)?.label ?? status
+  const currentPriorityLabel = PRIORITY_OPTIONS.find((o) => o.value === priority)?.label ?? priority
+  const currentTeamName = teams.find((t) => t.id === teamId)?.name ?? card.team.name
+  const currentAssigneeName = users.find((u) => u.id === assigneeId)?.displayName ?? 'Unassigned'
 
   useEffect(() => {
     if (addingTag) tagInputRef.current?.focus()
   }, [addingTag])
 
-  // Set textarea height to fit existing content on mount
+  // Size the description textarea to fit its content whenever description changes
+  // (covers initial mount with existing content and subsequent edits)
   useEffect(() => {
     const el = descTextareaRef.current
     if (!el) return
     el.style.height = 'auto'
     el.style.height = `${el.scrollHeight}px`
-  }, [])
+  }, [description])
 
   function handleUpdate(data: Record<string, unknown>) {
     startTransition(async () => {
@@ -225,40 +221,43 @@ export function CardTab({ card, users, teams }: CardTabProps) {
     const uploaded = descAttachments.getUploadedAttachments()
     if (uploaded.length > 0) {
       startTransition(async () => {
-        await associateAttachmentsWithCard(
-          card.id,
-          uploaded.map((a) => a.id),
-        )
+        await associateAttachmentsWithCard(card.id, uploaded.map((a) => a.id))
       })
       descAttachments.clear()
     }
   }
 
-  function handleAddTag() {
+  function commitTag() {
     const tag = newTag.trim()
-    if (!tag || tags.includes(tag)) {
-      setNewTag('')
-      setAddingTag(false)
-      return
-    }
-    handleUpdate({ tags: [...tags, tag] })
     setNewTag('')
     setAddingTag(false)
-  }
-
-  function handleRemoveTag(tagToRemove: string) {
-    handleUpdate({ tags: tags.filter((t) => t !== tagToRemove) })
+    if (!tag || tags.includes(tag)) return
+    handleUpdate({ tags: [...tags, tag] })
   }
 
   function handleTagKeyDown(e: React.KeyboardEvent) {
     if (e.key === 'Enter') {
       e.preventDefault()
-      handleAddTag()
+      tagCommittingRef.current = true
+      commitTag()
     }
     if (e.key === 'Escape') {
+      tagCommittingRef.current = true
       setNewTag('')
       setAddingTag(false)
     }
+  }
+
+  function handleTagBlur() {
+    if (tagCommittingRef.current) {
+      tagCommittingRef.current = false
+      return
+    }
+    commitTag()
+  }
+
+  function handleRemoveTag(tagToRemove: string) {
+    handleUpdate({ tags: tags.filter((t) => t !== tagToRemove) })
   }
 
   function handleAddComment() {
@@ -282,29 +281,6 @@ export function CardTab({ card, users, teams }: CardTabProps) {
       handleAddComment()
     }
   }
-
-  const statusOptions: PropertyOption[] = STATUS_OPTIONS.map((opt) => ({
-    value: opt.value,
-    label: opt.label,
-    icon: <StatusDot state={statusToDotState(opt.value)} />,
-  }))
-
-  const teamOptions: PropertyOption[] = teams.map((t) => ({
-    value: t.id,
-    label: t.name,
-  }))
-
-  const assigneeOptions: PropertyOption[] = [
-    { value: '', label: 'Unassigned' },
-    ...users.map((u) => ({ value: u.id, label: u.displayName })),
-  ]
-
-  const currentStatusLabel =
-    STATUS_OPTIONS.find((o) => o.value === status)?.label ?? status
-  const currentPriorityLabel =
-    PRIORITY_OPTIONS.find((o) => o.value === priority)?.label ?? priority
-  const currentTeamName = card.team.name
-  const currentAssigneeName = card.assignee?.displayName ?? 'Unassigned'
 
   return (
     <div>
@@ -351,16 +327,22 @@ export function CardTab({ card, users, teams }: CardTabProps) {
           <PropertyDropdown
             trigger={currentTeamName}
             options={teamOptions}
-            value={card.team.id}
-            onChange={(val) => handleUpdate({ teamId: val })}
+            value={teamId}
+            onChange={(val) => {
+              setTeamId(val)
+              handleUpdate({ teamId: val })
+            }}
           />
 
           {/* Assignee */}
           <PropertyDropdown
             trigger={currentAssigneeName}
             options={assigneeOptions}
-            value={card.assignee?.id ?? ''}
-            onChange={(val) => handleUpdate({ assigneeId: val || null })}
+            value={assigneeId}
+            onChange={(val) => {
+              setAssigneeId(val)
+              handleUpdate({ assigneeId: val || null })
+            }}
           />
 
           {/* Depends on — display only */}
@@ -369,10 +351,10 @@ export function CardTab({ card, users, teams }: CardTabProps) {
               {card.dependsOn.map((dep) => (
                 <span
                   key={dep.identifier}
-                  className="inline-flex items-center gap-1 text-[12px] text-[var(--text-muted)]"
+                  className="text-[11px] font-medium font-mono text-[var(--text-muted)]"
                   title={dep.title}
                 >
-                  <span className="font-mono">{dep.identifier}</span>
+                  {dep.identifier}
                 </span>
               ))}
             </div>
@@ -385,7 +367,7 @@ export function CardTab({ card, users, teams }: CardTabProps) {
           {visibleTags.map((tag) => (
             <span
               key={tag}
-              className="inline-flex items-center gap-1 px-2 py-1 rounded-[var(--radius-md)] text-[12px] text-[var(--text-secondary)] bg-[var(--bg-inset)]"
+              className="inline-flex items-center gap-1 px-2 py-1 rounded-[var(--radius-md)] text-[11px] font-medium text-[var(--text-secondary)] bg-[var(--bg-inset)]"
             >
               {tag}
               <button
@@ -410,14 +392,18 @@ export function CardTab({ card, users, teams }: CardTabProps) {
               value={newTag}
               onChange={(e) => setNewTag(e.target.value)}
               onKeyDown={handleTagKeyDown}
-              onBlur={handleAddTag}
+              onBlur={handleTagBlur}
               placeholder="tag name"
-              className="px-2 py-1 text-[12px] bg-transparent border border-[var(--border-subtle)] rounded-[var(--radius-md)] outline-none focus:border-[var(--accent)] transition-[border-color] duration-100 w-[90px] placeholder:text-[var(--text-faint)]"
+              className="px-2 py-1 text-[11px] font-medium bg-transparent border border-[var(--border-subtle)] rounded-[var(--radius-md)] outline-none focus:border-[var(--accent)] transition-[border-color] duration-100 w-[90px] placeholder:text-[var(--text-faint)]"
             />
           ) : (
             <button
               onClick={() => setAddingTag(true)}
-              className="inline-flex items-center gap-1 px-2 py-1 rounded-[var(--radius-md)] text-[12px] text-[var(--text-muted)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-secondary)] transition-colors duration-100 cursor-pointer"
+              className={cn(
+                'inline-flex items-center gap-1 px-2 py-1 rounded-[var(--radius-md)]',
+                'text-[11px] font-medium text-[var(--text-muted)]',
+                'hover:bg-[var(--bg-hover)] hover:text-[var(--text-secondary)] transition-colors duration-100 cursor-pointer',
+              )}
             >
               <Plus size={10} />
               tag

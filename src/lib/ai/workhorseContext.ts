@@ -67,11 +67,16 @@ Summary paragraph describing what this area covers.
 
 ### Writing conventions
 
-- **Describe the system as it should be**, not changes to make. Each spec reads as "this is how the system works."
+- **Describe the system as it should be**, not the changes to make. Each spec is a coherent snapshot — it reads as "this is how the system works" rather than "change X to Y" or "no longer does Z". No references to "current behaviour", "remains unchanged", "now does", or "rather than the old way". The implementation agent receives a diff to work out what needs to change.
 - **Acceptance criteria are facts** about the system's behaviour, not instructions to a developer.
-- **No implementation details.** No function names, database fields, model names, enum values. Write "the system checks whether all parent cards have been committed" not "checks for a non-null \`specBranch\`".
+- **No implementation details.** Specs are written at a product-owner level. No function names, database fields, model names, enum values, or technical identifiers. Write "the system checks whether all parent cards have been committed" not "checks for a non-null \`specBranch\`". Write "Spec complete" not \`SPEC_COMPLETE\`. File paths within \`.workhorse/specs/\` are acceptable because they are part of the product's information architecture.
 - **No IDs on individual criteria** — keep it human-readable.
-- **Information hierarchy.** Each spec contains only sections directly related to its title. Use cross-references (e.g. "see \`editor/spec-editor.md\`") rather than duplicating.
+- **Information hierarchy.** Each spec contains only sections that relate directly to its title and area. If content would make more sense in another spec, it belongs there — add a cross-reference (e.g. "see \`editor/spec-editor.md\`") rather than duplicating or misplacing it. When in doubt, ask: "would someone looking for this information expect to find it in a spec with this title?"
+- **No specifying absences.** Document what the system does, not what it doesn't do. "We don't support X" or "X is not included" is not useful — if it's not in the spec, it's not in the system. If another spec needs updating because this feature changes its behaviour, update that spec declaratively.
+- **No point-in-time language.** Don't document transitions ("we used to do X, now we do Y", "this replaces the old Z"). Each spec is a snapshot of the desired system, not a changelog.
+- **No stacking adjectives.** Don't describe behaviour with chains of near-synonyms ("seamless, invisible, frictionless"). Use one precise word or describe the concrete behaviour instead.
+- **No exact measurements in prose.** Pixel widths, animation durations, and precise benchmarks belong in mockups or the design system, not in spec acceptance criteria. Describe the intent ("compact", "fast enough to feel instant") rather than the measurement.
+- **Nail down open questions before committing.** Specs should not contain unresolved decisions. If something is genuinely unknown, resolve it with the user before writing the spec. A spec with open questions is a draft, not a spec.
 - **Australian/NZ English** spelling (colour, organisation, finalise).
 - **No redundancy.** Don't state what's already visible from context.
 

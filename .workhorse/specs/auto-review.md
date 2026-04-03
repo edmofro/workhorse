@@ -7,10 +7,9 @@ A fresh-context AI agent reviews the draft specs and posts its findings into the
 
 ## Triggering a review
 
-- [ ] An "Auto-review" button is available via an action pill in the chat (see `card-navigation.md` for pill sets) and in the artifact header toolbar
-- [ ] The button label communicates that this is an automated process, not a screen the user has to fill in — something like "Auto-review" or "Check spec"
-- [ ] The button is disabled until at least one spec exists on the card
-- [ ] Clicking it spins up a fresh AI context with no access to the conversation history
+- [ ] The spec review is a subagent skill (see `workflow-orchestration.md`) — triggered via pills, the journey bar, or scheduling
+- [ ] The jockey suggests the review skill when specs exist on the card and a review has not yet been run
+- [ ] Each review spins up a fresh AI context with no access to the conversation history
 
 ## What the review agent receives
 
@@ -34,5 +33,4 @@ A fresh-context AI agent reviews the draft specs and posts its findings into the
 - [ ] After the findings appear, the session agent can see them and offers to work through them: "Would you like me to update the spec to address these?" or similar
 - [ ] The user can then instruct the AI on which suggestions to accept, reject, or refine — same conversational flow as the rest of the session
 - [ ] Multiple review passes can be triggered — each creates a fresh context
-- [ ] The system encourages at least one review before the first commit (e.g. a nudge when the user clicks Commit without having run a review)
 - [ ] Review results are persisted as chat messages with role "system" and metadata indicating it was an auto-review

@@ -1,6 +1,7 @@
 /**
- * Generate a lightweight implementation prompt for clipboard.
- * Points the AI at file paths and a diff command — doesn't inline content.
+ * Generate a context-rich briefing prompt for external agents.
+ * Explains the Workhorse system and gives the card's context,
+ * but does not prescribe a task — the human tells the external agent what to do.
  */
 
 import { isMockupPath } from '../paths'
@@ -13,82 +14,81 @@ interface HandoffContext {
   touchedFiles: string[]
   status: string
   attachmentFiles?: string[]
+  journalSummary?: string
 }
 
 export function generateHandoffPrompt(ctx: HandoffContext): string {
   const lines: string[] = []
 
+  lines.push(`# ${ctx.cardTitle} (${ctx.cardIdentifier})`)
+  lines.push('')
+
+  // Git setup
+  lines.push('## Setup')
+  lines.push('```')
   lines.push(`git fetch origin ${ctx.branchName}`)
   lines.push(`git checkout ${ctx.branchName}`)
+  lines.push('```')
+  lines.push('')
+
+  // System overview
+  lines.push('## Workhorse structure')
+  lines.push('- Specs live in `.workhorse/specs/` — acceptance criteria in markdown')
+  lines.push('- Design system: `.workhorse/design/design-system.md`')
+  lines.push('- Mockups: `.workhorse/design/mockups/` — standalone HTML with inline CSS')
+  lines.push('')
+
+  // What to read
+  lines.push('## What to read')
+  lines.push(`Diff the card branch against main to see what specs and mockups have been added or changed:`)
+  lines.push('```')
+  lines.push(`git diff ${ctx.baseBranch}...${ctx.branchName} -- .workhorse/`)
+  lines.push('```')
   lines.push('')
 
   const specFiles = ctx.touchedFiles.filter((f) => f.startsWith('.workhorse/specs/'))
   const mockupFiles = ctx.touchedFiles.filter((f) => isMockupPath(f))
   const attachmentFiles = ctx.attachmentFiles ?? ctx.touchedFiles.filter((f) => f.startsWith('.workhorse/attachments/'))
 
-  if (ctx.status === 'SPECIFYING') {
-    if (specFiles.length > 0) {
-      lines.push('Specs in progress:')
-      for (const f of specFiles) {
-        lines.push(`- ${f}`)
-      }
-      lines.push('')
+  if (specFiles.length > 0) {
+    lines.push('Specs:')
+    for (const f of specFiles) {
+      lines.push(`- ${f}`)
     }
-
-    if (mockupFiles.length > 0) {
-      lines.push('Mockups:')
-      for (const f of mockupFiles) {
-        lines.push(`- ${f}`)
-      }
-      lines.push('')
-    }
-
-    if (attachmentFiles.length > 0) {
-      lines.push('Attachments (screenshots/reference images):')
-      for (const f of attachmentFiles) {
-        lines.push(`- ${f}`)
-      }
-      lines.push('')
-    }
-
-    lines.push('Review the current specs and the codebase, then help develop')
-    lines.push('the acceptance criteria. Edit the spec files directly.')
-    if (attachmentFiles.length > 0) {
-      lines.push('Read the attachment images for visual context.')
-    }
-  } else {
-    // IMPLEMENTING or other
-    if (specFiles.length > 0) {
-      lines.push('Specs:')
-      for (const f of specFiles) {
-        lines.push(`- ${f}`)
-      }
-      lines.push('')
-    }
-
-    if (mockupFiles.length > 0) {
-      lines.push('Mockups:')
-      for (const f of mockupFiles) {
-        lines.push(`- ${f}`)
-      }
-      lines.push('')
-    }
-
-    if (attachmentFiles.length > 0) {
-      lines.push('Attachments (screenshots/reference images):')
-      for (const f of attachmentFiles) {
-        lines.push(`- ${f}`)
-      }
-      lines.push('')
-    }
-
-    lines.push('Review the diff to see what changed:')
-    lines.push(`git diff ${ctx.baseBranch}...${ctx.branchName} -- .workhorse/`)
     lines.push('')
-    lines.push('Read the specs and mockups, then implement all acceptance criteria.')
-    if (attachmentFiles.length > 0) {
-      lines.push('Read the attachment images for visual reference.')
+  }
+
+  if (mockupFiles.length > 0) {
+    lines.push('Mockups:')
+    for (const f of mockupFiles) {
+      lines.push(`- ${f}`)
     }
+    lines.push('')
+  }
+
+  if (attachmentFiles.length > 0) {
+    lines.push('Attachments (screenshots/reference):')
+    for (const f of attachmentFiles) {
+      lines.push(`- ${f}`)
+    }
+    lines.push('')
+  }
+
+  // Journal summary
+  if (ctx.journalSummary) {
+    lines.push('## Progress so far')
+    lines.push(ctx.journalSummary)
+    lines.push('')
+  }
+
+  // Code changes
+  if (ctx.status === 'IMPLEMENTING' || ctx.touchedFiles.some(f => !f.startsWith('.workhorse/'))) {
+    lines.push('## Code changes')
+    lines.push('Code changes should meet the spec acceptance criteria. Review the diff:')
+    lines.push('```')
+    lines.push(`git diff ${ctx.baseBranch}...${ctx.branchName}`)
+    lines.push('```')
+    lines.push('')
   }
 
   return lines.join('\n')

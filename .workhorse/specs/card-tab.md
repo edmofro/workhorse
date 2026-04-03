@@ -32,7 +32,7 @@ Initially, users will copy-paste descriptions from Linear. Over time, Workhorse 
 - [ ] Comments are attributed to the user who wrote them
 - [ ] Comments are not included in the AI agent session context
 
-## Activity timeline
+## Activity log
 
-- [ ] An activity timeline at the bottom of the card view shows a chronological log of actions on the card
-- [ ] Activities include: creation, status changes, spec updates, commits, dependency changes
+- [ ] An activity log records deterministic events on the card: creation, status changes, spec updates, commits, dependency changes
+- [ ] The activity log is stored for auditing but is not shown in the card view — the journey bar (see `workflow-orchestration.md`) is the user-facing record of progress

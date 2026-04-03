@@ -111,17 +111,9 @@ This context means the agent never needs to explore the codebase to understand h
 - File path guidance for this card's specs and mockups
 - Attachment file list (if any)
 
-**3. Mode-specific instructions** — driven by the `mode` parameter from action pills:
+**3. Skill-specific instructions** — driven by the skill that triggered the session (see `workflow-orchestration.md`):
 
-- **Interview mode**: structured interview — ask probing questions, surface edge cases, challenge assumptions
-- **Draft spec mode**: read card description, generate spec files immediately without interviewing
-- **Review mode**: fresh-eyes review — look for gaps, contradictions, ambiguities, missing edge cases
-- **Directed editing mode**: follow user's specific instructions to edit spec files
-- **Design audit mode**: review implementation against `.workhorse/design/` system docs
-- **Security audit mode**: review implementation for OWASP top 10, injection, auth/authz issues
-- **Default (no mode)**: follow the user's lead
-
-The mode parameter flows from the action pill UI → `useAgentSession` hook → `/api/agent-session` POST body → `buildSessionInstructions()`. Each mode maps to a system prompt fragment that shapes the agent's behaviour without the user needing to write detailed instructions.
+Each skill maps to a system prompt fragment that shapes the agent's behaviour. The skill parameter flows from the trigger (pill, journey bar, or scheduling) → API → system prompt builder. Skills include: workshop, interview, draft spec, review spec, implement, design audit, security audit, code review, and custom project-defined skills.
 
 ### Context window management
 
@@ -130,10 +122,8 @@ The mode parameter flows from the action pill UI → `useAgentSession` hook → 
 
 ### Session persistence and resumption
 
-> **Superseded by `conversation-sessions.md`.** The single `agentSessionId` on the Card model is replaced by a `ConversationSession` table that supports multiple sessions per card and standalone sessions. The Agent SDK integration described here still applies — `ConversationSession.agentSessionId` replaces `Card.agentSessionId`.
-
 - [ ] Agent SDK sessions persist to disk automatically (in `~/.claude/projects/`)
-- [ ] `session_id` stored on the `ConversationSession` record (was: Feature/Card record)
+- [ ] `session_id` stored on the `ConversationSession` record (see `conversation-sessions.md`)
 - [ ] Resume sessions with `resume: sessionId` on subsequent turns
 - [ ] Session transcript retrievable via `getSessionMessages()` for audit/display
 - [ ] Individual messages are not stored in Workhorse's database — the SDK is the source of truth for conversation history
@@ -295,116 +285,26 @@ If the server restarts (redeploy, crash, Railway restart), worktrees are recreat
 
 ## Card statuses
 
-- `NOT_STARTED` — card created, no spec activity yet
-- `SPECIFYING` — agent session or manual spec editing in progress
-- `IMPLEMENTING` — specs are ready, implementation in progress
-- `COMPLETE` — implementation done (PR merged, or manually marked)
+Statuses are configurable per project (see `workflow-orchestration.md`). Statuses are decoupled from skills — any skill can be triggered in any status. Backward transitions are allowed.
 
-Transitions: `NOT_STARTED` → `SPECIFYING` → `IMPLEMENTING` → `COMPLETE`. Backward transitions are allowed (e.g. `IMPLEMENTING` → `SPECIFYING` if specs need rework).
+## Handoff to external agents
 
-## Collaborate with agent button
-
-A split dropdown button appears in both `SPECIFYING` and `IMPLEMENTING` modes, adapting its prompt to the current phase. Uses the split button pattern (like GitHub's merge strategy button on PR reviews).
-
-### UX
-
-- [ ] Split button with dropdown: primary action on the face, chevron opens dropdown with both options
-- [ ] Two options: "Copy prompt" and "Launch Claude Code"
-- [ ] "Copy prompt" copies the phase-appropriate prompt to clipboard
-- [ ] "Launch Claude Code" copies prompt to clipboard AND opens `claude.ai/code` in a new tab
-- [ ] Button face shows whichever option the user chose last time (persisted in localStorage)
-- [ ] Default for first-time users: "Launch Claude Code"
-- [ ] Toast confirms: "Prompt copied" or "Prompt copied — opening Claude Code"
-
-### Specifying mode prompt
-
-When the card status is `SPECIFYING`, the prompt tells the agent to collaborate on specs:
-
-```
-git fetch origin workhorse/wh-042-spec
-git checkout workhorse/wh-042-spec
-
-Specs in progress:
-- .workhorse/specs/merge-patients.md (new)
-- .workhorse/specs/patient-search.md (updated)
-
-Mockups:
-- .workhorse/design/mockups/wh-042/merge-flow.html
-
-Review the current specs and the codebase, then help develop
-the acceptance criteria. Edit the spec files directly.
-```
-
-- [ ] Prompt includes git fetch/checkout for the card branch
-- [ ] Lists spec files this card touches, with new/updated labels
-- [ ] Lists mockup file paths
-- [ ] Instructs the agent to read specs and codebase, then edit spec files directly
-- [ ] Under 500 characters for typical features
-
-### Implementing mode prompt
-
-When the card status is `IMPLEMENTING`, the prompt tells the agent to implement:
-
-```
-git fetch origin workhorse/wh-042-spec
-git checkout workhorse/wh-042-spec
-
-New specs:
-- .workhorse/specs/merge-patients.md
-- .workhorse/specs/merge-conflicts.md
-
-Updated specs:
-- .workhorse/specs/patient-search.md
-
-Mockups:
-- .workhorse/design/mockups/wh-042/merge-flow.html
-
-Review the diff to see what changed:
-git diff main...workhorse/wh-042-spec -- .workhorse/
-
-Read the specs and mockups, then implement all acceptance criteria.
-```
-
-- [ ] Same structure as the specifying prompt but with implementation instruction
-- [ ] Includes git diff command to see the spec delta from main
-- [ ] Under 500 characters for typical features
-
-### Button placement
-
-- [ ] Appears in the topbar right section
-- [ ] Visible in both `SPECIFYING` and `IMPLEMENTING` modes
-- [ ] Button label adapts: could show "Collaborate on specs" vs "Implement" — or just always show "Launch Claude Code" / "Copy prompt" since the prompt itself carries the context
+A handoff button in the topbar generates a context-rich briefing prompt for external agents (Claude Code, Cursor, or any other AI tool). See `workflow-orchestration.md` for full details.
 
 ## External agent collaboration
 
-The worktree-on-disk architecture means that any agent with access to the same worktree can participate — not just the built-in agent. The collaborate button described above is the primary entry point, but the architecture is open by design.
+The worktree-on-disk architecture means that any agent with access to the same branch can participate.
 
-### How it works
-
-- [ ] The external Claude Code session operates on the same branch as the card
+- [ ] The external agent operates on the same branch as the card
 - [ ] It reads/writes the same spec and mockup files the built-in agent does
 - [ ] On return to Workhorse, the UI reflects any changes (it reads from disk)
 - [ ] Workhorse detects changed files on focus and refreshes (last-write-wins)
-
-### Implementation from within Workhorse
-
-- [ ] The same Agent SDK infrastructure can run an implementation agent — just a different mode and system prompt
-- [ ] The agent reads specs from `.workhorse/specs/`, diffs against main, and implements
-- [ ] This is a future capability but the architecture supports it with no changes — just a different system prompt appended to the same SDK setup
-- [ ] When ready, could replace the "Launch Claude Code" external flow with an in-app implementation experience
+- [ ] The jockey detects external commits on the card's branch and updates the journal accordingly
 
 ## Open questions
 
-> **Worktree disk pressure:** For very large monorepos, even with partial clone, working tree checkout could be slow or large. Should we support sparse checkout (only materialise relevant directories)? Probably premature — try full checkout first.
+> **Worktree disk pressure:** For very large monorepos, even with partial clone, working tree checkout could be slow or large. Should we support sparse checkout (only materialise relevant directories)?
 
-> **Concurrent sessions on the same card:** ~~Current design is one Agent SDK session per card.~~ Resolved: multiple conversation sessions per card (see `conversation-sessions.md`). Each session is an independent Agent SDK session. Two users can have separate sessions on the same card. Last-write-wins for file conflicts.
+> **Session transcript display:** Should the UI show the full Agent SDK session transcript (including tool calls), or just the text messages?
 
-> **Session transcript display:** Should the UI show the full Agent SDK session transcript (including tool calls), or just the text messages? The full transcript is richer but noisier. Could offer a toggle.
-
-> **Branch strategy for dependencies:** If card WH-043 depends on WH-042, should WH-043's worktree branch from WH-042's branch? This would let the agent see WH-042's spec changes. Adds complexity to branch management.
-
-> **Offline/degraded mode:** If the bare clone fetch fails (network issues), should we proceed with a stale worktree? Probably yes — stale code is better than no code.
-
-> **External agent auto-commit sync:** When an external Claude Code session pushes commits to the card's branch, Workhorse needs to detect these on focus/return. Should we poll the branch, use a webhook, or just `git pull` when the user returns to the card?
-
-> **Railway scaling:** A single Railway service handles both web requests and agent sessions. At what concurrency level does this become a problem? Should we have a concrete plan for splitting into web + worker services, or just monitor and react?
+> **Branch strategy for dependencies:** If card WH-043 depends on WH-042, should WH-043's worktree branch from WH-042's branch?

@@ -233,18 +233,22 @@ function NavRow({
         </span>
       )}
       {!disabled && onAdd && (
-        <div className="flex items-center shrink-0 pr-2 gap-1">
+        <div className="flex items-center shrink-0 gap-1 pr-2 opacity-0 group-hover:opacity-100 transition-opacity duration-100">
           <button
             type="button"
-            className="p-1 rounded-[var(--radius-sm)] text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity duration-100"
+            className="p-1 rounded-[var(--radius-sm)] text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] cursor-pointer transition-colors duration-100"
             title="New"
             onClick={onAdd}
           >
             <Plus size={12} />
           </button>
-          <span className="p-1 text-[var(--text-muted)]" aria-hidden="true">
+          <button
+            type="button"
+            className="p-1 rounded-[var(--radius-sm)] text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] cursor-pointer transition-colors duration-100"
+            title="Search"
+          >
             <Search size={12} />
-          </span>
+          </button>
         </div>
       )}
     </div>

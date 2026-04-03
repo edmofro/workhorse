@@ -90,6 +90,7 @@ export function CardDetailPage({ cardId, initialSessionId }: Props) {
         status: card.status,
         cardBranch: card.cardBranch,
         prUrl: card.prUrl,
+        autoFixEnabled: card.autoFixEnabled,
       }}
       cardTabContent={cardTabContent}
       initialFiles={filesData?.initialFiles ?? []}

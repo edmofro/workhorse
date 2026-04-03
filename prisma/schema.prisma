@@ -75,6 +75,7 @@ model Card {
   designAuditCompleted  Boolean  @default(false) // Design audit agent has run (implementation phase)
   securityAuditCompleted Boolean @default(false) // Security audit agent has run (implementation phase)
   codeReviewCompleted   Boolean  @default(false) // Code review agent has run (implementation phase)
+  autoFixEnabled        Boolean  @default(false) // Auto-fix CI failures on the card's PR
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 

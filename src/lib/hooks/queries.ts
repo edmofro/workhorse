@@ -125,6 +125,7 @@ interface CardDetailData {
     tags: string
     cardBranch: string | null
     prUrl: string | null
+    autoFixEnabled: boolean
     touchedFiles: string[]
     team: { id: string; name: string; colour: string }
     project: { id: string; name: string; owner: string; repoName: string; defaultBranch: string }

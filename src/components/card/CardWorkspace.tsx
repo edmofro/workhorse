@@ -61,6 +61,7 @@ interface CardWorkspaceProps {
     status: string
     cardBranch: string | null
     prUrl?: string | null
+    autoFixEnabled?: boolean
   }
   cardTabContent: React.ReactNode
   initialFiles: SpecFileData[]
@@ -643,6 +644,7 @@ export function CardWorkspace({
         cardId={card.id}
         hasCodeChanges={jockey.hasCodeChanges}
         prUrl={localPrUrl}
+        autoFixEnabled={card.autoFixEnabled ?? false}
         onPrCreated={handlePrCreated}
       />
     </div>

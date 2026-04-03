@@ -89,6 +89,7 @@ export async function GET(request: NextRequest) {
       tags: card.tags,
       cardBranch: card.cardBranch,
       prUrl: card.prUrl,
+      autoFixEnabled: card.autoFixEnabled,
       touchedFiles,
       team: { id: card.team.id, name: card.team.name, colour: card.team.colour },
       project: {

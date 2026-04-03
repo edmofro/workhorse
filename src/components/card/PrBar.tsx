@@ -1,14 +1,19 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useTransition } from 'react'
+import { createPortal } from 'react-dom'
 import { cn } from '../../lib/cn'
-import { ExternalLink, MoreHorizontal, Loader2 } from 'lucide-react'
+import { ExternalLink, MoreHorizontal, Loader2, Copy, Check } from 'lucide-react'
+import { usePortalMenu } from '../PropertyDropdown'
+import { toggleAutoFix } from '../../lib/actions/cards'
 
 interface PrBarProps {
   cardId: string
   hasCodeChanges: boolean
   prUrl: string | null
+  autoFixEnabled: boolean
   onPrCreated: (prUrl: string) => void
+  onAutoFixToggled?: (enabled: boolean) => void
 }
 
 function isSafeUrl(url: string): boolean {
@@ -20,9 +25,13 @@ function isSafeUrl(url: string): boolean {
   }
 }
 
-export function PrBar({ cardId, hasCodeChanges, prUrl, onPrCreated }: PrBarProps) {
+export function PrBar({ cardId, hasCodeChanges, prUrl, autoFixEnabled, onPrCreated, onAutoFixToggled }: PrBarProps) {
   const [isCreating, setIsCreating] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [copied, setCopied] = useState(false)
+  const [localAutoFix, setLocalAutoFix] = useState(autoFixEnabled)
+  const [, startTransition] = useTransition()
+  const { open, setOpen, toggle, triggerRef, menuRef, pos } = usePortalMenu()
 
   // Sanitise: only render as link if it's a valid HTTPS URL
   const safePrUrl = prUrl && isSafeUrl(prUrl) ? prUrl : null
@@ -55,6 +64,28 @@ export function PrBar({ cardId, hasCodeChanges, prUrl, onPrCreated }: PrBarProps
     }
   }
 
+  function handleCopyUrl() {
+    if (!safePrUrl) return
+    navigator.clipboard.writeText(safePrUrl)
+    setCopied(true)
+    setOpen(false)
+    setTimeout(() => setCopied(false), 1500)
+  }
+
+  function handleToggleAutoFix() {
+    const next = !localAutoFix
+    setLocalAutoFix(next)
+    onAutoFixToggled?.(next)
+    startTransition(async () => {
+      try {
+        await toggleAutoFix(cardId, next)
+      } catch {
+        setLocalAutoFix(!next)
+        onAutoFixToggled?.(!next)
+      }
+    })
+  }
+
   return (
     <div
       className={cn(
@@ -82,6 +113,8 @@ export function PrBar({ cardId, hasCodeChanges, prUrl, onPrCreated }: PrBarProps
             <ExternalLink size={11} />
           </a>
           <button
+            ref={triggerRef}
+            onClick={toggle}
             className={cn(
               'p-[6px] rounded-[var(--radius-default)]',
               'text-[var(--text-muted)] hover:text-[var(--text-primary)]',
@@ -91,6 +124,44 @@ export function PrBar({ cardId, hasCodeChanges, prUrl, onPrCreated }: PrBarProps
           >
             <MoreHorizontal size={14} />
           </button>
+
+          {/* Overflow menu */}
+          {open && pos && createPortal(
+            <div
+              ref={menuRef}
+              style={{ position: 'fixed', top: pos.top, left: pos.left }}
+              className="z-50 w-[200px] bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-[var(--radius-xl)] shadow-[var(--shadow-lg)] py-1"
+            >
+              <button
+                onClick={handleCopyUrl}
+                className="w-full text-left px-3 py-2 text-[12px] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer flex items-center gap-2"
+              >
+                {copied ? <Check size={12} /> : <Copy size={12} />}
+                {copied ? 'Copied' : 'Copy PR URL'}
+              </button>
+              <div className="mx-2 my-1 border-t border-[var(--border-subtle)]" />
+              <button
+                onClick={handleToggleAutoFix}
+                className="w-full text-left px-3 py-2 text-[12px] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer flex items-center justify-between"
+              >
+                <span>Auto-fix CI</span>
+                <span
+                  className={cn(
+                    'relative inline-flex h-[14px] w-[26px] shrink-0 rounded-full transition-colors duration-100',
+                    localAutoFix ? 'bg-[var(--accent)]' : 'bg-[var(--bg-inset)]',
+                  )}
+                >
+                  <span
+                    className={cn(
+                      'absolute top-[2px] h-[10px] w-[10px] rounded-full bg-white transition-[left] duration-100',
+                      localAutoFix ? 'left-[14px]' : 'left-[2px]',
+                    )}
+                  />
+                </span>
+              </button>
+            </div>,
+            document.body,
+          )}
         </>
       ) : (
         <button

@@ -231,6 +231,18 @@ export async function addComment(
   return result
 }
 
+export async function toggleAutoFix(cardId: string, enabled: boolean) {
+  await requireUser()
+
+  const card = await prisma.card.update({
+    where: { id: cardId },
+    data: { autoFixEnabled: enabled },
+  })
+
+  revalidatePath('/')
+  return card.autoFixEnabled
+}
+
 export async function getCardActivities(cardId: string) {
   return prisma.cardActivity.findMany({
     where: { cardId },

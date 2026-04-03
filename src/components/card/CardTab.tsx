@@ -6,14 +6,12 @@ import { X, Plus } from 'lucide-react'
 import { updateCard, addComment } from '../../lib/actions/cards'
 import { associateAttachmentsWithCard } from '../../lib/actions/attachments'
 import { Avatar } from '../Avatar'
-import { StatusDot } from '../StatusDot'
 import { Tag } from '../Tag'
-import { PropertyDropdown, usePortalMenu, type PropertyOption } from '../PropertyDropdown'
+import { usePortalMenu } from '../PropertyDropdown'
 import { useUser } from '../UserProvider'
 import { useAttachments } from '../../lib/hooks/useAttachments'
 import { AttachmentButton } from './AttachmentButton'
 import { AttachmentPreview } from './AttachmentPreview'
-import { STATUS_OPTIONS } from '../../lib/status'
 import { cn } from '../../lib/cn'
 
 interface CardAttachment {
@@ -57,27 +55,7 @@ interface CardTabProps {
   teams: { id: string; name: string; colour: string }[]
 }
 
-const PRIORITY_OPTIONS: PropertyOption[] = [
-  { value: 'URGENT', label: 'Urgent' },
-  { value: 'HIGH', label: 'High' },
-  { value: 'MEDIUM', label: 'Medium' },
-  { value: 'LOW', label: 'Low' },
-]
-
 const VISIBLE_TAG_COUNT = 3
-
-type StatusDotState = 'not-started' | 'specifying' | 'implementing' | 'complete' | 'cancelled'
-
-function statusToDotState(status: string): StatusDotState {
-  switch (status) {
-    case 'NOT_STARTED': return 'not-started'
-    case 'SPECIFYING': return 'specifying'
-    case 'IMPLEMENTING': return 'implementing'
-    case 'COMPLETE': return 'complete'
-    case 'CANCELLED': return 'cancelled'
-    default: return 'not-started'
-  }
-}
 
 function toAttachmentData(att: CardAttachment) {
   return {
@@ -144,10 +122,6 @@ export function CardTab({ card, users, teams }: CardTabProps) {
   const { user } = useUser()
   const [title, setTitle] = useState(card.title)
   const [description, setDescription] = useState(card.description ?? '')
-  const [status, setStatus] = useState(card.status)
-  const [priority, setPriority] = useState(card.priority)
-  const [teamId, setTeamId] = useState(card.team.id)
-  const [assigneeId, setAssigneeId] = useState(card.assignee?.id ?? '')
   const [newTag, setNewTag] = useState('')
   const [addingTag, setAddingTag] = useState(false)
   const [newComment, setNewComment] = useState('')
@@ -167,30 +141,6 @@ export function CardTab({ card, users, teams }: CardTabProps) {
 
   const visibleTags = tags.slice(0, VISIBLE_TAG_COUNT)
   const hiddenTags = tags.slice(VISIBLE_TAG_COUNT)
-
-  // Build dropdown option lists — memoised since they depend on stable props
-  const statusOptions = useMemo<PropertyOption[]>(() => (
-    STATUS_OPTIONS.map((opt) => ({
-      value: opt.value,
-      label: opt.label,
-      icon: <StatusDot state={statusToDotState(opt.value)} />,
-    }))
-  ), [])
-
-  const teamOptions = useMemo<PropertyOption[]>(() => (
-    teams.map((t) => ({ value: t.id, label: t.name }))
-  ), [teams])
-
-  const assigneeOptions = useMemo<PropertyOption[]>(() => ([
-    { value: '', label: 'Unassigned' },
-    ...users.map((u) => ({ value: u.id, label: u.displayName })),
-  ]), [users])
-
-  // Derive display labels from local state so they stay current after changes
-  const currentStatusLabel = STATUS_OPTIONS.find((o) => o.value === status)?.label ?? status
-  const currentPriorityLabel = PRIORITY_OPTIONS.find((o) => o.value === priority)?.label ?? priority
-  const currentTeamName = teams.find((t) => t.id === teamId)?.name ?? card.team.name
-  const currentAssigneeName = users.find((u) => u.id === assigneeId)?.displayName ?? 'Unassigned'
 
   useEffect(() => {
     if (addingTag) tagInputRef.current?.focus()

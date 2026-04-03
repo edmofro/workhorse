@@ -566,8 +566,22 @@ function buildCommitMessage(
   }
 
   // Code files (non-.workhorse)
-  if (codeFiles.length > 0) {
-    parts.push(`update code`)
+  if (codeFiles.length === 1) {
+    const name = codeFiles[0].filePath.split('/').pop() ?? codeFiles[0].filePath
+    const verb = codeFiles[0].isNew ? 'add' : 'update'
+    parts.push(`${verb} ${name}`)
+  } else if (codeFiles.length <= 3) {
+    const names = codeFiles.map((f) => f.filePath.split('/').pop() ?? f.filePath).join(', ')
+    parts.push(`update ${names}`)
+  } else if (codeFiles.length > 3) {
+    // Find common top-level directory if one exists
+    const dirs = codeFiles.map((f) => f.filePath.split('/')[0] ?? '')
+    const uniqueDirs = [...new Set(dirs)]
+    if (uniqueDirs.length === 1 && uniqueDirs[0]) {
+      parts.push(`update ${codeFiles.length} files in ${uniqueDirs[0]}/`)
+    } else {
+      parts.push(`update ${codeFiles.length} files`)
+    }
   }
 
   // Fallback for .workhorse files that aren't specs or mockups

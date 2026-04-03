@@ -88,9 +88,15 @@ export function CardDetailPage({ cardId, initialSessionId }: Props) {
         identifier: card.identifier,
         title: card.title,
         status: card.status,
+        priority: card.priority,
+        team: card.team,
+        assignee: card.assignee,
+        dependsOn: card.dependsOn,
         cardBranch: card.cardBranch,
         prUrl: card.prUrl,
       }}
+      users={users}
+      teams={teams}
       cardTabContent={cardTabContent}
       initialFiles={filesData?.initialFiles ?? []}
       initialCodeFiles={filesData?.initialCodeFiles ?? []}

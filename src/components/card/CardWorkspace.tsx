@@ -87,6 +87,8 @@ interface CardWorkspaceProps {
 
 export function CardWorkspace({
   card,
+  users,
+  teams,
   cardTabContent,
   initialFiles,
   initialCodeFiles = [],
@@ -574,8 +576,11 @@ export function CardWorkspace({
   // --- Chat column (shared between chat mode and artifact mode) ---
   const chatColumn = (
     <div className="flex-1 flex flex-col overflow-hidden">
-      {/* Journey bar — between topbar and chat */}
-      <JourneyBar
+      {/* Properties bar — shared across all views */}
+      <PropertiesBar
+        card={card}
+        users={users}
+        teams={teams}
         journalEntries={jockey.journalEntries}
         scheduledSteps={jockey.scheduledSteps}
         suggestions={dedupedSuggestions}
@@ -756,7 +761,10 @@ export function CardWorkspace({
       {view.type === 'card' && (
         <>
           <div className="flex-1 flex flex-col overflow-hidden">
-            <JourneyBar
+            <PropertiesBar
+              card={card}
+              users={users}
+              teams={teams}
               journalEntries={jockey.journalEntries}
               scheduledSteps={jockey.scheduledSteps}
               suggestions={dedupedSuggestions}

@@ -297,76 +297,8 @@ export function CardTab({ card, users, teams }: CardTabProps) {
           className="w-full text-[24px] font-bold tracking-[-0.03em] leading-[1.3] bg-transparent border-none outline-none mb-3"
         />
 
-        {/* Property strip */}
+        {/* Tags */}
         <div className="flex flex-wrap items-center gap-x-1 gap-y-1 mb-5 -mx-2">
-          {/* Status */}
-          <PropertyDropdown
-            trigger={
-              <>
-                <StatusDot state={statusToDotState(status)} />
-                {currentStatusLabel}
-              </>
-            }
-            options={statusOptions}
-            value={status}
-            onChange={(val) => {
-              setStatus(val)
-              handleUpdate({ status: val })
-            }}
-          />
-
-          {/* Priority */}
-          <PropertyDropdown
-            trigger={currentPriorityLabel}
-            options={PRIORITY_OPTIONS}
-            value={priority}
-            onChange={(val) => {
-              setPriority(val)
-              handleUpdate({ priority: val })
-            }}
-          />
-
-          {/* Team */}
-          <PropertyDropdown
-            trigger={currentTeamName}
-            options={teamOptions}
-            value={teamId}
-            onChange={(val) => {
-              setTeamId(val)
-              handleUpdate({ teamId: val })
-            }}
-          />
-
-          {/* Assignee */}
-          <PropertyDropdown
-            trigger={currentAssigneeName}
-            options={assigneeOptions}
-            value={assigneeId}
-            onChange={(val) => {
-              setAssigneeId(val)
-              handleUpdate({ assigneeId: val || null })
-            }}
-          />
-
-          {/* Depends on — display only */}
-          {card.dependsOn.length > 0 && (
-            <div className="flex items-center gap-1 px-2 py-1">
-              {card.dependsOn.map((dep) => (
-                <span
-                  key={dep.identifier}
-                  className="text-[11px] font-medium font-mono text-[var(--text-muted)]"
-                  title={dep.title}
-                >
-                  {dep.identifier}
-                </span>
-              ))}
-            </div>
-          )}
-
-          {/* Divider before tags */}
-          <span className="px-1 text-[12px] text-[var(--text-faint)] select-none">·</span>
-
-          {/* Visible tags — variant logic matches the board's Tag component */}
           {visibleTags.map((tag) => (
             <Tag
               key={tag}

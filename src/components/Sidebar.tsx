@@ -339,7 +339,7 @@ function ConversationsList({
           : session.projectName
             ? `/${encodeURIComponent(session.projectName.toLowerCase())}/sessions/${session.id}`
             : '#'
-        const sessionLabel = session.title ?? session.cardTitle ?? 'New conversation'
+        const sessionLabel = session.cardTitle ?? session.title ?? 'New conversation'
         const label = session.cardIdentifier
           ? `${session.cardIdentifier}: ${sessionLabel}`
           : sessionLabel

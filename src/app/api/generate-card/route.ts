@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
 Given the user's input, respond with JSON only — no markdown fences, no extra text. If the user has attached images (screenshots, mockups, etc.), use them as context.
 
 Format:
-{"title": "...", "description": "..."}
+{"description": "..."}
 
 Rules:
 - Title: A short phrase of 5–8 words summarising the intent. Sentence case. No full stop.

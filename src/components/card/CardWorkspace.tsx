@@ -397,11 +397,11 @@ export function CardWorkspace({
     [sessions, navigateTo],
   )
 
-  // Send message with mode support
+  // Send message with optional skill
   const handleSendMessage = useCallback(
-    (content: string, mode?: string) => {
+    (content: string, skillId?: string) => {
       const uploaded = chatAttachments.getUploadedAttachments()
-      rawSendMessage(content, user.displayName, uploaded.length > 0 ? uploaded : undefined, mode)
+      rawSendMessage(content, user.displayName, uploaded.length > 0 ? uploaded : undefined, skillId)
       chatAttachments.clear()
 
       if (view.type === 'card') {
@@ -415,7 +415,7 @@ export function CardWorkspace({
 
   const handlePillSelect = useCallback(
     (pill: ActionPill) => {
-      handleSendMessage(pill.message, pill.mode)
+      handleSendMessage(pill.message, pill.skillId)
     },
     [handleSendMessage],
   )
@@ -430,10 +430,12 @@ export function CardWorkspace({
     [handleSendMessage],
   )
 
-  /** Create PR from the PR bar */
-  const handleCreatePr = useCallback(() => {
-    handleSendMessage('Create a pull request for this card', 'create_pr')
-  }, [handleSendMessage])
+  /** Handle PR creation — update local state with the new PR URL */
+  const [localPrUrl, setLocalPrUrl] = useState<string | null>(card.prUrl ?? null)
+  const handlePrCreated = useCallback((prUrl: string) => {
+    setLocalPrUrl(prUrl)
+    router.refresh()
+  }, [router])
 
   // Spec operations
   const ensureWorktree = useCallback(async () => {
@@ -543,7 +545,7 @@ export function CardWorkspace({
     return {
       label: p.label,
       message: skill?.description ?? `Run ${p.label}`,
-      mode: p.skillId,
+      skillId: p.skillId,
     }
   })
 
@@ -639,9 +641,10 @@ export function CardWorkspace({
       </div>
       {/* PR bar — bottom of chat area */}
       <PrBar
+        cardId={card.id}
         hasCodeChanges={jockey.hasCodeChanges}
-        prUrl={card.prUrl ?? null}
-        onCreatePr={handleCreatePr}
+        prUrl={localPrUrl}
+        onPrCreated={handlePrCreated}
       />
     </div>
   )

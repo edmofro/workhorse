@@ -6,8 +6,8 @@ export interface ActionPill {
   label: string
   /** The message sent to the chat when clicked */
   message: string
-  /** Mode identifier sent to the API alongside the message */
-  mode?: string
+  /** Skill identifier sent to the API alongside the message */
+  skillId?: string
 }
 
 interface ActionPillsProps {
@@ -42,67 +42,3 @@ export function ActionPills({ pills, onSelect, disabled }: ActionPillsProps) {
   )
 }
 
-export type PillViewContext =
-  | { type: 'card' }
-  | { type: 'chat' }
-  | { type: 'artifact'; isMockup: boolean }
-
-/** Returns the appropriate pills based on card status and conversation state */
-export function getPillsForContext(
-  status: string,
-  hasMessages: boolean,
-  view: PillViewContext,
-): ActionPill[] {
-  if (view.type === 'artifact') {
-    if (view.isMockup) {
-      return [
-        { label: 'Review this mockup', message: 'Review this mockup', mode: 'review' },
-        { label: 'Make changes', message: 'Make changes to this mockup', mode: 'directed' },
-      ]
-    }
-    return [
-      { label: 'Review this spec', message: 'Review this spec', mode: 'review' },
-      { label: 'Make changes', message: 'Make changes to the spec', mode: 'directed' },
-    ]
-  }
-
-  if (status === 'NOT_STARTED') {
-    return [
-      { label: 'Interview me', message: 'Interview me on this card', mode: 'interview' },
-      { label: 'Draft a spec', message: 'Draft a spec from the card description', mode: 'draft' },
-      { label: 'Add a mockup', message: 'I want to create a mockup for this card. Help me describe what I need or I can paste HTML.', mode: 'mockup' },
-    ]
-  }
-
-  if (status === 'SPECIFYING') {
-    if (!hasMessages) {
-      return [
-        { label: 'Where were we up to?', message: 'Where were we up to? Summarise what we have so far and what remains.', mode: 'interview' },
-        { label: 'Continue interview', message: 'Continue the spec interview', mode: 'interview' },
-        { label: 'Review specs', message: 'Review the current specs', mode: 'review' },
-        { label: 'Add a mockup', message: 'I want to create a mockup for this card.', mode: 'mockup' },
-      ]
-    }
-    return [
-      { label: 'Interview me', message: 'Switch to interview mode — ask me probing questions', mode: 'interview' },
-      { label: 'Review specs', message: 'Review the current specs for gaps and contradictions', mode: 'review' },
-      { label: 'Make changes', message: 'Make specific changes to the specs', mode: 'directed' },
-    ]
-  }
-
-  if (status === 'IMPLEMENTING') {
-    if (!hasMessages) {
-      return [
-        { label: 'Start implementing', message: 'Start implementing from the specs', mode: 'implement' },
-        { label: 'Design audit', message: 'Audit the implementation against the design system', mode: 'design_audit' },
-        { label: 'Security audit', message: 'Audit the implementation for security concerns', mode: 'security_audit' },
-      ]
-    }
-    return [
-      { label: 'Design audit', message: 'Audit the implementation against the design system', mode: 'design_audit' },
-      { label: 'Security audit', message: 'Audit the implementation for security concerns', mode: 'security_audit' },
-    ]
-  }
-
-  return []
-}

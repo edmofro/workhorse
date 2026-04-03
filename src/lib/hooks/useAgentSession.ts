@@ -125,7 +125,7 @@ export function useAgentSession(
   }, [])
 
   const sendMessage = useCallback(
-    async (content: string, userName: string, attachments?: AttachmentData[], mode?: string) => {
+    async (content: string, userName: string, attachments?: AttachmentData[], skillId?: string) => {
       if ((!content.trim() && (!attachments || attachments.length === 0)) || isStreamingRef.current) return
 
       // Add user message
@@ -200,7 +200,7 @@ export function useAgentSession(
             sessionId: currentSessionIdRef.current,
             message: content,
             attachmentIds,
-            mode,
+            skillId,
           }),
           signal: abortRef.current.signal,
         })

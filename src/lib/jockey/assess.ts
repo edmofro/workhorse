@@ -195,15 +195,19 @@ export function getDefaultPills(input: DefaultsContext): JockeyAssessment['pills
 }
 
 /** Deterministic fallback suggestions when the jockey LLM call fails */
-export function getDefaultSuggestions(input: Pick<DefaultsContext, 'hasSpecs' | 'journalEntries'>): JockeyAssessment['suggestions'] {
+export function getDefaultSuggestions(input: DefaultsContext): JockeyAssessment['suggestions'] {
   const suggestions: JockeyAssessment['suggestions'] = []
   if (!input.hasSpecs) {
     suggestions.push({ skillId: 'interview', label: 'Interview' })
   }
-  if (!input.journalEntries.some(e => e.type === 'spec-review')) {
+  if (input.hasSpecs && !input.journalEntries.some(e => e.type === 'spec-review')) {
     suggestions.push({ skillId: 'review', label: 'Review specs' })
   }
-  suggestions.push({ skillId: 'implement', label: 'Implement' })
-  suggestions.push({ skillId: 'create_pr', label: 'Create PR' })
+  if (!input.hasCodeChanges && !input.journalEntries.some(e => e.type === 'implementation')) {
+    suggestions.push({ skillId: 'implement', label: 'Implement' })
+  }
+  if (input.hasCodeChanges && !input.hasPr) {
+    suggestions.push({ skillId: 'create_pr', label: 'Create PR' })
+  }
   return suggestions
 }

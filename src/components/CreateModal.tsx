@@ -198,11 +198,8 @@ export function CreateModal({
               </div>
             )}
 
-            {/* Chat-input-style container */}
-            <div className="flex items-end bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] transition-[border-color,box-shadow] duration-150 focus-within:border-[var(--accent)] focus-within:shadow-[var(--shadow-input-focus)] p-1.5 pl-4">
-              {isCard && (
-                <AttachmentButton onFiles={attachments.addFiles} disabled={busy} />
-              )}
+            {/* Input container */}
+            <div className={`flex ${isCard ? 'flex-col' : 'items-end'} bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] transition-[border-color,box-shadow] duration-150 focus-within:border-[var(--accent)] focus-within:shadow-[var(--shadow-input-focus)] p-1.5 ${isCard ? 'p-4' : 'pl-4'}`}>
               <textarea
                 ref={textareaRef}
                 value={prompt}
@@ -210,25 +207,30 @@ export function CreateModal({
                 onKeyDown={handleKeyDown}
                 onPaste={handlePaste}
                 autoFocus
-                rows={1}
+                rows={isCard ? 4 : 1}
                 placeholder={isCard ? 'Describe what needs to be done...' : 'What would you like to discuss?'}
                 disabled={busy}
-                className="flex-1 border-none bg-transparent outline-none resize-none text-[14px] leading-[1.5] min-h-[24px] py-2 placeholder:text-[var(--text-faint)]"
+                className={`flex-1 border-none bg-transparent outline-none resize-none text-[14px] leading-[1.5] placeholder:text-[var(--text-faint)] ${isCard ? 'min-h-[96px] py-0' : 'min-h-[24px] py-2'}`}
               />
-              <button
-                onClick={() => handleSubmit(prompt)}
-                disabled={!canSend}
-                className="px-4 py-2 bg-[var(--accent)] text-white rounded-[var(--radius-default)] text-xs font-medium cursor-pointer disabled:opacity-40 disabled:cursor-default shrink-0 transition-colors duration-100 hover:bg-[var(--accent-hover)]"
-              >
-                {busy ? (
-                  <span className="flex items-center gap-1.5">
-                    <Loader2 size={12} className="animate-spin" />
-                    {isCard ? 'Creating...' : 'Starting...'}
-                  </span>
-                ) : (
-                  isCard ? 'Create card' : 'Send'
+              <div className={`flex items-center ${isCard ? 'justify-between mt-3' : ''}`}>
+                {isCard && (
+                  <AttachmentButton onFiles={attachments.addFiles} disabled={busy} />
                 )}
-              </button>
+                <button
+                  onClick={() => handleSubmit(prompt)}
+                  disabled={!canSend}
+                  className={`px-4 py-2 bg-[var(--accent)] text-white rounded-[var(--radius-default)] text-xs font-medium cursor-pointer disabled:opacity-40 disabled:cursor-default shrink-0 transition-colors duration-100 hover:bg-[var(--accent-hover)] ${isCard ? 'ml-auto' : ''}`}
+                >
+                  {busy ? (
+                    <span className="flex items-center gap-1.5">
+                      <Loader2 size={12} className="animate-spin" />
+                      {isCard ? 'Creating...' : 'Starting...'}
+                    </span>
+                  ) : (
+                    isCard ? 'Create card' : 'Send'
+                  )}
+                </button>
+              </div>
             </div>
 
             {/* Error */}

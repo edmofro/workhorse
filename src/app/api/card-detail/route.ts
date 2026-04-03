@@ -135,7 +135,7 @@ export async function GET(request: NextRequest) {
         id: m.id,
         title: m.title,
         html: m.html,
-        filePath: `.workhorse/design/mockups/${card.identifier}/${m.title.toLowerCase().replace(/\s+/g, '-')}.html`,
+        filePath: `.workhorse/design/mockups/${card.identifier.toLowerCase()}/${m.title.toLowerCase().replace(/\s+/g, '-')}.html`,
       })),
     },
     users: users.map((u) => ({ id: u.id, displayName: u.displayName })),

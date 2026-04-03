@@ -327,12 +327,8 @@ export async function POST(request: NextRequest) {
           assistantText,
         })
 
-        // Send [DONE] immediately so the client knows the agent exchange
-        // is complete — don't block on the jockey LLM assessment.
-        controller.enqueue(encoder.encode('data: [DONE]\n\n'))
-
-        // Run jockey assessment after [DONE]. The client still receives
-        // the jockey event via the open stream before it closes.
+        // Run jockey assessment and send before [DONE] so the client
+        // always receives it before the stream is considered complete.
         try {
           const jockeyResult = await runJockeyAfterExchange(
             cardId,
@@ -353,6 +349,7 @@ export async function POST(request: NextRequest) {
           console.warn('[jockey] Post-exchange assessment failed:', jockeyErr)
         }
 
+        controller.enqueue(encoder.encode('data: [DONE]\n\n'))
         controller.close()
       } catch (err) {
         const errorMsg = err instanceof Error ? err.message : 'Interview failed'
@@ -544,7 +541,7 @@ async function runJockeyAfterExchange(
 ): Promise<JockeyAssessment | null> {
   try {
     // Fetch current state
-    const [journalEntries, scheduledSteps, session, card] = await Promise.all([
+    const [journalEntries, scheduledSteps, card] = await Promise.all([
       prisma.journalEntry.findMany({
         where: { cardId },
         orderBy: { createdAt: 'asc' },
@@ -555,10 +552,6 @@ async function runJockeyAfterExchange(
         where: { cardId },
         orderBy: { position: 'asc' },
         select: { id: true, skillId: true, position: true },
-      }),
-      prisma.conversationSession.findUnique({
-        where: { id: convSessionId },
-        select: { jockeyCursor: true, messageCount: true },
       }),
       prisma.card.findUnique({
         where: { id: cardId },
@@ -604,13 +597,14 @@ async function runJockeyAfterExchange(
       })
     }
 
-    // Update jockey cursor — advance by the actual number of new messages
-    if (session) {
-      await prisma.conversationSession.update({
-        where: { id: convSessionId },
-        data: { jockeyCursor: session.messageCount + recentMessages.length },
-      })
-    }
+    // Update jockey cursor atomically — messageCount may have been
+    // incremented by finaliseSessionAfterExchange since we read it.
+    await prisma.conversationSession.update({
+      where: { id: convSessionId },
+      data: { jockeyCursor: { increment: recentMessages.length } },
+    }).catch(() => {
+      // Session may have been deleted concurrently
+    })
 
     // Handle scheduled step auto-start
     if (assessment.startNextScheduled && scheduledSteps.length > 0) {

@@ -45,7 +45,7 @@ export function useJockeyState(cardId: string) {
   const { data: initialData } = useQuery({
     queryKey: ['jockey', cardId],
     queryFn: async () => {
-      const res = await fetch(`/api/jockey?cardId=${cardId}`)
+      const res = await fetch(`/api/jockey?cardId=${encodeURIComponent(cardId)}`)
       if (!res.ok) return null
       return res.json() as Promise<JockeyState>
     },

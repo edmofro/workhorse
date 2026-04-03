@@ -31,6 +31,7 @@ export async function GET(request: NextRequest) {
       where: { cardId: card.id },
       orderBy: { createdAt: 'asc' },
       select: { type: true, summary: true, createdAt: true },
+      take: 100,
     }),
   ])
   const attachmentFiles = attachments.map(

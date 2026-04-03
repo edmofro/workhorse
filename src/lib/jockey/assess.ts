@@ -28,6 +28,11 @@ ${Object.values(BUILT_IN_SKILLS).map(s => `- **${s.id}** (${s.label}): ${s.descr
 - Set startNextScheduled to true ONLY if the current step clearly just completed AND there's a scheduled next step
 - Return valid JSON matching the schema exactly`
 
+/** Escape XML special chars to prevent tag breakout in LLM prompts */
+function escapeXml(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+}
+
 function buildAssessmentPrompt(input: JockeyInput): string {
   const parts: string[] = []
 
@@ -53,9 +58,7 @@ function buildAssessmentPrompt(input: JockeyInput): string {
   parts.push('')
   parts.push('## Card context')
   // Wrap user-supplied content in XML tags to separate data from instructions.
-  // Escape XML special chars to prevent tag breakout.
-  const safeTitle = input.cardTitle.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-  parts.push(`<card_title>${safeTitle}</card_title>`)
+  parts.push(`<card_title>${escapeXml(input.cardTitle)}</card_title>`)
   parts.push(`Status: ${input.cardStatus}`)
   parts.push(`Has specs: ${input.hasSpecs ? 'yes' : 'no'}`)
   parts.push(`Has code changes: ${input.hasCodeChanges ? 'yes' : 'no'}`)
@@ -72,12 +75,14 @@ function buildAssessmentPrompt(input: JockeyInput): string {
     // Show context messages (before the new ones)
     for (let i = Math.max(0, windowStart - 6); i < windowStart; i++) {
       const msg = input.recentMessages[i]
-      parts.push(`[context] ${msg.role}: ${msg.content.slice(0, 300)}${msg.content.length > 300 ? '...' : ''}`)
+      const safe = escapeXml(msg.content.slice(0, 300))
+      parts.push(`[context] ${msg.role}: ${safe}${msg.content.length > 300 ? '...' : ''}`)
     }
     // Show new messages (since last assessment)
     for (let i = windowStart; i < input.recentMessages.length; i++) {
       const msg = input.recentMessages[i]
-      parts.push(`[NEW] ${msg.role}: ${msg.content.slice(0, 500)}${msg.content.length > 500 ? '...' : ''}`)
+      const safe = escapeXml(msg.content.slice(0, 500))
+      parts.push(`[NEW] ${msg.role}: ${safe}${msg.content.length > 500 ? '...' : ''}`)
     }
     parts.push('</conversation_transcript>')
   }
@@ -135,12 +140,17 @@ export async function runJockeyAssessment(input: JockeyInput): Promise<JockeyAss
 
     const parsed = JSON.parse(jsonMatch[0]) as JockeyAssessment
 
-    // Validate the shape
+    // Validate the shape — filter out malformed items from LLM arrays
+    const validEntry = (e: unknown): e is { type: string; summary: string } =>
+      !!e && typeof (e as Record<string, unknown>).type === 'string' && typeof (e as Record<string, unknown>).summary === 'string'
+    const validPill = (p: unknown): p is { skillId: string; label: string } =>
+      !!p && typeof (p as Record<string, unknown>).skillId === 'string' && typeof (p as Record<string, unknown>).label === 'string'
+
     return {
-      journalEntries: Array.isArray(parsed.journalEntries) ? parsed.journalEntries : [],
+      journalEntries: Array.isArray(parsed.journalEntries) ? parsed.journalEntries.filter(validEntry) : [],
       activeStep: typeof parsed.activeStep === 'string' ? parsed.activeStep : null,
-      pills: Array.isArray(parsed.pills) ? parsed.pills.slice(0, 4) : defaultAssessment.pills,
-      suggestions: Array.isArray(parsed.suggestions) ? parsed.suggestions : defaultAssessment.suggestions,
+      pills: Array.isArray(parsed.pills) ? parsed.pills.filter(validPill).slice(0, 4) : defaultAssessment.pills,
+      suggestions: Array.isArray(parsed.suggestions) ? parsed.suggestions.filter(validPill) : defaultAssessment.suggestions,
       startNextScheduled: parsed.startNextScheduled === true,
     }
   } catch (error) {

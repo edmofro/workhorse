@@ -105,7 +105,7 @@ export function ChatInput({
     <button
       type="button"
       onClick={onStop}
-      className={cn(btnPad, 'bg-[var(--bg-surface)] text-[var(--text-secondary)] border border-[var(--border-default)] rounded-[var(--radius-default)] shadow-[var(--shadow-sm)] cursor-pointer hover:bg-[var(--bg-hover)] shrink-0 transition-colors duration-100')}
+      className={cn(btnPad, 'text-[var(--text-muted)] hover:text-[var(--text-primary)] rounded-[var(--radius-default)] cursor-pointer shrink-0 transition-colors duration-100')}
       title="Stop"
     >
       <Square size={iconSize - 2} fill="currentColor" />

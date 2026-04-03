@@ -64,7 +64,6 @@ model Card {
   assigneeId      String?
   tags            String   @default("[]") // JSON array of strings
   cardBranch      String?  // Git branch for this card's work (internal, not surfaced to user)
-  touchedFiles    String   @default("[]") // JSON array of file paths this card has modified
   prNumber        Int?     // GitHub PR number
   prUrl           String?  // GitHub PR URL
   lastActivityAt  DateTime @default(now()) // For stale worktree cleanup

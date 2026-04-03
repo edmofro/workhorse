@@ -9,7 +9,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '../../../lib/prisma'
 import { requireUser, requireCardAccess } from '../../../lib/auth/session'
 import { getDefaultPills, getDefaultSuggestions } from '../../../lib/jockey/assess'
-import { safeParseTouchedFiles } from '../../../lib/safeParseTouchedFiles'
+import { getChangedFiles } from '../../../lib/git/worktree'
 
 export async function GET(request: NextRequest) {
   const user = await requireUser()
@@ -38,9 +38,12 @@ export async function GET(request: NextRequest) {
     }),
   ])
 
-  const touchedFiles = safeParseTouchedFiles(card.touchedFiles ?? '[]')
-  const hasSpecs = touchedFiles.some(f => f.startsWith('.workhorse/specs/'))
-  const hasCodeChanges = touchedFiles.some(f => !f.startsWith('.workhorse/'))
+  const { owner, repoName, defaultBranch } = card.team.project
+  const { workhorseFiles, codeFiles } = await getChangedFiles(
+    owner, repoName, card.identifier, defaultBranch,
+  )
+  const hasSpecs = workhorseFiles.some(f => f.filePath.startsWith('.workhorse/specs/'))
+  const hasCodeChanges = codeFiles.length > 0
   const hasPr = !!card.prUrl
 
   // Use deterministic defaults for fast initial load — no LLM call.

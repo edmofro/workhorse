@@ -2,8 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireUser, requireCardAccess } from '../../../lib/auth/session'
 import { prisma } from '../../../lib/prisma'
 import { createPullRequest } from '../../../lib/git/githubClient'
-import { safeParseTouchedFiles } from '../../../lib/safeParseTouchedFiles'
-import { autoCommit } from '../../../lib/git/worktree'
+import { autoCommit, getChangedFiles } from '../../../lib/git/worktree'
 
 /**
  * POST /api/create-pr
@@ -50,10 +49,14 @@ export async function POST(request: NextRequest) {
     // No worktree or nothing to commit — that's fine, branch should already be pushed
   }
 
-  // Build PR title and body from card context
-  const touchedFiles = safeParseTouchedFiles(card.touchedFiles ?? '[]')
-  const specFiles = touchedFiles.filter(f => f.startsWith('.workhorse/specs/'))
-  const codeFiles = touchedFiles.filter(f => !f.startsWith('.workhorse/'))
+  // Build PR title and body from card context (derive file lists from git)
+  const { workhorseFiles, codeFiles: changedCodeFiles } = await getChangedFiles(
+    owner, repoName, card.identifier, defaultBranch,
+  )
+  const specFiles = workhorseFiles
+    .filter(f => f.filePath.startsWith('.workhorse/specs/'))
+    .map(f => f.filePath)
+  const codeFiles = changedCodeFiles.map(f => f.filePath)
 
   const journalEntries = await prisma.journalEntry.findMany({
     where: { cardId },

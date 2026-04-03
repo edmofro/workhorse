@@ -17,10 +17,9 @@ Navigation structure: a global project switcher sets the context, and the sideba
 ## Default project on load
 
 - [ ] When a user opens Workhorse, the active project defaults to the project they most recently had selected
-- [ ] This preference is stored per user and persists across sessions and browser restarts
-- [ ] If the user's most recently used project is no longer accessible (e.g. GitHub access was revoked), the system falls back to the first accessible project in the list
+- [ ] This preference persists across sessions and browser restarts
+- [ ] If the most recently used project is no longer accessible (e.g. GitHub access was revoked), the system falls back to the first accessible project in the list
 - [ ] If the user has no previously selected project (first sign-in), the system selects the first accessible project automatically
-- [ ] If the user has no accessible projects, the project switcher shows an empty state prompting them to add a project
 
 ## Sidebar structure
 
@@ -75,6 +74,4 @@ Teams are not exposed in the sidebar or as a primary navigation concept. They ex
 
 ## Product creation
 
-- [ ] Creating a product in settings opens an inline form with empty fields
-- [ ] The GitHub URL field is required and validated (must match `github.com/:owner/:repo` pattern) before the product can be saved
-- [ ] Owner and repo name are derived from the URL automatically
+Project creation is described in `multi-product.md`.

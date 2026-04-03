@@ -89,6 +89,7 @@ export function ChatInput({
 
   const sendButton = (
     <button
+      type="button"
       onClick={handleSubmit}
       disabled={!canSend}
       className={cn(btnPad, 'bg-[var(--accent)] text-white rounded-[var(--radius-default)] cursor-pointer disabled:opacity-40 shrink-0 transition-colors duration-100')}
@@ -100,6 +101,7 @@ export function ChatInput({
 
   const stopButton = (
     <button
+      type="button"
       onClick={onStop}
       className={cn(btnPad, 'bg-[var(--bg-surface)] text-[var(--text-secondary)] border border-[var(--border-default)] rounded-[var(--radius-default)] shadow-[var(--shadow-sm)] cursor-pointer hover:bg-[var(--bg-hover)] shrink-0 transition-colors duration-100')}
       title="Stop"
@@ -141,6 +143,7 @@ export function ChatInput({
             onPaste={handlePaste}
             placeholder="Ask to refine..."
             rows={1}
+            disabled={disabled}
             className="flex-1 border-none bg-transparent outline-none resize-none text-[13px] leading-[1.5] min-h-[24px]"
             style={{ padding: '6px 0', maxHeight: '160px', overflowY: 'auto' }}
           />

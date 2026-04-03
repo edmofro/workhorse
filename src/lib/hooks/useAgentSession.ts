@@ -49,6 +49,8 @@ export function useAgentSession(
     skillId?: string
     tempId: string
   } | null>(null)
+  const queuedMessageRef = useRef(queuedMessage)
+  queuedMessageRef.current = queuedMessage
   // Track the conversation session ID and title (may be set after first message)
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(sessionId)
   const currentSessionIdRef = useRef<string | null>(sessionId)
@@ -144,12 +146,11 @@ export function useAgentSession(
       if (isStreamingRef.current) {
         const tempId = `temp-${Date.now()}-queued`
         // Remove the previous queued message's optimistic preview if overwriting
-        setQueuedMessage((prev) => {
-          if (prev) {
-            setMessages((msgs) => msgs.filter((m) => m.id !== prev.tempId))
-          }
-          return { content, userName, attachments, skillId, tempId }
-        })
+        const prev = queuedMessageRef.current
+        if (prev) {
+          setMessages((msgs) => msgs.filter((m) => m.id !== prev.tempId))
+        }
+        setQueuedMessage({ content, userName, attachments, skillId, tempId })
         const userMsg: SessionMessage = {
           id: tempId,
           role: 'user',
@@ -476,12 +477,11 @@ export function useAgentSession(
   const interrupt = useCallback(() => {
     abortRef.current?.abort()
     // Clear any queued message so it doesn't fire after the abort settles
-    setQueuedMessage((prev) => {
-      if (prev) {
-        setMessages((msgs) => msgs.filter((m) => m.id !== prev.tempId))
-      }
-      return null
-    })
+    const queued = queuedMessageRef.current
+    if (queued) {
+      setMessages((msgs) => msgs.filter((m) => m.id !== queued.tempId))
+      setQueuedMessage(null)
+    }
   }, [])
 
   return {

@@ -257,10 +257,15 @@ export async function POST(request: NextRequest) {
 
   const stream = new ReadableStream({
     async start(controller) {
+      // Safe enqueue — silently drops writes if the client has disconnected
+      function enqueue(chunk: Uint8Array) {
+        try { controller.enqueue(chunk) } catch { /* stream closed */ }
+      }
+
       try {
         // Send session ID to client immediately so it can track the session
         // before the agent stream completes (prevents duplicate session creation)
-        controller.enqueue(
+        enqueue(
           encoder.encode(
             `data: ${JSON.stringify({ type: 'session', sessionId: convSessionId })}\n\n`,
           ),
@@ -300,7 +305,7 @@ export async function POST(request: NextRequest) {
                 data: { agentSessionId: agentSdkSessionId },
               })
             }
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`))
+            enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`))
           }
         } catch (err) {
           // If the session ID is stale, clear it and retry without resume
@@ -350,13 +355,13 @@ export async function POST(request: NextRequest) {
 
           // Stream event as SSE
           const sseData = JSON.stringify(event)
-          controller.enqueue(
+          enqueue(
             encoder.encode(`data: ${sseData}\n\n`),
           )
         }
 
         // Agent turn complete — auto-commit, release locks, update session metadata
-        await finaliseSessionAfterExchange(controller, encoder, {
+        await finaliseSessionAfterExchange(enqueue, encoder, {
           owner,
           repoName,
           card,
@@ -383,7 +388,7 @@ export async function POST(request: NextRequest) {
             assistantText,
           )
           if (jockeyResult) {
-            controller.enqueue(
+            enqueue(
               encoder.encode(
                 `data: ${JSON.stringify({ type: 'jockey', ...jockeyResult })}\n\n`,
               ),
@@ -393,11 +398,11 @@ export async function POST(request: NextRequest) {
           console.warn('[jockey] Post-exchange assessment failed:', jockeyErr)
         }
 
-        controller.enqueue(encoder.encode('data: [DONE]\n\n'))
+        enqueue(encoder.encode('data: [DONE]\n\n'))
         controller.close()
       } catch (err) {
         const errorMsg = err instanceof Error ? err.message : 'Interview failed'
-        controller.enqueue(
+        enqueue(
           encoder.encode(
             `data: ${JSON.stringify({ type: 'error', message: errorMsg })}\n\n`,
           ),
@@ -421,7 +426,7 @@ export async function POST(request: NextRequest) {
  * Only called on the success path (full agent response received).
  */
 async function finaliseSessionAfterExchange(
-  controller: ReadableStreamDefaultController,
+  enqueue: (chunk: Uint8Array) => void,
   encoder: TextEncoder,
   ctx: {
     owner: string
@@ -461,7 +466,7 @@ async function finaliseSessionAfterExchange(
         data: { touchedFiles: JSON.stringify(allFiles) },
       })
 
-      controller.enqueue(
+      enqueue(
         encoder.encode(
           `data: ${JSON.stringify({ type: 'commit', files: changedFiles })}\n\n`,
         ),
@@ -515,7 +520,7 @@ async function finaliseSessionAfterExchange(
 
   // Send title update to client for sidebar refresh
   if (updatedSession.title) {
-    controller.enqueue(
+    enqueue(
       encoder.encode(
         `data: ${JSON.stringify({
           type: 'session_update',

@@ -18,7 +18,7 @@ The send/stop area has four states:
 |-------|-------------|---------------|----------------|
 | 1. Idle, empty | No | No | Disabled up-arrow |
 | 2. Ready to send | Yes | No | Enabled up-arrow |
-| 3. Agent working | No | No text entered | Stop (square) button |
+| 3. Agent working | No | Yes | Stop (square) button |
 | 4. Agent working + text | Yes | Yes | Stop button + enabled up-arrow |
 
 ## Stop behaviour
@@ -45,7 +45,7 @@ When the agent is running and the user types a message and presses send (state 4
 3. When the current agent turn completes, the queued message is automatically sent as the next turn — no user action required.
 4. Only one message can be queued at a time. Sending again while a message is already queued replaces it.
 
-This is implemented at the application layer using a ref-based queue in `useAgentSession`. The queued message is dispatched in the `finally` block of the streaming loop.
+This is implemented at the application layer using a state-based queue in `useAgentSession`. A `useEffect` watches for streaming to stop and dispatches the queued message automatically.
 
 ## Scope
 

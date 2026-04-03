@@ -13,6 +13,7 @@ import {
   Search,
   LayoutList,
   MessageCircle,
+  X,
 } from 'lucide-react'
 import { cn } from '../lib/cn'
 import { Avatar } from './Avatar'
@@ -25,7 +26,7 @@ import {
 } from '../lib/hooks/queries'
 import { useSidebarEvents } from '../lib/hooks/useSidebarEvents'
 import { CreateModal } from './CreateModal'
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect, useCallback, useTransition } from 'react'
 
 export type RecentSession = SidebarSession
 
@@ -233,18 +234,22 @@ function NavRow({
         </span>
       )}
       {!disabled && onAdd && (
-        <div className="flex items-center shrink-0 pr-2 gap-1">
+        <div className="flex items-center shrink-0 gap-1 pr-2 opacity-0 group-hover:opacity-100 transition-opacity duration-100">
           <button
             type="button"
-            className="p-1 rounded-[var(--radius-sm)] text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity duration-100"
+            className="p-1 rounded-[var(--radius-sm)] text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] cursor-pointer transition-colors duration-100"
             title="New"
             onClick={onAdd}
           >
             <Plus size={12} />
           </button>
-          <span className="p-1 text-[var(--text-muted)]" aria-hidden="true">
+          <button
+            type="button"
+            className="p-1 rounded-[var(--radius-sm)] text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] cursor-pointer transition-colors duration-100"
+            title="Search"
+          >
             <Search size={12} />
-          </span>
+          </button>
         </div>
       )}
     </div>
@@ -257,28 +262,44 @@ function ConversationItem({
   active,
   streaming,
   indicator,
+  onDismiss,
   children,
 }: {
   href: string
   active: boolean
   streaming?: boolean
   indicator: React.ReactNode
+  onDismiss: () => void
   children: React.ReactNode
 }) {
   return (
-    <Link
-      href={href}
-      className={cn(
-        'flex items-center gap-2 px-3 py-1 rounded-[var(--radius-md)]',
-        'text-[12px] cursor-pointer transition-colors duration-100',
-        active
-          ? 'bg-[var(--bg-surface)] text-[var(--text-primary)] font-medium shadow-[var(--shadow-sm)]'
-          : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]',
-      )}
-    >
-      {indicator}
-      <span className={cn('truncate', streaming && 'animate-pulse')}>{children}</span>
-    </Link>
+    <div className="group relative flex items-center">
+      <Link
+        href={href}
+        className={cn(
+          'flex items-center gap-2 px-3 py-1 rounded-[var(--radius-md)] flex-1 min-w-0',
+          'text-[12px] cursor-pointer transition-colors duration-100',
+          active
+            ? 'bg-[var(--bg-surface)] text-[var(--text-primary)] font-medium shadow-[var(--shadow-sm)]'
+            : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]',
+        )}
+      >
+        {indicator}
+        <span className={cn('truncate', streaming && 'animate-pulse')}>{children}</span>
+      </Link>
+      <div className="absolute right-0 flex items-center justify-end opacity-0 group-hover:opacity-100 transition-opacity duration-100"
+        style={{ background: 'linear-gradient(to right, transparent, var(--bg-sidebar) 40%)', paddingLeft: '16px', paddingRight: '4px' }}
+      >
+        <button
+          type="button"
+          onClick={(e) => { e.preventDefault(); onDismiss() }}
+          className="p-1 rounded-[var(--radius-sm)] text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] cursor-pointer"
+          title="Dismiss"
+        >
+          <X size={11} />
+        </button>
+      </div>
+    </div>
   )
 }
 
@@ -297,7 +318,22 @@ function ConversationsList({
   streamingSessions: Set<string>
 }) {
   const [expanded, setExpanded] = useState(false)
-  const displaySessions = expanded ? sessions.slice(0, 100) : sessions.slice(0, 5)
+  const [dismissed, setDismissed] = useState<Set<string>>(new Set())
+  const [, startTransition] = useTransition()
+
+  const visibleSessions = sessions.filter((s) => !dismissed.has(s.id))
+  const displaySessions = expanded ? visibleSessions.slice(0, 100) : visibleSessions.slice(0, 5)
+
+  function handleDismiss(sessionId: string) {
+    setDismissed((prev) => new Set([...prev, sessionId]))
+    startTransition(async () => {
+      await fetch(`/api/sessions/${sessionId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dismissedFromRecent: true }),
+      })
+    })
+  }
 
   return (
     <div className="ml-1">
@@ -307,14 +343,10 @@ function ConversationsList({
           : session.projectName
             ? `/${encodeURIComponent(session.projectName.toLowerCase())}/sessions/${session.id}`
             : '#'
-        const sessionLabel = session.title ?? session.cardTitle ?? 'New conversation'
-        const label = session.cardIdentifier
-          ? `${session.cardIdentifier}: ${sessionLabel}`
-          : sessionLabel
+        const label = session.cardTitle ?? session.title ?? 'New conversation'
         const isActive = searchParams.get('session') === session.id
           || pathname.startsWith(`${projectPath}/sessions/${session.id}`)
         const isCardBound = !!session.cardId
-
         const isStreaming = streamingSessions.has(session.id)
 
         return (
@@ -323,6 +355,7 @@ function ConversationsList({
             href={href}
             active={isActive}
             streaming={isStreaming}
+            onDismiss={() => handleDismiss(session.id)}
             indicator={
               isCardBound
                 ? <StatusDot status={session.cardStatus} />
@@ -333,7 +366,7 @@ function ConversationsList({
           </ConversationItem>
         )
       })}
-      {sessions.length > 5 && !expanded && (
+      {visibleSessions.length > 5 && !expanded && (
         <button
           onClick={() => setExpanded(true)}
           className="block w-full text-left px-3 py-1 text-[11px] text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors duration-100 cursor-pointer"
@@ -354,6 +387,11 @@ function StatusDot({ status }: { status: string | null }) {
   if (status === 'IN_PROGRESS' || status === 'SPECIFYING') {
     return (
       <span className="w-[8px] h-[8px] rounded-full shrink-0 bg-[var(--amber)]" />
+    )
+  }
+  if (status === 'IMPLEMENTING') {
+    return (
+      <span className="w-[8px] h-[8px] rounded-full shrink-0 bg-[var(--blue,#2563eb)]" />
     )
   }
   // NOT_STARTED or unknown — hollow dot

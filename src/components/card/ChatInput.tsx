@@ -16,6 +16,7 @@ interface ChatInputProps {
   isStreaming?: boolean
   /** Called when the user clicks the stop button */
   onStop?: () => void
+  autoFocus?: boolean
   /** Pending attachments managed by parent */
   pendingAttachments?: PendingAttachment[]
   /** Called when user selects files */
@@ -33,6 +34,7 @@ export function ChatInput({
   compact = false,
   isStreaming = false,
   onStop,
+  autoFocus = false,
   pendingAttachments,
   onAddFiles,
   onRemoveAttachment,
@@ -144,6 +146,7 @@ export function ChatInput({
             placeholder="Ask to refine..."
             rows={1}
             disabled={disabled}
+            autoFocus={autoFocus}
             className="flex-1 border-none bg-transparent outline-none resize-none text-[13px] leading-[1.5] min-h-[24px]"
             style={{ padding: '6px 0', maxHeight: '160px', overflowY: 'auto' }}
           />
@@ -178,6 +181,7 @@ export function ChatInput({
           placeholder={placeholder}
           rows={1}
           disabled={disabled}
+          autoFocus={autoFocus}
           className="flex-1 border-none bg-transparent outline-none resize-none text-[14px] leading-[1.5] min-h-[24px] placeholder:text-[var(--text-faint)]"
           style={{ padding: '8px 0', maxHeight: '200px', overflowY: 'auto' }}
         />

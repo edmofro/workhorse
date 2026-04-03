@@ -40,13 +40,6 @@ interface SpecFileData {
   content: string
 }
 
-interface MockupData {
-  id: string
-  title: string
-  html: string
-  filePath: string
-}
-
 interface ProjectSpecData {
   filePath: string
   content: string
@@ -73,7 +66,6 @@ interface CardWorkspaceProps {
   initialFiles: SpecFileData[]
   initialCodeFiles?: { filePath: string; isNew: boolean; linesAdded?: number; linesRemoved?: number }[]
   filesLoading?: boolean
-  mockups: MockupData[]
   projectSpecs: ProjectSpecData[]
   sessions: ConversationSessionData[]
   initialSessionId?: string | null
@@ -85,7 +77,6 @@ export function CardWorkspace({
   initialFiles,
   initialCodeFiles = [],
   filesLoading = false,
-  mockups,
   projectSpecs,
   sessions: initialSessions,
   initialSessionId,
@@ -188,12 +179,7 @@ export function CardWorkspace({
   const mockupFiles = files
     .filter((f) => isMockupPath(f.filePath))
     .map((f) => ({ filePath: f.filePath, content: f.content }))
-  const allMockupFiles = [
-    ...mockupFiles,
-    ...mockups
-      .filter((m) => !mockupFiles.some((mf) => mf.filePath === m.filePath))
-      .map((m) => ({ filePath: m.filePath, content: m.html })),
-  ]
+  const allMockupFiles = mockupFiles
 
   // Code file items for the sidebar
   const codeFileItems: CodeFileItem[] = codeFiles.map((f) => ({
@@ -542,11 +528,8 @@ export function CardWorkspace({
     ? !activeFilePath.startsWith('.workhorse/') && !isMockupFile
     : false
 
-  // Find mockup data (either from files or from mockups prop)
   const activeMockupHtml = isMockupFile && activeFilePath
-    ? (files.find((f) => f.filePath === activeFilePath)?.content ||
-       mockups.find((m) => m.filePath === activeFilePath)?.html ||
-       '')
+    ? (files.find((f) => f.filePath === activeFilePath)?.content || '')
     : ''
   const activeMockupTitle = activeFilePath ? deriveLabel(activeFilePath, activeMockupHtml) : ''
 
@@ -644,9 +627,11 @@ export function CardWorkspace({
           </div>
         )}
         <ChatInput
+          key={activeSessionId ?? 'new'}
           onSend={(content) => handleSendMessage(content)}
           isStreaming={isStreaming}
           onStop={interrupt}
+          autoFocus
           pendingAttachments={chatAttachments.pending}
           onAddFiles={chatAttachments.addFiles}
           onRemoveAttachment={chatAttachments.removeAttachment}

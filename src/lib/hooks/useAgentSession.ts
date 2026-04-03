@@ -41,6 +41,16 @@ export function useAgentSession(
   const thinkingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const historySessionIdRef = useRef<string | null>(null)
   const abortRef = useRef<AbortController | null>(null)
+  const wasAbortedRef = useRef(false)
+  const [queuedMessage, setQueuedMessage] = useState<{
+    content: string
+    userName: string
+    attachments?: AttachmentData[]
+    skillId?: string
+    tempId: string
+  } | null>(null)
+  const queuedMessageRef = useRef(queuedMessage)
+  queuedMessageRef.current = queuedMessage
   // Track the conversation session ID and title (may be set after first message)
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(sessionId)
   const currentSessionIdRef = useRef<string | null>(sessionId)
@@ -110,6 +120,10 @@ export function useAgentSession(
     }
   }, [sessionId, historyData, isHistoryFetching])
 
+  // Stable ref for sendMessage — initialised after sendMessage is defined (below),
+  // kept in sync every render so the dispatch effect doesn't depend on callback identity
+  const sendMessageRef = useRef<typeof sendMessage | null>(null)
+
   // Clean up timers on unmount
   useEffect(() => {
     return () => {
@@ -126,7 +140,28 @@ export function useAgentSession(
 
   const sendMessage = useCallback(
     async (content: string, userName: string, attachments?: AttachmentData[], skillId?: string) => {
-      if ((!content.trim() && (!attachments || attachments.length === 0)) || isStreamingRef.current) return
+      if (!content.trim() && (!attachments || attachments.length === 0)) return
+
+      // If already streaming, queue the message for after the current turn
+      if (isStreamingRef.current) {
+        const tempId = `temp-${Date.now()}-queued`
+        // Remove the previous queued message's optimistic preview if overwriting
+        const prev = queuedMessageRef.current
+        if (prev) {
+          setMessages((msgs) => msgs.filter((m) => m.id !== prev.tempId))
+        }
+        setQueuedMessage({ content, userName, attachments, skillId, tempId })
+        const userMsg: SessionMessage = {
+          id: tempId,
+          role: 'user',
+          content,
+          userName,
+          createdAt: new Date().toISOString(),
+          attachments,
+        }
+        setMessages((prev) => [...prev, userMsg])
+        return
+      }
 
       // Add user message
       const userMsg: SessionMessage = {
@@ -156,6 +191,7 @@ export function useAgentSession(
       assistantIdRef.current = assistantId
       turnConfirmedRef.current = false
       abortRef.current = new AbortController()
+      wasAbortedRef.current = false
 
       // Flush buffered text to React state — called on a 60ms throttle
       // so multiple small deltas batch into one smooth render.
@@ -236,7 +272,10 @@ export function useAgentSession(
           }
         }
       } catch (err) {
-        if (err instanceof DOMException && err.name === 'AbortError') return
+        if (err instanceof DOMException && err.name === 'AbortError') {
+          wasAbortedRef.current = true
+          return
+        }
         setMessages((prev) =>
           prev.map((m) =>
             m.id === assistantId
@@ -259,6 +298,14 @@ export function useAgentSession(
             prev.map((m) => (m.id === id ? { ...m, content: finalContent } : m)),
           )
         }
+        // If aborted with no content, show "Stopped." notice
+        if (wasAbortedRef.current && !assistantContentRef.current) {
+          const id = assistantIdRef.current
+          setMessages((prev) =>
+            prev.map((m) => (m.id === id ? { ...m, content: 'Stopped.' } : m)),
+          )
+        }
+
         setIsStreaming(false)
         isStreamingRef.current = false
         setActiveToolCalls([])
@@ -273,6 +320,18 @@ export function useAgentSession(
     },
     [cardId],
   )
+  sendMessageRef.current = sendMessage
+
+  // Dispatch queued message when streaming stops
+  useEffect(() => {
+    if (!isStreaming && queuedMessage) {
+      const { content, userName, attachments, skillId, tempId } = queuedMessage
+      setQueuedMessage(null)
+      // Remove the optimistic preview — sendMessage will add its own user message
+      setMessages((prev) => prev.filter((m) => m.id !== tempId))
+      sendMessageRef.current?.(content, userName, attachments, skillId)
+    }
+  }, [isStreaming, queuedMessage])
 
   function processEvent(
     event: Record<string, unknown>,
@@ -417,6 +476,12 @@ export function useAgentSession(
 
   const interrupt = useCallback(() => {
     abortRef.current?.abort()
+    // Clear any queued message so it doesn't fire after the abort settles
+    const queued = queuedMessageRef.current
+    if (queued) {
+      setMessages((msgs) => msgs.filter((m) => m.id !== queued.tempId))
+      setQueuedMessage(null)
+    }
   }, [])
 
   return {

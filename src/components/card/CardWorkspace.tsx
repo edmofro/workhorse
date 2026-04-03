@@ -134,6 +134,7 @@ export function CardWorkspace({
     currentSessionId,
     currentSessionTitle,
     sendMessage: rawSendMessage,
+    interrupt,
   } = useAgentSession(card.id, activeSessionId, jockey.handleJockeyEvent)
 
   // Sync back the session ID from the hook (set after first message creates a session)
@@ -628,7 +629,8 @@ export function CardWorkspace({
         <ChatInput
           key={activeSessionId ?? 'new'}
           onSend={(content) => handleSendMessage(content)}
-          disabled={isStreaming}
+          isStreaming={isStreaming}
+          onStop={interrupt}
           autoFocus
           pendingAttachments={chatAttachments.pending}
           onAddFiles={chatAttachments.addFiles}
@@ -795,7 +797,8 @@ export function CardWorkspace({
               )}
               <ChatInput
                 onSend={(content) => handleSendMessage(content)}
-                disabled={isStreaming}
+                isStreaming={isStreaming}
+                onStop={interrupt}
                 placeholder="Start a new conversation..."
                 pendingAttachments={chatAttachments.pending}
                 onAddFiles={chatAttachments.addFiles}

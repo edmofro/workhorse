@@ -41,7 +41,7 @@ function buildAssessmentPrompt(input: JockeyInput): string {
     parts.push('(empty — this card has no journal entries yet)')
   } else {
     for (const entry of input.journalEntries) {
-      parts.push(`- [${entry.type}] ${entry.summary} (${entry.createdAt.toISOString().split('T')[0]})`)
+      parts.push(`- [${escapeXml(entry.type)}] ${escapeXml(entry.summary)} (${entry.createdAt.toISOString().split('T')[0]})`)
     }
   }
 

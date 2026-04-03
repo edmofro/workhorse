@@ -616,6 +616,11 @@ async function runJockeyAfterExchange(
       })
     }
 
+    // Sanitise activeStep — strip any HTML tags as defence-in-depth
+    if (assessment.activeStep) {
+      assessment.activeStep = assessment.activeStep.replace(/<[^>]*>/g, '').slice(0, 200)
+    }
+
     return assessment
   } catch (error) {
     console.warn('[jockey] Post-exchange assessment failed:', error)

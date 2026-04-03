@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom'
 import { ChevronDown, X, CalendarPlus } from 'lucide-react'
 import { cn } from '../../lib/cn'
 import { StatusDot } from '../StatusDot'
-import { PropertyDropdown, usePortalMenu, type PropertyOption } from '../PropertyDropdown'
+import { PropertyDropdown, type PropertyOption } from '../PropertyDropdown'
 import { updateCard } from '../../lib/actions/cards'
 import { STATUS_OPTIONS } from '../../lib/status'
 import { BUILT_IN_SKILLS } from '../../lib/skills/registry'
@@ -150,7 +150,7 @@ export function PropertiesBar({
   const hasJourney = journalEntries.length > 0 || activeStep !== null
 
   return (
-    <div className="flex items-center h-[38px] px-2 border-b border-[var(--border-subtle)] bg-[var(--bg-surface)]">
+    <div className="flex items-center h-9 px-2 border-b border-[var(--border-subtle)] bg-[var(--bg-surface)]">
       {/* Properties section */}
       <div className="flex items-center gap-0 flex-1 min-w-0">
         {/* Status */}
@@ -229,7 +229,7 @@ export function PropertiesBar({
             ref={journeyTriggerRef}
             onClick={toggleJourney}
             className={cn(
-              'inline-flex items-center gap-[6px] px-2 py-1 rounded-[var(--radius-md)]',
+              'inline-flex items-center gap-2 px-2 py-1 rounded-[var(--radius-md)]',
               'text-[12px] font-medium',
               'hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer shrink-0',
               activeStep ? 'text-[var(--text-primary)]' : 'text-[var(--text-secondary)]',
@@ -237,7 +237,7 @@ export function PropertiesBar({
             )}
           >
             {/* Progress dots */}
-            <div className="flex items-center gap-[3px]">
+            <div className="flex items-center gap-1">
               {journalEntries.map((_, i) => (
                 <span
                   key={`done-${i}`}
@@ -270,7 +270,7 @@ export function PropertiesBar({
             <ChevronDown
               size={11}
               className={cn(
-                'text-[var(--text-faint)] transition-transform duration-120',
+                'text-[var(--text-faint)] transition-transform duration-100',
                 journeyOpen && 'rotate-180',
               )}
             />
@@ -281,13 +281,13 @@ export function PropertiesBar({
             <div
               ref={journeyMenuRef}
               style={{ position: 'fixed', top: journeyPos.top, right: journeyPos.right }}
-              className="z-50 min-w-[240px] max-w-[320px] bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-[var(--radius-lg)] shadow-[var(--shadow-lg)] py-[10px]"
+              className="z-50 min-w-[240px] max-w-[320px] bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-[var(--radius-lg)] shadow-[var(--shadow-lg)] py-2"
             >
               {/* Completed entries */}
               {journalEntries.map((entry) => (
                 <div
                   key={entry.id}
-                  className="flex items-center gap-2 px-3 py-[5px] text-[12px] text-[var(--text-secondary)]"
+                  className="flex items-center gap-2 px-3 py-1 text-[12px] text-[var(--text-secondary)]"
                 >
                   <span className="w-4 flex justify-center shrink-0">
                     <span className="w-[6px] h-[6px] rounded-full bg-[var(--green)]" />

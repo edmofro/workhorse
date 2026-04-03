@@ -11,7 +11,7 @@ import { useViewNavigation } from '../../lib/hooks/useViewNavigation'
 import { SpecHeaderBar } from './SpecHeaderBar'
 import type { DeviceKey } from './SpecHeaderBar'
 import { ActionPills, type ActionPill } from './ActionPills'
-import { JourneyBar } from './JourneyBar'
+import { PropertiesBar } from './PropertiesBar'
 import { PrBar } from './PrBar'
 import { useJockeyState } from '../../lib/hooks/useJockeyState'
 import { BUILT_IN_SKILLS } from '../../lib/skills/registry'
@@ -66,9 +66,15 @@ interface CardWorkspaceProps {
     identifier: string
     title: string
     status: string
+    priority: string
+    team: { id: string; name: string }
+    assignee: { id: string; displayName: string } | null
+    dependsOn: { identifier: string; title: string }[]
     cardBranch: string | null
     prUrl?: string | null
   }
+  users: { id: string; displayName: string }[]
+  teams: { id: string; name: string }[]
   cardTabContent: React.ReactNode
   initialFiles: SpecFileData[]
   initialCodeFiles?: { filePath: string; isNew: boolean; linesAdded?: number; linesRemoved?: number }[]

@@ -363,7 +363,7 @@ function ClickableStatusDot({
         <div
           ref={menuRef}
           style={{ position: 'fixed', top: pos.top, left: pos.left }}
-          className="z-50 min-w-[160px] bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-[var(--radius-xl)] shadow-[var(--shadow-lg)] py-1"
+          className="z-50 min-w-[152px] bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-[var(--radius-xl)] shadow-[var(--shadow-lg)] py-1"
         >
           {STATUS_OPTIONS.map((opt) => (
             <button
@@ -512,7 +512,9 @@ function ConversationsList({
                       handleStatusChange(cardId, newStatus, session.id)
                     }
                   />
-                : <MessageCircle size={11} className="text-[var(--text-muted)] shrink-0" />
+                : <div className="flex items-center justify-center w-5 h-5">
+                    <MessageCircle size={11} className="text-[var(--text-muted)]" />
+                  </div>
             }
           >
             {label}

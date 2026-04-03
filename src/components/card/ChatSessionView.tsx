@@ -22,6 +22,7 @@ export function ChatSessionView({ cardId }: ChatSessionViewProps) {
     fileWrites,
     thinkingSnippet,
     sendMessage,
+    interrupt,
   } = useAgentSession(cardId, null)
   const {
     pending,
@@ -97,7 +98,8 @@ export function ChatSessionView({ cardId }: ChatSessionViewProps) {
       </div>
       <ChatInput
         onSend={handleSend}
-        disabled={isStreaming}
+        isStreaming={isStreaming}
+        onStop={interrupt}
         pendingAttachments={pending}
         onAddFiles={addFiles}
         onRemoveAttachment={removeAttachment}

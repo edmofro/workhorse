@@ -58,35 +58,53 @@ export async function POST(request: NextRequest) {
     content.push({ type: 'text', text: prompt.trim() })
 
     const message = await anthropic.messages.create({
-      model: 'claude-sonnet-4-6',
-      max_tokens: 256,
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 512,
       messages: [
         {
           role: 'user',
           content,
         },
       ],
-      system: `You generate a card description for a spec-driven development workbench.
+      system: `You process card creation input for a spec-driven development workbench.
 
-Given the user's description of what they want to achieve, respond with JSON only — no markdown fences, no extra text. If the user has attached images (screenshots, mockups, etc.), use them as context to understand what they want.
+Given the user's input, respond with JSON only — no markdown fences, no extra text. If the user has attached images (screenshots, mockups, etc.), use them as context.
 
 Format:
-{"description": "..."}
+{"title": "...", "description": "..."}
 
-Rules:
-- Description: 1–3 sentences summarising the intent. Written as what the system does, not instructions. Use Australian/NZ English spelling.
-- Do not include acceptance criteria, technical details, or implementation notes.
-- If images are provided, reference what they show when relevant to the description.`,
+Rules for title:
+- A short phrase of 5–8 words summarising the intent.
+- Sentence case. No full stop.
+- Use Australian/NZ English spelling.
+
+Rules for description:
+- Copy the user's input verbatim. Do NOT rephrase, summarise, expand, reorder, or rewrite any part of it.
+- The ONLY changes you may make: capitalise the first letter of sentences, and insert \n where a natural paragraph break improves readability.
+- Do not add words, remove words, change tense, change voice, fix grammar, or "improve" the text in any way.
+- If in doubt, return the input unchanged.
+
+JSON encoding:
+- String values must use \n for newlines — never literal newline characters.`,
     })
 
-    const text =
+    const raw =
       message.content[0].type === 'text' ? message.content[0].text : ''
-    const parsed = JSON.parse(text) as { description: string }
+    // Strip markdown fences; replace literal newlines inside JSON strings with \n escapes
+    const text = raw
+      .replace(/^```(?:json)?\s*/i, '')
+      .replace(/\s*```$/, '')
+      .replace(/("(?:[^"\\]|\\.)*")/g, (m) => m.replace(/\n/g, '\\n').replace(/\r/g, ''))
+      .trim()
+    const parsed = JSON.parse(text) as { title: string; description: string }
 
     return NextResponse.json({
+      title: parsed.title ?? '',
       description: parsed.description ?? '',
+      _raw: text,
     })
-  } catch {
-    return NextResponse.json({ description: prompt.trim() })
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    return NextResponse.json({ title: '', description: prompt.trim(), _error: message })
   }
 }

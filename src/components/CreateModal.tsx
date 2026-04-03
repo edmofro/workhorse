@@ -37,6 +37,7 @@ export function CreateModal({
   const attachments = useAttachments()
 
   const isCard = defaultMode === 'card'
+  const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform)
 
   const onCloseRef = useRef(onClose)
   useEffect(() => { onCloseRef.current = onClose }, [onClose])
@@ -56,7 +57,8 @@ export function CreateModal({
 
     try {
       if (isCard) {
-        const title = value.trim()
+        const input = value.trim()
+        let title: string
         let description: string
 
         const uploaded = attachments.getUploadedAttachments()
@@ -66,15 +68,18 @@ export function CreateModal({
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              prompt: value.trim(),
+              prompt: input,
               attachmentIds: uploaded.map((a) => a.id),
             }),
           })
           const data = await res.json()
           if (!res.ok) throw new Error(data.error ?? 'Generation failed')
-          description = data.description ?? ''
+          description = data.description || input
+          title = data.title || input.split(/[.!?\n]/)[0].slice(0, 60).trim()
+          if (data._error) console.warn('[generate-card] API error:', data._error)
         } catch {
-          description = value.trim()
+          description = input
+          title = input.split(/[.!?\n]/)[0].slice(0, 60).trim()
         }
 
         const card = await createCard({ title, description: description || undefined, teamId: defaultTeamId! })
@@ -113,7 +118,7 @@ export function CreateModal({
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
       e.preventDefault()
       handleSubmit(prompt)
     }
@@ -207,6 +212,7 @@ export function CreateModal({
                 placeholder={isCard ? 'Describe what needs to be done...' : 'What would you like to discuss?'}
                 disabled={busy}
                 className={`flex-1 border-none bg-transparent outline-none resize-none text-[14px] leading-[1.5] placeholder:text-[var(--text-faint)] ${isCard ? 'min-h-[96px] py-0' : 'min-h-[24px] py-2'}`}
+                style={{ maxHeight: '200px', overflowY: 'auto' }}
               />
               <div className={`flex items-center ${isCard ? 'justify-between mt-3' : ''}`}>
                 {isCard && (
@@ -223,7 +229,13 @@ export function CreateModal({
                       {isCard ? 'Creating...' : 'Starting...'}
                     </span>
                   ) : (
-                    isCard ? 'Create card' : 'Send'
+                    <span className="flex items-center gap-2">
+                      {isCard ? 'Create card' : 'Send'}
+                      <kbd className="flex items-center gap-0.5 font-sans text-[10px] opacity-60">
+                        <span>{isMac ? '⌘' : 'Ctrl'}</span>
+                        <span>↵</span>
+                      </kbd>
+                    </span>
                   )}
                 </button>
               </div>

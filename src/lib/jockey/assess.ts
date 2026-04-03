@@ -22,6 +22,7 @@ ${Object.values(BUILT_IN_SKILLS).map(s => `- **${s.id}** (${s.label}): ${s.descr
 - Journal entry types should match skill IDs where applicable (e.g. "interview", "implementation", "spec-draft")
 - Journal summaries should be concise and human-readable (e.g. "Spec interview completed — 2 specs written")
 - Pills are 2-4 contextual actions for RIGHT NOW — the most useful things the user could click
+- Pill labels must be short: 2–4 words maximum, verb + noun form (e.g. "Draft spec", "Review spec", "Continue", "Update spec"). Never use verbose phrases like "Compare code changes against specs"
 - Suggestions are the expected remaining sequence — the big picture of what's ahead
 - Pills and suggestions can differ significantly
 - If the conversation has just started and nothing meaningful has happened, return empty journalEntries

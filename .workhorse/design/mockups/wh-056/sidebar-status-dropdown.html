@@ -1,0 +1,416 @@
+<!-- spec: navigation/recent-status-change.md -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Recent conversations — status dot interaction</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #f8f7f4;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 48px 32px;
+    gap: 64px;
+    min-height: 100vh;
+  }
+
+  /* ── Sidebar ── */
+  .sidebar {
+    width: 216px;
+    background: #f1efeb;
+    border-right: 1px solid #eae7e1;
+    border-radius: 10px;
+    overflow: visible;
+    position: relative;
+    padding-bottom: 16px;
+  }
+
+  .sidebar-logo {
+    padding: 16px 24px 12px;
+    font-size: 15px;
+    font-weight: 600;
+    color: #1c1917;
+    letter-spacing: -0.01em;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .logo-mark {
+    width: 22px;
+    height: 22px;
+    background: #c2410c;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 12px;
+    font-weight: 700;
+  }
+
+  .sidebar-section-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: #a8a29e;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 12px 24px 4px;
+  }
+
+  .sidebar-nav-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 24px;
+    font-size: 13px;
+    font-weight: 450;
+    color: #57534e;
+    cursor: pointer;
+    transition: background 0.1s;
+  }
+
+  .sidebar-nav-item:hover {
+    background: #edeae5;
+  }
+
+  .sidebar-divider {
+    height: 1px;
+    background: #eae7e1;
+    margin: 8px 0;
+  }
+
+  /* ── Recent items ── */
+  .recent-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 12px 5px 24px;
+    font-size: 13px;
+    font-weight: 450;
+    color: #57534e;
+    cursor: pointer;
+    transition: background 0.1s;
+    position: relative;
+    user-select: none;
+  }
+
+  .recent-item:hover {
+    background: #edeae5;
+  }
+
+  .recent-item-text {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* Status dot */
+  .status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    position: relative;
+    /* enlarged hit area */
+    cursor: pointer;
+  }
+
+  .status-dot::before {
+    content: '';
+    position: absolute;
+    inset: -6px;
+    border-radius: 50%;
+  }
+
+  .status-dot:hover::after {
+    content: '';
+    position: absolute;
+    inset: -3px;
+    border-radius: 50%;
+    border: 1.5px solid rgba(28,25,23,0.2);
+  }
+
+  .dot-not-started {
+    background: transparent;
+    border: 1.5px solid #dfdcd5;
+  }
+
+  .dot-specifying,
+  .dot-implementing {
+    background: #b45309;
+    border: none;
+  }
+
+  .dot-complete {
+    background: #16a34a;
+    border: none;
+  }
+
+  .dot-cancelled {
+    background: #a8a29e;
+    border: none;
+  }
+
+  /* Active dot (dropdown open) */
+  .dot-active::after {
+    content: '';
+    position: absolute;
+    inset: -3px;
+    border-radius: 50%;
+    border: 1.5px solid #c2410c;
+  }
+
+  /* Chat icon for standalone */
+  .chat-icon {
+    width: 8px;
+    height: 8px;
+    flex-shrink: 0;
+    color: #a8a29e;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* ── Status dropdown ── */
+  .dropdown-anchor {
+    position: relative;
+  }
+
+  .status-dropdown {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: -8px;
+    width: 184px;
+    background: #ffffff;
+    border: 1px solid #dfdcd5;
+    border-radius: 12px;
+    box-shadow: 0 12px 40px rgba(28,25,23,0.14), 0 2px 8px rgba(28,25,23,0.06);
+    padding: 4px;
+    z-index: 100;
+  }
+
+  .dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 10px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 500;
+    color: #57534e;
+    cursor: pointer;
+    transition: background 0.1s;
+  }
+
+  .dropdown-item:hover {
+    background: #f1efeb;
+  }
+
+  .dropdown-item.current {
+    font-weight: 600;
+    color: #1c1917;
+  }
+
+  .dropdown-item .item-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  /* ── Labels ── */
+  .annotation {
+    position: absolute;
+    font-size: 11px;
+    color: #a8a29e;
+    white-space: nowrap;
+    font-family: 'Inter', sans-serif;
+  }
+
+  /* ── Second state: hover on dot ── */
+  .demo-block {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .demo-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: #a8a29e;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 8px;
+  }
+</style>
+</head>
+<body>
+
+<!-- State 1: Sidebar at rest -->
+<div class="demo-block">
+  <div class="demo-label">At rest</div>
+  <div class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-mark">W</div>
+      Workhorse
+    </div>
+
+    <div class="sidebar-nav-item">Cards</div>
+    <div class="sidebar-nav-item">Specs</div>
+    <div class="sidebar-nav-item">Design</div>
+
+    <div class="sidebar-divider"></div>
+
+    <div class="sidebar-section-label">Recent</div>
+
+    <div class="recent-item">
+      <span class="status-dot dot-specifying"></span>
+      <span class="recent-item-text">WH-042: Initial spec…</span>
+    </div>
+    <div class="recent-item">
+      <span class="status-dot dot-not-started"></span>
+      <span class="recent-item-text">WH-051: Error handli…</span>
+    </div>
+    <div class="recent-item">
+      <span class="chat-icon">
+        <svg width="8" height="8" viewBox="0 0 16 16" fill="none" stroke="#a8a29e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14 2H2a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h3l3 2 3-2h3a1 1 0 0 0 1-1V3a1 1 0 0 0-1-1z"/>
+        </svg>
+      </span>
+      <span class="recent-item-text">Schema question</span>
+    </div>
+    <div class="recent-item">
+      <span class="status-dot dot-complete"></span>
+      <span class="recent-item-text">WH-038: Refine criter…</span>
+    </div>
+    <div class="recent-item">
+      <span class="chat-icon">
+        <svg width="8" height="8" viewBox="0 0 16 16" fill="none" stroke="#a8a29e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14 2H2a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h3l3 2 3-2h3a1 1 0 0 0 1-1V3a1 1 0 0 0-1-1z"/>
+        </svg>
+      </span>
+      <span class="recent-item-text">Fix login idea</span>
+    </div>
+  </div>
+</div>
+
+<!-- State 2: Dropdown open on WH-051 (Not started) -->
+<div class="demo-block">
+  <div class="demo-label">Dropdown open (clicking dot on WH-051)</div>
+  <div class="sidebar" style="overflow: visible;">
+    <div class="sidebar-logo">
+      <div class="logo-mark">W</div>
+      Workhorse
+    </div>
+
+    <div class="sidebar-nav-item">Cards</div>
+    <div class="sidebar-nav-item">Specs</div>
+    <div class="sidebar-nav-item">Design</div>
+
+    <div class="sidebar-divider"></div>
+
+    <div class="sidebar-section-label">Recent</div>
+
+    <div class="recent-item">
+      <span class="status-dot dot-specifying"></span>
+      <span class="recent-item-text">WH-042: Initial spec…</span>
+    </div>
+
+    <!-- Item with open dropdown -->
+    <div class="recent-item" style="background: #edeae5; position: relative;">
+      <div class="dropdown-anchor" style="position: relative; flex-shrink: 0;">
+        <span class="status-dot dot-not-started dot-active" style="display: block;"></span>
+        <div class="status-dropdown">
+          <div class="dropdown-item current">
+            <span class="item-dot" style="background: transparent; border: 1.5px solid #dfdcd5;"></span>
+            Not started
+          </div>
+          <div class="dropdown-item">
+            <span class="item-dot" style="background: #b45309;"></span>
+            Specifying
+          </div>
+          <div class="dropdown-item">
+            <span class="item-dot" style="background: #b45309;"></span>
+            Implementing
+          </div>
+          <div class="dropdown-item">
+            <span class="item-dot" style="background: #16a34a;"></span>
+            Complete
+          </div>
+          <div class="dropdown-item" style="color: #a8a29e;">
+            <span class="item-dot" style="background: #a8a29e;"></span>
+            Cancelled
+          </div>
+        </div>
+      </div>
+      <span class="recent-item-text">WH-051: Error handli…</span>
+    </div>
+
+    <div class="recent-item">
+      <span class="chat-icon">
+        <svg width="8" height="8" viewBox="0 0 16 16" fill="none" stroke="#a8a29e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14 2H2a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h3l3 2 3-2h3a1 1 0 0 0 1-1V3a1 1 0 0 0-1-1z"/>
+        </svg>
+      </span>
+      <span class="recent-item-text">Schema question</span>
+    </div>
+    <div class="recent-item">
+      <span class="status-dot dot-complete"></span>
+      <span class="recent-item-text">WH-038: Refine criter…</span>
+    </div>
+    <div class="recent-item">
+      <span class="chat-icon">
+        <svg width="8" height="8" viewBox="0 0 16 16" fill="none" stroke="#a8a29e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14 2H2a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h3l3 2 3-2h3a1 1 0 0 0 1-1V3a1 1 0 0 0-1-1z"/>
+        </svg>
+      </span>
+      <span class="recent-item-text">Fix login idea</span>
+    </div>
+  </div>
+</div>
+
+<!-- State 3: Full dropdown detail (isolated) -->
+<div class="demo-block">
+  <div class="demo-label">Dropdown — all options</div>
+  <div style="position: relative; padding: 8px;">
+    <!-- Trigger row -->
+    <div class="recent-item" style="background: #edeae5; border-radius: 6px; width: 192px; position: relative;">
+      <span class="status-dot dot-not-started dot-active"></span>
+      <span class="recent-item-text">WH-051: Error handli…</span>
+    </div>
+    <!-- Dropdown -->
+    <div class="status-dropdown" style="position: relative; top: 4px; left: 0; margin-top: 4px;">
+      <div class="dropdown-item current">
+        <span class="item-dot" style="background: transparent; border: 1.5px solid #dfdcd5;"></span>
+        Not started
+      </div>
+      <div class="dropdown-item">
+        <span class="item-dot" style="background: #b45309;"></span>
+        Specifying
+      </div>
+      <div class="dropdown-item">
+        <span class="item-dot" style="background: #b45309;"></span>
+        Implementing
+      </div>
+      <div class="dropdown-item">
+        <span class="item-dot" style="background: #16a34a;"></span>
+        Complete
+      </div>
+      <div class="dropdown-item" style="color: #a8a29e;">
+        <span class="item-dot" style="background: #a8a29e;"></span>
+        Cancelled
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

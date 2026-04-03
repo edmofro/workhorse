@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { MoreHorizontal, ChevronRight } from 'lucide-react'
 import { useDroppable, useDraggable } from '@dnd-kit/core'
 import { cn } from '../lib/cn'
-import { StatusDot } from './StatusDot'
+import { StatusDot, type StatusDotState } from './StatusDot'
 import { Avatar } from './Avatar'
 import { Tag } from './Tag'
 import { updateCard } from '../lib/actions/cards'
@@ -24,7 +24,6 @@ export interface CardData {
   team: { id: string; name: string; colour: string }
 }
 
-type StatusDotState = 'not-started' | 'specifying' | 'implementing' | 'complete' | 'cancelled'
 
 interface BoardColumnProps {
   label: string

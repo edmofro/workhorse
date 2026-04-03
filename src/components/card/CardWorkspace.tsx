@@ -397,11 +397,11 @@ export function CardWorkspace({
     [sessions, navigateTo],
   )
 
-  // Send message with mode support
+  // Send message with optional skill
   const handleSendMessage = useCallback(
-    (content: string, mode?: string) => {
+    (content: string, skillId?: string) => {
       const uploaded = chatAttachments.getUploadedAttachments()
-      rawSendMessage(content, user.displayName, uploaded.length > 0 ? uploaded : undefined, mode)
+      rawSendMessage(content, user.displayName, uploaded.length > 0 ? uploaded : undefined, skillId)
       chatAttachments.clear()
 
       if (view.type === 'card') {
@@ -415,7 +415,7 @@ export function CardWorkspace({
 
   const handlePillSelect = useCallback(
     (pill: ActionPill) => {
-      handleSendMessage(pill.message, pill.mode)
+      handleSendMessage(pill.message, pill.skillId)
     },
     [handleSendMessage],
   )
@@ -543,7 +543,7 @@ export function CardWorkspace({
     return {
       label: p.label,
       message: skill?.description ?? `Run ${p.label}`,
-      mode: p.skillId,
+      skillId: p.skillId,
     }
   })
 

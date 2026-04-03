@@ -33,12 +33,12 @@ export async function POST(request: NextRequest) {
   const user = await requireUser()
 
   const body = await request.json()
-  const { cardId, sessionId: incomingSessionId, message, attachmentIds, mode } = body as {
+  const { cardId, sessionId: incomingSessionId, message, attachmentIds, skillId } = body as {
     cardId: string
     sessionId?: string
     message: string
     attachmentIds?: string[]
-    mode?: string
+    skillId?: string
   }
 
   if (!cardId || !message) {
@@ -152,7 +152,7 @@ export async function POST(request: NextRequest) {
   // Build deduplicated attachment file list for the prompt context
   const allAttachmentFiles = [...new Set(allAttachments.map((a) => a.fileName))]
 
-  // Build session instructions with mode-specific context
+  // Build session instructions with skill-specific context
   const sessionInstructions = buildSessionInstructions({
     cardTitle: card.title,
     cardDescription: card.description,
@@ -161,7 +161,7 @@ export async function POST(request: NextRequest) {
     repoOwner: owner,
     repoName,
     attachmentFiles: allAttachmentFiles.length > 0 ? allAttachmentFiles : undefined,
-    mode: isValidSkillId(mode) ? mode : undefined,
+    skillId: isValidSkillId(skillId) ? skillId : undefined,
   })
 
   // Build multimodal prompt if there are raster image attachments (exclude SVG — not a valid

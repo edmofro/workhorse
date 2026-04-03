@@ -548,6 +548,33 @@ export async function writeWorktreeFile(
 }
 
 /**
+ * Get the list of files with pending changes (staged or unstaged) in a worktree.
+ * Used to generate a commit message before committing.
+ */
+export async function getPendingChanges(
+  owner: string,
+  repo: string,
+  cardIdentifier: string,
+): Promise<{ filePath: string; isNew: boolean }[]> {
+  const wtPath = worktreePath(owner, repo, cardIdentifier)
+  try {
+    const status = await git(['status', '--porcelain'], wtPath)
+    if (!status) return []
+    return status
+      .split('\n')
+      .filter(Boolean)
+      .map((line) => {
+        const code = line.slice(0, 2)
+        const filePath = line.slice(3).trim()
+        const isNew = code === '??' || code[0] === 'A' || code[1] === 'A'
+        return { filePath, isNew }
+      })
+  } catch {
+    return []
+  }
+}
+
+/**
  * List spec files in the worktree that have been changed from the default branch.
  */
 export async function listWorktreeSpecFiles(

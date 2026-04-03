@@ -427,7 +427,7 @@ export function CardTab({ card, users, teams }: CardTabProps) {
           onBlur={handleDescriptionBlur}
           placeholder="Add a description..."
           rows={3}
-          className="w-full text-[14px] text-[var(--text-secondary)] leading-[1.7] bg-transparent border-none outline-none resize-none mb-2 placeholder:text-[var(--text-faint)]"
+          className="w-full text-[14px] text-[var(--text-secondary)] leading-[1.7] bg-transparent border-none outline-none resize-none overflow-y-hidden mb-2 placeholder:text-[var(--text-faint)]"
         />
 
         {/* Description attachments */}

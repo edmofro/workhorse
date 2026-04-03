@@ -45,14 +45,13 @@ The [+] button in the sidebar opens a modal with a single text area and two subm
 ## Create card path (Cmd+Enter)
 
 - [ ] Cmd+Enter (or clicking the card icon) submits via the "Create card" action
-- [ ] The input is sent to the AI to generate a card title and description
+- [ ] The input is sent to the AI to generate the card title and to lightly reformat the description
+- [ ] The generated title is a short phrase (five to eight words) summarising the intent, written in sentence case, and is applied without user confirmation
+- [ ] The description is the user's input with light formatting only — line breaks added for readability, sentence case applied — but no changes to wording or content
 - [ ] While generating, the card button shows a spinner and both buttons are disabled
 - [ ] The modal backdrop is non-dismissable while generating
 - [ ] The team is assigned automatically (first available team in the project) — no team selector is shown
 - [ ] Once generation completes, the card is created and the user is navigated to the card workspace
-- [ ] The generated title is concise (under 60 characters) and written as a noun phrase (e.g. "Patient allergy tracking", not "Add patient allergy tracking")
-- [ ] The generated description is one to three sentences summarising the intent, written in the system voice
-- [ ] Australian/NZ English spelling is used in generated content
 
 ## Keyboard interaction
 
@@ -63,7 +62,7 @@ The [+] button in the sidebar opens a modal with a single text area and two subm
 
 ## Fallback behaviour
 
-- [ ] If AI generation fails when creating a card, the card is created with the user's raw input as the title (truncated to 60 characters with ellipsis if needed) and the full input as the description
+- [ ] If AI title generation fails when creating a card, the first sentence (or first 60 characters) of the input is used as the title
 - [ ] The user can always edit the title and description after creation on the card view
 
 ## Sidebar integration

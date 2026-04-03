@@ -22,6 +22,7 @@ ${Object.values(BUILT_IN_SKILLS).map(s => `- **${s.id}** (${s.label}): ${s.descr
 - Journal entry types should match skill IDs where applicable (e.g. "interview", "implementation", "spec-draft")
 - Journal summaries should be concise and human-readable (e.g. "Spec interview completed — 2 specs written")
 - Pills are 2-4 contextual actions for RIGHT NOW — the most useful things the user could click
+- Pill labels must be short: 2–4 words maximum, verb + noun form (e.g. "Draft spec", "Review spec", "Continue", "Update spec"). Never use verbose phrases like "Compare code changes against specs"
 - Suggestions are the expected remaining sequence — the big picture of what's ahead
 - Pills and suggestions can differ significantly
 - If the conversation has just started and nothing meaningful has happened, return empty journalEntries
@@ -195,15 +196,19 @@ export function getDefaultPills(input: DefaultsContext): JockeyAssessment['pills
 }
 
 /** Deterministic fallback suggestions when the jockey LLM call fails */
-export function getDefaultSuggestions(input: Pick<DefaultsContext, 'hasSpecs' | 'journalEntries'>): JockeyAssessment['suggestions'] {
+export function getDefaultSuggestions(input: DefaultsContext): JockeyAssessment['suggestions'] {
   const suggestions: JockeyAssessment['suggestions'] = []
   if (!input.hasSpecs) {
     suggestions.push({ skillId: 'interview', label: 'Interview' })
   }
-  if (!input.journalEntries.some(e => e.type === 'spec-review')) {
+  if (input.hasSpecs && !input.journalEntries.some(e => e.type === 'spec-review')) {
     suggestions.push({ skillId: 'review', label: 'Review specs' })
   }
-  suggestions.push({ skillId: 'implement', label: 'Implement' })
-  suggestions.push({ skillId: 'create_pr', label: 'Create PR' })
+  if (!input.hasCodeChanges && !input.journalEntries.some(e => e.type === 'implementation')) {
+    suggestions.push({ skillId: 'implement', label: 'Implement' })
+  }
+  if (input.hasCodeChanges && !input.hasPr) {
+    suggestions.push({ skillId: 'create_pr', label: 'Create PR' })
+  }
   return suggestions
 }

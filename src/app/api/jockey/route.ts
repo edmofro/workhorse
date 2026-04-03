@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
   // Use deterministic defaults for fast initial load — no LLM call.
   // The first conversation exchange triggers a full jockey assessment.
   const pills = getDefaultPills({ hasCodeChanges, hasPr, hasSpecs, journalEntries })
-  const suggestions = getDefaultSuggestions({ hasSpecs, journalEntries })
+  const suggestions = getDefaultSuggestions({ hasCodeChanges, hasPr, hasSpecs, journalEntries })
 
   return NextResponse.json({
     journalEntries: journalEntries.map(e => ({

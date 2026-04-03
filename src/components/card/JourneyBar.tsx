@@ -112,15 +112,15 @@ export function JourneyBar({
 
         {/* Current step label */}
         {activeStep && (
-          <span className="text-[var(--text-secondary)] font-medium ml-1">
-            {activeStep}
+          <span className="text-[var(--text-secondary)] font-medium">
+            {skillLabel(activeStep)}
           </span>
         )}
 
         <ChevronDown
           size={12}
           className={cn(
-            'ml-auto text-[var(--text-muted)] transition-transform duration-150',
+            'text-[var(--text-muted)] transition-transform duration-150',
             expanded && 'rotate-180',
           )}
         />
@@ -137,101 +137,103 @@ export function JourneyBar({
             'py-3 px-4',
           )}
         >
-          {/* Completed entries */}
-          {journalEntries.length > 0 && (
-            <div className="space-y-1 mb-3">
-              {journalEntries.map((entry) => (
-                <div
-                  key={entry.id}
-                  className="flex items-center gap-2 py-1 text-[12px]"
-                >
-                  <span className="text-[var(--green)] text-[10px] w-4 text-center shrink-0">✓</span>
-                  <span className="text-[var(--text-secondary)] flex-1">{entry.summary}</span>
-                  <span className="text-[var(--text-faint)] text-[11px] shrink-0">
-                    {formatDate(entry.createdAt)}
-                  </span>
+          <div className="max-w-[520px]">
+            {/* Completed entries */}
+            {journalEntries.length > 0 && (
+              <div className="space-y-1 mb-3">
+                {journalEntries.map((entry) => (
+                  <div
+                    key={entry.id}
+                    className="flex items-baseline gap-2 py-1 text-[12px]"
+                  >
+                    <span className="text-[var(--green)] text-[10px] w-4 text-center shrink-0 relative top-[-1px]">✓</span>
+                    <span className="text-[var(--text-secondary)]">{entry.summary}</span>
+                    <span className="text-[var(--text-faint)] text-[11px] shrink-0">
+                      {formatDate(entry.createdAt)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Active step */}
+            {activeStep && (
+              <div className="flex items-baseline gap-2 py-1 text-[12px] mb-3">
+                <span className="text-[var(--accent)] text-[10px] w-4 text-center shrink-0 relative top-[-1px]">●</span>
+                <span className="text-[var(--text-primary)] font-medium">{skillLabel(activeStep)}</span>
+                <span className="text-[var(--text-muted)] text-[11px] shrink-0">In progress</span>
+              </div>
+            )}
+
+            {/* Scheduled section */}
+            {scheduledSteps.length > 0 && (
+              <div className="mb-3">
+                <div className="text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-[0.06em] mb-1">
+                  Scheduled
                 </div>
-              ))}
-            </div>
-          )}
-
-          {/* Active step */}
-          {activeStep && (
-            <div className="flex items-center gap-2 py-1 text-[12px] mb-3">
-              <span className="text-[var(--accent)] text-[10px] w-4 text-center shrink-0">●</span>
-              <span className="text-[var(--text-primary)] font-medium flex-1">{activeStep}</span>
-              <span className="text-[var(--text-muted)] text-[11px] shrink-0">In progress</span>
-            </div>
-          )}
-
-          {/* Scheduled section */}
-          {scheduledSteps.length > 0 && (
-            <div className="mb-3">
-              <div className="text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-[0.06em] mb-1">
-                Scheduled
-              </div>
-              <div className="space-y-1">
-                {scheduledSteps.map((step) => (
-                  <div
-                    key={step.id}
-                    className="flex items-center gap-2 py-1 text-[12px]"
-                  >
-                    <span className="text-[var(--text-muted)] text-[10px] w-4 text-center shrink-0">○</span>
-                    <span className="text-[var(--text-secondary)] flex-1">{skillLabel(step.skillId)}</span>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        onUnscheduleStep(step.id)
-                      }}
-                      className="p-1.5 -m-1 rounded text-[var(--text-faint)] hover:text-[var(--text-muted)] transition-colors duration-100 cursor-pointer"
-                      title="Remove from schedule"
+                <div className="space-y-1">
+                  {scheduledSteps.map((step) => (
+                    <div
+                      key={step.id}
+                      className="flex items-center gap-2 py-1 text-[12px] group"
                     >
-                      <X size={11} />
-                    </button>
-                  </div>
-                ))}
+                      <span className="text-[var(--text-muted)] text-[10px] w-4 text-center shrink-0">○</span>
+                      <span className="text-[var(--text-secondary)]">{skillLabel(step.skillId)}</span>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onUnscheduleStep(step.id)
+                        }}
+                        className="p-1 rounded text-[var(--text-faint)] opacity-0 group-hover:opacity-100 hover:text-[var(--text-muted)] transition-all duration-100 cursor-pointer"
+                        title="Remove from schedule"
+                      >
+                        <X size={11} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* Suggestions section */}
-          {suggestions.length > 0 && (
-            <div>
-              <div className="text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-[0.06em] mb-1">
-                Suggestions
-              </div>
-              <div className="space-y-1">
-                {suggestions.map((suggestion, i) => (
-                  <div
-                    key={`${suggestion.skillId}-${i}`}
-                    className="flex items-center gap-2 py-1 text-[12px] group"
-                  >
-                    <span className="text-[var(--text-faint)] text-[10px] w-4 text-center shrink-0">◌</span>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        onTriggerSkill(suggestion.skillId, suggestion.label)
-                        setExpanded(false)
-                      }}
-                      className="text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors duration-100 cursor-pointer flex-1 text-left"
+            {/* Suggestions section */}
+            {suggestions.length > 0 && (
+              <div>
+                <div className="text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-[0.06em] mb-1">
+                  Suggestions
+                </div>
+                <div className="space-y-1">
+                  {suggestions.map((suggestion, i) => (
+                    <div
+                      key={`${suggestion.skillId}-${i}`}
+                      className="flex items-center gap-2 py-1 text-[12px] group"
                     >
-                      {suggestion.label}
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        onScheduleStep(suggestion.skillId, suggestion.label)
-                      }}
-                      className="p-1.5 -m-1 rounded text-[var(--text-faint)] opacity-0 group-hover:opacity-100 hover:text-[var(--text-muted)] transition-all duration-100 cursor-pointer"
-                      title="Schedule this step"
-                    >
-                      <CalendarPlus size={11} />
-                    </button>
-                  </div>
-                ))}
+                      <span className="text-[var(--text-faint)] text-[10px] w-4 text-center shrink-0">◌</span>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onTriggerSkill(suggestion.skillId, suggestion.label)
+                          setExpanded(false)
+                        }}
+                        className="text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors duration-100 cursor-pointer text-left"
+                      >
+                        {suggestion.label}
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onScheduleStep(suggestion.skillId, suggestion.label)
+                        }}
+                        className="p-1 rounded text-[var(--text-faint)] opacity-0 group-hover:opacity-100 hover:text-[var(--text-muted)] transition-all duration-100 cursor-pointer"
+                        title="Schedule this step"
+                      >
+                        <CalendarPlus size={11} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       )}
     </div>

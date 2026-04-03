@@ -1,8 +1,8 @@
 /**
  * Built-in skills registry.
  *
- * Wraps the existing agent mode system (workhorseContext.ts buildModeInstructions)
- * with structured metadata for the jockey and journey bar.
+ * Each skill has structured metadata for the jockey and journey bar,
+ * plus prompt instructions for the agent session.
  */
 
 import type { Skill } from './types'
@@ -188,17 +188,14 @@ export function getAllSkillIds(): string[] {
   return Object.keys(BUILT_IN_SKILLS)
 }
 
-/**
- * Validate a skill ID (replaces isValidAgentMode).
- * Accepts both new skill IDs and legacy mode strings.
- */
+/** Validate a skill ID. */
 export function isValidSkillId(value: string | undefined): boolean {
   if (!value) return false
   return value in BUILT_IN_SKILLS
 }
 
 /**
- * Build instructions for a skill (replaces buildModeInstructions).
+ * Build instructions for a skill.
  * Falls back to a generic instruction if the skill is not found.
  */
 export function buildSkillInstructions(

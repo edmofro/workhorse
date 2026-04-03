@@ -40,13 +40,6 @@ interface SpecFileData {
   content: string
 }
 
-interface MockupData {
-  id: string
-  title: string
-  html: string
-  filePath: string
-}
-
 interface ProjectSpecData {
   filePath: string
   content: string
@@ -73,7 +66,6 @@ interface CardWorkspaceProps {
   initialFiles: SpecFileData[]
   initialCodeFiles?: { filePath: string; isNew: boolean; linesAdded?: number; linesRemoved?: number }[]
   filesLoading?: boolean
-  mockups: MockupData[]
   projectSpecs: ProjectSpecData[]
   sessions: ConversationSessionData[]
   initialSessionId?: string | null
@@ -85,7 +77,6 @@ export function CardWorkspace({
   initialFiles,
   initialCodeFiles = [],
   filesLoading = false,
-  mockups,
   projectSpecs,
   sessions: initialSessions,
   initialSessionId,
@@ -187,12 +178,7 @@ export function CardWorkspace({
   const mockupFiles = files
     .filter((f) => isMockupPath(f.filePath))
     .map((f) => ({ filePath: f.filePath, content: f.content }))
-  const allMockupFiles = [
-    ...mockupFiles,
-    ...mockups
-      .filter((m) => !mockupFiles.some((mf) => mf.filePath === m.filePath))
-      .map((m) => ({ filePath: m.filePath, content: m.html })),
-  ]
+  const allMockupFiles = mockupFiles
 
   // Code file items for the sidebar
   const codeFileItems: CodeFileItem[] = codeFiles.map((f) => ({
@@ -356,7 +342,7 @@ export function CardWorkspace({
     return () => clearInterval(interval)
   }, [card.id])
 
-  // Track file writes from the agent — add new files to the list
+  // Track file writes from the agent — add new files to the list and fetch content
   useEffect(() => {
     for (const fw of fileWrites) {
       if (fw.filePath.startsWith('.workhorse/specs/') || isMockupPath(fw.filePath)) {
@@ -364,6 +350,18 @@ export function CardWorkspace({
           if (prev.some((f) => f.filePath === fw.filePath)) return prev
           return [...prev, { filePath: fw.filePath, isNew: true, content: '' }]
         })
+        // Immediately fetch the file content from the worktree so mockups
+        // and specs are not blank when first added to the sidebar
+        fetch(`/api/worktree-files?cardId=${card.id}&filePath=${encodeURIComponent(fw.filePath)}`)
+          .then((res) => res.ok ? res.json() : null)
+          .then((data) => {
+            if (data?.content) {
+              setFiles((prev) =>
+                prev.map((f) => f.filePath === fw.filePath && !f.content ? { ...f, content: data.content as string } : f),
+              )
+            }
+          })
+          .catch(() => { /* best-effort */ })
       } else {
         // Track code file changes
         setCodeFiles((prev) => {
@@ -372,7 +370,7 @@ export function CardWorkspace({
         })
       }
     }
-  }, [fileWrites])
+  }, [fileWrites, card.id])
 
   // Open a file from card home in expanded mode (chat contracted)
   const openFileExpanded = useCallback(
@@ -397,11 +395,11 @@ export function CardWorkspace({
     [sessions, navigateTo],
   )
 
-  // Send message with mode support
+  // Send message with optional skill
   const handleSendMessage = useCallback(
-    (content: string, mode?: string) => {
+    (content: string, skillId?: string) => {
       const uploaded = chatAttachments.getUploadedAttachments()
-      rawSendMessage(content, user.displayName, uploaded.length > 0 ? uploaded : undefined, mode)
+      rawSendMessage(content, user.displayName, uploaded.length > 0 ? uploaded : undefined, skillId)
       chatAttachments.clear()
 
       if (view.type === 'card') {
@@ -415,7 +413,7 @@ export function CardWorkspace({
 
   const handlePillSelect = useCallback(
     (pill: ActionPill) => {
-      handleSendMessage(pill.message, pill.mode)
+      handleSendMessage(pill.message, pill.skillId)
     },
     [handleSendMessage],
   )
@@ -430,10 +428,12 @@ export function CardWorkspace({
     [handleSendMessage],
   )
 
-  /** Create PR from the PR bar */
-  const handleCreatePr = useCallback(() => {
-    handleSendMessage('Create a pull request for this card', 'create_pr')
-  }, [handleSendMessage])
+  /** Handle PR creation — update local state with the new PR URL */
+  const [localPrUrl, setLocalPrUrl] = useState<string | null>(card.prUrl ?? null)
+  const handlePrCreated = useCallback((prUrl: string) => {
+    setLocalPrUrl(prUrl)
+    router.refresh()
+  }, [router])
 
   // Spec operations
   const ensureWorktree = useCallback(async () => {
@@ -527,11 +527,8 @@ export function CardWorkspace({
     ? !activeFilePath.startsWith('.workhorse/') && !isMockupFile
     : false
 
-  // Find mockup data (either from files or from mockups prop)
   const activeMockupHtml = isMockupFile && activeFilePath
-    ? (files.find((f) => f.filePath === activeFilePath)?.content ||
-       mockups.find((m) => m.filePath === activeFilePath)?.html ||
-       '')
+    ? (files.find((f) => f.filePath === activeFilePath)?.content || '')
     : ''
   const activeMockupTitle = activeFilePath ? deriveLabel(activeFilePath, activeMockupHtml) : ''
 
@@ -543,7 +540,7 @@ export function CardWorkspace({
     return {
       label: p.label,
       message: skill?.description ?? `Run ${p.label}`,
-      mode: p.skillId,
+      skillId: p.skillId,
     }
   })
 
@@ -629,8 +626,10 @@ export function CardWorkspace({
           </div>
         )}
         <ChatInput
+          key={activeSessionId ?? 'new'}
           onSend={(content) => handleSendMessage(content)}
           disabled={isStreaming}
+          autoFocus
           pendingAttachments={chatAttachments.pending}
           onAddFiles={chatAttachments.addFiles}
           onRemoveAttachment={chatAttachments.removeAttachment}
@@ -639,9 +638,10 @@ export function CardWorkspace({
       </div>
       {/* PR bar — bottom of chat area */}
       <PrBar
+        cardId={card.id}
         hasCodeChanges={jockey.hasCodeChanges}
-        prUrl={card.prUrl ?? null}
-        onCreatePr={handleCreatePr}
+        prUrl={localPrUrl}
+        onPrCreated={handlePrCreated}
       />
     </div>
   )
@@ -735,6 +735,15 @@ export function CardWorkspace({
       {view.type === 'card' && (
         <>
           <div className="flex-1 flex flex-col overflow-hidden">
+            <JourneyBar
+              journalEntries={jockey.journalEntries}
+              scheduledSteps={jockey.scheduledSteps}
+              suggestions={dedupedSuggestions}
+              activeStep={jockey.activeStep}
+              onTriggerSkill={handleTriggerSkill}
+              onScheduleStep={jockey.scheduleStep}
+              onUnscheduleStep={jockey.unscheduleStep}
+            />
             <div className="flex-1 overflow-y-auto">
               {cardTabContent}
 

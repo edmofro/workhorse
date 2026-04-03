@@ -1,0 +1,458 @@
+<!-- spec: conversation-sessions.md -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WH-041 — Dismiss recent conversation</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #f8f7f4;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 48px;
+    padding: 48px 32px;
+    min-height: 100vh;
+  }
+
+  /* ── Sidebar ── */
+  .sidebar {
+    width: 216px;
+    background: #f1efeb;
+    border-right: 1px solid #eae7e1;
+    border-radius: 10px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(28,25,23,0.06);
+  }
+
+  .sidebar-header {
+    padding: 16px 12px 8px;
+  }
+
+  .logo-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 4px;
+    margin-bottom: 12px;
+  }
+
+  .logo-mark {
+    width: 26px;
+    height: 26px;
+    background: #c2410c;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 13px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+
+  .logo-name {
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    color: #1c1917;
+  }
+
+  .project-switcher {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+
+  .project-switcher:hover { background: #edeae5; }
+
+  .project-name {
+    font-size: 13px;
+    font-weight: 500;
+    color: #1c1917;
+  }
+
+  .chevron {
+    color: #a8a29e;
+    font-size: 10px;
+  }
+
+  /* ── Nav ── */
+  .nav {
+    flex: 1;
+    padding: 4px 12px;
+    overflow: hidden;
+  }
+
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 450;
+    color: #57534e;
+    cursor: pointer;
+    text-decoration: none;
+  }
+
+  .nav-item:hover { background: #edeae5; }
+
+  .nav-item svg { color: #a8a29e; flex-shrink: 0; }
+
+  /* ── Conversations section ── */
+  .conversations-section {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid #eae7e1;
+  }
+
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    font-size: 13px;
+    font-weight: 450;
+    color: #57534e;
+  }
+
+  .section-header svg { color: #a8a29e; flex-shrink: 0; }
+
+  .conversations-list {
+    margin-left: 4px;
+  }
+
+  /* ── Conversation item ── */
+  .conv-item {
+    position: relative;
+    display: flex;
+    align-items: center;
+    border-radius: 6px;
+  }
+
+  .conv-link {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    color: #a8a29e;
+    cursor: pointer;
+    text-decoration: none;
+    flex: 1;
+    min-width: 0;
+    transition: background 0.1s, color 0.1s;
+    white-space: nowrap;
+    overflow: hidden;
+  }
+
+  .conv-link:hover {
+    background: #edeae5;
+    color: #57534e;
+  }
+
+  .conv-link.active {
+    background: #ffffff;
+    color: #1c1917;
+    font-weight: 500;
+    box-shadow: 0 1px 3px rgba(28,25,23,0.04);
+  }
+
+  .conv-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .status-dot.amber { background: #b45309; }
+  .status-dot.green { background: #16a34a; }
+  .status-dot.hollow { border: 1px solid #dfdcd5; }
+
+  .msg-icon { color: #a8a29e; flex-shrink: 0; }
+
+  /* ── Dismiss button + gradient fade ── */
+  .dismiss-fade {
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding-left: 16px;
+    padding-right: 4px;
+    opacity: 0;
+    transition: opacity 0.1s;
+    pointer-events: none;
+  }
+
+  /* Default state (not active) fades to sidebar bg */
+  .dismiss-fade { background: linear-gradient(to right, transparent, #f1efeb 40%); }
+
+  /* Active item fades to surface bg */
+  .conv-item:has(.conv-link.active) .dismiss-fade {
+    background: linear-gradient(to right, transparent, #ffffff 40%);
+  }
+
+  /* Hovering the link fades to hover bg */
+  .conv-item:has(.conv-link:hover) .dismiss-fade {
+    background: linear-gradient(to right, transparent, #edeae5 40%);
+  }
+
+  .conv-item:hover .dismiss-fade {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .dismiss-btn {
+    padding: 4px;
+    border-radius: 4px;
+    border: none;
+    background: transparent;
+    color: #a8a29e;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.1s, color 0.1s;
+    line-height: 1;
+  }
+
+  .dismiss-btn:hover {
+    background: #edeae5;
+    color: #57534e;
+  }
+
+  /* ── User menu ── */
+  .user-menu {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 16px;
+    border-top: 1px solid #eae7e1;
+  }
+
+  .avatar {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: #c2410c;
+    color: white;
+    font-size: 10px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .user-name {
+    font-size: 12px;
+    color: #57534e;
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* ── Annotation panel ── */
+  .annotations {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    max-width: 320px;
+  }
+
+  .annotation {
+    background: #ffffff;
+    border: 1px solid #eae7e1;
+    border-radius: 8px;
+    padding: 16px;
+    box-shadow: 0 1px 3px rgba(28,25,23,0.04);
+  }
+
+  .annotation h3 {
+    font-size: 12px;
+    font-weight: 600;
+    color: #1c1917;
+    margin-bottom: 6px;
+  }
+
+  .annotation p {
+    font-size: 12px;
+    color: #57534e;
+    line-height: 1.6;
+  }
+
+  .annotation .label {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 500;
+    background: rgba(194,65,12,0.06);
+    color: #c2410c;
+    border-radius: 4px;
+    padding: 2px 6px;
+    margin-bottom: 8px;
+  }
+
+  /* Inline SVG icons */
+  svg { display: inline-block; vertical-align: middle; }
+</style>
+</head>
+<body>
+
+<!-- Sidebar -->
+<div class="sidebar">
+  <div class="sidebar-header">
+    <div class="logo-row">
+      <div class="logo-mark">W</div>
+      <span class="logo-name">Workhorse</span>
+    </div>
+    <div class="project-switcher">
+      <span class="project-name">Workhorse</span>
+      <span class="chevron">▾</span>
+    </div>
+  </div>
+
+  <nav class="nav">
+    <a class="nav-item" href="#">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+      Cards
+    </a>
+    <a class="nav-item" href="#">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      Specs
+    </a>
+    <a class="nav-item" href="#">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
+      Design
+    </a>
+
+    <div class="conversations-section">
+      <div class="section-header">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        Conversations
+      </div>
+
+      <div class="conversations-list">
+
+        <!-- Item 1: in-progress card session (hover state — X visible) -->
+        <div class="conv-item" id="item1" style="background:#edeae5; border-radius:6px;">
+          <a class="conv-link" href="#" style="background:#edeae5; color:#57534e;">
+            <span class="status-dot amber"></span>
+            <span class="conv-label">WH-041: Dismiss button</span>
+          </a>
+          <div class="dismiss-fade" style="opacity:1; pointer-events:auto; background: linear-gradient(to right, transparent, #edeae5 40%);">
+            <button class="dismiss-btn" title="Dismiss">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Item 2: active session -->
+        <div class="conv-item">
+          <a class="conv-link active" href="#">
+            <span class="status-dot hollow"></span>
+            <span class="conv-label">WH-038: Initial interview</span>
+          </a>
+          <div class="dismiss-fade">
+            <button class="dismiss-btn" title="Dismiss">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Item 3: standalone session -->
+        <div class="conv-item">
+          <a class="conv-link" href="#">
+            <svg class="msg-icon" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            <span class="conv-label">Schema question</span>
+          </a>
+          <div class="dismiss-fade">
+            <button class="dismiss-btn" title="Dismiss">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Item 4: complete card session -->
+        <div class="conv-item">
+          <a class="conv-link" href="#">
+            <span class="status-dot green"></span>
+            <span class="conv-label">WH-035: Fix login flow</span>
+          </a>
+          <div class="dismiss-fade">
+            <button class="dismiss-btn" title="Dismiss">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Item 5: standalone, long title -->
+        <div class="conv-item">
+          <a class="conv-link" href="#">
+            <svg class="msg-icon" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            <span class="conv-label">How does the auth middleware handle token expiry</span>
+          </a>
+          <div class="dismiss-fade">
+            <button class="dismiss-btn" title="Dismiss">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </nav>
+
+  <div class="user-menu">
+    <div class="avatar">F</div>
+    <span class="user-name">Felix</span>
+  </div>
+</div>
+
+<!-- Annotations -->
+<div class="annotations">
+  <div class="annotation">
+    <span class="label">Row 1 — hover state</span>
+    <h3>X button visible on hover</h3>
+    <p>The dismiss button appears on row hover. A gradient fades from transparent to the row's current background colour (sidebar, hover, or active surface) over 16px, masking any truncated text cleanly.</p>
+  </div>
+  <div class="annotation">
+    <span class="label">Gradient backgrounds</span>
+    <h3>Three background states</h3>
+    <p>
+      <strong>At rest:</strong> fades to <code>#f1efeb</code> (sidebar bg)<br>
+      <strong>On hover:</strong> fades to <code>#edeae5</code> (hover bg)<br>
+      <strong>Active item:</strong> fades to <code>#ffffff</code> (surface bg)<br><br>
+      The X button itself gets <code>hover:bg-[--bg-hover]</code> for its own hit-state affordance.
+    </p>
+  </div>
+  <div class="annotation">
+    <span class="label">Long titles</span>
+    <h3>Truncation + fade</h3>
+    <p>Row 5 shows a long title. The text truncates at the row edge; the gradient then provides a soft visual boundary before the X appears. No text bleeds under the button.</p>
+  </div>
+</div>
+
+</body>
+</html>

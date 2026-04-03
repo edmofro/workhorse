@@ -2,11 +2,8 @@
 
 import { ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
-import { Topbar, TopbarCardTitle, TopbarRight } from '../Topbar'
-import { CollaborateButton } from './CollaborateButton'
-import { ActivityPopover } from './ActivityPopover'
+import { Topbar, TopbarCardTitle } from '../Topbar'
 import { useCardBack } from './CardBackContext'
-import type { CardActivity } from '../../lib/hooks/queries'
 
 interface CardDetailShellProps {
   card: {
@@ -17,7 +14,6 @@ interface CardDetailShellProps {
     cardBranch: string | null
     touchedFiles: string[]
     defaultBranch: string
-    activities: CardActivity[]
   }
   projectSlug: string
   children: React.ReactNode
@@ -51,14 +47,7 @@ export function CardDetailShell({
           title={card.title}
           identifier={card.identifier}
         />
-        <TopbarRight>
-          <ActivityPopover activities={card.activities} />
-          <CollaborateButton
-            cardId={card.id}
-            cardBranch={card.cardBranch}
-            status={card.status}
-          />
-        </TopbarRight>
+        <div />
       </Topbar>
       {children}
     </>

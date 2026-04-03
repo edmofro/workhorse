@@ -29,11 +29,11 @@ The per-file version history (git log per file) is available under the hood but 
 
 ## Status transitions
 
-Status changes (including `SPECIFYING` → `IMPLEMENTING`) are handled via the status dropdown on the card view — no dedicated button. This avoids conditionally-rendered topbar buttons that flash in and shift the layout.
+Status changes are handled via the status dropdown on the card view. Statuses are configurable per project (see `workflow-orchestration.md`).
 
-- [ ] Status dropdown on the card view handles all transitions including `SPECIFYING` → `IMPLEMENTING`
-- [ ] No PR is created at this point. The implementation phase creates PRs when the developer is ready
-- [ ] Backward transition allowed: `IMPLEMENTING` → `SPECIFYING` if specs need rework
+- [ ] Status dropdown on the card view handles all transitions
+- [ ] Backward transitions are allowed
+- [ ] PRs are created via the create-pr skill (see `workflow-orchestration.md`) when the user is ready
 
 ## Under the hood (invisible to user)
 
@@ -42,9 +42,9 @@ Status changes (including `SPECIFYING` → `IMPLEMENTING`) are handled via the s
 - [ ] Dependent cards branch off parent card branches; rebasing is automatic
 - [ ] Branch is the source of truth; worktree on disk is a recreatable cache (see agent-sdk-session spec for recovery details)
 
-## Collaborate with agent button
+## Handoff to external agents
 
-See the agent SDK session spec (`.workhorse/specs/agent-sdk-session.md`) for full details. The split dropdown button appears in both `SPECIFYING` and `IMPLEMENTING` modes, generating a phase-appropriate prompt for external Claude Code sessions.
+See `workflow-orchestration.md` for the handoff button, which generates a context-rich briefing prompt for external agents at any stage of the card's lifecycle.
 
 ## Open questions
 

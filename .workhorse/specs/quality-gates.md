@@ -3,15 +3,21 @@ title: Workflow quality gates and enforcement
 area: workflow
 ---
 
-Ordering and quality constraints in the commit and completion workflows.
+Ordering and quality constraints in the commit and status workflows.
 
 ## Committing and status are independent
 
 - [ ] Committing specs pushes the current spec content to the project's codebase — it does not change the card's status
 - [ ] A card can be committed multiple times while in any status (iterative workflow)
 - [ ] Status progression is an explicit user action via the status field on the card view
-- [ ] The three statuses (Not started, Specifying, Spec complete) behave like column states — the user moves the card forward when they judge it ready
-- [ ] The AI completeness assessment and auto-review inform the user's decision but do not gate the status change itself
+- [ ] Statuses are configurable per project (see `workflow-orchestration.md`)
+- [ ] The jockey's journal and suggestions inform the user's decision but do not gate the status change itself
+
+## Soft gates on status transitions
+
+- [ ] When the user advances a card's status, the system checks the card's journal (see `workflow-orchestration.md`) for whether relevant skills have been completed
+- [ ] If a relevant skill has not run (e.g. spec review before moving to implementation), the user sees a prompt with the option to run it or skip
+- [ ] All gates are skippable — the user always has the final say
 
 ## Dependency commit ordering
 
@@ -21,5 +27,5 @@ Ordering and quality constraints in the commit and completion workflows.
 
 ## Dependency status ordering
 
-- [ ] A card cannot move to Spec complete if any of its parent cards are not Spec complete
+- [ ] A card cannot advance past its parent cards' statuses
 - [ ] Setting the status checks parent statuses and shows a blocking message if parents are incomplete

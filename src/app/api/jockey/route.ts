@@ -9,7 +9,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '../../../lib/prisma'
 import { requireUser, requireCardAccess } from '../../../lib/auth/session'
 import { getDefaultPills, getDefaultSuggestions } from '../../../lib/jockey/assess'
-import { safeParseTouchedFiles } from '../../../lib/safeParseTouchedFiles'
+import { getChangedFiles } from '../../../lib/git/worktree'
 
 export async function GET(request: NextRequest) {
   const user = await requireUser()

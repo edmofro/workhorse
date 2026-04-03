@@ -83,7 +83,7 @@ export function generateHandoffPrompt(ctx: HandoffContext): string {
   }
 
   // Code changes
-  if (ctx.status === 'IMPLEMENTING' || ctx.touchedFiles.some(f => !f.startsWith('.workhorse/'))) {
+  if (ctx.status === 'IMPLEMENTING' || ctx.codeFiles.length > 0) {
     lines.push('## Code changes')
     lines.push('Code changes should meet the spec acceptance criteria. Review the diff:')
     lines.push('```')

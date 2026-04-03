@@ -70,15 +70,6 @@ export async function GET(request: NextRequest) {
     }),
   ])
 
-  // Parse touchedFiles
-  let touchedFiles: string[] = []
-  try {
-    const parsed = JSON.parse(card.touchedFiles)
-    touchedFiles = Array.isArray(parsed) ? parsed : []
-  } catch {
-    // ignore
-  }
-
   return NextResponse.json({
     card: {
       id: card.id,
@@ -90,7 +81,6 @@ export async function GET(request: NextRequest) {
       tags: card.tags,
       cardBranch: card.cardBranch,
       prUrl: card.prUrl,
-      touchedFiles,
       team: { id: card.team.id, name: card.team.name, colour: card.team.colour },
       project: {
         id: card.team.project.id,

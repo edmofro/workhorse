@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useRef, useEffect, useTransition, useMemo } from 'react'
+import { useState, useRef, useEffect, useTransition, useMemo, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import Link from 'next/link'
 import { MoreHorizontal, ChevronRight } from 'lucide-react'
 import { useDroppable, useDraggable } from '@dnd-kit/core'
@@ -155,20 +156,44 @@ function BoardCard({ card, projectName, isDragging }: { card: CardData; projectN
   const [menuOpen, setMenuOpen] = useState(false)
   const [statusSubmenuOpen, setStatusSubmenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
+  const triggerRef = useRef<HTMLButtonElement>(null)
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null)
   const [, startTransition] = useTransition()
 
   const href = `/${encodeURIComponent(projectName.toLowerCase())}/cards/${card.identifier}`
 
+  const updateMenuPosition = useCallback(() => {
+    if (!triggerRef.current) return
+    const rect = triggerRef.current.getBoundingClientRect()
+    setMenuPos({
+      top: rect.bottom + 4,
+      left: rect.right - 160,
+    })
+  }, [])
+
   useEffect(() => {
     if (!menuOpen) return
     function handleClickOutside(e: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+      if (
+        menuRef.current && !menuRef.current.contains(e.target as Node) &&
+        triggerRef.current && !triggerRef.current.contains(e.target as Node)
+      ) {
         setMenuOpen(false)
         setStatusSubmenuOpen(false)
       }
     }
+    function handleScroll() {
+      setMenuOpen(false)
+      setStatusSubmenuOpen(false)
+    }
     document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
+    // Close on scroll so the menu doesn't float detached from the card
+    const scrollableParent = triggerRef.current?.closest('.overflow-y-auto')
+    scrollableParent?.addEventListener('scroll', handleScroll)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+      scrollableParent?.removeEventListener('scroll', handleScroll)
+    }
   }, [menuOpen])
 
   function handleStatusChange(status: string) {
@@ -207,9 +232,11 @@ function BoardCard({ card, projectName, isDragging }: { card: CardData; projectN
 
       {/* Overflow menu trigger */}
       <button
+        ref={triggerRef}
         onClick={(e) => {
           e.preventDefault()
           e.stopPropagation()
+          if (!menuOpen) updateMenuPosition()
           setMenuOpen(!menuOpen)
           setStatusSubmenuOpen(false)
         }}
@@ -223,11 +250,12 @@ function BoardCard({ card, projectName, isDragging }: { card: CardData; projectN
         <MoreHorizontal size={14} />
       </button>
 
-      {/* Overflow menu */}
-      {menuOpen && (
+      {/* Overflow menu — portaled to body to avoid column overflow clipping */}
+      {menuOpen && menuPos && createPortal(
         <div
           ref={menuRef}
-          className="absolute top-8 right-2 z-50 w-[160px] bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-[var(--radius-xl)] shadow-[var(--shadow-lg)] py-1"
+          style={{ position: 'fixed', top: menuPos.top, left: menuPos.left }}
+          className="z-50 w-[160px] bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-[var(--radius-xl)] shadow-[var(--shadow-lg)] py-1"
         >
           <div
             className="relative pr-1"
@@ -260,7 +288,8 @@ function BoardCard({ card, projectName, isDragging }: { card: CardData; projectN
               </div>
             )}
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   )

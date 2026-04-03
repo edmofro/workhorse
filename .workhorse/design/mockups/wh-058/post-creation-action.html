@@ -1,0 +1,626 @@
+<!-- spec: ai-card-creation.md -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WH-058 — Post-creation action affordances</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #f8f7f4;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 64px;
+    padding: 64px 32px;
+    min-height: 100vh;
+    color: #1c1917;
+  }
+
+  .section-label {
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: #a8a29e;
+    text-align: center;
+    margin-bottom: 20px;
+  }
+
+  /* ── Modal backdrop ── */
+  .modal-backdrop {
+    position: relative;
+    width: 520px;
+    background: rgba(28, 25, 23, 0.35);
+    border-radius: 16px;
+    padding: 48px 32px;
+    display: flex;
+    justify-content: center;
+  }
+
+  /* ── Modal ── */
+  .modal {
+    width: 480px;
+    background: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(28,25,23,0.14), 0 2px 8px rgba(28,25,23,0.08);
+    overflow: hidden;
+  }
+
+  .modal-close {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #a8a29e;
+    cursor: pointer;
+    border-radius: 6px;
+  }
+  .modal-close:hover { background: #f1efeb; color: #57534e; }
+
+  /* ── Input area ── */
+  .input-area {
+    position: relative;
+  }
+
+  textarea {
+    width: 100%;
+    border: none;
+    outline: none;
+    resize: none;
+    font-family: inherit;
+    font-size: 14px;
+    line-height: 1.6;
+    color: #1c1917;
+    background: transparent;
+    padding: 20px 20px 12px;
+    min-height: 100px;
+  }
+
+  textarea::placeholder {
+    color: #d1cdc6;
+  }
+
+  /* ── Action bar ── */
+  .action-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 12px 12px;
+    border-top: 1px solid #eae7e1;
+  }
+
+  /* Chat button */
+  .btn-chat {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    border: none;
+    background: transparent;
+    color: #a8a29e;
+    cursor: pointer;
+    transition: background 100ms, color 100ms;
+    flex-shrink: 0;
+  }
+  .btn-chat:hover {
+    background: #f1efeb;
+    color: #57534e;
+  }
+
+  /* Compound create control */
+  .compound-create {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  /* Skill selector pill */
+  .skill-selector {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    height: 32px;
+    padding: 0 10px;
+    border: 1px solid #dfdcd5;
+    border-radius: 8px;
+    background: #f8f7f4;
+    color: #57534e;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 100ms, border-color 100ms;
+    white-space: nowrap;
+  }
+  .skill-selector:hover {
+    background: #edeae5;
+    border-color: #c9c5be;
+  }
+  .skill-selector svg {
+    color: #a8a29e;
+  }
+  .skill-selector.ai-suggested {
+    border-color: #e8e1d9;
+    background: #f8f7f4;
+  }
+  .skill-selector .ai-dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: #c2410c;
+    opacity: 0.6;
+    flex-shrink: 0;
+  }
+
+  /* Create card button */
+  .btn-create {
+    height: 32px;
+    padding: 0 14px;
+    background: #c2410c;
+    color: #ffffff;
+    border: none;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: background 100ms;
+    white-space: nowrap;
+  }
+  .btn-create:hover { background: #b33b09; }
+
+  /* ── Dropdown ── */
+  .dropdown-wrapper {
+    position: relative;
+    display: inline-block;
+  }
+
+  .dropdown {
+    position: absolute;
+    bottom: calc(100% + 6px);
+    right: 0;
+    width: 220px;
+    background: #ffffff;
+    border: 1px solid #dfdcd5;
+    border-radius: 10px;
+    box-shadow: 0 4px 16px rgba(28,25,23,0.12), 0 1px 4px rgba(28,25,23,0.06);
+    padding: 4px;
+    z-index: 10;
+  }
+
+  .dropdown-hint {
+    padding: 7px 10px 5px;
+    font-size: 11px;
+    color: #a8a29e;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    font-weight: 500;
+  }
+
+  .dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    border-radius: 7px;
+    cursor: pointer;
+    transition: background 80ms;
+  }
+  .dropdown-item:hover { background: #f1efeb; }
+  .dropdown-item.selected {
+    background: #fef3ee;
+    color: #c2410c;
+  }
+
+  .dropdown-item-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    background: #f1efeb;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    color: #78716c;
+  }
+  .dropdown-item.selected .dropdown-item-icon {
+    background: #fde8df;
+    color: #c2410c;
+  }
+
+  .dropdown-item-text {
+    flex: 1;
+  }
+  .dropdown-item-name {
+    font-size: 13px;
+    font-weight: 500;
+    color: #1c1917;
+  }
+  .dropdown-item.selected .dropdown-item-name {
+    color: #c2410c;
+  }
+  .dropdown-item-desc {
+    font-size: 11px;
+    color: #a8a29e;
+    margin-top: 1px;
+  }
+
+  .dropdown-check {
+    color: #c2410c;
+    flex-shrink: 0;
+    opacity: 0;
+  }
+  .dropdown-item.selected .dropdown-check {
+    opacity: 1;
+  }
+
+  .dropdown-divider {
+    height: 1px;
+    background: #eae7e1;
+    margin: 4px 0;
+  }
+
+  .dropdown-item-none .dropdown-item-name {
+    color: #78716c;
+    font-weight: 400;
+  }
+
+  /* ── SVG icons (inline) ── */
+  svg { display: block; }
+
+  /* ── Annotations ── */
+  .annotation-row {
+    display: flex;
+    width: 480px;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .annotation {
+    flex: 1;
+    min-width: 180px;
+    background: #ffffff;
+    border: 1px solid #eae7e1;
+    border-radius: 8px;
+    padding: 12px 14px;
+  }
+  .annotation-title {
+    font-size: 11px;
+    font-weight: 600;
+    color: #78716c;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 5px;
+  }
+  .annotation-body {
+    font-size: 12px;
+    line-height: 1.55;
+    color: #57534e;
+  }
+
+  /* ── State variants ── */
+  .variant-row {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    width: 520px;
+  }
+
+  .variant-label {
+    font-size: 11px;
+    color: #a8a29e;
+    font-weight: 500;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    align-self: flex-start;
+    margin-bottom: -12px;
+  }
+
+  /* Condensed action bar for states comparison */
+  .action-bar-demo {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 12px;
+    border: 1px solid #eae7e1;
+    border-radius: 10px;
+    background: #ffffff;
+    width: 480px;
+    box-shadow: 0 1px 4px rgba(28,25,23,0.06);
+  }
+
+  .ai-badge {
+    font-size: 10px;
+    color: #c2410c;
+    opacity: 0.7;
+    font-weight: 500;
+    letter-spacing: 0.03em;
+    padding-right: 2px;
+  }
+</style>
+</head>
+<body>
+
+<!-- ─────────────────────────────────────────────
+     PRIMARY STATE: modal with dropdown open
+───────────────────────────────────────────── -->
+
+<div>
+  <div class="section-label">Card creation modal — skill selector open</div>
+
+  <div class="modal-backdrop">
+    <!-- close button -->
+    <div class="modal-close">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+        <path d="M1 1l12 12M13 1L1 13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+      </svg>
+    </div>
+
+    <div class="modal">
+      <div class="input-area">
+        <textarea placeholder="What's on your mind?" rows="4">The allergies panel is not showing the warning icon when two conflicting meds are prescribed together. Affects the medication review screen.</textarea>
+      </div>
+
+      <div class="action-bar">
+        <!-- Start chat -->
+        <button class="btn-chat" title="Start conversation (↵)">
+          <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
+            <path d="M2 7.5h11M9 3.5l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+
+        <!-- Compound control: skill selector + create -->
+        <div class="compound-create">
+          <div class="dropdown-wrapper">
+            <!-- Skill selector pill — open state -->
+            <div class="skill-selector" style="border-color: #c9c5be; background: #edeae5;">
+              <span class="ai-dot"></span>
+              <span>Implement</span>
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                <path d="M3 4.5l3 3 3-3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </div>
+
+            <!-- Dropdown -->
+            <div class="dropdown">
+              <div class="dropdown-hint">Then launch</div>
+
+              <div class="dropdown-item">
+                <div class="dropdown-item-icon">
+                  <!-- workshop: lightbulb-ish, using sparkles without sparkle -->
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                    <path d="M12 2C8.13 2 5 5.13 5 9c0 2.38 1.19 4.47 3 5.74V17a1 1 0 001 1h6a1 1 0 001-1v-2.26C17.81 13.47 19 11.38 19 9c0-3.87-3.13-7-7-7zM9 21h6M10 21h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                  </svg>
+                </div>
+                <div class="dropdown-item-text">
+                  <div class="dropdown-item-name">Workshop</div>
+                  <div class="dropdown-item-desc">Explore the idea openly</div>
+                </div>
+                <svg class="dropdown-check" width="14" height="14" viewBox="0 0 14 14" fill="none">
+                  <path d="M2.5 7l3.5 3.5 5.5-6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </div>
+
+              <div class="dropdown-item">
+                <div class="dropdown-item-icon">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                    <path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                  </svg>
+                </div>
+                <div class="dropdown-item-text">
+                  <div class="dropdown-item-name">Interview</div>
+                  <div class="dropdown-item-desc">Spec out requirements</div>
+                </div>
+                <svg class="dropdown-check" width="14" height="14" viewBox="0 0 14 14" fill="none">
+                  <path d="M2.5 7l3.5 3.5 5.5-6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </div>
+
+              <div class="dropdown-item">
+                <div class="dropdown-item-icon">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                    <path d="M9 12h6M9 16h4M5 8h14M5 4h14a1 1 0 011 1v14a1 1 0 01-1 1H5a1 1 0 01-1-1V5a1 1 0 011-1z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                  </svg>
+                </div>
+                <div class="dropdown-item-text">
+                  <div class="dropdown-item-name">Draft spec</div>
+                  <div class="dropdown-item-desc">AI writes the spec directly</div>
+                </div>
+                <svg class="dropdown-check" width="14" height="14" viewBox="0 0 14 14" fill="none">
+                  <path d="M2.5 7l3.5 3.5 5.5-6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </div>
+
+              <div class="dropdown-item selected">
+                <div class="dropdown-item-icon">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                    <path d="M16 18l6-6-6-6M8 6l-6 6 6 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                  </svg>
+                </div>
+                <div class="dropdown-item-text">
+                  <div class="dropdown-item-name">Implement</div>
+                  <div class="dropdown-item-desc">Go straight to writing code</div>
+                </div>
+                <svg class="dropdown-check" width="14" height="14" viewBox="0 0 14 14" fill="none">
+                  <path d="M2.5 7l3.5 3.5 5.5-6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </div>
+
+              <div class="dropdown-divider"></div>
+
+              <div class="dropdown-item dropdown-item-none">
+                <div class="dropdown-item-icon" style="background: transparent;">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                    <path d="M18 6L6 18M6 6l12 12" stroke="#a8a29e" stroke-width="1.5" stroke-linecap="round"/>
+                  </svg>
+                </div>
+                <div class="dropdown-item-text">
+                  <div class="dropdown-item-name">Just create</div>
+                </div>
+                <svg class="dropdown-check" width="14" height="14" viewBox="0 0 14 14" fill="none">
+                  <path d="M2.5 7l3.5 3.5 5.5-6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </div>
+            </div>
+          </div>
+
+          <button class="btn-create">
+            Create card
+            <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+              <rect x="1" y="1" width="11" height="11" rx="2" stroke="white" stroke-width="1.3"/>
+              <path d="M6.5 4v5M4 6.5h5" stroke="white" stroke-width="1.3" stroke-linecap="round"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ─────────────────────────────────────────────
+     STATE VARIANTS — action bar only
+───────────────────────────────────────────── -->
+
+<div>
+  <div class="section-label">Action bar states</div>
+  <div class="variant-row">
+
+    <!-- 1. No skill selected (default / "just create") -->
+    <div class="variant-label">Default — no follow-on selected</div>
+    <div class="action-bar-demo">
+      <button class="btn-chat">
+        <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
+          <path d="M2 7.5h11M9 3.5l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+      <div class="compound-create">
+        <div class="skill-selector" style="color: #a8a29e; font-weight: 400;">
+          <span>After creation…</span>
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+            <path d="M3 4.5l3 3 3-3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <button class="btn-create">
+          Create card
+          <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+            <rect x="1" y="1" width="11" height="11" rx="2" stroke="white" stroke-width="1.3"/>
+            <path d="M6.5 4v5M4 6.5h5" stroke="white" stroke-width="1.3" stroke-linecap="round"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- 2. AI suggested -->
+    <div class="variant-label">AI-suggested skill (dot = suggested by AI)</div>
+    <div class="action-bar-demo">
+      <button class="btn-chat">
+        <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
+          <path d="M2 7.5h11M9 3.5l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+      <div class="compound-create">
+        <div class="skill-selector ai-suggested">
+          <span class="ai-dot"></span>
+          <span>Implement</span>
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+            <path d="M3 4.5l3 3 3-3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <button class="btn-create">
+          Create card
+          <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+            <rect x="1" y="1" width="11" height="11" rx="2" stroke="white" stroke-width="1.3"/>
+            <path d="M6.5 4v5M4 6.5h5" stroke="white" stroke-width="1.3" stroke-linecap="round"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- 3. User selected -->
+    <div class="variant-label">User-selected skill</div>
+    <div class="action-bar-demo">
+      <button class="btn-chat">
+        <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
+          <path d="M2 7.5h11M9 3.5l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+      <div class="compound-create">
+        <div class="skill-selector">
+          <span>Interview</span>
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+            <path d="M3 4.5l3 3 3-3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <button class="btn-create">
+          Create card
+          <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+            <rect x="1" y="1" width="11" height="11" rx="2" stroke="white" stroke-width="1.3"/>
+            <path d="M6.5 4v5M4 6.5h5" stroke="white" stroke-width="1.3" stroke-linecap="round"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- 4. Generating (busy) -->
+    <div class="variant-label">Generating — both actions disabled</div>
+    <div class="action-bar-demo" style="opacity: 0.6; pointer-events: none;">
+      <button class="btn-chat">
+        <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
+          <path d="M2 7.5h11M9 3.5l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+      <div class="compound-create">
+        <div class="skill-selector ai-suggested">
+          <span class="ai-dot"></span>
+          <span>Implement</span>
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+            <path d="M3 4.5l3 3 3-3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <button class="btn-create" style="opacity:0.7;">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style="animation: none;">
+            <circle cx="7" cy="7" r="5.5" stroke="rgba(255,255,255,0.4)" stroke-width="1.5"/>
+            <path d="M7 1.5A5.5 5.5 0 0112.5 7" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+          Creating…
+        </button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- ─────────────────────────────────────────────
+     ANNOTATIONS
+───────────────────────────────────────────── -->
+
+<div class="annotation-row">
+  <div class="annotation">
+    <div class="annotation-title">AI suggestion</div>
+    <div class="annotation-body">The same pass that generates the card title also returns a suggested follow-on skill. The pill updates as the user types (debounced). A small orange dot marks it as AI-suggested — clicking the pill and choosing the same option removes the dot (user-confirmed).</div>
+  </div>
+  <div class="annotation">
+    <div class="annotation-title">Skill subset</div>
+    <div class="annotation-body">Only the four inline skills appear here: Workshop, Interview, Draft spec, Implement. Subagent skills (review, audit) and post-implementation skills (PR, Fix CI) are not relevant at creation time.</div>
+  </div>
+  <div class="annotation">
+    <div class="annotation-title">No selection default</div>
+    <div class="annotation-body">If the user types slowly or the AI hasn't returned a suggestion yet, the pill reads "After creation…" in muted text. The card is still createable — the follow-on is optional.</div>
+  </div>
+</div>
+
+</body>
+</html>

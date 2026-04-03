@@ -491,6 +491,7 @@ async function finaliseSessionAfterExchange(
   const updateData: Record<string, unknown> = {
     messageCount: { increment: 2 },
     lastMessageAt: now,
+    dismissedFromRecent: false,
   }
 
   if (ctx.isFirstMessage && !ctx.convSessionTitle) {

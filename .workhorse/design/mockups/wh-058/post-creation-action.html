@@ -8,9 +8,38 @@
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+  :root {
+    --bg-page:       #f8f7f4;
+    --bg-surface:    #ffffff;
+    --bg-sidebar:    #f1efeb;
+    --bg-hover:      #edeae5;
+    --bg-inset:      #e8e5df;
+    --text-primary:  #1c1917;
+    --text-secondary:#57534e;
+    --text-muted:    #a8a29e;
+    --text-faint:    #d1cdc6;
+    --border-default:#dfdcd5;
+    --border-subtle: #eae7e1;
+    --accent:        #c2410c;
+    --accent-hover:  #b33b09;
+    --green:         #16a34a;
+    --amber:         #b45309;
+    --blue:          #2563eb;
+    --radius-sm:     4px;
+    --radius-md:     6px;
+    --radius-default:8px;
+    --radius-lg:     10px;
+    --radius-xl:     12px;
+    --radius-pill:   24px;
+    --shadow-sm:     0 1px 3px rgba(28,25,23,0.04);
+    --shadow-md:     0 2px 8px rgba(28,25,23,0.06);
+    --shadow-lg:     0 12px 40px rgba(28,25,23,0.14), 0 2px 8px rgba(28,25,23,0.06);
+    --shadow-input-focus: 0 0 0 3px rgba(194,65,12,0.05);
+  }
+
   body {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    background: #f8f7f4;
+    background: var(--bg-page);
     display: flex;
     flex-direction: row;
     flex-wrap: wrap;
@@ -18,67 +47,152 @@
     align-items: flex-start;
     gap: 48px;
     padding: 56px 40px 100px;
-    color: #1c1917;
+    color: var(--text-primary);
     -webkit-font-smoothing: antialiased;
   }
 
   .col { display: flex; flex-direction: column; align-items: center; gap: 12px; }
-  .col-label { font-size: 11px; font-weight: 600; letter-spacing: 0.07em; text-transform: uppercase; color: #a8a29e; text-align: center; }
-  .col-note { font-size: 12px; color: #78716c; text-align: center; line-height: 1.5; margin-bottom: 4px; }
+  .col-label { font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); text-align: center; }
+  .col-note { font-size: 12px; color: var(--text-secondary); text-align: center; line-height: 1.5; margin-bottom: 4px; }
 
   svg { display: block; }
 
   kbd {
     font-family: inherit; font-size: 9px;
-    background: rgba(0,0,0,0.07); border-radius: 3px;
-    padding: 1px 3px; margin-left: 3px; opacity: 0.65;
+    background: rgba(28,25,23,0.07); border-radius: var(--radius-sm);
+    padding: 1px 3px; margin-left: 3px; opacity: 0.6;
   }
-  kbd.on-accent { background: rgba(255,255,255,0.18); opacity: 0.7; }
+  kbd.on-accent { background: rgba(255,255,255,0.2); opacity: 0.75; }
 
-  /* ─── Shared: property strip ─── */
-  /* Creation: unset = property name ("Priority")
-     In-card:  unset = action form ("Set priority") */
+  /* ─── Status dots (exact match to StatusDot.tsx) ─── */
+  .sdot {
+    display: inline-block; width: 8px; height: 8px;
+    border-radius: 50%; flex-shrink: 0;
+  }
+  .sdot-not-started { border: 1px solid var(--border-default); background: transparent; }
+  .sdot-specifying  { background: var(--amber); }      /* #b45309 */
+  .sdot-implementing{ background: var(--blue); }       /* #2563eb */
+  .sdot-complete    { background: var(--green); }
+
+  /* ─── Avatar (exact match to Avatar.tsx) ─── */
+  /* chat size = 26px, sm = 22px */
+  .avatar {
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 50%; font-size: 10px; font-weight: 600;
+    flex-shrink: 0; width: 26px; height: 26px;
+  }
+  .avatar.ai    { background: var(--bg-inset); color: var(--text-secondary); }
+  .avatar.human { background: var(--accent);   color: #ffffff; }
+  .avatar.sm    { width: 22px; height: 22px; }
+  /* property strip mini avatar — 14px */
+  .mini-av {
+    width: 14px; height: 14px; border-radius: 50%;
+    background: var(--accent); color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 7px; font-weight: 600; flex-shrink: 0;
+  }
+
+  /* ─── Property strip ─────────────────────────────────
+     Matches PropertyDropdown.tsx:
+     px-2 py-1 rounded-[radius-md] text-[12px] font-medium
+     text-secondary hover:bg-hover transition-colors 100ms
+  ─────────────────────────────────────────────────────── */
   .prop-strip { display: flex; align-items: center; flex-wrap: wrap; gap: 1px; }
   .prop {
     display: inline-flex; align-items: center; gap: 5px;
-    padding: 4px 7px; border-radius: 6px; border: none; background: transparent;
-    font-size: 12px; font-weight: 500; color: #78716c;
+    padding: 4px 8px; border-radius: var(--radius-md); border: none; background: transparent;
+    font-size: 12px; font-weight: 500; color: var(--text-secondary);
     cursor: pointer; white-space: nowrap; transition: background 100ms, color 100ms;
   }
-  .prop:hover { background: #edeae5; color: #1c1917; }
-  .prop.is-set { color: #57534e; }
+  .prop:hover { background: var(--bg-hover); color: var(--text-primary); }
+  /* unset: muted; set: secondary (same as base) */
+  .prop.unset { color: var(--text-muted); }
+  .prop.unset:hover { color: var(--text-secondary); background: var(--bg-hover); }
   .prop-icon { width: 14px; height: 14px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-  .mini-av { width: 14px; height: 14px; border-radius: 50%; background: #c2410c; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 7px; font-weight: 700; flex-shrink: 0; }
-  .sdot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-  .sdot-ns { background: #d1cdc6; }
-  .sdot-sp { border: 2px solid #c2410c; background: transparent; }
-  .sdot-im { background: #c2410c; }
 
-  /* ─── Shared: action button ─── */
+  /* ─── Input box ──────────────────────────────────────
+     Matches ChatInput.tsx full mode:
+     bg-surface border border-default rounded-xl shadow-sm
+     focus-within: border-accent + shadow-input-focus
+  ─────────────────────────────────────────────────────── */
+  .input-box {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-xl);   /* 12px */
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+    transition: border-color 150ms, box-shadow 150ms;
+  }
+  .input-box:focus-within {
+    border-color: var(--accent);
+    box-shadow: var(--shadow-input-focus);
+  }
+  .box-rule { height: 1px; background: var(--border-subtle); }
+  .textarea-wrap { position: relative; padding: 13px 13px 10px; }
+  textarea {
+    width: 100%; border: none; outline: none; resize: none;
+    font-family: inherit; font-size: 14px; line-height: 1.5;
+    color: var(--text-primary); background: transparent; min-height: 72px;
+  }
+  textarea::placeholder { color: var(--text-faint); }
+
+  /* ─── Primary button (matches design system) ─── */
+  /* padding: 7px 14px; radius-default; 12px 500; accent bg */
+  .btn-primary {
+    padding: 7px 14px; background: var(--accent); color: #fff;
+    border: none; border-radius: var(--radius-default);
+    font-family: inherit; font-size: 12px; font-weight: 500;
+    cursor: pointer; display: inline-flex; align-items: center; gap: 6px;
+    white-space: nowrap; flex-shrink: 0; transition: background 100ms;
+  }
+  .btn-primary:hover { background: var(--accent-hover); }
+
+  /* ─── Attachment button ─── */
+  .attach-btn {
+    width: 26px; height: 26px; display: flex; align-items: center; justify-content: center;
+    border-radius: var(--radius-md); border: none; background: transparent;
+    color: var(--text-muted); cursor: pointer; transition: background 100ms, color 100ms;
+  }
+  .attach-btn:hover { background: var(--bg-hover); color: var(--text-secondary); }
+
+  /* ─── Action button (new for this feature) ───────────
+     Sits inside the input box action bar.
+     Ghost style — transparent bg, subtle border, muted text.
+     Rectangular: radius-default (8px), not pill.
+  ─────────────────────────────────────────────────────── */
   .act-btn {
     display: inline-flex; align-items: center; gap: 4px;
     height: 28px; padding: 0 9px;
-    border-radius: 6px; border: 1px solid #e8e5df; background: transparent;
-    font-size: 12px; font-weight: 500; color: #78716c;
+    border-radius: var(--radius-default);
+    border: 1px solid var(--border-subtle);
+    background: transparent;
+    font-family: inherit; font-size: 12px; font-weight: 500;
+    color: var(--text-muted);
     cursor: pointer; white-space: nowrap; flex-shrink: 0;
     transition: background 100ms, border-color 100ms, color 100ms;
   }
-  .act-btn:hover { background: #f1efeb; border-color: #dfdcd5; color: #1c1917; }
-  .act-arrow { opacity: 0.35; }
+  .act-btn:hover {
+    background: var(--bg-hover);
+    border-color: var(--border-default);
+    color: var(--text-secondary);
+  }
+  .act-arrow { opacity: 0.4; transition: opacity 100ms; }
   .act-btn:hover .act-arrow { opacity: 0.7; }
 
-  /* ─── Shared: scrollable track ─── */
+  /* ─── Scrollable skill track ─── */
   .scroll-outer { display: flex; align-items: center; gap: 8px; }
   .scroll-fade {
     flex: 1; min-width: 0; position: relative;
   }
   .scroll-fade::after {
-    content: ''; position: absolute; top: 0; right: 0; bottom: 0; width: 28px;
+    content: ''; position: absolute; top: 0; right: 0; bottom: 0; width: 32px;
+    background: linear-gradient(to right, transparent, var(--bg-surface));
     pointer-events: none; z-index: 1;
   }
-  /* fade colour depends on background */
-  .fade-white::after  { background: linear-gradient(to right, transparent, #ffffff); }
-  .fade-surface::after { background: linear-gradient(to right, transparent, #fafaf9); }
+  /* card input area has bg-page tinted surface */
+  .scroll-fade.on-page::after {
+    background: linear-gradient(to right, transparent, var(--bg-page));
+  }
   .scroll-track {
     display: flex; align-items: center; gap: 4px;
     overflow-x: auto; overflow-y: visible;
@@ -86,138 +200,122 @@
   }
   .scroll-track::-webkit-scrollbar { display: none; }
 
-  /* ─── Shared: primary buttons ─── */
-  .btn-accent {
-    height: 30px; padding: 0 12px; background: #c2410c; color: #fff;
-    border: none; border-radius: 7px; font-size: 12px; font-weight: 500;
-    cursor: pointer; display: flex; align-items: center; gap: 5px;
-    white-space: nowrap; flex-shrink: 0;
-  }
-  .btn-accent:hover { background: #b33b09; }
-  .btn-send {
-    height: 30px; padding: 0 12px; background: #1c1917; color: #fff;
-    border: none; border-radius: 7px; font-size: 12px; font-weight: 500;
-    cursor: pointer; display: flex; align-items: center; gap: 5px;
-    white-space: nowrap; flex-shrink: 0;
-  }
-  .btn-send:hover { background: #292524; }
-  .btn-send.disabled { opacity: 0.35; cursor: default; }
-
-  .attach-btn {
-    width: 26px; height: 26px; display: flex; align-items: center; justify-content: center;
-    border-radius: 6px; border: none; background: transparent; color: #a8a29e; cursor: pointer; flex-shrink: 0;
-  }
-  .attach-btn:hover { background: rgba(0,0,0,0.05); color: #57534e; }
+  /* action bar row inside the box */
+  .action-bar { padding: 6px 8px 10px; }
 
 
   /* ════════════════════════════════
      CREATION MODAL
   ════════════════════════════════ */
-
   .modal {
-    width: 480px; background: #ffffff; border-radius: 12px;
-    border: 1px solid #eae7e1;
-    box-shadow: 0 8px 40px rgba(28,25,23,0.12), 0 2px 8px rgba(28,25,23,0.05);
+    width: 480px; background: var(--bg-surface);
+    border-radius: var(--radius-xl);
+    border: 1px solid var(--border-subtle);
+    box-shadow: var(--shadow-lg);
     overflow: hidden;
   }
-  .modal-header { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px 10px; }
-  .modal-title { font-size: 13px; font-weight: 500; color: #1c1917; }
+  .modal-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 16px 10px;
+  }
+  .modal-title { font-size: 13px; font-weight: 500; color: var(--text-primary); }
   .modal-close {
     width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;
-    border-radius: 6px; border: none; background: transparent; color: #a8a29e; cursor: pointer;
+    border-radius: var(--radius-md); border: none; background: transparent;
+    color: var(--text-muted); cursor: pointer; transition: background 100ms, color 100ms;
   }
-  .modal-props { padding: 0 12px 11px; }
-  .input-box {
-    margin: 0 14px 14px; border: 1px solid #dfdcd5; border-radius: 10px; overflow: hidden;
-    transition: border-color 150ms, box-shadow 150ms;
-  }
-  .input-box:focus-within { border-color: #c2410c; box-shadow: 0 0 0 3px rgba(194,65,12,0.08); }
-  .textarea-wrap { position: relative; padding: 13px 13px 10px; }
-  textarea {
-    width: 100%; border: none; outline: none; resize: none; font-family: inherit;
-    font-size: 13px; line-height: 1.55; color: #1c1917; background: transparent; min-height: 72px;
-  }
-  textarea::placeholder { color: #d1cdc6; }
-  .box-rule { height: 1px; background: #eae7e1; }
-  .modal-action-bar { padding: 7px 10px 10px; }
+  .modal-close:hover { background: var(--bg-hover); color: var(--text-secondary); }
+  .modal-props { padding: 0 12px 10px; }
+  .modal-input { margin: 0 14px 14px; }
 
 
   /* ════════════════════════════════
      IN-CARD SHELL
   ════════════════════════════════ */
-
   .card-shell {
-    width: 680px; background: #ffffff; border-radius: 12px;
-    box-shadow: 0 4px 24px rgba(28,25,23,0.10), 0 1px 6px rgba(28,25,23,0.05);
+    width: 680px; background: var(--bg-surface); border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-md);
     display: flex; flex-direction: column; overflow: hidden;
   }
   .card-topbar {
     display: flex; align-items: center; justify-content: space-between;
-    padding: 0 16px; height: 48px; border-bottom: 1px solid #eae7e1; flex-shrink: 0;
+    padding: 0 16px; height: 52px;  /* matches spec: topbar 52px */
+    border-bottom: 1px solid var(--border-subtle); flex-shrink: 0;
   }
-  .card-id { font-size: 11px; font-weight: 500; color: #a8a29e; font-family: 'SF Mono','Fira Code',monospace; }
+  .card-id {
+    font-size: 12px; font-weight: 500; color: var(--text-muted);
+    font-family: ui-monospace, 'SF Mono', monospace;
+  }
 
-  /* card title + property strip area */
-  .card-meta {
-    padding: 20px 24px 0;
-    border-bottom: 1px solid #eae7e1;
-  }
+  /* title + property strip */
+  .card-meta { padding: 20px 24px 0; border-bottom: 1px solid var(--border-subtle); }
   .card-title {
-    font-size: 20px; font-weight: 700; letter-spacing: -0.02em;
-    color: #1c1917; margin-bottom: 10px; line-height: 1.3;
+    /* document title: 24px 700 -0.03em 1.3 text-primary */
+    font-size: 24px; font-weight: 700; letter-spacing: -0.03em;
+    line-height: 1.3; color: var(--text-primary); margin-bottom: 8px;
   }
-  /* in-card prop strip sits directly under the title */
-  .card-prop-strip {
-    display: flex; align-items: center; flex-wrap: wrap; gap: 1px;
-    padding-bottom: 12px;
-    margin-left: -7px; /* optical align with title */
-  }
+  .card-prop-strip { padding-bottom: 12px; margin-left: -8px; }
 
-  /* chat messages area */
+  /* chat area */
   .chat-area {
-    flex: 1; overflow-y: auto; padding: 20px 24px 0;
-    display: flex; flex-direction: column; gap: 16px;
-    min-height: 180px;
+    padding: 24px 24px 0;
+    display: flex; flex-direction: column;
   }
-  .msg { display: flex; gap: 10px; }
-  .avatar {
-    width: 24px; height: 24px; border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 9px; font-weight: 700; flex-shrink: 0; margin-top: 2px;
+  /* ChatMessage: 28px bottom margin (non-compact), avatar 26px */
+  .msg { display: flex; flex-direction: column; gap: 0; margin-bottom: 28px; }
+  .msg-header { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+  .msg-name { font-size: 13px; font-weight: 500; color: var(--text-primary); }
+  .msg-time { font-size: 11px; color: var(--text-faint); }
+  /* content: 14px text-secondary leading-1.7, padded left 34px (26px avatar + 8px gap) */
+  .msg-body {
+    padding-left: 34px;
+    font-size: 14px; line-height: 1.7; color: var(--text-secondary);
   }
-  .avatar.ai { background: #e8e5df; color: #78716c; }
-  .avatar.user { background: #1c1917; color: #fff; }
-  .msg-inner { font-size: 13px; line-height: 1.6; color: #57534e; }
-  .msg-name { font-size: 11px; font-weight: 600; color: #a8a29e; margin-bottom: 2px; }
 
   /* card input area */
   .card-input-area {
-    border-top: 1px solid #eae7e1;
+    border-top: 1px solid var(--border-subtle);
     padding: 10px 16px 16px;
     flex-shrink: 0;
-    background: #fafaf9;
+    background: var(--bg-page);  /* slightly inset bg like the page */
   }
-  /* the card input box — same visual shell as the modal but on a slightly tinted bg */
+  /* card uses the same input-box style but on bg-page, so fade must match */
   .card-input-box {
-    border: 1px solid #dfdcd5; border-radius: 10px;
-    background: #ffffff;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-lg);   /* 10px — compact context */
+    box-shadow: var(--shadow-sm);
     overflow: hidden;
     transition: border-color 150ms, box-shadow 150ms;
-    box-shadow: 0 1px 3px rgba(28,25,23,0.04);
   }
-  .card-input-box:focus-within { border-color: #c2410c; box-shadow: 0 0 0 3px rgba(194,65,12,0.08); }
+  .card-input-box:focus-within {
+    border-color: var(--accent);
+    box-shadow: var(--shadow-input-focus);
+  }
   .card-textarea-wrap { position: relative; padding: 10px 10px 8px; }
   .card-textarea {
-    width: 100%; border: none; outline: none; resize: none; font-family: inherit;
-    font-size: 13px; line-height: 1.5; color: #1c1917; background: transparent; min-height: 44px;
+    width: 100%; border: none; outline: none; resize: none;
+    font-family: inherit; font-size: 14px; line-height: 1.5;
+    color: var(--text-primary); background: transparent; min-height: 44px;
   }
-  .card-textarea::placeholder { color: #d1cdc6; }
-  .card-action-bar { padding: 5px 8px 8px; }
+  .card-textarea::placeholder { color: var(--text-faint); }
 
   /* ─── Annotations ─── */
-  .ann { background: #fff; border: 1px solid #eae7e1; border-radius: 8px; padding: 11px 14px; font-size: 12px; line-height: 1.55; color: #57534e; display: flex; flex-direction: column; gap: 5px; }
+  .ann {
+    background: var(--bg-surface); border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg); padding: 11px 14px;
+    font-size: 12px; line-height: 1.55; color: var(--text-secondary);
+    display: flex; flex-direction: column; gap: 5px;
+  }
   .ann-row { display: flex; gap: 10px; }
-  .ann-title { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: #a8a29e; flex-shrink: 0; padding-top: 1px; min-width: 72px; }
+  .ann-title {
+    font-size: 10px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.06em; color: var(--text-muted);
+    flex-shrink: 0; padding-top: 1px; min-width: 72px;
+  }
+
+  /* SVG icons shorthand */
+  .icon-status-unset { stroke-dasharray: 2 1.5; }
 </style>
 </head>
 <body>
@@ -229,86 +327,103 @@
 
 <div class="col" style="width:480px;">
   <div class="col-label">Card creation</div>
-  <div class="col-note">Property strip above. Unset properties show the property name. Skills scroll; create card pinned.</div>
+  <div class="col-note">Unset properties show the property name. Skills scroll; create card pinned right.</div>
 
+  <!-- all unset -->
   <div class="modal">
     <div class="modal-header">
       <span class="modal-title">New card</span>
-      <button class="modal-close"><svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M1 1l9 9M10 1L1 10" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></button>
+      <button class="modal-close"><svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M1 1l9 9M10 1L1 10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button>
     </div>
     <div class="modal-props">
       <div class="prop-strip">
-        <button class="prop">
+        <button class="prop unset">
           <span class="prop-icon"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><circle cx="6" cy="6" r="4.5" stroke="currentColor" stroke-width="1.2" stroke-dasharray="2 1.5"/></svg></span>
           Status
         </button>
-        <button class="prop">
+        <button class="prop unset">
           <span class="prop-icon"><svg width="12" height="8" viewBox="0 0 12 8" fill="none"><rect x="0" y="0" width="12" height="1.5" rx="0.75" fill="currentColor"/><rect x="0" y="3.25" width="8" height="1.5" rx="0.75" fill="currentColor"/><rect x="0" y="6.5" width="5" height="1.5" rx="0.75" fill="currentColor"/></svg></span>
           Priority
         </button>
-        <button class="prop">
+        <button class="prop unset">
           <span class="prop-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="1.5"/><path d="M4 20c0-4 3.58-7 8-7s8 3 8 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M18 4v4M16 6h4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></span>
           Assignee
         </button>
-        <button class="prop">
+        <button class="prop unset">
           <span class="prop-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.5"/></svg></span>
           Team
         </button>
       </div>
     </div>
-    <div class="input-box">
-      <div class="textarea-wrap">
-        <textarea rows="3">The allergies panel is not showing the warning icon when two conflicting meds are prescribed together.</textarea>
-        <button class="attach-btn" style="position:absolute;top:8px;right:8px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
-      </div>
-      <div class="box-rule"></div>
-      <div class="modal-action-bar">
-        <div class="scroll-outer">
-          <div class="scroll-fade fade-white">
-            <div class="scroll-track">
-              <div class="act-btn">Workshop <svg class="act-arrow" width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 5h6M5.5 2.5L8 5l-2.5 2.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg><kbd>⌘1</kbd></div>
-              <div class="act-btn">Interview <svg class="act-arrow" width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 5h6M5.5 2.5L8 5l-2.5 2.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg><kbd>⌘2</kbd></div>
-              <div class="act-btn">Draft spec <svg class="act-arrow" width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 5h6M5.5 2.5L8 5l-2.5 2.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg><kbd>⌘3</kbd></div>
-              <div class="act-btn" style="opacity:0.45;">Implement <svg class="act-arrow" width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 5h6M5.5 2.5L8 5l-2.5 2.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg><kbd>⌘4</kbd></div>
+    <div class="modal-input">
+      <div class="input-box">
+        <div class="textarea-wrap">
+          <textarea rows="3" placeholder="Describe what needs to be done…"></textarea>
+          <button class="attach-btn" style="position:absolute;top:8px;right:8px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        </div>
+        <div class="box-rule"></div>
+        <div class="action-bar">
+          <div class="scroll-outer">
+            <div class="scroll-fade">
+              <div class="scroll-track">
+                <div class="act-btn">Workshop <svg class="act-arrow" width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 5h6M5.5 2.5L8 5l-2.5 2.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg><kbd>⌘1</kbd></div>
+                <div class="act-btn">Interview <svg class="act-arrow" width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 5h6M5.5 2.5L8 5l-2.5 2.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg><kbd>⌘2</kbd></div>
+                <div class="act-btn">Draft spec <svg class="act-arrow" width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 5h6M5.5 2.5L8 5l-2.5 2.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg><kbd>⌘3</kbd></div>
+                <div class="act-btn" style="opacity:0.45;">Implement <svg class="act-arrow" width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 5h6M5.5 2.5L8 5l-2.5 2.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg><kbd>⌘4</kbd></div>
+              </div>
             </div>
+            <button class="btn-primary" style="opacity:0.4;">Create card <kbd class="on-accent">⌘↵</kbd></button>
           </div>
-          <button class="btn-accent">Create card <kbd class="on-accent">⌘↵</kbd></button>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- set properties -->
+  <!-- properties set -->
   <div class="modal">
     <div class="modal-header">
       <span class="modal-title">New card</span>
-      <button class="modal-close"><svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M1 1l9 9M10 1L1 10" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></button>
+      <button class="modal-close"><svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M1 1l9 9M10 1L1 10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button>
     </div>
     <div class="modal-props">
       <div class="prop-strip">
-        <button class="prop is-set"><span class="prop-icon"><span class="sdot sdot-sp"></span></span>Specifying</button>
-        <button class="prop is-set"><span class="prop-icon"><svg width="12" height="10" viewBox="0 0 12 10" fill="none"><rect x="0" y="0" width="12" height="2" rx="1" fill="#c2410c"/><rect x="0" y="4" width="9" height="2" rx="1" fill="#c2410c" opacity=".6"/><rect x="0" y="8" width="6" height="2" rx="1" fill="#c2410c" opacity=".35"/></svg></span>High</button>
-        <button class="prop is-set"><div class="mini-av">E</div>Edwin</button>
-        <button class="prop is-set"><span class="prop-icon"><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><circle cx="5" cy="5" r="3.5" fill="#2563eb" opacity=".25"/><circle cx="5" cy="5" r="1.5" fill="#2563eb"/></svg></span>Tamanu</button>
+        <button class="prop">
+          <span class="prop-icon"><span class="sdot sdot-specifying"></span></span>
+          Specifying
+        </button>
+        <button class="prop">
+          <span class="prop-icon"><svg width="12" height="10" viewBox="0 0 12 10" fill="none"><rect x="0" y="0" width="12" height="2" rx="1" fill="var(--accent)"/><rect x="0" y="4" width="9" height="2" rx="1" fill="var(--accent)" opacity=".6"/><rect x="0" y="8" width="6" height="2" rx="1" fill="var(--accent)" opacity=".3"/></svg></span>
+          High
+        </button>
+        <button class="prop">
+          <div class="mini-av">E</div>
+          Edwin
+        </button>
+        <button class="prop">
+          <span class="prop-icon"><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><circle cx="5" cy="5" r="3.5" fill="var(--blue)" opacity=".2"/><circle cx="5" cy="5" r="1.5" fill="var(--blue)"/></svg></span>
+          Tamanu
+        </button>
       </div>
     </div>
-    <div class="input-box">
-      <div class="textarea-wrap">
-        <textarea rows="3" placeholder="Describe what needs to be done…"></textarea>
-        <button class="attach-btn" style="position:absolute;top:8px;right:8px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
-      </div>
-      <div class="box-rule"></div>
-      <div class="modal-action-bar">
-        <div class="scroll-outer">
-          <div class="scroll-fade fade-white">
-            <div class="scroll-track">
-              <div class="act-btn">Workshop <svg class="act-arrow" width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 5h6M5.5 2.5L8 5l-2.5 2.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg><kbd>⌘1</kbd></div>
-              <div class="act-btn">Interview <svg class="act-arrow" width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 5h6M5.5 2.5L8 5l-2.5 2.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg><kbd>⌘2</kbd></div>
-              <div class="act-btn">Draft spec <svg class="act-arrow" width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 5h6M5.5 2.5L8 5l-2.5 2.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg><kbd>⌘3</kbd></div>
-              <div class="act-btn" style="opacity:0.45;">Implement <svg class="act-arrow" width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 5h6M5.5 2.5L8 5l-2.5 2.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg><kbd>⌘4</kbd></div>
+    <div class="modal-input">
+      <div class="input-box">
+        <div class="textarea-wrap">
+          <textarea rows="3">The allergies panel is not showing the warning icon when two conflicting meds are prescribed together.</textarea>
+          <button class="attach-btn" style="position:absolute;top:8px;right:8px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        </div>
+        <div class="box-rule"></div>
+        <div class="action-bar">
+          <div class="scroll-outer">
+            <div class="scroll-fade">
+              <div class="scroll-track">
+                <div class="act-btn">Workshop <svg class="act-arrow" width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 5h6M5.5 2.5L8 5l-2.5 2.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg><kbd>⌘1</kbd></div>
+                <div class="act-btn">Interview <svg class="act-arrow" width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 5h6M5.5 2.5L8 5l-2.5 2.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg><kbd>⌘2</kbd></div>
+                <div class="act-btn">Draft spec <svg class="act-arrow" width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 5h6M5.5 2.5L8 5l-2.5 2.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg><kbd>⌘3</kbd></div>
+                <div class="act-btn" style="opacity:0.45;">Implement <svg class="act-arrow" width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 5h6M5.5 2.5L8 5l-2.5 2.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg><kbd>⌘4</kbd></div>
+              </div>
             </div>
+            <button class="btn-primary">Create card <kbd class="on-accent">⌘↵</kbd></button>
           </div>
-          <button class="btn-accent" style="opacity:0.4;">Create card <kbd class="on-accent">⌘↵</kbd></button>
         </div>
       </div>
     </div>
@@ -322,60 +437,68 @@
 
 <div class="col" style="width:680px;">
   <div class="col-label">In-card chat</div>
-  <div class="col-note">Property strip under the title uses action-form labels when unset ("Set priority"). Skills in the input bar send the skill's prompt — no creation, no navigation.</div>
+  <div class="col-note">Property strip uses action-form labels when unset. Skills are jockey-generated; send button is accent, same as existing ChatInput.</div>
 
-  <!-- mid-conversation state -->
-  <div class="card-shell" style="height:auto;">
+  <!-- mid-conversation -->
+  <div class="card-shell">
     <div class="card-topbar">
       <div style="display:flex;align-items:center;gap:8px;">
         <span class="card-id">WH-031</span>
-        <span style="color:#dfdcd5;">·</span>
+        <span style="color:var(--border-default);">·</span>
         <span style="font-size:13px;font-weight:500;">Medication conflict warning icon</span>
       </div>
-      <span style="font-size:11px;color:#a8a29e;">Implementing</span>
+      <span style="font-size:11px;color:var(--text-muted);">Implementing</span>
     </div>
 
-    <!-- title + property strip — updated style -->
     <div class="card-meta">
       <div class="card-title">Medication conflict warning icon</div>
-      <!-- In-card: unset = action form ("Set priority") -->
       <div class="card-prop-strip prop-strip">
-        <button class="prop is-set"><span class="prop-icon"><span class="sdot sdot-im"></span></span>Implementing</button>
         <button class="prop">
+          <span class="prop-icon"><span class="sdot sdot-implementing"></span></span>
+          Implementing
+        </button>
+        <button class="prop unset">
           <span class="prop-icon"><svg width="12" height="8" viewBox="0 0 12 8" fill="none"><rect x="0" y="0" width="12" height="1.5" rx="0.75" fill="currentColor"/><rect x="0" y="3.25" width="8" height="1.5" rx="0.75" fill="currentColor"/><rect x="0" y="6.5" width="5" height="1.5" rx="0.75" fill="currentColor"/></svg></span>
           Set priority
         </button>
-        <button class="prop is-set"><div class="mini-av">E</div>Edwin</button>
-        <button class="prop is-set"><span class="prop-icon"><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><circle cx="5" cy="5" r="3.5" fill="#2563eb" opacity=".25"/><circle cx="5" cy="5" r="1.5" fill="#2563eb"/></svg></span>Tamanu</button>
+        <button class="prop">
+          <div class="mini-av">E</div>
+          Edwin
+        </button>
+        <button class="prop">
+          <span class="prop-icon"><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><circle cx="5" cy="5" r="3.5" fill="var(--blue)" opacity=".2"/><circle cx="5" cy="5" r="1.5" fill="var(--blue)"/></svg></span>
+          Tamanu
+        </button>
       </div>
     </div>
 
-    <!-- chat messages -->
     <div class="chat-area">
       <div class="msg">
-        <div class="avatar ai">W</div>
-        <div class="msg-inner">
-          <div class="msg-name">Workhorse</div>
-          I've implemented the conflict icon. Renders when two active medications share a flagged interaction. Unit tests cover the three main conflict scenarios.
+        <div class="msg-header">
+          <div class="avatar ai">W</div>
+          <span class="msg-name">Workhorse</span>
+          <span class="msg-time">10:44 am</span>
         </div>
+        <div class="msg-body">I've implemented the conflict icon. Renders when two active medications share a flagged interaction. Unit tests cover the three main conflict scenarios.</div>
       </div>
       <div class="msg">
-        <div class="avatar user">E</div>
-        <div class="msg-inner">
-          <div class="msg-name">Edwin</div>
-          What about suspended medications — should they still trigger the warning?
+        <div class="msg-header">
+          <div class="avatar human">E</div>
+          <span class="msg-name">Edwin</span>
+          <span class="msg-time">10:46 am</span>
         </div>
+        <div class="msg-body">What about suspended medications — should they still trigger the warning?</div>
       </div>
-      <div class="msg" style="margin-bottom:4px;">
-        <div class="avatar ai">W</div>
-        <div class="msg-inner">
-          <div class="msg-name">Workhorse</div>
-          Good catch — suspended meds are currently included. I'll exclude them and update the spec to match.
+      <div class="msg">
+        <div class="msg-header">
+          <div class="avatar ai">W</div>
+          <span class="msg-name">Workhorse</span>
+          <span class="msg-time">10:47 am</span>
         </div>
+        <div class="msg-body">Good catch — suspended meds are currently included. I'll exclude them and update the spec to match.</div>
       </div>
     </div>
 
-    <!-- input area — same input box pattern, Send instead of Create card -->
     <div class="card-input-area">
       <div class="card-input-box">
         <div class="card-textarea-wrap">
@@ -383,47 +506,58 @@
           <button class="attach-btn" style="position:absolute;top:6px;right:6px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
         </div>
         <div class="box-rule"></div>
-        <div class="card-action-bar">
+        <div class="action-bar">
           <div class="scroll-outer">
-            <div class="scroll-fade fade-white">
+            <div class="scroll-fade on-page">
               <div class="scroll-track">
-                <!-- jockey-suggested skills for current card state -->
                 <div class="act-btn">Continue <svg class="act-arrow" width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 5h6M5.5 2.5L8 5l-2.5 2.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
                 <div class="act-btn">Update spec <svg class="act-arrow" width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 5h6M5.5 2.5L8 5l-2.5 2.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
                 <div class="act-btn">Code review <svg class="act-arrow" width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 5h6M5.5 2.5L8 5l-2.5 2.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
                 <div class="act-btn" style="opacity:0.4;">Design audit <svg class="act-arrow" width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 5h6M5.5 2.5L8 5l-2.5 2.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
               </div>
             </div>
-            <!-- Send replaces Create card — same position, dark instead of accent -->
-            <button class="btn-send">Send ↵</button>
+            <!-- Send: accent, matches ChatInput.tsx exactly -->
+            <button class="btn-primary">Send</button>
           </div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- fresh card — no conversation yet -->
-  <div class="card-shell" style="height:auto;">
+  <!-- fresh card, no conversation -->
+  <div class="card-shell">
     <div class="card-topbar">
       <div style="display:flex;align-items:center;gap:8px;">
         <span class="card-id">WH-032</span>
-        <span style="color:#dfdcd5;">·</span>
+        <span style="color:var(--border-default);">·</span>
         <span style="font-size:13px;font-weight:500;">Patient merge — duplicate record detection</span>
       </div>
-      <span style="font-size:11px;color:#a8a29e;">Not started</span>
+      <span style="font-size:11px;color:var(--text-muted);">Not started</span>
     </div>
     <div class="card-meta">
       <div class="card-title">Patient merge — duplicate record detection</div>
       <div class="card-prop-strip prop-strip">
-        <button class="prop"><span class="prop-icon"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><circle cx="6" cy="6" r="4.5" stroke="currentColor" stroke-width="1.2" stroke-dasharray="2 1.5"/></svg></span>Set status</button>
-        <button class="prop"><span class="prop-icon"><svg width="12" height="8" viewBox="0 0 12 8" fill="none"><rect x="0" y="0" width="12" height="1.5" rx="0.75" fill="currentColor"/><rect x="0" y="3.25" width="8" height="1.5" rx="0.75" fill="currentColor"/><rect x="0" y="6.5" width="5" height="1.5" rx="0.75" fill="currentColor"/></svg></span>Set priority</button>
-        <button class="prop"><span class="prop-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="1.5"/><path d="M4 20c0-4 3.58-7 8-7s8 3 8 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M18 4v4M16 6h4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></span>Assign</button>
-        <button class="prop"><span class="prop-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.5"/></svg></span>Set team</button>
+        <button class="prop unset">
+          <span class="prop-icon"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><circle cx="6" cy="6" r="4.5" stroke="currentColor" stroke-width="1.2" stroke-dasharray="2 1.5"/></svg></span>
+          Set status
+        </button>
+        <button class="prop unset">
+          <span class="prop-icon"><svg width="12" height="8" viewBox="0 0 12 8" fill="none"><rect x="0" y="0" width="12" height="1.5" rx="0.75" fill="currentColor"/><rect x="0" y="3.25" width="8" height="1.5" rx="0.75" fill="currentColor"/><rect x="0" y="6.5" width="5" height="1.5" rx="0.75" fill="currentColor"/></svg></span>
+          Set priority
+        </button>
+        <button class="prop unset">
+          <span class="prop-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="1.5"/><path d="M4 20c0-4 3.58-7 8-7s8 3 8 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M18 4v4M16 6h4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></span>
+          Assign
+        </button>
+        <button class="prop unset">
+          <span class="prop-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.5"/></svg></span>
+          Set team
+        </button>
       </div>
     </div>
-    <div class="chat-area" style="min-height:80px;">
-      <div style="padding:16px 0 8px;text-align:center;">
-        <p style="font-size:13px;color:#a8a29e;">No conversation yet</p>
+    <div class="chat-area" style="padding-bottom:16px;">
+      <div style="padding:20px 0 4px; text-align:center;">
+        <p style="font-size:13px;color:var(--text-muted);">No conversation yet</p>
       </div>
     </div>
     <div class="card-input-area">
@@ -433,17 +567,16 @@
           <button class="attach-btn" style="position:absolute;top:6px;right:6px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
         </div>
         <div class="box-rule"></div>
-        <div class="card-action-bar">
+        <div class="action-bar">
           <div class="scroll-outer">
-            <div class="scroll-fade fade-white">
+            <div class="scroll-fade on-page">
               <div class="scroll-track">
-                <!-- jockey cold-start suggestions -->
                 <div class="act-btn">Workshop <svg class="act-arrow" width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 5h6M5.5 2.5L8 5l-2.5 2.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
                 <div class="act-btn">Interview <svg class="act-arrow" width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 5h6M5.5 2.5L8 5l-2.5 2.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
                 <div class="act-btn">Draft spec <svg class="act-arrow" width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 5h6M5.5 2.5L8 5l-2.5 2.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
               </div>
             </div>
-            <button class="btn-send btn-send disabled">Send ↵</button>
+            <button class="btn-primary" style="opacity:0.4;">Send</button>
           </div>
         </div>
       </div>
@@ -451,10 +584,10 @@
   </div>
 
   <div class="ann" style="width:680px;">
-    <div class="ann-row"><span class="ann-title">Same pattern</span><span>Identical input box structure in both contexts — textarea, hairline, scrollable action bar, pinned right button. The right button changes meaning: "Create card" in the modal, "Send" in the card. Same shape, different colour (accent vs near-black).</span></div>
-    <div class="ann-row"><span class="ann-title">Skill source</span><span>In creation, skills are fixed (the full set). In the card, skills are jockey-generated — so the scrollable track contents change over the card's lifecycle. Early: Workshop, Interview, Draft spec. Mid-implementation: Continue, Update spec, Code review. The scroll behaviour handles any number gracefully.</span></div>
-    <div class="ann-row"><span class="ann-title">No kbd hints in-card</span><span>⌘1–⌘4 shortcuts omitted from in-card skills — the set is dynamic so the shortcuts can't be stable. Could add them if we decide the jockey always emits skills in a consistent order, but that's a separate decision.</span></div>
-    <div class="ann-row"><span class="ann-title">Property strip</span><span>Creation uses the property name ("Priority", "Assignee"). In-card uses action form ("Set priority", "Assign") — more explicit about what clicking does since you're already on the card and editing metadata feels more deliberate.</span></div>
+    <div class="ann-row"><span class="ann-title">Send button</span><span>Accent (#c2410c), matching the existing ChatInput.tsx Send button exactly. Not dark/black — that was wrong.</span></div>
+    <div class="ann-row"><span class="ann-title">Status dots</span><span>Specifying = amber (#b45309). Implementing = blue (#2563eb). Matches StatusDot.tsx — not accent orange, which I had wrong previously.</span></div>
+    <div class="ann-row"><span class="ann-title">Skill source</span><span>Creation: fixed set (Workshop, Interview, Draft spec, Implement). Card: jockey-generated per lifecycle stage. Both use the same scrollable track + pinned button pattern.</span></div>
+    <div class="ann-row"><span class="ann-title">Property labels</span><span>Creation uses property name ("Priority"). Card uses action form ("Set priority", "Assign") — more explicit about what clicking does when you're already on the card.</span></div>
   </div>
 </div>
 

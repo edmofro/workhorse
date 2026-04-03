@@ -178,12 +178,7 @@ export function CardWorkspace({
   const mockupFiles = files
     .filter((f) => isMockupPath(f.filePath))
     .map((f) => ({ filePath: f.filePath, content: f.content }))
-  const allMockupFiles = [
-    ...mockupFiles,
-    ...mockups
-      .filter((m) => !mockupFiles.some((mf) => mf.filePath === m.filePath))
-      .map((m) => ({ filePath: m.filePath, content: m.html })),
-  ]
+  const allMockupFiles = mockupFiles
 
   // Code file items for the sidebar
   const codeFileItems: CodeFileItem[] = codeFiles.map((f) => ({
@@ -532,11 +527,8 @@ export function CardWorkspace({
     ? !activeFilePath.startsWith('.workhorse/') && !isMockupFile
     : false
 
-  // Find mockup data (either from files or from mockups prop)
   const activeMockupHtml = isMockupFile && activeFilePath
-    ? (files.find((f) => f.filePath === activeFilePath)?.content ||
-       mockups.find((m) => m.filePath === activeFilePath)?.html ||
-       '')
+    ? (files.find((f) => f.filePath === activeFilePath)?.content || '')
     : ''
   const activeMockupTitle = activeFilePath ? deriveLabel(activeFilePath, activeMockupHtml) : ''
 

@@ -95,7 +95,6 @@ export function CardDetailPage({ cardId, initialSessionId }: Props) {
       initialFiles={filesData?.initialFiles ?? []}
       initialCodeFiles={filesData?.initialCodeFiles ?? []}
       filesLoading={filesLoading}
-      mockups={card.mockups}
       projectSpecs={filesData?.projectSpecs ?? []}
       sessions={sessions}
       initialSessionId={initialSessionId}

@@ -113,7 +113,7 @@ export function JourneyBar({
         {/* Current step label */}
         {activeStep && (
           <span className="text-[var(--text-secondary)] font-medium">
-            {activeStep}
+            {skillLabel(activeStep)}
           </span>
         )}
 
@@ -160,7 +160,7 @@ export function JourneyBar({
             {activeStep && (
               <div className="flex items-baseline gap-2 py-1 text-[12px] mb-3">
                 <span className="text-[var(--accent)] text-[10px] w-4 text-center shrink-0 relative top-[-1px]">●</span>
-                <span className="text-[var(--text-primary)] font-medium">{activeStep}</span>
+                <span className="text-[var(--text-primary)] font-medium">{skillLabel(activeStep)}</span>
                 <span className="text-[var(--text-muted)] text-[11px] shrink-0">In progress</span>
               </div>
             )}

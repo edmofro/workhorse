@@ -19,7 +19,10 @@ import {
   worktreePath,
   autoCommit,
   getPendingChanges,
+  readWorktreeFile,
+  deleteWorktreeFile,
 } from '../../../lib/git/worktree'
+import { createPullRequest } from '../../../lib/git/githubClient'
 import { branchNameFromCard } from '../../../lib/git/branchNaming'
 
 import { safeParseTouchedFiles } from '../../../lib/safeParseTouchedFiles'
@@ -429,7 +432,8 @@ async function finaliseSessionAfterExchange(
   ctx: {
     owner: string
     repoName: string
-    card: { identifier: string }
+    defaultBranch: string
+    card: { identifier: string; cardBranch: string | null }
     cardId: string
     user: { id: string; displayName: string; githubUsername: string; accessToken: string }
     convSessionId: string
@@ -479,6 +483,38 @@ async function finaliseSessionAfterExchange(
     }
   } catch (commitErr) {
     console.error('Auto-commit failed:', commitErr)
+  }
+
+  // Check for PR creation signal file written by the agent
+  try {
+    const prSignal = await readWorktreeFile(ctx.owner, ctx.repoName, ctx.card.identifier, '.workhorse/pr-request.json')
+    if (prSignal) {
+      const { title, body } = JSON.parse(prSignal) as { title: string; body: string }
+      const branchName = ctx.card.cardBranch
+      if (branchName && title && body) {
+        const pr = await createPullRequest(
+          ctx.user.accessToken,
+          ctx.owner,
+          ctx.repoName,
+          title,
+          body,
+          branchName,
+          ctx.defaultBranch,
+        )
+        await prisma.card.update({
+          where: { id: ctx.cardId },
+          data: { prNumber: pr.number, prUrl: pr.html_url },
+        })
+        await deleteWorktreeFile(ctx.owner, ctx.repoName, ctx.card.identifier, '.workhorse/pr-request.json')
+        controller.enqueue(
+          encoder.encode(
+            `data: ${JSON.stringify({ type: 'pr_created', prUrl: pr.html_url, prNumber: pr.number })}\n\n`,
+          ),
+        )
+      }
+    }
+  } catch (prErr) {
+    console.error('PR creation failed:', prErr)
   }
 
   // Update conversation session metadata

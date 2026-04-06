@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { getProjects } from '../../lib/actions/projects'
 
@@ -6,7 +7,13 @@ export default async function HomePage() {
   const projects = await getProjects()
 
   if (projects.length > 0) {
-    redirect(`/${encodeURIComponent(projects[0].name.toLowerCase())}`)
+    const cookieStore = await cookies()
+    const lastSlug = cookieStore.get('workhorse_last_project')?.value
+    const lastProject = lastSlug
+      ? projects.find((p) => p.name.toLowerCase() === lastSlug)
+      : null
+    const target = lastProject ?? projects[0]
+    redirect(`/${encodeURIComponent(target.name.toLowerCase())}`)
   }
 
   return (

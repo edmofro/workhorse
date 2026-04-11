@@ -44,7 +44,6 @@ export function CardDetailLayout({ projectSlug, cardId, children }: Props) {
           title: card.title,
           status: card.status,
           cardBranch: card.cardBranch,
-          touchedFiles: card.touchedFiles,
           defaultBranch: card.project.defaultBranch,
         }}
         projectSlug={projectSlug}

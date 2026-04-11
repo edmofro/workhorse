@@ -114,13 +114,6 @@ interface CardActivity {
   user: { displayName: string; avatarUrl: string | null } | null
 }
 
-interface CardMockup {
-  id: string
-  title: string
-  html: string
-  filePath: string
-}
-
 interface CardDetailData {
   card: {
     id: string
@@ -132,7 +125,6 @@ interface CardDetailData {
     tags: string
     cardBranch: string | null
     prUrl: string | null
-    touchedFiles: string[]
     team: { id: string; name: string; colour: string }
     project: { id: string; name: string; owner: string; repoName: string; defaultBranch: string }
     assignee: { id: string; displayName: string } | null
@@ -140,7 +132,6 @@ interface CardDetailData {
     attachments: CardAttachment[]
     activities: CardActivity[]
     comments: CardComment[]
-    mockups: CardMockup[]
   }
   users: { id: string; displayName: string }[]
   teams: { id: string; name: string; colour: string }[]
@@ -219,6 +210,5 @@ export type {
   CardAttachment,
   CardComment,
   CardActivity,
-  CardMockup,
   ProjectInfo,
 }

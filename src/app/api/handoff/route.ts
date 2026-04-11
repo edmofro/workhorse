@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireUser, requireCardAccess } from '../../../lib/auth/session'
 import { generateHandoffPrompt } from '../../../lib/handoff/generatePrompt'
-import { safeParseTouchedFiles } from '../../../lib/safeParseTouchedFiles'
+import { getChangedFiles } from '../../../lib/git/worktree'
 import { prisma } from '../../../lib/prisma'
 
 export async function GET(request: NextRequest) {
@@ -19,7 +19,10 @@ export async function GET(request: NextRequest) {
     return new Response('Card not found', { status: 404 })
   }
 
-  const touchedFiles = safeParseTouchedFiles(card.touchedFiles ?? '[]')
+  const { owner, repoName, defaultBranch } = card.team.project
+  const { workhorseFiles: whFiles, codeFiles: changedCodeFiles } = await getChangedFiles(
+    owner, repoName, card.identifier, defaultBranch,
+  )
 
   // Get attachment file paths and journal entries for the handoff prompt
   const [attachments, journalEntries] = await Promise.all([
@@ -49,7 +52,8 @@ export async function GET(request: NextRequest) {
     cardTitle: card.title,
     branchName: card.cardBranch ?? 'unknown',
     baseBranch: card.team.project.defaultBranch,
-    touchedFiles,
+    workhorseFiles: whFiles.map(f => f.filePath),
+    codeFiles: changedCodeFiles.map(f => f.filePath),
     status: card.status,
     attachmentFiles,
     journalSummary,

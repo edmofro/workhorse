@@ -1,6 +1,7 @@
 import '../../../lib/ai/ensureSessionStorage'
 import { NextRequest } from 'next/server'
 import { query } from '@anthropic-ai/claude-agent-sdk'
+import { anthropic } from '../../../lib/anthropic'
 import type { SDKUserMessage } from '@anthropic-ai/claude-agent-sdk'
 import type { ImageBlockParam, TextBlockParam } from '@anthropic-ai/sdk/resources/messages/messages'
 import { readFile, mkdir, copyFile } from 'fs/promises'
@@ -17,13 +18,10 @@ import {
   createWorktree,
   worktreePath,
   autoCommit,
-  readWorktreeFile,
+  getChangedFiles,
   getPendingChanges,
 } from '../../../lib/git/worktree'
-import { isMockupPath } from '../../../lib/paths'
-import { extractHtmlTitle, humaniseFilename } from '../../../lib/labels'
 import { branchNameFromCard } from '../../../lib/git/branchNaming'
-
 import { safeParseTouchedFiles } from '../../../lib/safeParseTouchedFiles'
 import { emit as emitSidebarEvent, type SidebarEvent } from '../../../lib/sidebarEvents'
 
@@ -215,12 +213,6 @@ export async function POST(request: NextRequest) {
     promptInput = message
   }
 
-  // Skills that run extended implementation work get unlimited turns.
-  // All other skills get a capped limit to prevent runaway sessions.
-  const UNLIMITED_TURN_SKILLS = new Set(['implement', 'fix_ci'])
-  const resolvedSkillId = isValidSkillId(skillId) ? skillId : undefined
-  const maxTurns = resolvedSkillId && UNLIMITED_TURN_SKILLS.has(resolvedSkillId) ? undefined : 10
-
   // Configure Agent SDK query
   const options: Parameters<typeof query>[0]['options'] = {
     cwd: wtPath,
@@ -233,8 +225,7 @@ export async function POST(request: NextRequest) {
     },
     settingSources: ['project' as const],
     includePartialMessages: true,
-    model: 'claude-sonnet-4-6',
-    ...(maxTurns !== undefined ? { maxTurns } : {}),
+    model: 'claude-opus-4-6',
     persistSession: true,
     ...(convSession.agentSessionId ? { resume: convSession.agentSessionId } : {}),
   }
@@ -245,12 +236,27 @@ export async function POST(request: NextRequest) {
   const convSessionId = convSession.id
   const isFirstMessage = convSession.messageCount === 0
 
+  // AbortController for server-side agent cancellation — wired to the
+  // client's request signal so disconnecting the SSE stream also halts
+  // the SDK's agent loop (tool calls, API requests, etc).
+  const agentAbort = new AbortController()
+  if (request.signal.aborted) {
+    agentAbort.abort()
+  } else {
+    request.signal.addEventListener('abort', () => agentAbort.abort(), { once: true })
+  }
+
   const stream = new ReadableStream({
     async start(controller) {
+      // Safe enqueue — silently drops writes if the client has disconnected
+      function enqueue(chunk: Uint8Array) {
+        try { controller.enqueue(chunk) } catch { /* stream closed */ }
+      }
+
       try {
         // Send session ID to client immediately so it can track the session
         // before the agent stream completes (prevents duplicate session creation)
-        controller.enqueue(
+        enqueue(
           encoder.encode(
             `data: ${JSON.stringify({ type: 'session', sessionId: convSessionId })}\n\n`,
           ),
@@ -266,7 +272,7 @@ export async function POST(request: NextRequest) {
         let agentQuery: ReturnType<typeof query>
 
         try {
-          agentQuery = query({ prompt: promptInput, options })
+          agentQuery = query({ prompt: promptInput, options: { ...options, abortController: agentAbort } })
           // Eagerly pull the first event to detect stale session errors early
           const firstChunk = await (agentQuery as AsyncIterable<unknown>)[Symbol.asyncIterator]().next()
           if (!firstChunk.done) {
@@ -290,7 +296,7 @@ export async function POST(request: NextRequest) {
                 data: { agentSessionId: agentSdkSessionId },
               })
             }
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`))
+            enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`))
           }
         } catch (err) {
           // If the session ID is stale, clear it and retry without resume
@@ -306,7 +312,7 @@ export async function POST(request: NextRequest) {
               data: { agentSessionId: null },
             })
             // Retry without resume
-            const freshOptions = { ...options }
+            const freshOptions = { ...options, abortController: agentAbort }
             delete (freshOptions as Record<string, unknown>).resume
             agentQuery = query({ prompt: promptInput, options: freshOptions })
           } else {
@@ -340,13 +346,13 @@ export async function POST(request: NextRequest) {
 
           // Stream event as SSE
           const sseData = JSON.stringify(event)
-          controller.enqueue(
+          enqueue(
             encoder.encode(`data: ${sseData}\n\n`),
           )
         }
 
         // Agent turn complete — auto-commit, release locks, update session metadata
-        await finaliseSessionAfterExchange(controller, encoder, {
+        await finaliseSessionAfterExchange(enqueue, encoder, {
           owner,
           repoName,
           card,
@@ -371,9 +377,10 @@ export async function POST(request: NextRequest) {
             card.status,
             message,
             assistantText,
+            { owner, repoName, cardIdentifier: card.identifier, defaultBranch },
           )
           if (jockeyResult) {
-            controller.enqueue(
+            enqueue(
               encoder.encode(
                 `data: ${JSON.stringify({ type: 'jockey', ...jockeyResult })}\n\n`,
               ),
@@ -383,11 +390,11 @@ export async function POST(request: NextRequest) {
           console.warn('[jockey] Post-exchange assessment failed:', jockeyErr)
         }
 
-        controller.enqueue(encoder.encode('data: [DONE]\n\n'))
+        enqueue(encoder.encode('data: [DONE]\n\n'))
         controller.close()
       } catch (err) {
         const errorMsg = err instanceof Error ? err.message : 'Interview failed'
-        controller.enqueue(
+        enqueue(
           encoder.encode(
             `data: ${JSON.stringify({ type: 'error', message: errorMsg })}\n\n`,
           ),
@@ -411,7 +418,7 @@ export async function POST(request: NextRequest) {
  * Only called on the success path (full agent response received).
  */
 async function finaliseSessionAfterExchange(
-  controller: ReadableStreamDefaultController,
+  enqueue: (chunk: Uint8Array) => void,
   encoder: TextEncoder,
   ctx: {
     owner: string
@@ -430,7 +437,13 @@ async function finaliseSessionAfterExchange(
 ) {
   try {
     const pending = await getPendingChanges(ctx.owner, ctx.repoName, ctx.card.identifier)
-    const commitMessage = buildCommitMessage(ctx.card.identifier, pending)
+    const commitMessage = await generateCommitMessage(
+      ctx.card.identifier,
+      ctx.cardTitle,
+      pending,
+      ctx.message,
+      ctx.assistantText,
+    )
 
     const changedFiles = await autoCommit(
       ctx.owner,
@@ -451,36 +464,12 @@ async function finaliseSessionAfterExchange(
         data: { touchedFiles: JSON.stringify(allFiles) },
       })
 
-      controller.enqueue(
+      enqueue(
         encoder.encode(
           `data: ${JSON.stringify({ type: 'commit', files: changedFiles })}\n\n`,
         ),
       )
 
-      // Persist any new mockup files to the database so they survive page
-      // refreshes and appear with correct titles in the artifacts sidebar
-      const mockupFiles = changedFiles.filter(isMockupPath)
-      for (const filePath of mockupFiles) {
-        try {
-          const html = await readWorktreeFile(ctx.owner, ctx.repoName, ctx.card.identifier, filePath)
-          if (!html) continue
-          const htmlTitle = extractHtmlTitle(html)
-          const filename = filePath.split('/').pop() ?? filePath
-          const title = htmlTitle || humaniseFilename(filename)
-
-          // Upsert: if a mockup with this title already exists for the card, update it
-          const existing = await prisma.mockup.findFirst({
-            where: { cardId: ctx.cardId, title },
-          })
-          if (existing) {
-            await prisma.mockup.update({ where: { id: existing.id }, data: { html } })
-          } else {
-            await prisma.mockup.create({ data: { cardId: ctx.cardId, title, html } })
-          }
-        } catch {
-          // Best-effort — don't fail the session over mockup persistence
-        }
-      }
     }
   } catch (commitErr) {
     console.error('Auto-commit failed:', commitErr)
@@ -491,6 +480,7 @@ async function finaliseSessionAfterExchange(
   const updateData: Record<string, unknown> = {
     messageCount: { increment: 2 },
     lastMessageAt: now,
+    dismissedFromRecent: false,
   }
 
   if (ctx.isFirstMessage && !ctx.convSessionTitle) {
@@ -505,7 +495,7 @@ async function finaliseSessionAfterExchange(
 
   // Send title update to client for sidebar refresh
   if (updatedSession.title) {
-    controller.enqueue(
+    enqueue(
       encoder.encode(
         `data: ${JSON.stringify({
           type: 'session_update',
@@ -528,20 +518,77 @@ async function finaliseSessionAfterExchange(
 }
 
 /**
- * Build a meaningful commit message from the list of pending changed files.
- *
- * Examples:
- *   WH-042: add allergies spec
- *   WH-042: update 3 specs
- *   WH-048: add ward-overview mockup
- *   WH-042: update commit-messages spec and add mockup
+ * Generate a meaningful commit message using Haiku, informed by the files changed
+ * and the recent exchange. Falls back to a file-path-derived message if the LLM call fails.
  */
-function buildCommitMessage(
+async function generateCommitMessage(
   cardIdentifier: string,
+  cardTitle: string,
+  pending: { filePath: string; isNew: boolean }[],
+  userMessage: string,
+  assistantText: string,
+): Promise<string> {
+  const prefix = cardIdentifier.toUpperCase()
+  const fallback = buildCommitMessageFromFiles(prefix, pending)
+
+  if (pending.length === 0) return fallback
+
+  try {
+    const fileList = pending
+      .map((f) => `${f.isNew ? 'A' : 'M'} ${f.filePath}`)
+      .join('\n')
+
+    const prompt = `Generate a concise git commit message for a spec-driven development card.
+
+Card: ${prefix} — ${cardTitle}
+
+Changed files:
+${fileList}
+
+Recent exchange summary:
+User: ${userMessage.slice(0, 400)}${userMessage.length > 400 ? '...' : ''}
+Assistant: ${assistantText.slice(0, 400)}${assistantText.length > 400 ? '...' : ''}
+
+Rules:
+- Start with "${prefix}: " (already provided — do NOT include it, just write the rest)
+- One line, under 72 characters total including the prefix
+- Be specific about what changed and why, not just which files
+- Use lowercase imperative mood (e.g. "add allergies spec", "update ward-overview mockup with bed status")
+- No full stops at the end
+
+Respond with only the message text after the prefix, nothing else.`
+
+    const response = await anthropic.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 100,
+      messages: [{ role: 'user', content: prompt }],
+    })
+
+    const text = response.content
+      .filter((b) => b.type === 'text')
+      .map((b) => ('text' in b ? b.text : ''))
+      .join('')
+      .trim()
+      .replace(/^["']|["']$/g, '') // strip any surrounding quotes
+      .replace(/\.$/, '') // strip trailing full stop
+
+    if (text && text.length <= 72) {
+      return `${prefix}: ${text}`
+    }
+  } catch (err) {
+    console.warn('[commit-message] Haiku call failed, using fallback:', err)
+  }
+
+  return fallback
+}
+
+/**
+ * Fallback commit message derived purely from changed file paths.
+ */
+function buildCommitMessageFromFiles(
+  prefix: string,
   pending: { filePath: string; isNew: boolean }[],
 ): string {
-  const prefix = cardIdentifier.toUpperCase()
-
   if (pending.length === 0) return `${prefix}: update files`
 
   const specs = pending.filter((f) => f.filePath.startsWith('.workhorse/specs/'))
@@ -550,36 +597,31 @@ function buildCommitMessage(
 
   const parts: string[] = []
 
-  // Specs
   if (specs.length === 1) {
     const slug = specs[0].filePath.split('/').pop()?.replace(/\.md$/, '') ?? 'spec'
-    const verb = specs[0].isNew ? 'add' : 'update'
-    parts.push(`${verb} ${slug} spec`)
+    parts.push(`${specs[0].isNew ? 'add' : 'update'} ${slug} spec`)
   } else if (specs.length > 1) {
-    const verb = specs.every((f) => f.isNew) ? 'add' : 'update'
-    parts.push(`${verb} ${specs.length} specs`)
+    parts.push(`${specs.every((f) => f.isNew) ? 'add' : 'update'} ${specs.length} specs`)
   }
 
-  // Mockups
   if (mockups.length === 1) {
     const slug = mockups[0].filePath.split('/').pop()?.replace(/\.html$/, '') ?? 'mockup'
-    const verb = mockups[0].isNew ? 'add' : 'update'
-    parts.push(`${verb} ${slug} mockup`)
+    parts.push(`${mockups[0].isNew ? 'add' : 'update'} ${slug} mockup`)
   } else if (mockups.length > 1) {
-    const allNew = mockups.every((f) => f.isNew)
-    const verb = allNew ? 'add' : 'update'
-    parts.push(`${verb} ${mockups.length} mockups`)
+    parts.push(`${mockups.every((f) => f.isNew) ? 'add' : 'update'} ${mockups.length} mockups`)
   }
 
-  // Code files (non-.workhorse)
-  if (codeFiles.length > 0) {
-    parts.push(`update code`)
+  if (codeFiles.length === 1) {
+    const name = codeFiles[0].filePath.split('/').pop() ?? codeFiles[0].filePath
+    parts.push(`${codeFiles[0].isNew ? 'add' : 'update'} ${name}`)
+  } else if (codeFiles.length <= 3) {
+    parts.push(`update ${codeFiles.map((f) => f.filePath.split('/').pop() ?? f.filePath).join(', ')}`)
+  } else {
+    const dirs = [...new Set(codeFiles.map((f) => f.filePath.split('/')[0] ?? ''))]
+    parts.push(dirs.length === 1 && dirs[0] ? `update ${codeFiles.length} files in ${dirs[0]}/` : `update ${codeFiles.length} files`)
   }
 
-  // Fallback for .workhorse files that aren't specs or mockups
-  if (parts.length === 0) {
-    parts.push('update files')
-  }
+  if (parts.length === 0) parts.push('update files')
 
   return `${prefix}: ${parts.join(', ')}`
 }
@@ -668,10 +710,11 @@ async function runJockeyAfterExchange(
   cardStatus: string,
   userMessage: string,
   assistantText: string,
+  repo: { owner: string; repoName: string; cardIdentifier: string; defaultBranch: string },
 ): Promise<JockeyAssessment | null> {
   try {
     // Fetch current state
-    const [journalEntries, scheduledSteps, card] = await Promise.all([
+    const [journalEntries, scheduledSteps, card, { workhorseFiles, codeFiles: changedCodeFiles }] = await Promise.all([
       prisma.journalEntry.findMany({
         where: { cardId },
         orderBy: { createdAt: 'asc' },
@@ -685,13 +728,13 @@ async function runJockeyAfterExchange(
       }),
       prisma.card.findUnique({
         where: { id: cardId },
-        select: { touchedFiles: true, prUrl: true },
+        select: { prUrl: true },
       }),
+      getChangedFiles(repo.owner, repo.repoName, repo.cardIdentifier, repo.defaultBranch),
     ])
 
-    const touchedFiles = safeParseTouchedFiles(card?.touchedFiles ?? '[]')
-    const hasSpecs = touchedFiles.some(f => f.startsWith('.workhorse/specs/'))
-    const hasCodeChanges = touchedFiles.some(f => !f.startsWith('.workhorse/'))
+    const hasSpecs = workhorseFiles.some(f => f.filePath.startsWith('.workhorse/specs/'))
+    const hasCodeChanges = changedCodeFiles.length > 0
 
     // Build recent messages from the current exchange
     // (We don't have the full transcript here, so we use the current user + assistant messages)

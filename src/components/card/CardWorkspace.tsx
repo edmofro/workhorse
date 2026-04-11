@@ -40,13 +40,6 @@ interface SpecFileData {
   content: string
 }
 
-interface MockupData {
-  id: string
-  title: string
-  html: string
-  filePath: string
-}
-
 interface ProjectSpecData {
   filePath: string
   content: string
@@ -79,7 +72,6 @@ interface CardWorkspaceProps {
   initialFiles: SpecFileData[]
   initialCodeFiles?: { filePath: string; isNew: boolean; linesAdded?: number; linesRemoved?: number }[]
   filesLoading?: boolean
-  mockups: MockupData[]
   projectSpecs: ProjectSpecData[]
   sessions: ConversationSessionData[]
   initialSessionId?: string | null
@@ -93,7 +85,6 @@ export function CardWorkspace({
   initialFiles,
   initialCodeFiles = [],
   filesLoading = false,
-  mockups,
   projectSpecs,
   sessions: initialSessions,
   initialSessionId,
@@ -147,10 +138,12 @@ export function CardWorkspace({
     messages,
     isStreaming,
     fileWrites,
+    committedFiles,
     thinkingSnippet,
     currentSessionId,
     currentSessionTitle,
     sendMessage: rawSendMessage,
+    interrupt,
   } = useAgentSession(card.id, activeSessionId, jockey.handleJockeyEvent)
 
   // Sync back the session ID from the hook (set after first message creates a session)
@@ -195,12 +188,7 @@ export function CardWorkspace({
   const mockupFiles = files
     .filter((f) => isMockupPath(f.filePath))
     .map((f) => ({ filePath: f.filePath, content: f.content }))
-  const allMockupFiles = [
-    ...mockupFiles,
-    ...mockups
-      .filter((m) => !mockupFiles.some((mf) => mf.filePath === m.filePath))
-      .map((m) => ({ filePath: m.filePath, content: m.html })),
-  ]
+  const allMockupFiles = mockupFiles
 
   // Code file items for the sidebar
   const codeFileItems: CodeFileItem[] = codeFiles.map((f) => ({
@@ -364,7 +352,7 @@ export function CardWorkspace({
     return () => clearInterval(interval)
   }, [card.id])
 
-  // Track file writes from the agent — add new files to the list and fetch content
+  // Track file writes from the agent — add or update files in the list
   useEffect(() => {
     for (const fw of fileWrites) {
       if (fw.filePath.startsWith('.workhorse/specs/') || isMockupPath(fw.filePath)) {
@@ -372,14 +360,14 @@ export function CardWorkspace({
           if (prev.some((f) => f.filePath === fw.filePath)) return prev
           return [...prev, { filePath: fw.filePath, isNew: true, content: '' }]
         })
-        // Immediately fetch the file content from the worktree so mockups
-        // and specs are not blank when first added to the sidebar
+        // Fetch the latest file content from the worktree — both for newly
+        // added files and for existing files the agent has just edited
         fetch(`/api/worktree-files?cardId=${card.id}&filePath=${encodeURIComponent(fw.filePath)}`)
           .then((res) => res.ok ? res.json() : null)
           .then((data) => {
             if (data?.content) {
               setFiles((prev) =>
-                prev.map((f) => f.filePath === fw.filePath && !f.content ? { ...f, content: data.content as string } : f),
+                prev.map((f) => f.filePath === fw.filePath ? { ...f, content: data.content as string } : f),
               )
             }
           })
@@ -393,6 +381,20 @@ export function CardWorkspace({
       }
     }
   }, [fileWrites, card.id])
+
+  // Refresh code files after a commit so the artifacts bar updates with
+  // accurate line stats from git, without requiring a page refresh.
+  useEffect(() => {
+    if (committedFiles.length === 0) return
+    fetch(`/api/card-files?cardId=${encodeURIComponent(card.identifier)}`)
+      .then((res) => res.ok ? res.json() : null)
+      .then((data) => {
+        if (data?.initialCodeFiles) {
+          setCodeFiles(data.initialCodeFiles)
+        }
+      })
+      .catch(() => { /* best-effort */ })
+  }, [committedFiles, card.identifier])
 
   // Open a file from card home in expanded mode (chat contracted)
   const openFileExpanded = useCallback(
@@ -549,11 +551,8 @@ export function CardWorkspace({
     ? !activeFilePath.startsWith('.workhorse/') && !isMockupFile
     : false
 
-  // Find mockup data (either from files or from mockups prop)
   const activeMockupHtml = isMockupFile && activeFilePath
-    ? (files.find((f) => f.filePath === activeFilePath)?.content ||
-       mockups.find((m) => m.filePath === activeFilePath)?.html ||
-       '')
+    ? (files.find((f) => f.filePath === activeFilePath)?.content || '')
     : ''
   const activeMockupTitle = activeFilePath ? deriveLabel(activeFilePath, activeMockupHtml) : ''
 
@@ -641,8 +640,11 @@ export function CardWorkspace({
           </div>
         )}
         <ChatInput
+          key={activeSessionId ?? 'new'}
           onSend={(content) => handleSendMessage(content)}
-          disabled={isStreaming}
+          isStreaming={isStreaming}
+          onStop={interrupt}
+          autoFocus
           pendingAttachments={chatAttachments.pending}
           onAddFiles={chatAttachments.addFiles}
           onRemoveAttachment={chatAttachments.removeAttachment}
@@ -813,7 +815,8 @@ export function CardWorkspace({
               )}
               <ChatInput
                 onSend={(content) => handleSendMessage(content)}
-                disabled={isStreaming}
+                isStreaming={isStreaming}
+                onStop={interrupt}
                 placeholder="Start a new conversation..."
                 pendingAttachments={chatAttachments.pending}
                 onAddFiles={chatAttachments.addFiles}

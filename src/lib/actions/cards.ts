@@ -21,7 +21,6 @@ export async function getCard(identifier: string) {
     include: {
       team: { include: { project: true } },
       assignee: true,
-      mockups: true,
       comments: {
         include: { user: true, attachments: true },
         orderBy: { createdAt: 'asc' },

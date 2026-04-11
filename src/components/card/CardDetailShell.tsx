@@ -12,7 +12,6 @@ interface CardDetailShellProps {
     title: string
     status: string
     cardBranch: string | null
-    touchedFiles: string[]
     defaultBranch: string
   }
   projectSlug: string

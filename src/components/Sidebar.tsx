@@ -57,6 +57,13 @@ export function Sidebar({ initialProjects, initialRecentSessions = [] }: Sidebar
     ? `/${encodeURIComponent(activeProject.name.toLowerCase())}`
     : null
 
+  // Persist last-used project so the root page can redirect back to it
+  useEffect(() => {
+    if (activeProject) {
+      document.cookie = `lastProject=${encodeURIComponent(activeProject.name.toLowerCase())};path=/;max-age=${60 * 60 * 24 * 365};samesite=lax`
+    }
+  }, [activeProject])
+
   const projectSessions = recentSessions
     .filter((s) => !activeProject || s.projectName?.toLowerCase() === activeProject.name.toLowerCase())
   const filteredSessions = projectSessions.slice(0, 5)

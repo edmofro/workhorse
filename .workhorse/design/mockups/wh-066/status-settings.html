@@ -1,0 +1,556 @@
+<!-- spec: configurable-statuses.md -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WH-066 — Configurable task statuses in project settings</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #f8f7f4;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 48px;
+    padding: 48px 32px;
+    min-height: 100vh;
+  }
+
+  /* ── Settings panel ── */
+  .settings-panel {
+    width: 600px;
+    background: #ffffff;
+    border: 1px solid #eae7e1;
+    border-radius: 10px;
+    box-shadow: 0 1px 3px rgba(28,25,23,0.04);
+    overflow: hidden;
+  }
+
+  .settings-topbar {
+    height: 52px;
+    display: flex;
+    align-items: center;
+    padding: 0 24px;
+    border-bottom: 1px solid #eae7e1;
+  }
+
+  .settings-topbar h1 {
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: #1c1917;
+  }
+
+  .settings-content {
+    padding: 32px 32px 24px;
+  }
+
+  /* ── Section ── */
+  .section {
+    margin-bottom: 32px;
+  }
+
+  .section:last-child {
+    margin-bottom: 0;
+  }
+
+  .section-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: #a8a29e;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 12px;
+  }
+
+  .section-description {
+    font-size: 13px;
+    color: #57534e;
+    line-height: 1.5;
+    margin-bottom: 16px;
+  }
+
+  /* ── Status list ── */
+  .status-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .status-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    transition: background 0.1s;
+  }
+
+  .status-row:hover {
+    background: #f8f7f4;
+  }
+
+  .drag-handle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #d1cdc6;
+    cursor: grab;
+    flex-shrink: 0;
+    padding: 2px;
+    border-radius: 4px;
+    transition: color 0.1s;
+  }
+
+  .status-row:hover .drag-handle {
+    color: #a8a29e;
+  }
+
+  /* ── Status dot (inline) ── */
+  .status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .status-dot.grey { border: 1.5px solid #dfdcd5; background: transparent; }
+  .status-dot.amber { background: #b45309; }
+  .status-dot.green { background: #16a34a; }
+  .status-dot.muted { background: #a8a29e; }
+
+  /* ── Status label ── */
+  .status-label {
+    flex: 1;
+    font-size: 13px;
+    font-weight: 450;
+    color: #1c1917;
+    min-width: 0;
+  }
+
+  .status-label-editing {
+    flex: 1;
+    font-size: 13px;
+    font-weight: 450;
+    color: #1c1917;
+    background: #ffffff;
+    border: 1px solid #c2410c;
+    border-radius: 6px;
+    padding: 4px 8px;
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(194,65,12,0.05);
+    min-width: 0;
+  }
+
+  /* ── Colour category badge ── */
+  .colour-badge {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    border-radius: 5px;
+    font-size: 11px;
+    font-weight: 500;
+    cursor: pointer;
+    border: 1px solid #eae7e1;
+    background: #ffffff;
+    color: #57534e;
+    transition: border-color 0.1s, background 0.1s;
+    flex-shrink: 0;
+  }
+
+  .colour-badge:hover {
+    border-color: #dfdcd5;
+    background: #f8f7f4;
+  }
+
+  .colour-badge .mini-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .mini-dot.grey { border: 1.5px solid #dfdcd5; background: transparent; }
+  .mini-dot.amber { background: #b45309; }
+  .mini-dot.green { background: #16a34a; }
+  .mini-dot.muted { background: #a8a29e; }
+
+  /* ── Role tag ── */
+  .role-tag {
+    font-size: 10px;
+    font-weight: 500;
+    color: #a8a29e;
+    background: #f8f7f4;
+    border-radius: 4px;
+    padding: 2px 6px;
+    flex-shrink: 0;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  /* ── Delete button ── */
+  .delete-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px;
+    border-radius: 4px;
+    border: none;
+    background: transparent;
+    color: #d1cdc6;
+    cursor: pointer;
+    transition: color 0.1s, background 0.1s;
+    flex-shrink: 0;
+  }
+
+  .delete-btn:hover {
+    color: #dc2626;
+    background: rgba(220,38,38,0.07);
+  }
+
+  .delete-btn.disabled {
+    cursor: not-allowed;
+    opacity: 0.3;
+  }
+
+  .delete-btn.disabled:hover {
+    color: #d1cdc6;
+    background: transparent;
+  }
+
+  /* ── Add status button ── */
+  .add-status-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 8px;
+    padding: 7px 14px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 500;
+    background: #ffffff;
+    color: #57534e;
+    border: 1px solid #dfdcd5;
+    box-shadow: 0 1px 3px rgba(28,25,23,0.04);
+    cursor: pointer;
+    transition: border-color 0.1s, background 0.1s;
+  }
+
+  .add-status-btn:hover {
+    background: #f8f7f4;
+    border-color: #dfdcd5;
+  }
+
+  .add-status-btn svg {
+    color: #a8a29e;
+  }
+
+  /* ── Divider ── */
+  .divider {
+    height: 1px;
+    background: #eae7e1;
+    margin: 24px 0;
+  }
+
+  /* ── Colour picker dropdown (shown on "In review" row) ── */
+  .colour-picker-wrapper {
+    position: relative;
+  }
+
+  .colour-picker {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    background: #ffffff;
+    border: 1px solid #dfdcd5;
+    border-radius: 10px;
+    box-shadow: 0 12px 40px rgba(28,25,23,0.14), 0 2px 8px rgba(28,25,23,0.06);
+    padding: 4px;
+    z-index: 10;
+    width: 140px;
+  }
+
+  .colour-option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    border-radius: 6px;
+    font-size: 12px;
+    color: #57534e;
+    cursor: pointer;
+    border: none;
+    background: none;
+    width: 100%;
+    text-align: left;
+    transition: background 0.1s;
+  }
+
+  .colour-option:hover {
+    background: #f8f7f4;
+  }
+
+  .colour-option.selected {
+    color: #1c1917;
+    font-weight: 500;
+  }
+
+  .colour-option .option-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .option-dot.grey { border: 1.5px solid #dfdcd5; background: transparent; }
+  .option-dot.amber { background: #b45309; }
+  .option-dot.green { background: #16a34a; }
+  .option-dot.muted { background: #a8a29e; }
+
+  /* ── Annotation panel ── */
+  .annotations {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    max-width: 280px;
+  }
+
+  .annotation {
+    background: #ffffff;
+    border: 1px solid #eae7e1;
+    border-radius: 8px;
+    padding: 16px;
+    box-shadow: 0 1px 3px rgba(28,25,23,0.04);
+  }
+
+  .annotation h3 {
+    font-size: 12px;
+    font-weight: 600;
+    color: #1c1917;
+    margin-bottom: 6px;
+  }
+
+  .annotation p {
+    font-size: 12px;
+    color: #57534e;
+    line-height: 1.6;
+  }
+
+  .annotation code {
+    font-family: ui-monospace, 'SF Mono', 'Cascadia Code', monospace;
+    font-size: 11px;
+    background: #f8f7f4;
+    padding: 1px 4px;
+    border-radius: 3px;
+  }
+
+  .annotation .label {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 500;
+    background: rgba(194,65,12,0.06);
+    color: #c2410c;
+    border-radius: 4px;
+    padding: 2px 6px;
+    margin-bottom: 8px;
+  }
+
+  svg { display: inline-block; vertical-align: middle; }
+</style>
+</head>
+<body>
+
+<!-- Settings panel -->
+<div class="settings-panel">
+  <div class="settings-topbar">
+    <h1>Settings</h1>
+  </div>
+
+  <div class="settings-content">
+
+    <!-- Project name (collapsed context) -->
+    <div class="section">
+      <div class="section-label">Project</div>
+      <div style="font-size:14px; font-weight:500; color:#1c1917;">Workhorse</div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Statuses section -->
+    <div class="section">
+      <div class="section-label">Statuses</div>
+      <div class="section-description">
+        Define the workflow statuses for cards in this project. Drag to reorder. Each status becomes a column on the board.
+      </div>
+
+      <div class="status-list">
+
+        <!-- Row 1: Not started (grey, default) -->
+        <div class="status-row">
+          <div class="drag-handle">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="9" cy="6" r="1"/><circle cx="15" cy="6" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="9" cy="18" r="1"/><circle cx="15" cy="18" r="1"/></svg>
+          </div>
+          <div class="status-dot grey"></div>
+          <span class="status-label">Not started</span>
+          <div class="colour-badge">
+            <span class="mini-dot grey"></span>
+            Grey
+          </div>
+          <button class="delete-btn" title="Delete status">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+
+        <!-- Row 2: Specifying (amber) -->
+        <div class="status-row">
+          <div class="drag-handle">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="9" cy="6" r="1"/><circle cx="15" cy="6" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="9" cy="18" r="1"/><circle cx="15" cy="18" r="1"/></svg>
+          </div>
+          <div class="status-dot amber"></div>
+          <span class="status-label">Specifying</span>
+          <div class="colour-badge">
+            <span class="mini-dot amber"></span>
+            Amber
+          </div>
+          <button class="delete-btn" title="Delete status">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+
+        <!-- Row 3: In review (amber) — editing state, colour picker open -->
+        <div class="status-row" style="background: #f8f7f4;">
+          <div class="drag-handle" style="color: #a8a29e;">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="9" cy="6" r="1"/><circle cx="15" cy="6" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="9" cy="18" r="1"/><circle cx="15" cy="18" r="1"/></svg>
+          </div>
+          <div class="status-dot amber"></div>
+          <input class="status-label-editing" type="text" value="In review" />
+          <div class="colour-picker-wrapper">
+            <div class="colour-badge" style="border-color: #c2410c; box-shadow: 0 0 0 3px rgba(194,65,12,0.05);">
+              <span class="mini-dot amber"></span>
+              Amber
+            </div>
+            <div class="colour-picker">
+              <button class="colour-option">
+                <span class="option-dot grey"></span>
+                Grey
+              </button>
+              <button class="colour-option selected">
+                <span class="option-dot amber"></span>
+                Amber
+              </button>
+              <button class="colour-option">
+                <span class="option-dot green"></span>
+                Green
+              </button>
+              <button class="colour-option">
+                <span class="option-dot muted"></span>
+                Muted
+              </button>
+            </div>
+          </div>
+          <button class="delete-btn" title="Delete status">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+
+        <!-- Row 4: Implementing (amber) -->
+        <div class="status-row">
+          <div class="drag-handle">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="9" cy="6" r="1"/><circle cx="15" cy="6" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="9" cy="18" r="1"/><circle cx="15" cy="18" r="1"/></svg>
+          </div>
+          <div class="status-dot amber"></div>
+          <span class="status-label">Implementing</span>
+          <div class="colour-badge">
+            <span class="mini-dot amber"></span>
+            Amber
+          </div>
+          <button class="delete-btn" title="Delete status">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+
+        <!-- Row 5: Complete (green, done role) — delete disabled -->
+        <div class="status-row">
+          <div class="drag-handle">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="9" cy="6" r="1"/><circle cx="15" cy="6" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="9" cy="18" r="1"/><circle cx="15" cy="18" r="1"/></svg>
+          </div>
+          <div class="status-dot green"></div>
+          <span class="status-label">Complete</span>
+          <div class="colour-badge">
+            <span class="mini-dot green"></span>
+            Green
+          </div>
+          <span class="role-tag">Done</span>
+          <button class="delete-btn disabled" title="Cannot delete — done status">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+
+        <!-- Row 6: Cancelled (muted, cancelled role) — delete disabled -->
+        <div class="status-row">
+          <div class="drag-handle" style="color: transparent; cursor: default;">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="9" cy="6" r="1"/><circle cx="15" cy="6" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="9" cy="18" r="1"/><circle cx="15" cy="18" r="1"/></svg>
+          </div>
+          <div class="status-dot muted"></div>
+          <span class="status-label">Cancelled</span>
+          <div class="colour-badge">
+            <span class="mini-dot muted"></span>
+            Muted
+          </div>
+          <span class="role-tag">Cancelled</span>
+          <button class="delete-btn disabled" title="Cannot delete — cancelled status">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+
+      </div>
+
+      <!-- Add status button -->
+      <button class="add-status-btn">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Add status
+      </button>
+    </div>
+
+  </div>
+</div>
+
+<!-- Annotations -->
+<div class="annotations">
+  <div class="annotation">
+    <span class="label">Editing state</span>
+    <h3>Row 3: "In review"</h3>
+    <p>Shows a newly added custom status being edited. The label is in an inline text input with accent focus ring. The colour category picker dropdown is open, showing the four fixed options.</p>
+  </div>
+
+  <div class="annotation">
+    <span class="label">Role tags</span>
+    <h3>Done and Cancelled</h3>
+    <p>The "Complete" and "Cancelled" rows show small role tags. These statuses have special behaviour (green dot for done, collapsed column for cancelled) and cannot be deleted — their delete buttons are disabled.</p>
+  </div>
+
+  <div class="annotation">
+    <span class="label">Drag handle</span>
+    <h3>Reordering</h3>
+    <p>The grip icon on each row allows drag-to-reorder. The cancelled status has no drag handle — it is always last. The done status can be reordered but stays after all regular statuses.</p>
+  </div>
+
+  <div class="annotation">
+    <span class="label">Colour categories</span>
+    <h3>Fixed palette</h3>
+    <p>Four options: Grey (not started / backlog), Amber (in progress), Green (done), Muted (cancelled / inactive). These map directly to the design system's status dot colours. Not user-extensible.</p>
+  </div>
+
+  <div class="annotation">
+    <span class="label">Deleting a status</span>
+    <h3>Card reassignment</h3>
+    <p>When deleting a status that has cards, a confirmation dialog asks the user to choose a replacement status before proceeding. Statuses with the done or cancelled role cannot be deleted.</p>
+  </div>
+</div>
+
+</body>
+</html>

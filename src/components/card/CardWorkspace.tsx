@@ -880,6 +880,7 @@ export function CardWorkspace({
           </div>
         </>
       )}
+      </div>
 
       {/* New spec dialog */}
       {showNewSpecDialog && (

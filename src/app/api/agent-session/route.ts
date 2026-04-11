@@ -213,12 +213,6 @@ export async function POST(request: NextRequest) {
     promptInput = message
   }
 
-  // Skills that run extended implementation work get unlimited turns.
-  // All other skills get a capped limit to prevent runaway sessions.
-  const UNLIMITED_TURN_SKILLS = new Set(['implement', 'fix_ci'])
-  const resolvedSkillId = isValidSkillId(skillId) ? skillId : undefined
-  const maxTurns = resolvedSkillId && UNLIMITED_TURN_SKILLS.has(resolvedSkillId) ? undefined : 10
-
   // Configure Agent SDK query
   const options: Parameters<typeof query>[0]['options'] = {
     cwd: wtPath,
@@ -232,7 +226,6 @@ export async function POST(request: NextRequest) {
     settingSources: ['project' as const],
     includePartialMessages: true,
     model: 'claude-opus-4-6',
-    ...(maxTurns !== undefined ? { maxTurns } : {}),
     persistSession: true,
     ...(convSession.agentSessionId ? { resume: convSession.agentSessionId } : {}),
   }

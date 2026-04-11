@@ -9,10 +9,16 @@ import { anthropic } from '../anthropic'
 import { BUILT_IN_SKILLS, isValidSkillId } from '../skills/registry'
 
 export interface SkillDetectionInput {
+  /** Most-recent-first journal entries (caller is responsible for sort order) */
   userMessage: string
   cardTitle: string
   cardStatus: string
   journalEntries: { type: string; summary: string }[]
+}
+
+/** Escape XML special chars to prevent tag breakout in LLM prompts */
+function escapeXml(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 }
 
 const SKILL_LIST = Object.values(BUILT_IN_SKILLS)
@@ -35,14 +41,19 @@ ${SKILL_LIST}
 function buildPrompt(input: SkillDetectionInput): string {
   const lines: string[] = []
 
-  lines.push(`Card: ${input.cardTitle} (status: ${input.cardStatus})`)
+  lines.push(`Card: ${escapeXml(input.cardTitle)} (status: ${input.cardStatus})`)
 
   if (input.journalEntries.length > 0) {
-    const recent = input.journalEntries.slice(-3).map((e) => e.summary).join('; ')
-    lines.push(`Recent activity: ${recent}`)
+    lines.push('<recent_activity>')
+    for (const entry of input.journalEntries.slice(0, 3)) {
+      lines.push(`- [${escapeXml(entry.type)}] ${escapeXml(entry.summary)}`)
+    }
+    lines.push('</recent_activity>')
   }
 
-  lines.push(`\nIncoming message: "${input.userMessage}"`)
+  lines.push('<user_message>')
+  lines.push(escapeXml(input.userMessage))
+  lines.push('</user_message>')
   lines.push('\nWhich skill is the user invoking, if any?')
 
   return lines.join('\n')

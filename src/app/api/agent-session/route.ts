@@ -163,9 +163,9 @@ export async function POST(request: NextRequest) {
   if (!resolvedSkillId) {
     const journalEntries = await prisma.journalEntry.findMany({
       where: { cardId },
-      orderBy: { createdAt: 'asc' },
+      orderBy: { createdAt: 'desc' },
       select: { type: true, summary: true },
-      take: 20,
+      take: 3,
     })
     resolvedSkillId = (await detectSkillIntent({
       userMessage: message,

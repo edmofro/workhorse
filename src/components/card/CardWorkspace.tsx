@@ -576,19 +576,6 @@ export function CardWorkspace({
   // --- Chat column (shared between chat mode and artifact mode) ---
   const chatColumn = (
     <div className="flex-1 flex flex-col overflow-hidden">
-      {/* Properties bar — shared across all views */}
-      <PropertiesBar
-        card={card}
-        users={users}
-        teams={teams}
-        journalEntries={jockey.journalEntries}
-        scheduledSteps={jockey.scheduledSteps}
-        suggestions={dedupedSuggestions}
-        activeStep={jockey.activeStep}
-        onTriggerSkill={handleTriggerSkill}
-        onScheduleStep={jockey.scheduleStep}
-        onUnscheduleStep={jockey.unscheduleStep}
-      />
       <div ref={chatScrollRef} className="flex-1 overflow-y-auto flex justify-center">
         <div className="w-full" style={{ maxWidth: '680px', padding: '32px 24px 80px' }}>
           {messages.length === 0 && (
@@ -756,23 +743,25 @@ export function CardWorkspace({
   useCardBackRegister(backHandler)
 
   return (
-    <div className="flex-1 flex overflow-hidden">
+    <div className="flex-1 flex flex-col overflow-hidden">
+      {/* Properties bar — single instance shared across all views */}
+      <PropertiesBar
+        card={card}
+        users={users}
+        teams={teams}
+        journalEntries={jockey.journalEntries}
+        scheduledSteps={jockey.scheduledSteps}
+        suggestions={dedupedSuggestions}
+        activeStep={jockey.activeStep}
+        onTriggerSkill={handleTriggerSkill}
+        onScheduleStep={jockey.scheduleStep}
+        onUnscheduleStep={jockey.unscheduleStep}
+      />
+      <div className="flex-1 flex overflow-hidden">
       {/* ===== Card home ===== */}
       {view.type === 'card' && (
         <>
           <div className="flex-1 flex flex-col overflow-hidden">
-            <PropertiesBar
-              card={card}
-              users={users}
-              teams={teams}
-              journalEntries={jockey.journalEntries}
-              scheduledSteps={jockey.scheduledSteps}
-              suggestions={dedupedSuggestions}
-              activeStep={jockey.activeStep}
-              onTriggerSkill={handleTriggerSkill}
-              onScheduleStep={jockey.scheduleStep}
-              onUnscheduleStep={jockey.unscheduleStep}
-            />
             <div className="flex-1 overflow-y-auto">
               {cardTabContent}
 

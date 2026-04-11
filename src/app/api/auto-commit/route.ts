@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireUser, requireCardAccess } from '../../../lib/auth/session'
 import { prisma } from '../../../lib/prisma'
 import { autoCommit } from '../../../lib/git/worktree'
-import { safeParseTouchedFiles } from '../../../lib/safeParseTouchedFiles'
 
 /**
  * Auto-commit changed files in a card's worktree.
@@ -42,15 +41,9 @@ export async function POST(request: NextRequest) {
     )
 
     if (changedFiles.length > 0) {
-      // Update touched files on card
-      const existingFiles = safeParseTouchedFiles(card.touchedFiles)
-      const allFiles = [...new Set([...existingFiles, ...changedFiles])]
       await prisma.card.update({
         where: { id: cardId },
-        data: {
-          touchedFiles: JSON.stringify(allFiles),
-          lastActivityAt: new Date(),
-        },
+        data: { lastActivityAt: new Date() },
       })
 
       // Record activity

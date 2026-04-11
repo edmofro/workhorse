@@ -130,6 +130,7 @@ export function CardWorkspace({
     messages,
     isStreaming,
     fileWrites,
+    committedFiles,
     thinkingSnippet,
     currentSessionId,
     currentSessionTitle,
@@ -372,6 +373,20 @@ export function CardWorkspace({
       }
     }
   }, [fileWrites, card.id])
+
+  // Refresh code files after a commit so the artifacts bar updates with
+  // accurate line stats from git, without requiring a page refresh.
+  useEffect(() => {
+    if (committedFiles.length === 0) return
+    fetch(`/api/card-files?cardId=${encodeURIComponent(card.identifier)}`)
+      .then((res) => res.ok ? res.json() : null)
+      .then((data) => {
+        if (data?.initialCodeFiles) {
+          setCodeFiles(data.initialCodeFiles)
+        }
+      })
+      .catch(() => { /* best-effort */ })
+  }, [committedFiles, card.identifier])
 
   // Open a file from card home in expanded mode (chat contracted)
   const openFileExpanded = useCallback(

@@ -11,7 +11,8 @@ interface HandoffContext {
   cardTitle: string
   branchName: string
   baseBranch: string
-  touchedFiles: string[]
+  workhorseFiles: string[]
+  codeFiles: string[]
   status: string
   attachmentFiles?: string[]
   journalSummary?: string
@@ -46,9 +47,9 @@ export function generateHandoffPrompt(ctx: HandoffContext): string {
   lines.push('```')
   lines.push('')
 
-  const specFiles = ctx.touchedFiles.filter((f) => f.startsWith('.workhorse/specs/'))
-  const mockupFiles = ctx.touchedFiles.filter((f) => isMockupPath(f))
-  const attachmentFiles = ctx.attachmentFiles ?? ctx.touchedFiles.filter((f) => f.startsWith('.workhorse/attachments/'))
+  const specFiles = ctx.workhorseFiles.filter((f) => f.startsWith('.workhorse/specs/'))
+  const mockupFiles = ctx.workhorseFiles.filter((f) => isMockupPath(f))
+  const attachmentFiles = ctx.attachmentFiles ?? ctx.workhorseFiles.filter((f) => f.startsWith('.workhorse/attachments/'))
 
   if (specFiles.length > 0) {
     lines.push('Specs:')
@@ -82,7 +83,7 @@ export function generateHandoffPrompt(ctx: HandoffContext): string {
   }
 
   // Code changes
-  if (ctx.status === 'IMPLEMENTING' || ctx.touchedFiles.some(f => !f.startsWith('.workhorse/'))) {
+  if (ctx.status === 'IMPLEMENTING' || ctx.codeFiles.length > 0) {
     lines.push('## Code changes')
     lines.push('Code changes should meet the spec acceptance criteria. Review the diff:')
     lines.push('```')

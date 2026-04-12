@@ -23,7 +23,7 @@ Product owners, testers, and developers — anyone who specifies what software s
 - [ ] Alternatively, user creates a card on a team's board
 - [ ] User describes the work on the card view — title, description, metadata, comments
 - [ ] User starts a conversation via chat input or action pill — AI agent with remote access to the target codebase
-- [ ] The jockey (see `workflow-orchestration.md`) observes the conversation, tracks progress in the journal, and suggests next steps via pills and the journey section
+- [ ] The jockey (see `workflow-orchestration.md`) observes the conversation, tracks progress in the journal, and suggests next steps via pills
 - [ ] Workshopping and ideation — the AI explores approaches, generates mockups, and helps refine thinking
 - [ ] Spec interview — the AI probes for edge cases, identifies interactions, generates mockups. Supports BA work: flow diagrams, business rule identification, process mapping
 - [ ] AI drafts spec documents — may create new specs and identify existing specs that need updating

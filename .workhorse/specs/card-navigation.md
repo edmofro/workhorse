@@ -2,6 +2,7 @@
 title: Card navigation and chat-first workflow
 area: cards
 card: WH-006
+updated-by: WH-084
 ---
 
 The card detail experience is built around a chat-first workflow following the Claude/ChatGPT artifact pattern. The chat is the primary interaction surface — centred when no artifact is open, sliding left when an artifact opens on the right. Specs and mockups are both artifacts produced by or referenced by the conversation, sharing a unified layout. The card's status shapes what actions are prominent and what the AI focuses on, but never gates access to any view.
@@ -49,34 +50,15 @@ The sidebar is divided into three sections with uppercase section labels (follow
 - [ ] Each code file shows a +/− lines changed indicator (e.g. "+42/−7") using diff colours from the design system (`--green` for additions, `--diff-red` for removals). Uses monospace tabular-nums for alignment
 - [ ] When empty, shows "No changes yet" in faint text
 
-## Properties bar
+## Card properties
 
-A single horizontal bar that sits between the topbar and the content area in all card views — card home, chat, and artifact mode. It shows card metadata and journey status in one persistent strip, so both are always accessible regardless of which view is active.
+Card properties (priority, team, assignee, dependencies) are accessible via a properties popover anchored to a `⋮` button in the topbar, to the right of the status chip. This keeps them available from any view without occupying permanent screen space.
 
-```
-[● Specifying] [High] [Edwin] [Tamanu]  |  [● ● ○ ◌]  Interview  ▾
-```
-
-### Properties section
-
-The left side of the bar shows the card's core properties as interactive pills: status, priority, assignee, team.
-
-- [ ] Properties are always shown in the bar, in all card views
-- [ ] Each property pill is bare text at rest, gaining a subtle rounded background on hover
-- [ ] Clicking a property pill opens a compact dropdown below it
-- [ ] The status pill includes a status dot (matching the board column headers and the dot states used throughout the app)
-- [ ] Dependency identifiers, if any, are shown as read-only monospace labels after the core properties
-- [ ] Changes to properties take effect immediately and are visible to all users in real time
-
-### Journey section
-
-The right side of the bar shows a compact summary of the card's journey. A vertical hairline separates the properties and journey sections when the journey section is visible.
-
-- [ ] The journey section appears only when at least one journal entry exists — on fresh cards with no activity, only the properties section is shown
-- [ ] Shows progress dots for the journal: green filled for completed steps, accent filled for the active step, hollow border for scheduled steps, dashed border for jockey suggestions
-- [ ] When a step is actively running, the step name appears beside the dots and pulses to indicate activity
-- [ ] When no step is currently active (idle), only the dots are shown — no label
-- [ ] Clicking the journey section opens a compact dropdown for the full journey detail — see `workflow-orchestration.md`
+- [ ] The `⋮` button sits immediately after the status chip in the topbar
+- [ ] Clicking it opens a popover listing priority, team, assignee, and dependency identifiers
+- [ ] Each property value is clickable, opening an inline dropdown to change it
+- [ ] Changes take effect immediately and are visible to all users in real time
+- [ ] The popover closes on outside click or Escape
 
 ## Card home (landing state)
 
@@ -104,7 +86,7 @@ Triggered when the user sends a message from card home. The card details slide a
 - [ ] Artifacts sidebar open on the right (216px), showing Specs, Mockups, and Code changes sections (always visible, even when empty)
 - [ ] File write notifications from the AI appear inline in the chat as clickable cards (human-readable label + snippet; see labels.md), like Claude's artifact reference cards
 - [ ] Clicking a file in the artifacts sidebar or an inline notification opens it as an artifact (chat slides left, sidebar disappears)
-- [ ] `←` back arrow returns to card home
+- [ ] Clicking the card title in the topbar returns to card home
 - [ ] Suggested action pills visible above the input bar
 - [ ] Chat scroll position preserved across view transitions
 
@@ -199,8 +181,11 @@ Card home ──(click file in sidebar)────────→ Chat + artifa
 Card home ──(← back)───────────────────────→ Team board
 
 Chat ──(click file in sidebar/notification)→ Chat + artifact (sidebar disappears)
-Chat ──(← back)────────────────────────────→ Card home
+Chat ──(click card title)──────────────────→ Card home
+Chat ──(← back)────────────────────────────→ Team board
 
+Chat + artifact ──(click card title)───────→ Card home
+Chat + artifact ──(← back)─────────────────→ Team board
 Chat + artifact ──(✕ close / Escape)───────→ Chat (centred, artifacts sidebar reappears)
 Chat + artifact ──(Edit)───────────────────→ Chat + artifact (editable)
 Chat + artifact ──(Done editing)───────────→ Chat + artifact (read-only)
@@ -227,18 +212,21 @@ Available via the ⌄ chevron in the artifact header bar. The primary way to fin
 
 ### Back arrow (← in topbar)
 
-- [x] On card home → navigates to the team board (Link to project page)
-- [x] In chat mode → returns to card home (in-page navigation via view state, not a route change)
-- [x] In artifact mode → returns to card home (closes artifact and chat, returns to card home via view state)
+- [ ] Always navigates to the team board, regardless of view state
+
+### Card title (in topbar)
+
+- [ ] In chat or artifact view, clicking the card title navigates back to card home
+- [ ] On card home, the title is not interactive
 
 ### Escape key
 
 - [ ] In chat + artifact → closes artifact (same as ✕), returns to centred chat
 - [ ] In chat → returns to card home
 
-### Close (✕) vs back (←)
+### Close (✕) vs back (←) vs title
 
-Close (✕) dismisses the current artifact and returns to centred chat. It's a "close this document" action, not a navigation back. Back (←) navigates up the hierarchy: chat → card home → board.
+Close (✕) dismisses the current artifact and returns to centred chat. It's a "close this document" action. The card title navigates back to card home. Back (←) exits the card entirely and returns to the board.
 
 ## Action pills
 
@@ -249,7 +237,7 @@ Pills send a visible message (the user sees it in the chat) but also carry a hid
 - [ ] Pills are generated by the jockey (see `workflow-orchestration.md`) based on the card's journal, conversation state, and open artifacts
 - [ ] Each pill maps to a skill, which maps to a system prompt fragment
 - [ ] The jockey updates pill suggestions on every message — pills are always relevant to what's happening right now
-- [ ] Pills may differ from the journey section's suggested steps — pills are branching options for the immediate moment, not the expected sequence
+- [ ] Pills may differ from the jockey's suggested steps — pills are branching options for the immediate moment, not the expected sequence
 - [ ] Pill labels are short and direct — 2–4 words maximum. Use verb + noun form: "Draft spec", "Review spec", "Continue", "Update spec". Never use verbose phrases like "Compare code changes against specs"
 
 ## Chat history retrieval
@@ -272,8 +260,21 @@ Soft gates inform the user when they try to advance a card's status. They check 
 
 ## Topbar
 
-- [ ] Back arrow (context-aware), card title + identifier on the left
-- [ ] Handoff button (see `workflow-orchestration.md`) on the right
+The topbar is stable across all card views. The left side provides navigation; the right side provides status and card properties.
+
+### Left side
+
+- [ ] `←` back arrow navigates to the team board — always, in every view
+- [ ] Card title and identifier (`WH-084`) shown after the back arrow
+- [ ] In chat and artifact views, the card title is clickable and navigates back to card home. On hover, the title shows accent colour to indicate it's a link
+- [ ] On card home, the title is not clickable (already there)
+- [ ] In chat view, a `›` separator and "Chat" label appear after the identifier
+- [ ] In artifact view, a `›` separator and the open file's label appear after the identifier
+
+### Right side
+
+- [ ] **Status chip** — shows the status icon and label (e.g. `● Specifying`). Clicking it opens a dropdown listing all statuses; selecting one changes the status immediately. One click to open, one click to change
+- [ ] **`⋮` button** — opens the properties popover (see "Card properties" above)
 - [ ] View state is client-side — `/cards/[cardId]` is the only route
 
 ## Resolved decisions
@@ -287,3 +288,7 @@ Soft gates inform the user when they try to advance a card's status. They check 
 - **Edit save model:** Edits are saved explicitly via "Done editing". Switching to another file while editing prompts save/discard. Auto-commit on done (see `commit-specs.md`).
 - **Mockup expansion:** When a mockup needs more space, the chat column collapses to a single icon. Click to restore.
 - **Proactive mockups:** The AI generates mockups proactively during interviews and spec drafting whenever a visual would help, without waiting to be asked.
+- **Back arrow always goes to board.** The topbar back arrow is not context-aware — it always exits the card. Navigating back to card home from chat/artifact uses the clickable card title in the topbar.
+- **Status in the topbar.** Card status is a direct dropdown in the topbar right side — one click to open the list, one click to change. No intermediate popover.
+- **Properties behind ⋮.** Priority, team, assignee, and dependencies live in a popover behind a `⋮` button next to the status chip. Keeps them accessible without permanent screen space.
+- **No properties bar.** The properties bar between the topbar and content area is removed. Status lives in the topbar; other properties live in the `⋮` popover.

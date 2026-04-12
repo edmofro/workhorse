@@ -143,13 +143,19 @@ export async function runJockeyAssessment(input: JockeyInput): Promise<JockeyAss
     const parsed = JSON.parse(jsonMatch[0]) as JockeyAssessment
 
     // Validate the shape — filter out malformed items from LLM arrays
-    const validEntry = (e: unknown): e is { type: string; label: string; summary: string } =>
-      !!e && typeof (e as Record<string, unknown>).type === 'string' && typeof (e as Record<string, unknown>).summary === 'string' && typeof (e as Record<string, unknown>).label === 'string'
+    const validEntry = (e: unknown): e is { type: string; label?: string; summary: string } =>
+      !!e && typeof (e as Record<string, unknown>).type === 'string' && typeof (e as Record<string, unknown>).summary === 'string'
+    const normaliseEntry = (e: { type: string; label?: string; summary: string }): { type: string; label: string; summary: string } => ({
+      ...e,
+      label: typeof e.label === 'string' && e.label.length > 0
+        ? e.label
+        : BUILT_IN_SKILLS[e.type]?.label ?? e.type,
+    })
     const validPill = (p: unknown): p is { skillId: string; label: string } =>
       !!p && typeof (p as Record<string, unknown>).skillId === 'string' && typeof (p as Record<string, unknown>).label === 'string'
 
     return {
-      journalEntries: Array.isArray(parsed.journalEntries) ? parsed.journalEntries.filter(validEntry) : [],
+      journalEntries: Array.isArray(parsed.journalEntries) ? parsed.journalEntries.filter(validEntry).map(normaliseEntry) : [],
       activeStep: typeof parsed.activeStep === 'string' ? parsed.activeStep : null,
       pills: Array.isArray(parsed.pills) ? parsed.pills.filter(validPill).slice(0, 4) : defaultAssessment.pills,
       suggestions: Array.isArray(parsed.suggestions) ? parsed.suggestions.filter(validPill) : defaultAssessment.suggestions,

@@ -28,9 +28,13 @@ A compact panel (216px, matching the main sidebar width) on the right side of bo
 - [x] **Chat (no artifact):** sidebar open on the right (216px). Clicking a file opens it as an artifact (chat slides left)
 - [x] **Artifact mode (spec, mockup, or code open):** no sidebar — navigation uses the dropdown, search, and ◀ ▶ arrows in the artifact header bar
 
-### Sidebar sections
+### PR section
 
-The sidebar is divided into three sections with uppercase section labels (following the design system section label style). All three sections are always shown. No heading above the sections — the section labels are self-explanatory.
+A **PR section** sits at the very top of the sidebar (above the file sections), showing pull request status and providing PR management actions. See `branch-context.md` for full detail on states, expanded content, and behaviour. The section is hidden when the card has no code changes.
+
+### File sections
+
+The sidebar is divided into three file sections with uppercase section labels (following the design system section label style). All three sections are always shown. No heading above the sections — the section labels are self-explanatory.
 
 **Specs**
 - [ ] Lists this card's spec files by human-readable label (see `labels.md`)
@@ -66,7 +70,6 @@ The left side of the bar shows the card's core properties as interactive pills: 
 - [ ] Clicking a property pill opens a compact dropdown below it
 - [ ] The status pill includes a status dot (matching the board column headers and the dot states used throughout the app)
 - [ ] The **From property** shows the card's upstream base (`From main` or `From WH-058`) as an interactive pill after the core properties. Clicking opens a searchable dropdown for changing the base (see `branch-context.md`)
-- [ ] The **PR chip** sits to the left of the journey section, showing PR lifecycle state — from "Create PR" through open, merged, and post-merge states (see `branch-context.md`)
 - [ ] Changes to properties take effect immediately and are visible to all users in real time
 
 ### Journey section

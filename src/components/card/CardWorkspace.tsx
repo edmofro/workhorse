@@ -12,7 +12,6 @@ import { SpecHeaderBar } from './SpecHeaderBar'
 import type { DeviceKey } from './SpecHeaderBar'
 import { ActionPills, type ActionPill } from './ActionPills'
 import { PropertiesBar } from './PropertiesBar'
-import { PrBar } from './PrBar'
 import { useJockeyState } from '../../lib/hooks/useJockeyState'
 import { BUILT_IN_SKILLS } from '../../lib/skills/registry'
 import { ChatMessage } from './ChatMessage'
@@ -651,13 +650,6 @@ export function CardWorkspace({
           isUploading={chatAttachments.isUploading}
         />
       </div>
-      {/* PR bar — bottom of chat area */}
-      <PrBar
-        cardId={card.id}
-        hasCodeChanges={jockey.hasCodeChanges}
-        prUrl={localPrUrl}
-        onPrCreated={handlePrCreated}
-      />
     </div>
   )
 
@@ -831,6 +823,12 @@ export function CardWorkspace({
             codeFiles={codeFileItems}
             activeFilePath={null}
             onSelectFile={(fp) => openFileExpanded(fp)}
+            pr={{
+              cardId: card.id,
+              hasCodeChanges: jockey.hasCodeChanges,
+              prUrl: localPrUrl,
+              onPrCreated: handlePrCreated,
+            }}
           />
         </>
       )}
@@ -854,6 +852,12 @@ export function CardWorkspace({
               codeFiles={codeFileItems}
               activeFilePath={activeFilePath}
               onSelectFile={(fp) => openFile(fp)}
+              pr={{
+                cardId: card.id,
+                hasCodeChanges: jockey.hasCodeChanges,
+                prUrl: localPrUrl,
+                onPrCreated: handlePrCreated,
+              }}
             />
           )}
         </>

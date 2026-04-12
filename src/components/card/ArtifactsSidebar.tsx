@@ -4,6 +4,7 @@ import { FileText, Image as ImageIcon, Code2 } from 'lucide-react'
 import { cn } from '../../lib/cn'
 import { deriveLabel } from '../../lib/labels'
 import type { SpecFileItem, MockupFileItem } from './types'
+import { PrSection } from './PrSection'
 
 export interface CodeFileItem {
   filePath: string
@@ -19,6 +20,13 @@ interface ArtifactsSidebarProps {
   codeFiles: CodeFileItem[]
   activeFilePath?: string | null
   onSelectFile: (filePath: string) => void
+  /** PR section props — when provided, the PR section renders at the top */
+  pr?: {
+    cardId: string
+    hasCodeChanges: boolean
+    prUrl: string | null
+    onPrCreated: (prUrl: string) => void
+  }
 }
 
 /** Artifacts sidebar shown in the chat view. Three sections: Specs, Mockups, Code. */
@@ -28,9 +36,20 @@ export function ArtifactsSidebar({
   codeFiles,
   activeFilePath,
   onSelectFile,
+  pr,
 }: ArtifactsSidebarProps) {
   return (
     <aside className="shrink-0 w-[248px] border-l border-[var(--border-subtle)] bg-[var(--bg-page)] flex flex-col overflow-y-auto">
+      {/* PR section */}
+      {pr && (
+        <PrSection
+          cardId={pr.cardId}
+          hasCodeChanges={pr.hasCodeChanges}
+          prUrl={pr.prUrl}
+          onPrCreated={pr.onPrCreated}
+        />
+      )}
+
       {/* Specs */}
       <Section label="Specs">
         {specs.length > 0 ? specs.map((spec) => {

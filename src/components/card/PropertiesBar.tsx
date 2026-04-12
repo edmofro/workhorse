@@ -169,19 +169,19 @@ function CardProperties({ card, users, teams }: CardPropertiesProps) {
         }}
       />
 
-      {card.dependsOn.length > 0 && (
-        <div className="flex items-center gap-1 px-2 py-1">
-          {card.dependsOn.map((dep) => (
-            <span
-              key={dep.identifier}
-              className="text-[11px] font-medium font-mono text-[var(--text-muted)]"
-              title={dep.title}
-            >
-              {dep.identifier}
-            </span>
-          ))}
-        </div>
-      )}
+      <div
+        className={cn(
+          'inline-flex items-center gap-1 px-2 py-1 rounded-[var(--radius-md)]',
+          'text-[12px] font-medium',
+          'hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer',
+        )}
+        title={card.dependsOn.length > 0 ? card.dependsOn[0].title : 'Based on main branch'}
+      >
+        <span className="text-[var(--text-muted)]">From</span>
+        <span className="text-[var(--text-primary)]">
+          {card.dependsOn.length > 0 ? card.dependsOn[0].identifier : 'main'}
+        </span>
+      </div>
     </div>
   )
 }

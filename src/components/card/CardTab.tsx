@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition, useRef, useCallback } from 'react'
+import { useState, useTransition, useRef } from 'react'
 import { updateCard, addComment } from '../../lib/actions/cards'
 import { Avatar } from '../Avatar'
 import { useUser } from '../UserProvider'
@@ -10,7 +10,6 @@ import { AttachmentPreview } from './AttachmentPreview'
 import { MarkdownContent } from './MarkdownContent'
 import { X, Plus } from 'lucide-react'
 import type { AttachmentData } from '../../lib/attachments'
-import { uploadAttachment } from '../../lib/attachments'
 
 interface CardAttachment {
   id: string
@@ -85,6 +84,14 @@ function extractPastedFiles(e: React.ClipboardEvent): File[] {
     .filter((f): f is File => f !== null)
 }
 
+/** Build markdown refs from uploaded attachments and append to text */
+function insertUploadedRefs(text: string, uploaded: AttachmentData[]): string {
+  if (uploaded.length === 0) return text
+  const refs = uploaded.map((a) => `![${a.fileName}](${a.url})`).join('\n')
+  const sep = text.length > 0 && !text.endsWith('\n') ? '\n' : ''
+  return text + sep + refs
+}
+
 export function CardTab({ card, users, teams }: CardTabProps) {
   const { user } = useUser()
   const [title, setTitle] = useState(card.title)
@@ -98,7 +105,8 @@ export function CardTab({ card, users, teams }: CardTabProps) {
   const descriptionRef = useRef<HTMLTextAreaElement>(null)
   const commentRef = useRef<HTMLTextAreaElement>(null)
 
-  // Attachments for new comment (only used when composing — not for inline paste)
+  // Pending attachments for description and comment compose areas
+  const descAttachments = useAttachments(card.id)
   const commentAttachments = useAttachments(card.id)
 
   const tags: string[] = (() => {
@@ -122,56 +130,34 @@ export function CardTab({ card, users, teams }: CardTabProps) {
   }
 
   function handleDescriptionBlur() {
-    if (description !== (card.description ?? '')) {
-      handleUpdate({ description: description || null })
+    // Don't close editor while uploads are in progress
+    if (descAttachments.isUploading) return
+
+    // Insert any uploaded attachment refs into the description text before saving
+    const uploaded = descAttachments.getUploadedAttachments()
+    const finalDescription = insertUploadedRefs(description, uploaded)
+    if (uploaded.length > 0) {
+      setDescription(finalDescription)
+      descAttachments.clear()
+    }
+    if (finalDescription !== (card.description ?? '')) {
+      handleUpdate({ description: finalDescription || null })
     }
     setEditingDescription(false)
   }
 
-  /** Upload pasted files and insert markdown image refs at cursor in a textarea */
-  const pasteAndInsert = useCallback(
-    async (
-      e: React.ClipboardEvent,
-      textareaRef: React.RefObject<HTMLTextAreaElement | null>,
-      getValue: () => string,
-      setValue: (v: string) => void,
-    ) => {
-      const files = extractPastedFiles(e)
-      if (files.length === 0) return
-
-      e.preventDefault()
-      const textarea = textareaRef.current
-      const cursorPos = textarea?.selectionStart ?? getValue().length
-      let current = getValue()
-      let insertPos = cursorPos
-
-      for (const file of files) {
-        try {
-          const data = await uploadAttachment(file, card.id)
-          const ref = `![${data.fileName}](${data.url})`
-          const before = current.slice(0, insertPos)
-          const after = current.slice(insertPos)
-          const prefix = before.length > 0 && !before.endsWith('\n') ? '\n' : ''
-          const suffix = after.length > 0 && !after.startsWith('\n') ? '\n' : ''
-          const insertion = prefix + ref + suffix
-          current = before + insertion + after
-          insertPos += insertion.length
-        } catch {
-          // Upload failed — ignore silently
-        }
-      }
-
-      setValue(current)
-    },
-    [card.id],
-  )
-
   function handleDescriptionPaste(e: React.ClipboardEvent) {
-    pasteAndInsert(e, descriptionRef, () => description, setDescription)
+    const files = extractPastedFiles(e)
+    if (files.length === 0) return
+    e.preventDefault()
+    descAttachments.addFiles(files)
   }
 
   function handleCommentPaste(e: React.ClipboardEvent) {
-    pasteAndInsert(e, commentRef, () => newComment, setNewComment)
+    const files = extractPastedFiles(e)
+    if (files.length === 0) return
+    e.preventDefault()
+    commentAttachments.addFiles(files)
   }
 
   function handleAddTag() {
@@ -195,9 +181,9 @@ export function CardTab({ card, users, teams }: CardTabProps) {
   }
 
   function handleAddComment() {
-    const content = newComment.trim()
     const uploaded = commentAttachments.getUploadedAttachments()
-    if (!content && uploaded.length === 0) return
+    const content = insertUploadedRefs(newComment.trim(), uploaded)
+    if (!content) return
     startTransition(async () => {
       try {
         await addComment(
@@ -246,6 +232,19 @@ export function CardTab({ card, users, teams }: CardTabProps) {
               placeholder="Add a description... (paste images with Ctrl+V)"
               className="w-full text-[14px] text-[var(--text-secondary)] leading-[1.7] bg-transparent border border-[var(--border-subtle)] rounded-[var(--radius-default)] outline-none resize-none p-3 focus:border-[var(--accent)] focus:shadow-[var(--shadow-input-focus)] transition-[border-color,box-shadow] duration-150 placeholder:text-[var(--text-faint)]"
             />
+            <div className="mt-2 flex items-start gap-2" onMouseDown={(e) => e.preventDefault()}>
+              <AttachmentButton
+                onFiles={descAttachments.addFiles}
+                compact
+              />
+              {descAttachments.hasAttachments && (
+                <AttachmentPreview
+                  pending={descAttachments.pending}
+                  onRemovePending={descAttachments.removeAttachment}
+                  compact
+                />
+              )}
+            </div>
           </div>
         ) : (
           <div

@@ -102,7 +102,9 @@ function renderMarkdown(md: string): string {
     },
   )
 
-  // Extract markdown images before escaping — ![alt](url)
+  // Extract markdown attachment refs before escaping — ![alt](url)
+  // Images render as inline <img>, non-image files render as a file chip
+  const IMAGE_EXTS = /\.(png|jpe?g|gif|webp|svg)$/i
   html = html.replace(
     /!\[([^\]]*)\]\(([^)]+)\)/g,
     (_match, alt: string, url: string) => {
@@ -110,8 +112,16 @@ function renderMarkdown(md: string): string {
       if (!/^(https?:\/\/|\/[^/])/.test(url)) return _match
       const safeAlt = escapeHtml(alt)
       const safeUrl = escapeHtml(url)
+
+      if (IMAGE_EXTS.test(alt)) {
+        return placeholder(
+          `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="inline-image-link"><img src="${safeUrl}" alt="${safeAlt}" class="inline-image" /></a>`,
+        )
+      }
+
+      // Non-image: render as a file chip
       return placeholder(
-        `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="inline-image-link"><img src="${safeUrl}" alt="${safeAlt}" class="inline-image" /></a>`,
+        `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="inline-file-chip"><span class="inline-file-icon">&#128196;</span><span class="inline-file-name">${safeAlt}</span></a>`,
       )
     },
   )

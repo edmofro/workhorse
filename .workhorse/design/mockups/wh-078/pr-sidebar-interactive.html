@@ -1,0 +1,727 @@
+<!-- spec: cards/branch-context.md -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PR Sidebar — Interactive Options</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-page: #f8f7f4;
+    --bg-surface: #ffffff;
+    --bg-sidebar: #f1efeb;
+    --bg-hover: #edeae5;
+    --bg-inset: #e8e5df;
+    --text-primary: #1c1917;
+    --text-secondary: #57534e;
+    --text-muted: #a8a29e;
+    --text-faint: #d1cdc6;
+    --border-default: #dfdcd5;
+    --border-subtle: #eae7e1;
+    --accent: #c2410c;
+    --accent-hover: #b33b09;
+    --green: #16a34a;
+    --amber: #b45309;
+    --shadow-sm: 0 1px 3px rgba(28,25,23,0.04);
+    --shadow-md: 0 2px 8px rgba(28,25,23,0.06);
+    --shadow-lg: 0 12px 40px rgba(28,25,23,0.14), 0 2px 8px rgba(28,25,23,0.06);
+    --radius-sm: 4px;
+    --radius-md: 6px;
+    --radius-default: 8px;
+    --radius-lg: 10px;
+    --radius-xl: 12px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg-page);
+    color: var(--text-secondary);
+    padding: 48px;
+    display: flex;
+    flex-direction: column;
+    gap: 64px;
+  }
+
+  h1 { font-size: 16px; font-weight: 700; color: var(--text-primary); letter-spacing: -0.02em; margin-bottom: 4px; }
+  h2 { font-size: 13px; font-weight: 600; color: var(--text-primary); margin-bottom: 4px; }
+  .page-desc { font-size: 13px; color: var(--text-muted); margin-bottom: 40px; line-height: 1.6; max-width: 640px; }
+  .desc { font-size: 12px; color: var(--text-muted); margin-bottom: 20px; line-height: 1.5; max-width: 640px; }
+  .variant-label {
+    font-size: 11px; font-weight: 600; color: var(--accent);
+    text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px;
+  }
+  .state-label {
+    font-size: 10px; font-weight: 600; color: var(--text-faint);
+    text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px;
+  }
+  .sidebar-group { display: flex; gap: 24px; flex-wrap: wrap; align-items: flex-start; }
+
+  /* ─── Sidebar frame ─── */
+  .sidebar {
+    width: 248px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    overflow: visible;
+    position: relative;
+  }
+  .sidebar-inner {
+    padding: 12px 16px 16px;
+    display: flex; flex-direction: column; gap: 16px;
+  }
+
+  .section-label {
+    font-size: 11px; font-weight: 600; color: var(--text-muted);
+    text-transform: uppercase; letter-spacing: 0.06em;
+  }
+  .section { display: flex; flex-direction: column; gap: 2px; }
+  .section-header { margin-bottom: 6px; }
+
+  .file-item {
+    display: flex; align-items: center; gap: 8px;
+    padding: 5px 8px; border-radius: var(--radius-md);
+    cursor: pointer; transition: background 0.1s;
+    font-size: 13px; font-weight: 450; color: var(--text-secondary); line-height: 1.4;
+  }
+  .file-item:hover { background: var(--bg-hover); }
+  .file-item .icon { color: var(--text-muted); flex-shrink: 0; }
+
+  .empty-text { font-size: 12px; color: var(--text-faint); padding: 2px 8px; }
+
+  .diff-stats {
+    font-family: ui-monospace, 'SF Mono', monospace;
+    font-size: 11px; font-variant-numeric: tabular-nums;
+    margin-left: auto; flex-shrink: 0;
+  }
+  .diff-add { color: var(--green); }
+  .diff-rm { color: #dc2626; }
+
+  /* ─── PR top section (shared) ─── */
+  .pr-section-top {
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border-subtle);
+    display: flex; align-items: center; gap: 8px;
+    cursor: pointer;
+    transition: background 0.1s;
+  }
+  .pr-section-top:hover { background: var(--bg-hover); }
+  .pr-section-top.pre-pr { cursor: default; }
+  .pr-section-top.pre-pr:hover { background: transparent; }
+
+  .pr-icon {
+    flex-shrink: 0; width: 16px; height: 16px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .pr-icon svg { width: 14px; height: 14px; }
+  .pr-icon.open { color: var(--green); }
+  .pr-icon.merged { color: var(--text-muted); }
+
+  .pr-label {
+    font-size: 12px; font-weight: 500; color: var(--text-secondary);
+    flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .pr-number {
+    font-family: ui-monospace, 'SF Mono', monospace;
+    font-size: 11px; font-weight: 500; color: var(--text-muted);
+  }
+  .pr-link {
+    flex-shrink: 0; color: var(--text-muted); display: flex;
+    padding: 2px; border-radius: var(--radius-sm);
+    transition: color 0.1s; cursor: pointer;
+  }
+  .pr-link:hover { color: var(--text-secondary); }
+
+  .pr-ci { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 500; }
+  .pr-ci.passing { color: var(--green); }
+  .pr-ci.failing { color: #dc2626; }
+
+  .pr-btn-create {
+    padding: 5px 12px; border-radius: var(--radius-default);
+    font-size: 12px; font-weight: 500; background: var(--accent);
+    color: white; border: none; cursor: pointer; transition: background 0.1s;
+  }
+  .pr-btn-create:hover { background: var(--accent-hover); }
+
+  .badge-new {
+    display: inline-flex; align-items: center; gap: 3px;
+    padding: 1px 6px; border-radius: 10px;
+    font-size: 10px; font-weight: 600;
+    background: rgba(194,65,12,0.08); color: var(--accent);
+  }
+
+  .chev-right {
+    flex-shrink: 0; display: flex; color: var(--text-faint);
+    margin-left: auto;
+  }
+
+  /* ─── Popover (Option 1) ─── */
+  .popover-anchor { position: relative; }
+  .popover {
+    position: absolute;
+    top: 0; left: 100%;
+    margin-left: 8px;
+    min-width: 280px; max-width: 300px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-lg);
+    overflow: hidden;
+    display: flex; flex-direction: column;
+    z-index: 10;
+  }
+  .pop-section { padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
+  .pop-section + .pop-section { border-top: 1px solid var(--border-subtle); }
+  .pop-section-label {
+    font-size: 10px; font-weight: 600; color: var(--text-muted);
+    text-transform: uppercase; letter-spacing: 0.06em;
+  }
+
+  .pop-pr-card {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 10px; background: var(--bg-page);
+    border-radius: var(--radius-default); gap: 8px;
+  }
+  .pop-pr-info { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+  .pop-pr-title {
+    font-size: 12px; font-weight: 500; color: var(--text-primary);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .pop-pr-meta { font-size: 11px; color: var(--text-muted); font-weight: 400; }
+  .pop-pr-meta .num { font-family: ui-monospace, 'SF Mono', monospace; font-size: 10px; }
+  .pop-pr-link {
+    font-size: 11px; font-weight: 500; color: var(--accent);
+    text-decoration: none; display: inline-flex; align-items: center;
+    gap: 3px; white-space: nowrap; flex-shrink: 0;
+  }
+
+  .pop-toggle-row { display: flex; align-items: center; justify-content: space-between; }
+  .pop-toggle-label { color: var(--text-muted); font-weight: 500; font-size: 12px; }
+  .toggle-track {
+    width: 28px; height: 16px; border-radius: 8px;
+    position: relative; cursor: pointer; flex-shrink: 0;
+  }
+  .toggle-track.off { background: var(--bg-inset); }
+  .toggle-track.on { background: var(--green); }
+  .toggle-thumb {
+    width: 12px; height: 12px; border-radius: 50%; background: white;
+    position: absolute; top: 2px;
+    box-shadow: 0 1px 2px rgba(28,25,23,0.1);
+  }
+  .toggle-track.off .toggle-thumb { left: 2px; }
+  .toggle-track.on .toggle-thumb { right: 2px; }
+
+  .branch-toggle {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 14px;
+    font-size: 11px; font-weight: 500; color: var(--text-muted);
+    cursor: pointer; border-top: 1px solid var(--border-subtle);
+    transition: background 0.1s;
+  }
+  .branch-toggle:hover { background: var(--bg-hover); }
+  .branch-details { padding: 0 14px 12px; display: flex; flex-direction: column; gap: 8px; }
+
+  .branch-name-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 6px 8px; background: var(--bg-page); border-radius: var(--radius-md);
+  }
+  .branch-name {
+    font-family: ui-monospace, 'SF Mono', monospace;
+    font-size: 11px; color: var(--text-secondary); font-weight: 500;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0;
+  }
+  .copy-btn {
+    display: flex; align-items: center; justify-content: center;
+    width: 22px; height: 22px; border-radius: var(--radius-sm);
+    border: none; background: transparent; color: var(--text-faint);
+    cursor: pointer; flex-shrink: 0;
+  }
+  .copy-btn:hover { background: var(--bg-hover); color: var(--text-muted); }
+
+  .status-row {
+    display: flex; align-items: center; justify-content: space-between;
+    font-size: 12px; padding: 0 2px;
+  }
+  .status-label { color: var(--text-muted); font-weight: 500; }
+  .status-value { display: flex; align-items: center; gap: 6px; }
+  .status-ok { color: var(--text-faint); font-weight: 400; }
+  .status-warn { color: var(--text-secondary); font-weight: 500; }
+
+  .action-link {
+    font-size: 11px; font-weight: 500; color: var(--accent);
+    cursor: pointer; text-decoration: none; border: none; background: none; padding: 0;
+  }
+  .action-link:hover { text-decoration: underline; }
+
+  .btn-accent {
+    padding: 6px 12px; border-radius: var(--radius-default);
+    font-size: 11px; font-weight: 500; background: var(--accent);
+    color: white; border: none; cursor: pointer;
+  }
+
+  /* ─── Inline expansion (Option 2) ─── */
+  .pr-expanded {
+    border-bottom: 1px solid var(--border-subtle);
+    display: flex; flex-direction: column;
+  }
+  .pr-expanded-header {
+    padding: 10px 16px;
+    display: flex; align-items: center; gap: 8px;
+    cursor: pointer; transition: background 0.1s;
+  }
+  .pr-expanded-header:hover { background: var(--bg-hover); }
+
+  .pr-expanded-body {
+    padding: 0 16px 12px;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+
+  .pr-detail-card {
+    display: flex; align-items: center; gap: 8px;
+    padding: 7px 10px; background: var(--bg-page);
+    border-radius: var(--radius-md); font-size: 12px;
+  }
+  .pr-detail-title {
+    font-size: 11px; font-weight: 500; color: var(--text-primary);
+    flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+
+  .inline-toggle-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 2px;
+  }
+  .inline-toggle-label { font-size: 11px; font-weight: 500; color: var(--text-muted); }
+
+  .inline-branch-toggle {
+    display: flex; align-items: center; gap: 6px;
+    padding: 4px 2px;
+    font-size: 11px; font-weight: 500; color: var(--text-muted);
+    cursor: pointer; transition: color 0.1s;
+  }
+  .inline-branch-toggle:hover { color: var(--text-secondary); }
+  .inline-branch-toggle .chev { display: flex; color: var(--text-faint); }
+
+  .inline-branch-details {
+    display: flex; flex-direction: column; gap: 6px;
+    padding-top: 2px;
+  }
+
+  .inline-branch-name-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 5px 8px; background: var(--bg-page); border-radius: var(--radius-md);
+  }
+
+  .inline-status-row {
+    display: flex; align-items: center; justify-content: space-between;
+    font-size: 11px; padding: 0 2px;
+  }
+  .inline-status-label { color: var(--text-muted); font-weight: 500; }
+  .inline-status-value { display: flex; align-items: center; gap: 5px; }
+  .inline-status-ok { color: var(--text-faint); font-weight: 400; font-size: 11px; }
+  .inline-status-warn { color: var(--text-secondary); font-weight: 500; font-size: 11px; }
+
+  .inline-sep {
+    height: 1px; background: var(--border-subtle); margin: 4px 0;
+  }
+</style>
+</head>
+<body>
+
+<div>
+  <h1>PR in sidebar — interactive options</h1>
+  <p class="page-desc">The PR section at the top of the artifacts sidebar replaces the properties bar chip. These mockups show where branch details, auto-fix toggle, and actions live.</p>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<!-- OPTION 1: Clicking the sidebar row opens a popover           -->
+<!-- ══════════════════════════════════════════════════════════════ -->
+
+<div>
+  <div class="variant-label">Option 1 — Popover</div>
+  <h2>Clicking the PR row opens a popover to the left of the sidebar</h2>
+  <p class="desc">The sidebar row is the trigger. All detail — PR card, auto-fix toggle, branch diagnostics — lives in a floating popover. Same content as the old chip popover, just anchored to the sidebar.</p>
+
+  <div class="sidebar-group">
+
+    <!-- 1a: Open PR, popover collapsed -->
+    <div>
+      <div class="state-label">Open PR — popover, branch details collapsed</div>
+      <div class="popover-anchor">
+        <div class="sidebar">
+          <div class="pr-section-top">
+            <span class="pr-icon open"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M13 6h3a2 2 0 0 1 2 2v7"/><line x1="6" y1="9" x2="6" y2="21"/></svg></span>
+            <span class="pr-label">Improve PR control bar UI</span>
+            <span class="pr-number">#142</span>
+          </div>
+          <div class="sidebar-inner">
+            <div class="section">
+              <div class="section-header"><span class="section-label">Specs</span></div>
+              <div class="file-item"><svg class="icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Branch context</div>
+            </div>
+            <div class="section">
+              <div class="section-header"><span class="section-label">Mockups</span></div>
+              <div class="empty-text">No mockups yet</div>
+            </div>
+            <div class="section">
+              <div class="section-header"><span class="section-label">Code changes</span></div>
+              <div class="file-item" style="font-family: ui-monospace, 'SF Mono', monospace; font-size: 12px;">PrBar.tsx <span class="diff-stats"><span class="diff-add">+86</span> <span class="diff-rm">−24</span></span></div>
+            </div>
+          </div>
+        </div>
+        <div class="popover" style="top: -1px;">
+          <div class="pop-section">
+            <div class="pop-section-label">Pull request</div>
+            <div class="pop-pr-card">
+              <div class="pop-pr-info">
+                <span class="pop-pr-title">Improve PR control bar UI</span>
+                <span class="pop-pr-meta"><span class="num">#142</span> · Open</span>
+              </div>
+              <a class="pop-pr-link" href="#">Open <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a>
+            </div>
+            <div class="pop-toggle-row">
+              <span class="pop-toggle-label">Auto-fix CI</span>
+              <span class="toggle-track off"><span class="toggle-thumb"></span></span>
+            </div>
+          </div>
+          <div class="branch-toggle">
+            Branch details
+            <span style="display:flex;color:var(--text-faint)"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 1b: Open PR, popover with branch details expanded -->
+    <div>
+      <div class="state-label">Open PR — popover, branch details expanded</div>
+      <div class="popover-anchor">
+        <div class="sidebar">
+          <div class="pr-section-top">
+            <span class="pr-icon open"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M13 6h3a2 2 0 0 1 2 2v7"/><line x1="6" y1="9" x2="6" y2="21"/></svg></span>
+            <span class="pr-label">Improve PR control bar UI</span>
+            <span class="pr-number">#142</span>
+          </div>
+          <div class="sidebar-inner">
+            <div class="section">
+              <div class="section-header"><span class="section-label">Specs</span></div>
+              <div class="file-item"><svg class="icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Branch context</div>
+            </div>
+            <div class="section">
+              <div class="section-header"><span class="section-label">Mockups</span></div>
+              <div class="empty-text">No mockups yet</div>
+            </div>
+            <div class="section">
+              <div class="section-header"><span class="section-label">Code changes</span></div>
+              <div class="file-item" style="font-family: ui-monospace, 'SF Mono', monospace; font-size: 12px;">PrBar.tsx <span class="diff-stats"><span class="diff-add">+86</span> <span class="diff-rm">−24</span></span></div>
+            </div>
+          </div>
+        </div>
+        <div class="popover" style="top: -1px;">
+          <div class="pop-section">
+            <div class="pop-section-label">Pull request</div>
+            <div class="pop-pr-card">
+              <div class="pop-pr-info">
+                <span class="pop-pr-title">Improve PR control bar UI</span>
+                <span class="pop-pr-meta"><span class="num">#142</span> · Open · <span style="color:var(--green);">CI passing</span></span>
+              </div>
+              <a class="pop-pr-link" href="#">Open <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a>
+            </div>
+            <div class="pop-toggle-row">
+              <span class="pop-toggle-label">Auto-fix CI</span>
+              <span class="toggle-track on"><span class="toggle-thumb"></span></span>
+            </div>
+          </div>
+          <div class="branch-toggle">
+            Branch details
+            <span style="display:flex;color:var(--text-faint)"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg></span>
+          </div>
+          <div class="branch-details">
+            <div class="branch-name-row">
+              <span class="branch-name">workhorse/wh-078-spec</span>
+              <button class="copy-btn" title="Copy"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
+            </div>
+            <div class="status-row">
+              <span class="status-label">Local changes</span>
+              <span class="status-value">
+                <span class="status-warn">3 files</span>
+                <button class="action-link">Commit</button>
+              </span>
+            </div>
+            <div class="status-row">
+              <span class="status-label">Unpushed</span>
+              <span class="status-value">
+                <span class="status-warn">2 commits</span>
+                <button class="action-link">Push</button>
+              </span>
+            </div>
+            <div class="status-row">
+              <span class="status-label">Remote</span>
+              <span class="status-value"><span class="status-ok">Up to date</span></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 1c: Merged with new changes — popover -->
+    <div>
+      <div class="state-label">Merged with new changes — popover</div>
+      <div class="popover-anchor">
+        <div class="sidebar">
+          <div class="pr-section-top">
+            <span class="pr-icon merged"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M6 9v12"/><path d="M6 9a9 9 0 0 0 9 9"/></svg></span>
+            <span class="pr-label" style="color:var(--text-muted)">Improve PR control bar UI</span>
+            <span class="pr-number">#142</span>
+            <span class="badge-new">2 new</span>
+          </div>
+          <div class="sidebar-inner">
+            <div class="section">
+              <div class="section-header"><span class="section-label">Specs</span></div>
+              <div class="file-item"><svg class="icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Branch context</div>
+            </div>
+            <div class="section">
+              <div class="section-header"><span class="section-label">Code changes</span></div>
+              <div class="file-item" style="font-family: ui-monospace, 'SF Mono', monospace; font-size: 12px;">PrBar.tsx <span class="diff-stats"><span class="diff-add">+12</span> <span class="diff-rm">−4</span></span></div>
+            </div>
+          </div>
+        </div>
+        <div class="popover" style="top: -1px;">
+          <div class="pop-section">
+            <div class="pop-section-label">Pull request</div>
+            <div class="pop-pr-card">
+              <div class="pop-pr-info">
+                <span class="pop-pr-title">Improve PR control bar UI</span>
+                <span class="pop-pr-meta"><span class="num">#142</span> · Merged 8 Apr</span>
+              </div>
+              <a class="pop-pr-link" href="#">View <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a>
+            </div>
+          </div>
+          <div class="pop-section">
+            <div style="font-size:12px; color:var(--text-secondary); font-weight:500;">2 commits since merge</div>
+            <div style="font-size:11px; color:var(--text-muted); line-height:1.4;">Cherry-picks post-merge commits onto a fresh branch from main and creates a new PR.</div>
+            <button class="btn-accent">Prepare new PR</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<!-- OPTION 2: Sidebar row expands inline                         -->
+<!-- ══════════════════════════════════════════════════════════════ -->
+
+<div>
+  <div class="variant-label">Option 2 — Inline expansion</div>
+  <h2>Clicking the PR row expands detail directly in the sidebar</h2>
+  <p class="desc">No floating popover. PR detail, auto-fix toggle, and branch diagnostics all expand within the sidebar. Keeps everything in one panel without overlapping the chat.</p>
+
+  <div class="sidebar-group">
+
+    <!-- 2a: Open PR, collapsed (same as before) -->
+    <div>
+      <div class="state-label">Open PR — collapsed</div>
+      <div class="sidebar">
+        <div class="pr-section-top">
+          <span class="pr-icon open"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M13 6h3a2 2 0 0 1 2 2v7"/><line x1="6" y1="9" x2="6" y2="21"/></svg></span>
+          <span class="pr-label">Improve PR control bar UI</span>
+          <span class="pr-number">#142</span>
+          <span class="chev-right"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg></span>
+        </div>
+        <div class="sidebar-inner">
+          <div class="section">
+            <div class="section-header"><span class="section-label">Specs</span></div>
+            <div class="file-item"><svg class="icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Branch context</div>
+          </div>
+          <div class="section">
+            <div class="section-header"><span class="section-label">Mockups</span></div>
+            <div class="empty-text">No mockups yet</div>
+          </div>
+          <div class="section">
+            <div class="section-header"><span class="section-label">Code changes</span></div>
+            <div class="file-item" style="font-family: ui-monospace, 'SF Mono', monospace; font-size: 12px;">PrBar.tsx <span class="diff-stats"><span class="diff-add">+86</span> <span class="diff-rm">−24</span></span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2b: Open PR, expanded — PR detail + auto-fix + branch details -->
+    <div>
+      <div class="state-label">Open PR — expanded</div>
+      <div class="sidebar">
+        <div class="pr-expanded">
+          <div class="pr-expanded-header">
+            <span class="pr-icon open"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M13 6h3a2 2 0 0 1 2 2v7"/><line x1="6" y1="9" x2="6" y2="21"/></svg></span>
+            <span class="pr-label">Improve PR control bar UI</span>
+            <span class="pr-number">#142</span>
+            <span class="chev-right"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg></span>
+          </div>
+          <div class="pr-expanded-body">
+            <!-- PR card -->
+            <div class="pr-detail-card">
+              <span class="pr-ci passing"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
+              <span class="pr-detail-title">CI passing</span>
+              <a class="pop-pr-link" href="#" style="font-size:10px;">Open <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a>
+            </div>
+
+            <!-- Auto-fix toggle -->
+            <div class="inline-toggle-row">
+              <span class="inline-toggle-label">Auto-fix CI</span>
+              <span class="toggle-track off"><span class="toggle-thumb"></span></span>
+            </div>
+
+            <div class="inline-sep"></div>
+
+            <!-- Branch details (nested collapse) -->
+            <div class="inline-branch-toggle">
+              <span style="display:flex;color:var(--text-faint)"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg></span>
+              Branch details
+            </div>
+          </div>
+        </div>
+        <div class="sidebar-inner">
+          <div class="section">
+            <div class="section-header"><span class="section-label">Specs</span></div>
+            <div class="file-item"><svg class="icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Branch context</div>
+          </div>
+          <div class="section">
+            <div class="section-header"><span class="section-label">Mockups</span></div>
+            <div class="empty-text">No mockups yet</div>
+          </div>
+          <div class="section">
+            <div class="section-header"><span class="section-label">Code changes</span></div>
+            <div class="file-item" style="font-family: ui-monospace, 'SF Mono', monospace; font-size: 12px;">PrBar.tsx <span class="diff-stats"><span class="diff-add">+86</span> <span class="diff-rm">−24</span></span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2c: Open PR, fully expanded — including branch details -->
+    <div>
+      <div class="state-label">Open PR — fully expanded with branch details</div>
+      <div class="sidebar">
+        <div class="pr-expanded">
+          <div class="pr-expanded-header">
+            <span class="pr-icon open"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M13 6h3a2 2 0 0 1 2 2v7"/><line x1="6" y1="9" x2="6" y2="21"/></svg></span>
+            <span class="pr-label">Improve PR control bar UI</span>
+            <span class="pr-number">#142</span>
+            <span class="chev-right"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg></span>
+          </div>
+          <div class="pr-expanded-body">
+            <div class="pr-detail-card">
+              <span class="pr-ci failing"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span>
+              <span class="pr-detail-title" style="color:#dc2626;">CI failing</span>
+              <a class="pop-pr-link" href="#" style="font-size:10px;">Open <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a>
+            </div>
+
+            <div class="inline-toggle-row">
+              <span class="inline-toggle-label">Auto-fix CI</span>
+              <span class="toggle-track on"><span class="toggle-thumb"></span></span>
+            </div>
+
+            <div class="inline-sep"></div>
+
+            <div class="inline-branch-toggle">
+              <span style="display:flex;color:var(--text-faint)"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg></span>
+              Branch details
+            </div>
+            <div class="inline-branch-details">
+              <div class="inline-branch-name-row">
+                <span class="branch-name" style="font-size:10px;">workhorse/wh-078-spec</span>
+                <button class="copy-btn" title="Copy" style="width:20px;height:20px;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
+              </div>
+              <div class="inline-status-row">
+                <span class="inline-status-label">Local</span>
+                <span class="inline-status-value"><span class="inline-status-ok">Clean</span></span>
+              </div>
+              <div class="inline-status-row">
+                <span class="inline-status-label">Unpushed</span>
+                <span class="inline-status-value">
+                  <span class="inline-status-warn">2 commits</span>
+                  <button class="action-link" style="font-size:10px;">Push</button>
+                </span>
+              </div>
+              <div class="inline-status-row">
+                <span class="inline-status-label">Remote</span>
+                <span class="inline-status-value"><span class="inline-status-ok">Up to date</span></span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="sidebar-inner">
+          <div class="section">
+            <div class="section-header"><span class="section-label">Specs</span></div>
+            <div class="file-item"><svg class="icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Branch context</div>
+          </div>
+          <div class="section">
+            <div class="section-header"><span class="section-label">Mockups</span></div>
+            <div class="empty-text">No mockups yet</div>
+          </div>
+          <div class="section">
+            <div class="section-header"><span class="section-label">Code changes</span></div>
+            <div class="file-item" style="font-family: ui-monospace, 'SF Mono', monospace; font-size: 12px;">PrBar.tsx <span class="diff-stats"><span class="diff-add">+86</span> <span class="diff-rm">−24</span></span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2d: Merged with new changes — expanded -->
+    <div>
+      <div class="state-label">Merged with new changes — expanded</div>
+      <div class="sidebar">
+        <div class="pr-expanded">
+          <div class="pr-expanded-header">
+            <span class="pr-icon merged"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M6 9v12"/><path d="M6 9a9 9 0 0 0 9 9"/></svg></span>
+            <span class="pr-label" style="color:var(--text-muted)">Improve PR control bar UI</span>
+            <span class="pr-number">#142</span>
+            <span class="badge-new">2 new</span>
+            <span class="chev-right"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg></span>
+          </div>
+          <div class="pr-expanded-body">
+            <div class="pr-detail-card" style="background:rgba(194,65,12,0.04);">
+              <span style="font-size:11px; color:var(--text-secondary); font-weight:500; flex:1;">2 commits since merge</span>
+            </div>
+            <button class="btn-accent" style="align-self:stretch; text-align:center;">Prepare new PR</button>
+            <div style="font-size:10px; color:var(--text-muted); line-height:1.4;">Cherry-picks post-merge commits onto a fresh branch from main.</div>
+          </div>
+        </div>
+        <div class="sidebar-inner">
+          <div class="section">
+            <div class="section-header"><span class="section-label">Specs</span></div>
+            <div class="file-item"><svg class="icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Branch context</div>
+          </div>
+          <div class="section">
+            <div class="section-header"><span class="section-label">Code changes</span></div>
+            <div class="file-item" style="font-family: ui-monospace, 'SF Mono', monospace; font-size: 12px;">PrBar.tsx <span class="diff-stats"><span class="diff-add">+12</span> <span class="diff-rm">−4</span></span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2e: Pre-PR -->
+    <div>
+      <div class="state-label">Pre-PR (code changes exist)</div>
+      <div class="sidebar">
+        <div class="pr-section-top pre-pr">
+          <button class="pr-btn-create">Create PR</button>
+        </div>
+        <div class="sidebar-inner">
+          <div class="section">
+            <div class="section-header"><span class="section-label">Specs</span></div>
+            <div class="file-item"><svg class="icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Branch context</div>
+          </div>
+          <div class="section">
+            <div class="section-header"><span class="section-label">Code changes</span></div>
+            <div class="file-item" style="font-family: ui-monospace, 'SF Mono', monospace; font-size: 12px;">PrBar.tsx <span class="diff-stats"><span class="diff-add">+86</span> <span class="diff-rm">−24</span></span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+</body>
+</html>

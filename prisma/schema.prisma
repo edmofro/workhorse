@@ -88,6 +88,7 @@ model Card {
   sessions       ConversationSession[]
   journalEntries JournalEntry[]
   scheduledSteps ScheduledStep[]
+  mockups        Mockup[]
 
   @@index([teamId])
   @@index([assigneeId])
@@ -182,6 +183,18 @@ model ScheduledStep {
   card Card @relation(fields: [cardId], references: [id], onDelete: Cascade)
 
   @@index([cardId, position])
+}
+
+model Mockup {
+  id        String   @id @default(cuid())
+  cardId    String
+  title     String
+  html      String
+  createdAt DateTime @default(now())
+
+  card Card @relation(fields: [cardId], references: [id], onDelete: Cascade)
+
+  @@index([cardId])
 }
 
 model ConversationSession {

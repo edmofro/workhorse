@@ -32,6 +32,7 @@ import { updateCardTitleFromSpec } from '../../lib/actions/cards'
 import { formatRelativeTime } from '../../lib/formatRelativeTime'
 import { isMockupPath } from '../../lib/paths'
 import { useCardBackRegister } from './CardBackContext'
+import { useBranchStatus } from '../../lib/hooks/queries'
 
 interface SpecFileData {
   filePath: string
@@ -461,6 +462,10 @@ export function CardWorkspace({
     router.refresh()
   }, [router])
 
+  // Poll for branch/PR status (used for upstream behind indicator)
+  const { data: branchStatus } = useBranchStatus(card.identifier, !!(localPrUrl || card.cardBranch || jockey.hasCodeChanges))
+  const upstreamBehind = branchStatus?.upstreamBehind ?? 0
+
   // Spec operations
   const ensureWorktree = useCallback(async () => {
     setIsEnsuring(true)
@@ -750,6 +755,7 @@ export function CardWorkspace({
         scheduledSteps={jockey.scheduledSteps}
         suggestions={dedupedSuggestions}
         activeStep={jockey.activeStep}
+        upstreamBehind={upstreamBehind}
         onTriggerSkill={handleTriggerSkill}
         onScheduleStep={jockey.scheduleStep}
         onUnscheduleStep={jockey.unscheduleStep}
@@ -828,6 +834,7 @@ export function CardWorkspace({
             onSelectFile={(fp) => openFileExpanded(fp)}
             pr={{
               cardId: card.id,
+              cardIdentifier: card.identifier,
               hasCodeChanges: jockey.hasCodeChanges,
               prUrl: localPrUrl,
               prNumber: localPrNumber,
@@ -859,8 +866,11 @@ export function CardWorkspace({
               onSelectFile={(fp) => openFile(fp)}
               pr={{
                 cardId: card.id,
+                cardIdentifier: card.identifier,
                 hasCodeChanges: jockey.hasCodeChanges,
                 prUrl: localPrUrl,
+                prNumber: localPrNumber,
+                cardBranch: card.cardBranch,
                 onPrCreated: handlePrCreated,
               }}
             />

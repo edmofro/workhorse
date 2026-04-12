@@ -126,6 +126,97 @@ export async function createPullRequest(
   return res.json()
 }
 
+/**
+ * Get the combined check status for a ref (branch or SHA).
+ * Returns a simplified summary: 'passing', 'failing', 'pending', or null.
+ */
+export async function getCheckStatus(
+  token: string,
+  owner: string,
+  repo: string,
+  ref: string,
+): Promise<{ status: 'passing' | 'failing' | 'pending' | null; total: number }> {
+  // Use the combined status + check runs endpoints in parallel
+  const [statusRes, checksRes] = await Promise.all([
+    fetch(`${GITHUB_API}/repos/${owner}/${repo}/commits/${ref}/status`, {
+      headers: getHeaders(token),
+    }),
+    fetch(`${GITHUB_API}/repos/${owner}/${repo}/commits/${ref}/check-runs?per_page=1`, {
+      headers: getHeaders(token),
+    }),
+  ])
+
+  let commitStatus: string | null = null
+  let checkConclusion: string | null = null
+  let total = 0
+
+  if (statusRes.ok) {
+    const data = await statusRes.json()
+    commitStatus = data.state // 'success', 'failure', 'pending', 'error'
+    total += data.total_count ?? 0
+  }
+
+  if (checksRes.ok) {
+    const data = await checksRes.json()
+    total += data.total_count ?? 0
+    if (data.check_runs?.length > 0) {
+      // Check if any are in progress or have failed
+      const run = data.check_runs[0]
+      if (run.status === 'in_progress' || run.status === 'queued') {
+        checkConclusion = 'pending'
+      } else if (run.conclusion === 'failure' || run.conclusion === 'timed_out') {
+        checkConclusion = 'failure'
+      } else if (run.conclusion === 'success') {
+        checkConclusion = 'success'
+      }
+    }
+  }
+
+  if (total === 0) return { status: null, total: 0 }
+
+  // Combine: any failure → failing, any pending → pending, else passing
+  if (commitStatus === 'failure' || commitStatus === 'error' || checkConclusion === 'failure') {
+    return { status: 'failing', total }
+  }
+  if (commitStatus === 'pending' || checkConclusion === 'pending') {
+    return { status: 'pending', total }
+  }
+  if (commitStatus === 'success' || checkConclusion === 'success') {
+    return { status: 'passing', total }
+  }
+
+  return { status: 'pending', total }
+}
+
+/**
+ * Get a pull request by number.
+ * Returns key fields: state, merged, title, merged_at.
+ */
+export async function getPullRequest(
+  token: string,
+  owner: string,
+  repo: string,
+  prNumber: number,
+): Promise<{
+  state: string
+  merged: boolean
+  title: string
+  mergedAt: string | null
+} | null> {
+  const res = await fetch(
+    `${GITHUB_API}/repos/${owner}/${repo}/pulls/${prNumber}`,
+    { headers: getHeaders(token) },
+  )
+  if (!res.ok) return null
+  const data = await res.json()
+  return {
+    state: data.state,
+    merged: data.merged ?? false,
+    title: data.title,
+    mergedAt: data.merged_at ?? null,
+  }
+}
+
 export async function getTree(
   token: string,
   owner: string,

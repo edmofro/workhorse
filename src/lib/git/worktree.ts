@@ -575,6 +575,96 @@ export async function getPendingChanges(
 }
 
 /**
+ * Get branch sync status for a card's worktree.
+ * Returns local changes count, unpushed commit count, and remote-ahead count.
+ */
+export async function getBranchStatus(
+  owner: string,
+  repo: string,
+  cardIdentifier: string,
+): Promise<{
+  localChanges: number
+  unpushedCommits: number
+  remoteAhead: number
+}> {
+  const wtPath = worktreePath(owner, repo, cardIdentifier)
+
+  let localChanges = 0
+  let unpushedCommits = 0
+  let remoteAhead = 0
+
+  // Count uncommitted changes
+  try {
+    const status = await git(['status', '--porcelain'], wtPath)
+    if (status) {
+      localChanges = status.split('\n').filter(Boolean).length
+    }
+  } catch {
+    // Worktree may not exist
+  }
+
+  // Count unpushed commits and remote-ahead commits
+  try {
+    const branchName = await git(['rev-parse', '--abbrev-ref', 'HEAD'], wtPath)
+    const trackingBranch = `origin/${branchName}`
+
+    // Check if remote tracking branch exists
+    try {
+      await git(['rev-parse', '--verify', trackingBranch], wtPath)
+    } catch {
+      // No remote tracking branch — everything is unpushed
+      try {
+        const log = await git(['log', '--oneline', 'HEAD'], wtPath)
+        unpushedCommits = log ? log.split('\n').filter(Boolean).length : 0
+      } catch {
+        // ignore
+      }
+      return { localChanges, unpushedCommits, remoteAhead }
+    }
+
+    // Commits ahead (local but not pushed)
+    try {
+      const ahead = await git(['rev-list', '--count', `${trackingBranch}..HEAD`], wtPath)
+      unpushedCommits = parseInt(ahead, 10) || 0
+    } catch {
+      // ignore
+    }
+
+    // Commits behind (remote has but local doesn't)
+    try {
+      const behind = await git(['rev-list', '--count', `HEAD..${trackingBranch}`], wtPath)
+      remoteAhead = parseInt(behind, 10) || 0
+    } catch {
+      // ignore
+    }
+  } catch {
+    // ignore
+  }
+
+  return { localChanges, unpushedCommits, remoteAhead }
+}
+
+/**
+ * Count how many commits the upstream (default branch or parent card branch)
+ * has that aren't in the card's branch.
+ */
+export async function getUpstreamBehindCount(
+  owner: string,
+  repo: string,
+  cardIdentifier: string,
+  upstreamRef: string,
+): Promise<number> {
+  const wtPath = worktreePath(owner, repo, cardIdentifier)
+  try {
+    // How many commits on upstream that aren't in HEAD?
+    const count = await git(['rev-list', '--count', `HEAD..origin/${upstreamRef}`], wtPath)
+    return parseInt(count, 10) || 0
+  } catch {
+    return 0
+  }
+}
+
+/**
  * List spec files in the worktree that have been changed from the default branch.
  */
 export async function listWorktreeSpecFiles(

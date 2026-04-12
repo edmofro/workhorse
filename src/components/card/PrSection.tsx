@@ -11,18 +11,15 @@ import {
   Loader2,
 } from 'lucide-react'
 import { cn } from '../../lib/cn'
-
-type PrState = 'hidden' | 'create' | 'open' | 'merged' | 'merged-new' | 'updating'
+import { useBranchStatus, type BranchStatusData } from '../../lib/hooks/queries'
 
 interface PrSectionProps {
   cardId: string
+  cardIdentifier: string
   hasCodeChanges: boolean
   prUrl: string | null
-  prNumber?: number | null
-  prTitle?: string | null
-  prMerged?: boolean
-  postMergeCount?: number
-  cardBranch?: string | null
+  prNumber: number | null
+  cardBranch: string | null
   onPrCreated: (prUrl: string, prNumber?: number) => void
 }
 
@@ -35,19 +32,12 @@ function isSafeUrl(url: string): boolean {
   }
 }
 
-function extractPrNumber(url: string): string | null {
-  const match = url.match(/\/pull\/(\d+)/)
-  return match ? `#${match[1]}` : null
-}
-
 export function PrSection({
   cardId,
+  cardIdentifier,
   hasCodeChanges,
   prUrl,
   prNumber,
-  prTitle,
-  prMerged = false,
-  postMergeCount = 0,
   cardBranch,
   onPrCreated,
 }: PrSectionProps) {
@@ -56,16 +46,27 @@ export function PrSection({
   const [expanded, setExpanded] = useState(false)
   const [copied, setCopied] = useState(false)
 
+  // Poll for live branch + PR status
+  const shouldPoll = !!(prUrl || cardBranch || hasCodeChanges)
+  const { data: status } = useBranchStatus(cardIdentifier, shouldPoll)
+
   const safePrUrl = prUrl && isSafeUrl(prUrl) ? prUrl : null
-  const displayNumber = prNumber ? `#${prNumber}` : (safePrUrl ? extractPrNumber(safePrUrl) : null)
+
+  // Use live data from polling, falling back to props
+  const prMerged = status?.pr?.merged ?? false
+  const prTitle = status?.pr?.title ?? null
+  const liveNumber = status?.prNumber ?? prNumber
+  const displayNumber = liveNumber ? `#${liveNumber}` : null
   const displayTitle = prTitle ?? 'Pull request'
+  const ci = status?.ci ?? null
+  const branch = status?.branch ?? null
+  const liveBranchName = branch?.name ?? cardBranch
 
   // Derive state
+  type PrState = 'hidden' | 'create' | 'open' | 'merged' | 'updating'
   let state: PrState = 'hidden'
   if (isCreating) {
     state = 'updating'
-  } else if (safePrUrl && prMerged && postMergeCount > 0) {
-    state = 'merged-new'
   } else if (safePrUrl && prMerged) {
     state = 'merged'
   } else if (safePrUrl) {
@@ -102,6 +103,30 @@ export function PrSection({
     setTimeout(() => setCopied(false), 1500)
   }, [])
 
+  const handleCommit = useCallback(async () => {
+    try {
+      await fetch('/api/auto-commit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cardId }),
+      })
+    } catch {
+      // best-effort
+    }
+  }, [cardId])
+
+  const handlePush = useCallback(async () => {
+    try {
+      await fetch('/api/auto-commit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cardId, pushOnly: true }),
+      })
+    } catch {
+      // best-effort
+    }
+  }, [cardId])
+
   if (state === 'hidden') return null
 
   // Pre-PR: just the Create PR button
@@ -132,13 +157,13 @@ export function PrSection({
       <div className="flex items-center gap-2 px-4 py-2.5 border-b border-[var(--border-subtle)]">
         <Loader2 size={14} className="animate-spin text-[var(--accent)]" />
         <span className="text-[12px] font-medium text-[var(--text-muted)]">
-          Creating PR…
+          {isCreating ? 'Creating PR…' : 'Updating…'}
         </span>
       </div>
     )
   }
 
-  const isMerged = state === 'merged' || state === 'merged-new'
+  const isMerged = state === 'merged'
 
   return (
     <div className="border-b border-[var(--border-subtle)]">
@@ -168,11 +193,6 @@ export function PrSection({
           {displayNumber && (
             <span className="shrink-0 text-[11px] font-medium font-mono text-[var(--text-muted)]">
               {displayNumber}
-            </span>
-          )}
-          {state === 'merged-new' && (
-            <span className="shrink-0 inline-flex items-center px-1.5 py-px rounded-full text-[10px] font-semibold bg-[rgba(194,65,12,0.08)] text-[var(--accent)]">
-              {postMergeCount} new
             </span>
           )}
           <ChevronDown
@@ -206,48 +226,24 @@ export function PrSection({
             <p className="text-[11px] text-red-500">{error}</p>
           )}
 
-          {/* CI status — placeholder until GitHub checks API is wired */}
+          {/* CI status */}
           {!isMerged && (
-            <div className="flex items-center justify-between px-0.5">
-              <span className="text-[11px] font-medium text-[var(--text-muted)]">CI</span>
-              <span className="text-[11px] text-[var(--text-faint)]">No checks</span>
-            </div>
+            <CiStatusRow ci={ci} />
           )}
 
-          {(cardBranch || !isMerged) && <div className="h-px bg-[var(--border-subtle)]" />}
-
-          {/* Branch details — shown immediately */}
-          {cardBranch && (
-            <BranchDetails
-              branchName={cardBranch}
-              copied={copied}
-              onCopy={handleCopyBranch}
-            />
-          )}
-
-          {/* Prepare new PR for merged+new */}
-          {state === 'merged-new' && (
+          {liveBranchName && (
             <>
               <div className="h-px bg-[var(--border-subtle)]" />
-              <div className="flex flex-col gap-1.5">
-                <span className="text-[11px] font-medium text-[var(--text-secondary)]">
-                  {postMergeCount} commit{postMergeCount !== 1 ? 's' : ''} since merge
-                </span>
-                <button
-                  className={cn(
-                    'inline-flex items-center gap-1.5 px-3 py-[5px]',
-                    'rounded-[var(--radius-default)] text-[11px] font-medium',
-                    'bg-[var(--accent)] text-white',
-                    'hover:bg-[var(--accent-hover)] transition-colors duration-100 cursor-pointer',
-                    'self-start',
-                  )}
-                >
-                  Prepare new PR
-                </button>
-                <span className="text-[10px] text-[var(--text-muted)] leading-snug">
-                  Cherry-picks post-merge commits onto a fresh branch from main.
-                </span>
-              </div>
+              <BranchDetails
+                branchName={liveBranchName}
+                localChanges={branch?.localChanges ?? 0}
+                unpushedCommits={branch?.unpushedCommits ?? 0}
+                remoteAhead={branch?.remoteAhead ?? 0}
+                copied={copied}
+                onCopy={handleCopyBranch}
+                onCommit={handleCommit}
+                onPush={handlePush}
+              />
             </>
           )}
         </div>
@@ -256,16 +252,58 @@ export function PrSection({
   )
 }
 
-// ─── Branch Details ─────────────────────────────────────────────────────────
+// ─── CI Status ──────────────────────────────────────────────────────────
+
+function CiStatusRow({ ci }: { ci: BranchStatusData['ci'] | null }) {
+  if (!ci || ci.total === 0) {
+    return (
+      <div className="flex items-center justify-between px-0.5">
+        <span className="text-[11px] font-medium text-[var(--text-muted)]">CI</span>
+        <span className="text-[11px] text-[var(--text-faint)]">No checks</span>
+      </div>
+    )
+  }
+
+  const label =
+    ci.status === 'passing' ? 'Passing' :
+    ci.status === 'failing' ? 'Failing' :
+    ci.status === 'pending' ? 'Running' :
+    'Unknown'
+
+  const colour =
+    ci.status === 'passing' ? 'text-[var(--green)]' :
+    ci.status === 'failing' ? 'text-[#dc2626]' :
+    ci.status === 'pending' ? 'text-[var(--amber)]' :
+    'text-[var(--text-faint)]'
+
+  return (
+    <div className="flex items-center justify-between px-0.5">
+      <span className="text-[11px] font-medium text-[var(--text-muted)]">CI</span>
+      <span className={cn('text-[11px] font-medium', colour)}>{label}</span>
+    </div>
+  )
+}
+
+// ─── Branch Details ─────────────────────────────────────────────────────
 
 function BranchDetails({
   branchName,
+  localChanges,
+  unpushedCommits,
+  remoteAhead,
   copied,
   onCopy,
+  onCommit,
+  onPush,
 }: {
   branchName: string
+  localChanges: number
+  unpushedCommits: number
+  remoteAhead: number
   copied: boolean
   onCopy: (name: string) => void
+  onCommit: () => void
+  onPush: () => void
 }) {
   return (
     <div className="flex flex-col gap-1.5">
@@ -283,10 +321,28 @@ function BranchDetails({
         </button>
       </div>
 
-      {/* Status rows — placeholder values until backend APIs exist */}
-      <StatusRow label="Local" value="Clean" />
-      <StatusRow label="Unpushed" value="None" />
-      <StatusRow label="Remote" value="Up to date" />
+      {/* Status rows */}
+      <StatusRow
+        label="Local"
+        value={localChanges > 0 ? `${localChanges} file${localChanges !== 1 ? 's' : ''}` : 'Clean'}
+        isWarning={localChanges > 0}
+        action={localChanges > 0 ? 'Commit' : undefined}
+        onAction={localChanges > 0 ? onCommit : undefined}
+      />
+      <StatusRow
+        label="Unpushed"
+        value={unpushedCommits > 0 ? `${unpushedCommits} commit${unpushedCommits !== 1 ? 's' : ''}` : 'None'}
+        isWarning={unpushedCommits > 0}
+        action={unpushedCommits > 0 ? 'Push' : undefined}
+        onAction={unpushedCommits > 0 ? onPush : undefined}
+      />
+      <StatusRow
+        label="Remote"
+        value={remoteAhead > 0 ? `${remoteAhead} ahead` : 'Up to date'}
+        isWarning={remoteAhead > 0}
+        action={remoteAhead > 0 ? 'Pull' : undefined}
+        onAction={remoteAhead > 0 ? () => { /* TODO: pull with conflict resolution */ } : undefined}
+      />
     </div>
   )
 }
@@ -294,11 +350,13 @@ function BranchDetails({
 function StatusRow({
   label,
   value,
+  isWarning,
   action,
   onAction,
 }: {
   label: string
   value: string
+  isWarning?: boolean
   action?: string
   onAction?: () => void
 }) {
@@ -306,7 +364,12 @@ function StatusRow({
     <div className="flex items-center justify-between px-0.5">
       <span className="text-[11px] font-medium text-[var(--text-muted)]">{label}</span>
       <span className="flex items-center gap-1.5">
-        <span className="text-[11px] text-[var(--text-faint)]">{value}</span>
+        <span className={cn(
+          'text-[11px]',
+          isWarning ? 'font-medium text-[var(--text-secondary)]' : 'text-[var(--text-faint)]',
+        )}>
+          {value}
+        </span>
         {action && onAction && (
           <button
             onClick={onAction}

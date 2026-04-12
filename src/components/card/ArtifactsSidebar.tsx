@@ -23,6 +23,7 @@ interface ArtifactsSidebarProps {
   /** PR section props — when provided, the PR section renders at the top */
   pr?: {
     cardId: string
+    cardIdentifier: string
     hasCodeChanges: boolean
     prUrl: string | null
     prNumber: number | null
@@ -46,6 +47,7 @@ export function ArtifactsSidebar({
       {pr && (
         <PrSection
           cardId={pr.cardId}
+          cardIdentifier={pr.cardIdentifier}
           hasCodeChanges={pr.hasCodeChanges}
           prUrl={pr.prUrl}
           prNumber={pr.prNumber}

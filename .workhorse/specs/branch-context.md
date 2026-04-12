@@ -76,17 +76,14 @@ When a rebase or pull encounters conflicts, the system uses an AI subagent to re
 - [ ] If the subagent fails to resolve cleanly, the update fails and the user sees an error message. No partial results are committed
 - [ ] During resolution, the sidebar PR row shows the updating/spinner state
 
-## Update status persistence
-
-- [ ] The card model stores an `updateStatus` field with values: `idle`, `updating`, or `failed`
-- [ ] This field persists across page refreshes — the spinner state survives navigation and reload
-- [ ] The `failed` state surfaces an error indicator on the sidebar PR row, with details visible in the expanded section
-- [ ] Future use: the persisted status can block conversation turns during updates if needed (not implemented initially — updates and chat run concurrently)
-
 ## Real-time updates
 
-- [ ] PR sidebar section, From property badge, and branch details stay current via the same socket/polling system used by the artifacts sidebar
-- [ ] Changes to PR status, upstream commit counts, and merge state are reflected without requiring a page refresh
+Branch status, CI results, and PR state are pushed to the client via the existing server-sent events (SSE) infrastructure — the same mechanism the sidebar uses for session updates.
+
+- [ ] The server emits card-scoped events (branch status changes, CI updates, PR state transitions) through SSE
+- [ ] The client receives events for any card the user has open and updates the PR section, From property badge, and branch details immediately
+- [ ] Long-running operations (rebase, conflict resolution) emit start/complete/failed events so the spinner state is driven by the event stream, not persisted in the database
+- [ ] If the SSE connection drops and reconnects, the client fetches the current state once to resynchronise
 
 ## Cross-references
 

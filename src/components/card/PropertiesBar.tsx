@@ -64,6 +64,7 @@ function skillLabel(skillId: string): string {
 interface CardPropertiesProps {
   card: {
     id: string
+    identifier: string
     status: string
     priority: string
     team: { id: string; name: string }
@@ -72,9 +73,10 @@ interface CardPropertiesProps {
   }
   users: { id: string; displayName: string }[]
   teams: { id: string; name: string }[]
+  upstreamBehind?: number
 }
 
-function CardProperties({ card, users, teams }: CardPropertiesProps) {
+function CardProperties({ card, users, teams, upstreamBehind = 0 }: CardPropertiesProps) {
   const [status, setStatus] = useState(card.status)
   const [priority, setPriority] = useState(card.priority)
   const [teamId, setTeamId] = useState(card.team.id)
@@ -181,6 +183,11 @@ function CardProperties({ card, users, teams }: CardPropertiesProps) {
         <span className="text-[var(--text-primary)]">
           {card.dependsOn.length > 0 ? card.dependsOn[0].identifier : 'main'}
         </span>
+        {upstreamBehind > 0 && (
+          <span className="text-[11px] font-semibold text-[var(--accent)]">
+            ↑{upstreamBehind}
+          </span>
+        )}
       </div>
     </div>
   )
@@ -370,6 +377,7 @@ function JourneySection({
 interface PropertiesBarProps {
   card: {
     id: string
+    identifier: string
     status: string
     priority: string
     team: { id: string; name: string }
@@ -382,6 +390,7 @@ interface PropertiesBarProps {
   scheduledSteps: ScheduledStepData[]
   suggestions: PillSuggestion[]
   activeStep: string | null
+  upstreamBehind?: number
   onTriggerSkill: (skillId: string, label: string) => void
   onScheduleStep: (skillId: string, label: string) => void
   onUnscheduleStep: (stepId: string) => void
@@ -395,6 +404,7 @@ export function PropertiesBar({
   scheduledSteps,
   suggestions,
   activeStep,
+  upstreamBehind = 0,
   onTriggerSkill,
   onScheduleStep,
   onUnscheduleStep,
@@ -403,7 +413,7 @@ export function PropertiesBar({
 
   return (
     <div className="flex items-center h-8 px-2 border-b border-[var(--border-subtle)] bg-[var(--bg-surface)]">
-      <CardProperties card={card} users={users} teams={teams} />
+      <CardProperties card={card} users={users} teams={teams} upstreamBehind={upstreamBehind} />
 
       {hasJourney && (
         <JourneySection

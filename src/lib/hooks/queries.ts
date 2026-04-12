@@ -176,6 +176,43 @@ export function useCardFiles(cardId: string) {
   })
 }
 
+// ── Card branch status (lightweight polling for PR + branch state) ─────
+
+export interface BranchStatusData {
+  pr: {
+    state: string
+    merged: boolean
+    title: string
+    mergedAt: string | null
+  } | null
+  prUrl: string | null
+  prNumber: number | null
+  ci: {
+    status: 'passing' | 'failing' | 'pending' | null
+    total: number
+  }
+  branch: {
+    name: string | null
+    localChanges: number
+    unpushedCommits: number
+    remoteAhead: number
+  }
+  upstreamBehind: number
+}
+
+export function useBranchStatus(cardId: string, enabled = true) {
+  return useQuery({
+    queryKey: ['branch-status', cardId],
+    queryFn: () =>
+      fetchJSON<BranchStatusData>(
+        `/api/card-branch-status?cardId=${encodeURIComponent(cardId)}`,
+      ),
+    refetchInterval: 15_000, // Poll every 15s when card is open
+    staleTime: 10_000,
+    enabled,
+  })
+}
+
 // ── Project lookup (lightweight, for specs/design pages) ────────────────
 
 interface ProjectInfo {

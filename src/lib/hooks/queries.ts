@@ -125,6 +125,7 @@ interface CardDetailData {
     tags: string
     cardBranch: string | null
     prUrl: string | null
+    prNumber: number | null
     team: { id: string; name: string; colour: string }
     project: { id: string; name: string; owner: string; repoName: string; defaultBranch: string }
     assignee: { id: string; displayName: string } | null
@@ -172,6 +173,44 @@ export function useCardFiles(cardId: string) {
         `/api/card-files?cardId=${encodeURIComponent(cardId)}`,
       ),
     staleTime: 30_000, // Files change less frequently, and this endpoint is expensive
+  })
+}
+
+// ── Card branch status (lightweight polling for PR + branch state) ─────
+
+export interface BranchStatusData {
+  pr: {
+    state: string
+    merged: boolean
+    title: string
+    mergedAt: string | null
+  } | null
+  prUrl: string | null
+  prNumber: number | null
+  ci: {
+    status: 'passing' | 'failing' | 'pending' | null
+    total: number
+  }
+  branch: {
+    name: string | null
+    localChanges: number
+    unpushedCommits: number
+    remoteAhead: number
+  }
+  upstreamBehind: number
+}
+
+export function useBranchStatus(cardId: string, enabled = true) {
+  return useQuery({
+    queryKey: ['branch-status', cardId],
+    queryFn: () =>
+      fetchJSON<BranchStatusData>(
+        `/api/card-branch-status?cardId=${encodeURIComponent(cardId)}`,
+      ),
+    refetchInterval: 15_000, // Poll every 15s when card is open
+    refetchIntervalInBackground: false, // Pause polling when tab is hidden
+    staleTime: 10_000,
+    enabled,
   })
 }
 

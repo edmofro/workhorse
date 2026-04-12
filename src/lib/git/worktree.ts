@@ -73,6 +73,17 @@ async function git(
   return stdout.trim()
 }
 
+/** Environment variables for git commands that need GitHub token auth. */
+function tokenEnv(token: string): Record<string, string> {
+  return {
+    GIT_ASKPASS: '/bin/echo',
+    GIT_TERMINAL_PROMPT: '0',
+    GIT_CONFIG_VALUE_0: `https://x-access-token:${token}@github.com`,
+    GIT_CONFIG_KEY_0: `url.https://x-access-token:${token}@github.com.insteadOf`,
+    GIT_CONFIG_COUNT: '1',
+  }
+}
+
 /**
  * Throttle state for ensureBareClone — avoids fetching on every request.
  * Key: "owner/repo", Value: timestamp of last successful fetch.
@@ -368,15 +379,62 @@ export async function autoCommit(
 
   // Push to remote using GIT_ASKPASS to avoid persisting token in config
   const branchName = await git(['rev-parse', '--abbrev-ref', 'HEAD'], wtPath)
-  await git(['push', 'origin', branchName], wtPath, {
-    GIT_ASKPASS: '/bin/echo',
-    GIT_TERMINAL_PROMPT: '0',
-    GIT_CONFIG_VALUE_0: `https://x-access-token:${token}@github.com`,
-    GIT_CONFIG_KEY_0: `url.https://x-access-token:${token}@github.com.insteadOf`,
-    GIT_CONFIG_COUNT: '1',
-  })
+  try {
+    await git(['push', 'origin', branchName], wtPath, tokenEnv(token))
+  } catch {
+    throw new Error('git push failed')
+  }
 
   return changedFiles
+}
+
+/**
+ * Push the current branch to origin without committing.
+ */
+export async function pushBranch(
+  owner: string,
+  repo: string,
+  cardIdentifier: string,
+  token: string,
+): Promise<void> {
+  const wtPath = worktreePath(owner, repo, cardIdentifier)
+  const branchName = await git(['rev-parse', '--abbrev-ref', 'HEAD'], wtPath)
+  try {
+    await git(['push', 'origin', branchName], wtPath, tokenEnv(token))
+  } catch {
+    throw new Error('git push failed')
+  }
+}
+
+/**
+ * Pull remote changes into the worktree branch.
+ * Uses rebase to keep a linear history.
+ */
+export async function pullBranch(
+  owner: string,
+  repo: string,
+  cardIdentifier: string,
+  token: string,
+): Promise<void> {
+  const wtPath = worktreePath(owner, repo, cardIdentifier)
+
+  // Fetch latest from origin
+  const barePath = bareClonePath(owner, repo)
+  try {
+    await git(['fetch', 'origin'], barePath, tokenEnv(token))
+  } catch {
+    throw new Error('git fetch failed')
+  }
+
+  // Rebase onto remote tracking branch
+  const branchName = await git(['rev-parse', '--abbrev-ref', 'HEAD'], wtPath)
+  try {
+    await git(['rebase', `origin/${branchName}`], wtPath)
+  } catch {
+    // Abort the in-progress rebase so the worktree isn't left in a broken state
+    await git(['rebase', '--abort'], wtPath).catch(() => {})
+    throw new Error('Rebase failed — there may be conflicts')
+  }
 }
 
 /**
@@ -571,6 +629,81 @@ export async function getPendingChanges(
       })
   } catch {
     return []
+  }
+}
+
+/**
+ * Get branch sync status for a card's worktree.
+ * Returns local changes count, unpushed commit count, and remote-ahead count.
+ */
+export async function getBranchStatus(
+  owner: string,
+  repo: string,
+  cardIdentifier: string,
+  defaultBranch: string = 'main',
+): Promise<{
+  localChanges: number
+  unpushedCommits: number
+  remoteAhead: number
+}> {
+  const wtPath = worktreePath(owner, repo, cardIdentifier)
+
+  // git status --porcelain -b returns branch name + tracking info + changed files in one call
+  const statusOutput = await git(['status', '--porcelain', '-b'], wtPath).catch(() => '')
+  const lines = statusOutput.split('\n').filter(Boolean)
+
+  // First line is branch header: "## branch...origin/branch [ahead N, behind M]"
+  const headerLine = lines[0] ?? ''
+  const localChanges = lines.length > 1 ? lines.length - 1 : 0
+
+  // Parse branch name from header
+  const branchMatch = headerLine.match(/^## (.+?)(?:\.{3}|$)/)
+  const branchName = branchMatch?.[1]
+  if (!branchName) return { localChanges, unpushedCommits: 0, remoteAhead: 0 }
+
+  const hasTracking = headerLine.includes('...')
+
+  if (!hasTracking) {
+    // No remote tracking — count commits since branching from the default branch
+    const mergeBase = await git(['merge-base', `origin/${defaultBranch}`, 'HEAD'], wtPath).catch(() => '')
+    const count = mergeBase
+      ? await git(['rev-list', '--count', `${mergeBase}..HEAD`], wtPath).catch(() => '0')
+      : '0'
+    return { localChanges, unpushedCommits: parseInt(count, 10) || 0, remoteAhead: 0 }
+  }
+
+  // Use rev-list --left-right --count to get ahead/behind in a single call
+  const trackingBranch = `origin/${branchName}`
+  const leftRight = await git(
+    ['rev-list', '--left-right', '--count', `${trackingBranch}...HEAD`],
+    wtPath,
+  ).catch(() => '0\t0')
+  const [behindStr, aheadStr] = leftRight.split('\t')
+
+  return {
+    localChanges,
+    unpushedCommits: parseInt(aheadStr, 10) || 0,
+    remoteAhead: parseInt(behindStr, 10) || 0,
+  }
+}
+
+/**
+ * Count how many commits the upstream (default branch or parent card branch)
+ * has that aren't in the card's branch.
+ */
+export async function getUpstreamBehindCount(
+  owner: string,
+  repo: string,
+  cardIdentifier: string,
+  upstreamRef: string,
+): Promise<number> {
+  const wtPath = worktreePath(owner, repo, cardIdentifier)
+  try {
+    // How many commits on upstream that aren't in HEAD?
+    const count = await git(['rev-list', '--count', `HEAD..origin/${upstreamRef}`], wtPath)
+    return parseInt(count, 10) || 0
+  } catch {
+    return 0
   }
 }
 

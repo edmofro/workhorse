@@ -55,7 +55,6 @@ interface CardPropertiesProps {
     priority: string
     team: { id: string; name: string }
     assignee: { id: string; displayName: string } | null
-    dependsOn: { identifier: string; title: string }[]
   }
   users: { id: string; displayName: string }[]
   teams: { id: string; name: string }[]
@@ -156,19 +155,6 @@ function CardProperties({ card, users, teams }: CardPropertiesProps) {
         }}
       />
 
-      {card.dependsOn.length > 0 && (
-        <div className="flex items-center gap-1 px-2 py-1">
-          {card.dependsOn.map((dep) => (
-            <span
-              key={dep.identifier}
-              className="text-[11px] font-medium font-mono text-[var(--text-muted)]"
-              title={dep.title}
-            >
-              {dep.identifier}
-            </span>
-          ))}
-        </div>
-      )}
     </div>
   )
 }
@@ -396,7 +382,6 @@ interface PropertiesBarProps {
     priority: string
     team: { id: string; name: string }
     assignee: { id: string; displayName: string } | null
-    dependsOn: { identifier: string; title: string }[]
   }
   users: { id: string; displayName: string }[]
   teams: { id: string; name: string }[]

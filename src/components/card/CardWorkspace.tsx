@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useEffect, useRef } from 'react'
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
 import type { ViewState } from '../../lib/hooks/useViewNavigation'
 import { useRouter } from 'next/navigation'
 import { cn } from '../../lib/cn'
@@ -12,7 +12,6 @@ import { SpecHeaderBar } from './SpecHeaderBar'
 import type { DeviceKey } from './SpecHeaderBar'
 import { ActionPills, type ActionPill } from './ActionPills'
 import { PropertiesBar } from './PropertiesBar'
-import { PrBar } from './PrBar'
 import { useJockeyState } from '../../lib/hooks/useJockeyState'
 import { BUILT_IN_SKILLS } from '../../lib/skills/registry'
 import { ChatMessage } from './ChatMessage'
@@ -22,6 +21,7 @@ import { SpecEditor } from './SpecEditor'
 import { MockupArtifact } from './MockupArtifact'
 import { NewSpecDialog } from './NewSpecDialog'
 import { ArtifactsSidebar, type CodeFileItem } from './ArtifactsSidebar'
+import { PrSection } from './PrSection'
 import { Skeleton } from '../Skeleton'
 import { CodeDiffArtifact } from './CodeDiffArtifact'
 import { CodeEditorView } from './CodeEditorView'
@@ -63,8 +63,10 @@ interface CardWorkspaceProps {
     team: { id: string; name: string }
     assignee: { id: string; displayName: string } | null
     dependsOn: { identifier: string; title: string }[]
+    project: { owner: string; repoName: string; defaultBranch: string }
     cardBranch: string | null
     prUrl?: string | null
+    prNumber?: number | null
   }
   users: { id: string; displayName: string }[]
   teams: { id: string; name: string }[]
@@ -452,12 +454,28 @@ export function CardWorkspace({
     [handleSendMessage],
   )
 
-  /** Handle PR creation — update local state with the new PR URL */
+  /** Handle PR creation — update local state with the new PR URL and number */
   const [localPrUrl, setLocalPrUrl] = useState<string | null>(card.prUrl ?? null)
-  const handlePrCreated = useCallback((prUrl: string) => {
+  const [localPrNumber, setLocalPrNumber] = useState<number | null>(card.prNumber ?? null)
+  const handlePrCreated = useCallback((prUrl: string, prNumber?: number) => {
     setLocalPrUrl(prUrl)
+    if (prNumber) setLocalPrNumber(prNumber)
     router.refresh()
   }, [router])
+
+  const prProps = useMemo(() => ({
+    cardId: card.id,
+    cardIdentifier: card.identifier,
+    hasCodeChanges: jockey.hasCodeChanges,
+    prUrl: localPrUrl,
+    prNumber: localPrNumber,
+    cardBranch: card.cardBranch,
+    dependsOn: card.dependsOn,
+    defaultBranch: card.project.defaultBranch,
+    repoOwner: card.project.owner,
+    repoName: card.project.repoName,
+    onPrCreated: handlePrCreated,
+  }), [card.id, card.identifier, card.cardBranch, card.dependsOn?.[0]?.identifier, card.project.owner, card.project.repoName, card.project.defaultBranch, jockey.hasCodeChanges, localPrUrl, localPrNumber, handlePrCreated])
 
   // Spec operations
   const ensureWorktree = useCallback(async () => {
@@ -651,13 +669,6 @@ export function CardWorkspace({
           isUploading={chatAttachments.isUploading}
         />
       </div>
-      {/* PR bar — bottom of chat area */}
-      <PrBar
-        cardId={card.id}
-        hasCodeChanges={jockey.hasCodeChanges}
-        prUrl={localPrUrl}
-        onPrCreated={handlePrCreated}
-      />
     </div>
   )
 
@@ -825,7 +836,8 @@ export function CardWorkspace({
               />
             </div>
           </div>
-          <ArtifactsSidebar
+          <SidebarPanel
+            prProps={prProps}
             specs={specFiles.map((f) => ({ filePath: f.filePath, isNew: f.isNew, content: f.content }))}
             mockups={allMockupFiles}
             codeFiles={codeFileItems}
@@ -848,7 +860,8 @@ export function CardWorkspace({
               <Skeleton className="h-4 w-2/3" />
             </aside>
           ) : (
-            <ArtifactsSidebar
+            <SidebarPanel
+              prProps={prProps}
               specs={specFiles.map((f) => ({ filePath: f.filePath, isNew: f.isNew, content: f.content }))}
               mockups={allMockupFiles}
               codeFiles={codeFileItems}
@@ -931,6 +944,36 @@ export function CardWorkspace({
         </>
       )}
     </div>
+  )
+}
+
+/** Shared sidebar wrapper — owns the aside chrome, PR section, and artifacts list. */
+function SidebarPanel({
+  prProps,
+  specs,
+  mockups,
+  codeFiles,
+  activeFilePath,
+  onSelectFile,
+}: {
+  prProps: React.ComponentProps<typeof PrSection>
+  specs: React.ComponentProps<typeof ArtifactsSidebar>['specs']
+  mockups: React.ComponentProps<typeof ArtifactsSidebar>['mockups']
+  codeFiles: CodeFileItem[]
+  activeFilePath: string | null
+  onSelectFile: (filePath: string) => void
+}) {
+  return (
+    <aside className="shrink-0 w-[248px] border-l border-[var(--border-subtle)] bg-[var(--bg-page)] flex flex-col overflow-y-auto">
+      <PrSection {...prProps} />
+      <ArtifactsSidebar
+        specs={specs}
+        mockups={mockups}
+        codeFiles={codeFiles}
+        activeFilePath={activeFilePath}
+        onSelectFile={onSelectFile}
+      />
+    </aside>
   )
 }
 

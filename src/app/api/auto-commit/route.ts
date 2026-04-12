@@ -27,9 +27,9 @@ export async function POST(request: NextRequest) {
   }
 
   const { owner, repoName } = card.team.project
-  const message = commitMessage || 'Update specs'
 
   try {
+    const message = commitMessage || 'Update specs'
     const changedFiles = await autoCommit(
       owner,
       repoName,
@@ -58,8 +58,7 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({ changedFiles })
-  } catch (err) {
-    const message = err instanceof Error ? err.message : 'Auto-commit failed'
-    return new Response(message, { status: 500 })
+  } catch {
+    return new Response('Auto-commit failed', { status: 500 })
   }
 }

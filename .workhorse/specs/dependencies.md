@@ -20,13 +20,12 @@ No special "epic" concept is needed. An epic is just a card whose description is
 - **Order** — dependent cards form a natural sequence. A must be spec-complete before B can be committed.
 - **Blocked** — if A's specs change after B was written, B is flagged for review (not broken, just needs attention).
 
-## What the user never sees
-
-Branch names, rebase operations, base branch selection, or any git terminology.
-
 ## Setting dependencies
 
-- [ ] User can set "depends on" from one card to another
+The **Based on** row in the PR section's branch details (see `branch-context.md`) is the primary surface for viewing a card's dependency. It shows `main` or the parent card identifier (e.g. `WH-058`).
+
+- [ ] User can set "depends on" from one card to another via the Based on row (changing the base triggers a rebase)
+- [ ] The Based on interaction lists all cards on the same team/project, plus "main"
 - [ ] Dependencies can be set during card creation or later
 - [ ] The AI can suggest dependencies during the session when it identifies interactions
 - [ ] A card can depend on multiple cards
@@ -46,14 +45,13 @@ Branch names, rebase operations, base branch selection, or any git terminology.
 
 ## Conflict handling
 
+Conflicts are resolved automatically by an AI subagent (see `branch-context.md` for the full conflict resolution architecture).
+
 - [ ] Workhorse attempts automatic rebase when parent specs change
 - [ ] If rebase succeeds cleanly, the dependent card is updated silently
-- [ ] If rebase fails (conflicting changes to the same spec), the dependent card is flagged "needs review"
-- [ ] The user sees a clear message: which specs conflict, between which cards
-- [ ] Resolution options: side-by-side diff with the ability to pick changes, or edit directly to reconcile
-- [ ] Option to ask a developer to resolve if the conflict is too complex
-
-> **Conflict resolution UX:** This needs its own detailed spec. What the side-by-side view looks like, how picks work, how the resolved version gets committed — complex enough to warrant a separate card once we have real usage patterns.
+- [ ] If rebase fails (conflicting changes to the same spec), an AI subagent resolves the conflicts within the card's worktree
+- [ ] If the subagent resolves successfully, the result is pushed automatically
+- [ ] If the subagent fails, the card shows an error and the user is notified
 
 ## Ordering and status
 

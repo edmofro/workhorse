@@ -30,7 +30,8 @@ export function ArtifactsSidebar({
   onSelectFile,
 }: ArtifactsSidebarProps) {
   return (
-    <aside className="shrink-0 w-[248px] border-l border-[var(--border-subtle)] bg-[var(--bg-page)] flex flex-col overflow-y-auto">
+    <div className="flex flex-col overflow-y-auto flex-1">
+
       {/* Specs */}
       <Section label="Specs">
         {specs.length > 0 ? specs.map((spec) => {
@@ -87,7 +88,7 @@ export function ArtifactsSidebar({
           <p className="px-2 py-1 text-[11px] text-[var(--text-faint)]">No changes yet</p>
         )}
       </Section>
-    </aside>
+    </div>
   )
 }
 

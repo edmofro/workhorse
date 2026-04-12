@@ -13,6 +13,36 @@ function getHeaders(token: string) {
   }
 }
 
+/**
+ * ETag cache for conditional requests — avoids consuming GitHub rate limit
+ * when polled data hasn't changed. Entries expire after 60s to limit memory.
+ */
+const etagCache = new Map<string, { etag: string; data: unknown; ts: number }>()
+const ETAG_TTL_MS = 60_000
+
+async function fetchWithEtag<T>(url: string, headers: Record<string, string>): Promise<{ data: T | null; ok: boolean }> {
+  const cached = etagCache.get(url)
+  const reqHeaders: Record<string, string> = { ...headers }
+  if (cached && Date.now() - cached.ts < ETAG_TTL_MS) {
+    reqHeaders['If-None-Match'] = cached.etag
+  }
+
+  const res = await fetch(url, { headers: reqHeaders })
+
+  if (res.status === 304 && cached) {
+    return { data: cached.data as T, ok: true }
+  }
+
+  if (!res.ok) return { data: null, ok: false }
+
+  const data = await res.json()
+  const etag = res.headers.get('etag')
+  if (etag) {
+    etagCache.set(url, { etag, data, ts: Date.now() })
+  }
+  return { data: data as T, ok: true }
+}
+
 export async function getRef(token: string, owner: string, repo: string, ref: string) {
   const res = await fetch(
     `${GITHUB_API}/repos/${owner}/${repo}/git/ref/heads/${ref}`,
@@ -124,6 +154,103 @@ export async function createPullRequest(
     throw new Error(`Failed to create PR: ${err}`)
   }
   return res.json()
+}
+
+/**
+ * Get the combined check status for a ref (branch or SHA).
+ * Returns a simplified summary: 'passing', 'failing', 'pending', or null.
+ */
+export async function getCheckStatus(
+  token: string,
+  owner: string,
+  repo: string,
+  ref: string,
+): Promise<{ status: 'passing' | 'failing' | 'pending' | null; total: number }> {
+  const encodedRef = encodeURIComponent(ref)
+
+  // Combined status (legacy statuses) + check suites (GitHub Actions) in parallel
+  const headers = getHeaders(token)
+  const [statusResult, suitesResult] = await Promise.all([
+    fetchWithEtag<{ state: string; total_count?: number }>(
+      `${GITHUB_API}/repos/${owner}/${repo}/commits/${encodedRef}/status`,
+      headers,
+    ),
+    fetchWithEtag<{ check_suites?: { status: string; conclusion: string | null }[] }>(
+      `${GITHUB_API}/repos/${owner}/${repo}/commits/${encodedRef}/check-suites?per_page=100`,
+      headers,
+    ),
+  ])
+
+  let commitStatus: string | null = null
+  let suiteConclusion: string | null = null
+  let total = 0
+
+  if (statusResult.ok && statusResult.data) {
+    commitStatus = statusResult.data.state
+    total += statusResult.data.total_count ?? 0
+  }
+
+  if (suitesResult.ok && suitesResult.data) {
+    const suites = suitesResult.data.check_suites ?? []
+    total += suites.length
+
+    // Aggregate across all check suites
+    const hasFailure = suites.some((s) => s.conclusion === 'failure' || s.conclusion === 'timed_out')
+    const hasPending = suites.some((s) => s.status === 'in_progress' || s.status === 'queued')
+    const hasSuccess = suites.some((s) => s.conclusion === 'success')
+
+    if (hasFailure) suiteConclusion = 'failure'
+    else if (hasPending) suiteConclusion = 'pending'
+    else if (hasSuccess) suiteConclusion = 'success'
+  }
+
+  if (total === 0) return { status: null, total: 0 }
+
+  // Combine: any failure → failing, any pending → pending, else passing
+  if (commitStatus === 'failure' || commitStatus === 'error' || suiteConclusion === 'failure') {
+    return { status: 'failing', total }
+  }
+  if (commitStatus === 'pending' || suiteConclusion === 'pending') {
+    return { status: 'pending', total }
+  }
+  if (commitStatus === 'success' || suiteConclusion === 'success') {
+    return { status: 'passing', total }
+  }
+
+  return { status: 'pending', total }
+}
+
+/**
+ * Get a pull request by number.
+ * Returns key fields: state, merged, title, merged_at.
+ */
+export async function getPullRequest(
+  token: string,
+  owner: string,
+  repo: string,
+  prNumber: number,
+): Promise<{
+  state: string
+  merged: boolean
+  title: string
+  mergedAt: string | null
+} | null> {
+  const { data, ok } = await fetchWithEtag<{
+    state: string
+    merged?: boolean
+    title: string
+    merged_at?: string | null
+  }>(
+    `${GITHUB_API}/repos/${owner}/${repo}/pulls/${prNumber}`,
+    getHeaders(token),
+  )
+  if (!ok || !data) return null
+  return {
+    state: data.state,
+    merged: data.merged ?? false,
+    title: data.title,
+    mergedAt: data.merged_at ?? null,
+  }
 }
 
 export async function getTree(

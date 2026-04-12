@@ -33,19 +33,19 @@ function assertPathWithin(root: string, resolved: string): void {
 
 /** Resolve a user-supplied file path within a worktree, preventing traversal. */
 function safeResolvePath(wtPath: string, filePath: string): string {
-  const resolved = path.resolve(wtPath, filePath)
+  const resolved = path.resolve(/* turbopackIgnore: true */ wtPath, filePath)
   assertPathWithin(wtPath, resolved)
   return resolved
 }
 
 /** Get the bare clone path for a project */
 export function bareClonePath(owner: string, repo: string): string {
-  return path.join(REPOS_BASE, owner, repo, 'bare.git')
+  return path.join(/* turbopackIgnore: true */ REPOS_BASE, owner, repo, 'bare.git')
 }
 
 /** Get the worktrees directory for a project */
 function worktreesDir(owner: string, repo: string): string {
-  return path.join(REPOS_BASE, owner, repo, 'worktrees')
+  return path.join(/* turbopackIgnore: true */ REPOS_BASE, owner, repo, 'worktrees')
 }
 
 /** Get the worktree path for a specific card */
@@ -55,7 +55,7 @@ export function worktreePath(
   cardIdentifier: string,
 ): string {
   const slug = cardIdentifier.toLowerCase().replace(/[^a-z0-9]+/g, '-')
-  return path.join(worktreesDir(owner, repo), slug)
+  return path.join(/* turbopackIgnore: true */ worktreesDir(owner, repo), slug)
 }
 
 /** Run a git command in a specific directory */
@@ -112,7 +112,7 @@ export async function ensureBareClone(
         const fetchSpec = await git(['config', '--get', 'remote.origin.fetch'], barePath)
         if (fetchSpec.includes('+refs/*:refs/*')) {
           console.warn(`[git] Migrating mirror clone for ${repoKey} — wiping bare clone and worktrees`)
-          const repoDir = path.join(REPOS_BASE, owner, repo)
+          const repoDir = path.join(/* turbopackIgnore: true */ REPOS_BASE, owner, repo)
           await fs.rm(repoDir, { recursive: true, force: true })
           await createBareClone(owner, repo, token)
           clonedJustNow = true
@@ -181,7 +181,7 @@ export async function createBareClone(
     // Does not exist, create it
   }
 
-  await fs.mkdir(path.dirname(barePath), { recursive: true })
+  await fs.mkdir(path.dirname(/* turbopackIgnore: true */ barePath), { recursive: true })
 
   const cloneUrl = `https://x-access-token:${token}@github.com/${owner}/${repo}.git`
   await execFileAsync('git', ['clone', '--bare', cloneUrl, barePath], {
@@ -242,7 +242,7 @@ export async function createWorktree(
     // Does not exist, create it
   }
 
-  await fs.mkdir(path.dirname(wtPath), { recursive: true })
+  await fs.mkdir(path.dirname(/* turbopackIgnore: true */ wtPath), { recursive: true })
 
   // Check if the branch exists locally (from a previous worktree session)
   // or on the remote (pushed by a previous deploy)
@@ -543,7 +543,7 @@ export async function writeWorktreeFile(
   const wtPath = worktreePath(owner, repo, cardIdentifier)
   const fullPath = safeResolvePath(wtPath, filePath)
 
-  await fs.mkdir(path.dirname(fullPath), { recursive: true })
+  await fs.mkdir(path.dirname(/* turbopackIgnore: true */ fullPath), { recursive: true })
   await fs.writeFile(fullPath, content, 'utf-8')
 }
 
@@ -571,6 +571,92 @@ export async function getPendingChanges(
       })
   } catch {
     return []
+  }
+}
+
+/** Validate a git SHA is a safe hex string. */
+function assertValidSha(sha: string): void {
+  if (!/^[0-9a-f]{4,40}$/i.test(sha)) {
+    throw new Error('Invalid commit SHA')
+  }
+}
+
+/**
+ * Get the commit history for a single file.
+ */
+export async function getFileHistory(
+  owner: string,
+  repo: string,
+  cardIdentifier: string,
+  filePath: string,
+): Promise<{ sha: string; message: string; author: string; date: string }[]> {
+  const wtPath = worktreePath(owner, repo, cardIdentifier)
+  safeResolvePath(wtPath, filePath)
+
+  try {
+    const log = await git(
+      ['log', '--format=%H%n%s%n%an%n%aI', '--', filePath],
+      wtPath,
+    )
+    if (!log) return []
+
+    const lines = log.split('\n')
+    const entries: { sha: string; message: string; author: string; date: string }[] = []
+    for (let i = 0; i + 3 < lines.length; i += 4) {
+      entries.push({
+        sha: lines[i]!,
+        message: lines[i + 1]!,
+        author: lines[i + 2]!,
+        date: lines[i + 3]!,
+      })
+    }
+    return entries
+  } catch {
+    return []
+  }
+}
+
+/**
+ * Read a file's content at a specific commit.
+ */
+export async function getFileAtCommit(
+  owner: string,
+  repo: string,
+  cardIdentifier: string,
+  sha: string,
+  filePath: string,
+): Promise<string | null> {
+  assertValidSha(sha)
+  const wtPath = worktreePath(owner, repo, cardIdentifier)
+  safeResolvePath(wtPath, filePath)
+
+  try {
+    return await git(['show', `${sha}:${filePath}`], wtPath)
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Get the unified diff for a file between two commits.
+ */
+export async function getFileDiff(
+  owner: string,
+  repo: string,
+  cardIdentifier: string,
+  fromSha: string,
+  toSha: string,
+  filePath: string,
+): Promise<string | null> {
+  assertValidSha(fromSha)
+  assertValidSha(toSha)
+  const wtPath = worktreePath(owner, repo, cardIdentifier)
+  safeResolvePath(wtPath, filePath)
+
+  try {
+    return await git(['diff', `${fromSha}..${toSha}`, '--', filePath], wtPath)
+  } catch {
+    return null
   }
 }
 

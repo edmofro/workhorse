@@ -21,6 +21,7 @@ interface PrSectionProps {
   prNumber: number | null
   cardBranch: string | null
   dependsOn: { identifier: string; title: string }[]
+  defaultBranch: string
   repoOwner: string
   repoName: string
   onPrCreated: (prUrl: string, prNumber?: number) => void
@@ -43,6 +44,7 @@ export function PrSection({
   prNumber,
   cardBranch,
   dependsOn,
+  defaultBranch,
   repoOwner,
   repoName,
   onPrCreated,
@@ -68,7 +70,7 @@ export function PrSection({
   const branch = status?.branch ?? null
   const liveBranchName = branch?.name ?? cardBranch
   const upstreamBehind = status?.upstreamBehind ?? 0
-  const basedOn = dependsOn.length > 0 ? dependsOn[0].identifier : 'main'
+  const basedOn = dependsOn.length > 0 ? dependsOn[0].identifier : defaultBranch
 
   // Build GitHub checks URL
   const checksUrl = liveBranchName
@@ -402,7 +404,7 @@ function BranchDetails({
         <span className="flex items-center gap-1">
           <span className={cn(
             'text-[11px] font-medium text-[var(--text-primary)]',
-            basedOn !== 'main' && 'font-mono',
+            dependsOn.length > 0 && 'font-mono',
           )}>
             {basedOn}
           </span>

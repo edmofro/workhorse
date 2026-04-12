@@ -84,7 +84,7 @@ export function CardDetailPage({ cardId, initialSessionId }: Props) {
         team: card.team,
         assignee: card.assignee,
         dependsOn: card.dependsOn,
-        project: { owner: card.project.owner, repoName: card.project.repoName },
+        project: { owner: card.project.owner, repoName: card.project.repoName, defaultBranch: card.project.defaultBranch },
         cardBranch: card.cardBranch,
         prUrl: card.prUrl,
         prNumber: card.prNumber ?? null,

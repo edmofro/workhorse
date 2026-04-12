@@ -62,7 +62,7 @@ interface CardWorkspaceProps {
     team: { id: string; name: string }
     assignee: { id: string; displayName: string } | null
     dependsOn: { identifier: string; title: string }[]
-    project: { owner: string; repoName: string }
+    project: { owner: string; repoName: string; defaultBranch: string }
     cardBranch: string | null
     prUrl?: string | null
     prNumber?: number | null
@@ -835,6 +835,7 @@ export function CardWorkspace({
               prNumber: localPrNumber,
               cardBranch: card.cardBranch,
               dependsOn: card.dependsOn,
+              defaultBranch: card.project.defaultBranch,
               repoOwner: card.project.owner,
               repoName: card.project.repoName,
               onPrCreated: handlePrCreated,

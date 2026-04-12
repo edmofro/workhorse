@@ -30,8 +30,8 @@ export function useSidebarEvents() {
       try {
         const event = JSON.parse(e.data)
 
-        // Handle initial streaming sessions snapshot on connect/reconnect
-        if (event.type === 'streaming_sessions') {
+        // Handle initial active sessions snapshot on connect/reconnect
+        if (event.type === 'active_sessions') {
           const ids = event.sessionIds as string[]
           setStreamingSessions(new Set(ids))
           return
@@ -39,26 +39,16 @@ export function useSidebarEvents() {
 
         const session = event.session as SidebarSession
 
-        if (event.type === 'session_created') {
-          // Add new session to the top of the list and mark as streaming
-          queryClient.setQueryData<SidebarData>(['sidebar-data'], (old) => {
-            if (!old) return old
-            const exists = old.recentSessions.some((s) => s.id === session.id)
-            if (exists) return old
-            return {
-              ...old,
-              recentSessions: [session, ...old.recentSessions],
-            }
-          })
-          setStreamingSessions((prev) => new Set(prev).add(session.id))
-        }
-
-        if (event.type === 'streaming_start') {
-          // Move to top of the list when it becomes active
+        if (event.type === 'agent_start') {
+          // Move to top of the list when it becomes active, or add if new
           queryClient.setQueryData<SidebarData>(['sidebar-data'], (old) => {
             if (!old) return old
             const idx = old.recentSessions.findIndex((s) => s.id === session.id)
-            if (idx <= 0) return old // already at top or not found
+            if (idx < 0) {
+              // New session not yet in sidebar — add it
+              return { ...old, recentSessions: [session, ...old.recentSessions] }
+            }
+            if (idx === 0) return old // already at top
             const updated = [...old.recentSessions]
             updated.splice(idx, 1)
             return {
@@ -69,7 +59,7 @@ export function useSidebarEvents() {
           setStreamingSessions((prev) => new Set(prev).add(session.id))
         }
 
-        if (event.type === 'streaming_stop') {
+        if (event.type === 'agent_stop') {
           // Update session data and move to top
           queryClient.setQueryData<SidebarData>(['sidebar-data'], (old) => {
             if (!old) return old

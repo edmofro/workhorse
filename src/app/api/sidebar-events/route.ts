@@ -64,7 +64,7 @@ export async function GET() {
       // Send initial active sessions snapshot
       controller.enqueue(
         encoder.encode(
-          `data: ${JSON.stringify({ type: 'streaming_sessions', sessionIds: activeSessionIds })}\n\n`,
+          `data: ${JSON.stringify({ type: 'active_sessions', sessionIds: activeSessionIds })}\n\n`,
         ),
       )
 
@@ -106,7 +106,7 @@ export async function GET() {
           const changed = payload.changed
           let type: string = 'session_updated'
           if (changed.includes('agentActiveAt')) {
-            type = session.agentActiveAt ? 'streaming_start' : 'streaming_stop'
+            type = session.agentActiveAt ? 'agent_start' : 'agent_stop'
           }
 
           const event = {

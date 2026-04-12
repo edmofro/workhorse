@@ -1,22 +1,18 @@
 /**
  * Worktree recovery, stale state cleanup, and orphan detection on server startup.
  * Recreates worktrees from branches for all active cards, detects orphaned
- * agent sessions (process died mid-stream), and auto-resumes them.
+ * agent sessions (process died mid-stream), and clears their state.
  */
 
 import { prisma } from '../prisma'
 import { clearStaleSessions } from '../sessionEvents'
-import { isLockOrphaned, acquireAdvisoryLock } from '../advisoryLock'
-import { cleanupAgentSession } from '../agentLifecycle'
-import { publish } from '../sessionEvents'
+import { isLockOrphaned } from '../advisoryLock'
 import {
   ensureBareClone,
   createWorktree,
   worktreeExists,
   removeWorktree,
-  worktreePath,
 } from './worktree'
-import { branchNameFromCard } from './branchNaming'
 
 /**
  * Clear agentActiveAt for all sessions that were left in
@@ -30,53 +26,22 @@ export async function clearStaleActiveSessions(): Promise<void> {
 }
 
 /**
- * Detect orphaned agent sessions and auto-resume them.
- * An orphaned session has agentActiveAt set but no advisory lock held.
+ * Detect orphaned agent sessions and clear their active state.
+ * An orphaned session has agentActiveAt set but no advisory lock held
+ * (the process died mid-stream).
+ *
+ * Rather than attempting speculative auto-resume (which would require
+ * hardcoded agent config, user tokens without consent, and unbounded
+ * concurrency), we simply clear the flag so the user can retry.
  *
  * Called on server startup after clearStaleActiveSessions.
  */
 export async function detectAndResumeOrphans(): Promise<void> {
-  // Query sessions where agentActiveAt is non-null
   const activeSessions = await prisma.conversationSession.findMany({
     where: {
       agentActiveAt: { not: null },
     },
-    select: {
-      id: true,
-      agentSessionId: true,
-      cardId: true,
-      userId: true,
-      card: {
-        select: {
-          identifier: true,
-          title: true,
-          status: true,
-          cardBranch: true,
-          team: {
-            select: {
-              id: true,
-              colour: true,
-              project: {
-                select: {
-                  owner: true,
-                  repoName: true,
-                  defaultBranch: true,
-                  name: true,
-                },
-              },
-            },
-          },
-        },
-      },
-      user: {
-        select: {
-          id: true,
-          displayName: true,
-          githubUsername: true,
-          accessToken: true,
-        },
-      },
-    },
+    select: { id: true },
   })
 
   for (const session of activeSessions) {
@@ -84,87 +49,11 @@ export async function detectAndResumeOrphans(): Promise<void> {
       const orphaned = await isLockOrphaned(session.id)
       if (!orphaned) continue // Lock still held — agent is running normally
 
-      console.log(`Detected orphaned session ${session.id}`)
-
-      // If no SDK session ID or no card, just clear the flag
-      if (!session.agentSessionId || !session.card) {
-        await prisma.conversationSession.update({
-          where: { id: session.id },
-          data: { agentActiveAt: null },
-        })
-        console.log(`Cleared orphaned session ${session.id} (no SDK session or card)`)
-        continue
-      }
-
-      // Attempt auto-resume via the Agent SDK
-      try {
-        const { query } = await import('@anthropic-ai/claude-agent-sdk')
-
-        const card = session.card
-        const project = card.team.project
-        const branchName = card.cardBranch ?? branchNameFromCard(card.identifier)
-
-        // Ensure worktree exists
-        const serviceToken = process.env.GITHUB_SERVICE_TOKEN ?? session.user.accessToken
-        await ensureBareClone(project.owner, project.repoName, serviceToken)
-        await createWorktree(project.owner, project.repoName, card.identifier, branchName, project.defaultBranch)
-        const wtPath = worktreePath(project.owner, project.repoName, card.identifier)
-
-        // Re-mark as active and acquire lock
-        await prisma.conversationSession.update({
-          where: { id: session.id },
-          data: { agentActiveAt: new Date() },
-        })
-        const lockAcquired = await acquireAdvisoryLock(session.id)
-        if (!lockAcquired) {
-          console.warn(`Cannot acquire lock for orphaned session ${session.id}, skipping`)
-          await prisma.conversationSession.update({
-            where: { id: session.id },
-            data: { agentActiveAt: null },
-          })
-          continue
-        }
-
-        console.log(`Auto-resuming orphaned session ${session.id}`)
-
-        // Run resumed query in background
-        void (async () => {
-          try {
-            const agentQuery = query({
-              prompt: 'You were interrupted by a server restart. Continue where you left off.',
-              options: {
-                cwd: wtPath,
-                tools: ['Read', 'Glob', 'Grep', 'Write', 'Edit'],
-                permissionMode: 'acceptEdits' as const,
-                systemPrompt: { type: 'preset' as const, preset: 'claude_code' as const },
-                settingSources: ['project' as const],
-                includePartialMessages: true,
-                model: 'claude-opus-4-6',
-                maxTurns: 10,
-                persistSession: true,
-                resume: session.agentSessionId ?? undefined,
-              },
-            })
-
-            for await (const event of agentQuery) {
-              publish(session.id, event as Record<string, unknown>)
-            }
-
-            await cleanupAgentSession(session.id)
-            console.log(`Auto-resumed session ${session.id} completed`)
-          } catch (err) {
-            console.error(`Auto-resume failed for session ${session.id}:`, err)
-            await cleanupAgentSession(session.id)
-          }
-        })()
-      } catch (err) {
-        // SDK not available or session expired — graceful degradation
-        console.warn(`Cannot resume session ${session.id}, clearing:`, err)
-        await prisma.conversationSession.update({
-          where: { id: session.id },
-          data: { agentActiveAt: null },
-        })
-      }
+      await prisma.conversationSession.update({
+        where: { id: session.id },
+        data: { agentActiveAt: null },
+      })
+      console.log(`Cleared orphaned session ${session.id}`)
     } catch (err) {
       console.error(`Failed to check orphan status for session ${session.id}:`, err)
     }

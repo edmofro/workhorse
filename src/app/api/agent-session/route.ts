@@ -24,7 +24,7 @@ import { branchNameFromCard } from '../../../lib/git/branchNaming'
 import { safeParseTouchedFiles } from '../../../lib/safeParseTouchedFiles'
 import { publish as publishSessionEvent, close as closeSessionChannel } from '../../../lib/sessionEvents'
 import { acquireAdvisoryLock } from '../../../lib/advisoryLock'
-import { cleanupAgentSession } from '../../../lib/agentLifecycle'
+import { cleanupAgentSession, registerAgentAbort } from '../../../lib/agentLifecycle'
 
 class StaleSessionError extends Error {
   constructor() {
@@ -233,18 +233,21 @@ export async function POST(request: NextRequest) {
     ...(convSession.agentSessionId ? { resume: convSession.agentSessionId } : {}),
   }
 
+  // Publish a sentinel event to create the session channel BEFORE
+  // returning the response. This ensures the client's subsequent
+  // subscribeToEvents call finds an active channel instead of seeing idle.
+  publishSessionEvent(convSessionId, { type: 'status', status: 'streaming' })
+
   // Fire off the agent query in the background — events are delivered
   // to the client via the /api/sessions/[id]/events SSE endpoint
   runAgentInBackground({
     promptInput,
     options,
-    convSession,
-    convSessionId,
+    convSession: { id: convSessionId, agentSessionId: convSession.agentSessionId, title: convSession.title },
     isFirstMessage,
     owner,
     repoName,
     card,
-    cardId,
     user,
     message,
   })
@@ -261,33 +264,35 @@ export async function POST(request: NextRequest) {
 function runAgentInBackground(ctx: {
   promptInput: string | AsyncIterable<SDKUserMessage>
   options: Parameters<typeof query>[0]['options']
-  convSession: { agentSessionId: string | null; title: string | null }
-  convSessionId: string
+  convSession: { id: string; agentSessionId: string | null; title: string | null }
   isFirstMessage: boolean
   owner: string
   repoName: string
   card: { id: string; identifier: string; title: string; status: string; team: { colour: string; project: { name: string } } }
-  cardId: string
   user: { id: string; displayName: string; githubUsername: string; accessToken: string }
   message: string
 }) {
+  // Create an AbortController so the agent can be cancelled via cancelAgent()
+  const abortController = new AbortController()
+  registerAgentAbort(ctx.convSession.id, abortController)
+
   // Use an unhandled-safe async IIFE so errors don't crash the process
   void (async () => {
     let agentSdkSessionId = ctx.convSession.agentSessionId ?? ''
 
     // Acquire advisory lock — released on completion or implicitly on crash
-    const lockAcquired = await acquireAdvisoryLock(ctx.convSessionId)
+    const lockAcquired = await acquireAdvisoryLock(ctx.convSession.id)
     if (!lockAcquired) {
-      publishSessionEvent(ctx.convSessionId, {
+      publishSessionEvent(ctx.convSession.id, {
         type: 'error',
         message: 'Another agent session is already running for this conversation.',
       })
       // No lock to release — just clear activity and close channel
       await prisma.conversationSession.update({
-        where: { id: ctx.convSessionId },
+        where: { id: ctx.convSession.id },
         data: { agentActiveAt: null },
       }).catch(() => {})
-      closeSessionChannel(ctx.convSessionId)
+      closeSessionChannel(ctx.convSession.id)
       return
     }
 
@@ -295,7 +300,7 @@ function runAgentInBackground(ctx: {
       let agentQuery: ReturnType<typeof query>
 
       try {
-        agentQuery = query({ prompt: ctx.promptInput, options: ctx.options })
+        agentQuery = query({ prompt: ctx.promptInput, options: { ...ctx.options, abortController } })
         // Eagerly pull the first event to detect stale session errors early
         const firstChunk = await (agentQuery as AsyncIterable<unknown>)[Symbol.asyncIterator]().next()
         if (!firstChunk.done) {
@@ -315,11 +320,11 @@ function runAgentInBackground(ctx: {
           if (!agentSdkSessionId && 'session_id' in event && event.session_id) {
             agentSdkSessionId = event.session_id as string
             await prisma.conversationSession.update({
-              where: { id: ctx.convSessionId },
+              where: { id: ctx.convSession.id },
               data: { agentSessionId: agentSdkSessionId },
             })
           }
-          publishSessionEvent(ctx.convSessionId, event as Record<string, unknown>)
+          publishSessionEvent(ctx.convSession.id, event as Record<string, unknown>)
         }
       } catch (err) {
         // If the session ID is stale, clear it and retry without resume
@@ -328,16 +333,16 @@ function runAgentInBackground(ctx: {
           (err instanceof Error && err.message.includes('No conversation found with session ID'))
 
         if (isStaleSession && ctx.convSession.agentSessionId) {
-          console.warn(`Stale agent session ${ctx.convSession.agentSessionId} for conversation ${ctx.convSessionId}, starting fresh`)
+          console.warn(`Stale agent session ${ctx.convSession.agentSessionId} for conversation ${ctx.convSession.id}, starting fresh`)
           agentSdkSessionId = ''
           await prisma.conversationSession.update({
-            where: { id: ctx.convSessionId },
+            where: { id: ctx.convSession.id },
             data: { agentSessionId: null },
           })
           // Retry without resume
           const freshOptions = { ...ctx.options }
           delete (freshOptions as Record<string, unknown>).resume
-          agentQuery = query({ prompt: ctx.promptInput, options: freshOptions })
+          agentQuery = query({ prompt: ctx.promptInput, options: { ...freshOptions, abortController } })
         } else {
           throw err
         }
@@ -350,7 +355,7 @@ function runAgentInBackground(ctx: {
         if (!agentSdkSessionId && 'session_id' in event && event.session_id) {
           agentSdkSessionId = event.session_id
           await prisma.conversationSession.update({
-            where: { id: ctx.convSessionId },
+            where: { id: ctx.convSession.id },
             data: { agentSessionId: agentSdkSessionId },
           })
         }
@@ -368,7 +373,7 @@ function runAgentInBackground(ctx: {
         }
 
         // Publish event to session channel for subscribers
-        publishSessionEvent(ctx.convSessionId, event as Record<string, unknown>)
+        publishSessionEvent(ctx.convSession.id, event as Record<string, unknown>)
       }
 
       // Agent turn complete — auto-commit, update session metadata
@@ -376,9 +381,9 @@ function runAgentInBackground(ctx: {
         owner: ctx.owner,
         repoName: ctx.repoName,
         card: ctx.card,
-        cardId: ctx.cardId,
+        cardId: ctx.card.id,
         user: ctx.user,
-        convSessionId: ctx.convSessionId,
+        convSessionId: ctx.convSession.id,
         isFirstMessage: ctx.isFirstMessage,
         convSessionTitle: ctx.convSession.title,
         message: ctx.message,
@@ -389,26 +394,26 @@ function runAgentInBackground(ctx: {
       // Run jockey assessment and publish result via pub/sub
       try {
         const jockeyResult = await runJockeyAfterExchange(
-          ctx.cardId,
-          ctx.convSessionId,
+          ctx.card.id,
+          ctx.convSession.id,
           ctx.card.title,
           ctx.card.status,
           ctx.message,
           assistantText,
         )
         if (jockeyResult) {
-          publishSessionEvent(ctx.convSessionId, { type: 'jockey', ...jockeyResult })
+          publishSessionEvent(ctx.convSession.id, { type: 'jockey', ...jockeyResult })
         }
       } catch (jockeyErr) {
         console.warn('[jockey] Post-exchange assessment failed:', jockeyErr)
       }
 
-      await cleanupAgentSession(ctx.convSessionId)
+      await cleanupAgentSession(ctx.convSession.id)
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Agent session failed'
-      publishSessionEvent(ctx.convSessionId, { type: 'error', message: 'An unexpected error occurred. Please try again.' })
-      console.error(`[agent-session] Error for ${ctx.convSessionId}:`, errorMsg)
-      await cleanupAgentSession(ctx.convSessionId)
+      publishSessionEvent(ctx.convSession.id, { type: 'error', message: 'An unexpected error occurred. Please try again.' })
+      console.error(`[agent-session] Error for ${ctx.convSession.id}:`, errorMsg)
+      await cleanupAgentSession(ctx.convSession.id)
     }
   })()
 }

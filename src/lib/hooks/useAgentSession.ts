@@ -378,6 +378,12 @@ export function useAgentSession(
         { id: assistantId, role: 'assistant', content: '', userName: 'Workhorse' },
       ])
 
+      // Mark as streaming immediately so the UI shows the thinking indicator
+      // during the POST request, not just after the SSE subscription starts
+      setIsStreaming(true)
+      isStreamingRef.current = true
+      setThinkingVerb('Thinking...')
+
       try {
         // POST to start the agent — returns { sessionId }
         const attachmentIds = attachments?.map((a) => a.id) ?? []
@@ -414,6 +420,10 @@ export function useAgentSession(
               : m,
           ),
         )
+        // Reset streaming state on failure — subscribeToEvents/finalise won't run
+        setIsStreaming(false)
+        isStreamingRef.current = false
+        setThinkingSnippet(null)
       }
     },
     [cardId], // eslint-disable-line react-hooks/exhaustive-deps
@@ -582,6 +592,11 @@ export function useAgentSession(
     if (queued) {
       setMessages((msgs) => msgs.filter((m) => m.id !== queued.tempId))
       setQueuedMessage(null)
+    }
+    // Cancel the background agent so it stops consuming API credits
+    const sid = currentSessionIdRef.current
+    if (sid) {
+      fetch(`/api/sessions/${sid}/cancel`, { method: 'POST' }).catch(() => {})
     }
   }, [])
 

@@ -113,8 +113,8 @@
 /* Thinking indicator */
 .thinking-dot {
   display: inline-block;
-  width: 7px;
-  height: 7px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
   flex-shrink: 0;
   background-color: var(--accent);

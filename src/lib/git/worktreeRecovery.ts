@@ -5,7 +5,7 @@
  */
 
 import { prisma } from '../prisma'
-import { STALE_STREAMING_THRESHOLD_MS } from '../sessionEvents'
+import { clearStaleSessions } from '../sessionEvents'
 import {
   ensureBareClone,
   createWorktree,
@@ -18,13 +18,7 @@ import {
  * a streaming state by a server crash or redeploy.
  */
 export async function clearStaleStreamingSessions(): Promise<void> {
-  const staleThreshold = new Date(Date.now() - STALE_STREAMING_THRESHOLD_MS)
-  const { count } = await prisma.conversationSession.updateMany({
-    where: {
-      streamingStartedAt: { not: null, lte: staleThreshold },
-    },
-    data: { streamingStartedAt: null },
-  })
+  const count = await clearStaleSessions()
   if (count > 0) {
     console.log(`Cleared ${count} stale streaming session(s)`)
   }

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import { cn } from '../../lib/cn'
 
 interface ThinkingIndicatorProps {
   snippet: string | null
@@ -45,18 +46,24 @@ export function ThinkingIndicator({ snippet, verb = 'Thinking...' }: ThinkingInd
   }, [snippet])
 
   return (
-    <div className="flex flex-col gap-1 pl-[34px]">
-      <div className="flex items-center gap-[10px]">
+    <div className="flex flex-col gap-1 pl-8">
+      <div className="flex items-center gap-2">
         <span className="thinking-dot" />
         <span
-          className={`text-[13px] font-[450] text-[var(--text-muted)] transition-opacity duration-[120ms] ${verbFading ? 'opacity-0' : 'opacity-100'}`}
+          className={cn(
+            'text-[13px] font-[450] text-[var(--text-muted)] transition-opacity duration-[120ms]',
+            verbFading ? 'opacity-0' : 'opacity-100',
+          )}
         >
           {displayVerb}
         </span>
       </div>
       {displaySnippet && (
         <div
-          className={`text-[11px] text-[var(--text-faint)] leading-[1.4] truncate max-w-[500px] select-none pl-[17px] transition-opacity duration-150 ${snippetFading ? 'opacity-0' : 'opacity-100'}`}
+          className={cn(
+            'text-[11px] text-[var(--text-faint)] leading-[1.4] truncate max-w-[500px] select-none pl-4 transition-opacity duration-150',
+            snippetFading ? 'opacity-0' : 'opacity-100',
+          )}
         >
           {displaySnippet}
         </div>

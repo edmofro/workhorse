@@ -1,11 +1,12 @@
 import { requireUser } from '../../../lib/auth/session'
 import { subscribe } from '../../../lib/sidebarEvents'
 import { prisma } from '../../../lib/prisma'
-import { STALE_STREAMING_THRESHOLD_MS } from '../../../lib/sessionEvents'
+import { STALE_STREAMING_THRESHOLD_MS, clearStaleSessions } from '../../../lib/sessionEvents'
 
 /** Per-user timestamp of last stale cleanup, to avoid repeated writes on reconnect. */
 const lastCleanupByUser = new Map<string, number>()
 const CLEANUP_DEBOUNCE_MS = 60_000
+const CLEANUP_EVICTION_MS = 5 * 60_000
 
 /**
  * GET /api/sidebar-events
@@ -39,17 +40,20 @@ export async function GET() {
     select: { id: true },
   })
 
-  // Clean up stale streaming sessions at most once per minute per user
+  // Clean up stale streaming sessions at most once per minute per user.
+  // Also evict old entries from the debounce map to prevent unbounded growth.
+  const now = Date.now()
   const lastCleanup = lastCleanupByUser.get(userId) ?? 0
-  if (Date.now() - lastCleanup > CLEANUP_DEBOUNCE_MS) {
-    lastCleanupByUser.set(userId, Date.now())
-    prisma.conversationSession.updateMany({
-      where: {
-        userId,
-        streamingStartedAt: { not: null, lte: staleThreshold },
-      },
-      data: { streamingStartedAt: null },
-    }).catch(() => {})
+  if (now - lastCleanup > CLEANUP_DEBOUNCE_MS) {
+    lastCleanupByUser.set(userId, now)
+    clearStaleSessions({ userId }).catch(() => {})
+
+    // Periodic eviction of stale debounce entries
+    if (lastCleanupByUser.size > 100) {
+      for (const [uid, ts] of lastCleanupByUser) {
+        if (now - ts > CLEANUP_EVICTION_MS) lastCleanupByUser.delete(uid)
+      }
+    }
   }
 
   const streamingSessionIds = streamingSessions.map((s) => s.id)

@@ -1,6 +1,6 @@
 import { requireUser } from '../../../../../lib/auth/session'
 import { prisma } from '../../../../../lib/prisma'
-import { subscribe, isActive, STALE_STREAMING_THRESHOLD_MS } from '../../../../../lib/sessionEvents'
+import { subscribe, isActive, clearStaleSessions } from '../../../../../lib/sessionEvents'
 import { NextRequest } from 'next/server'
 
 /**
@@ -34,12 +34,8 @@ export async function GET(
 
   // Check for stale streaming — clear if older than threshold
   if (session.streamingStartedAt) {
-    const age = Date.now() - session.streamingStartedAt.getTime()
-    if (age > STALE_STREAMING_THRESHOLD_MS) {
-      await prisma.conversationSession.update({
-        where: { id: sessionId },
-        data: { streamingStartedAt: null },
-      })
+    const cleared = await clearStaleSessions({ sessionId })
+    if (cleared > 0) {
       session.streamingStartedAt = null
     }
   }

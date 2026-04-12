@@ -140,6 +140,82 @@ export function useAgentSession(
   // Track whether recovery is active so sendMessage doesn't conflict
   const recoveryAbortRef = useRef<AbortController | null>(null)
 
+  /**
+   * Shared streaming plumbing used by both sendMessage and recovery.
+   * Sets up text buffering, thinking snippet sampling, and returns
+   * helpers to drive and tear down the stream.
+   */
+  function startStreamProcessor(assistantId: string) {
+    setIsStreaming(true)
+    isStreamingRef.current = true
+    setActiveToolCalls([])
+    setThinkingSnippet(null)
+    setThinkingVerb('Thinking...')
+    thinkingBufferRef.current = ''
+    textBufferRef.current = ''
+    assistantContentRef.current = ''
+    assistantIdRef.current = assistantId
+    turnConfirmedRef.current = false
+
+    function flushTextBuffer() {
+      if (!textBufferRef.current) return
+      const flushed = assistantContentRef.current + textBufferRef.current
+      assistantContentRef.current = flushed
+      textBufferRef.current = ''
+      const id = assistantIdRef.current
+      setMessages((prev) =>
+        prev.map((m) => (m.id === id ? { ...m, content: flushed } : m)),
+      )
+    }
+
+    function scheduleFlush() {
+      if (flushTimerRef.current) return
+      flushTimerRef.current = setTimeout(() => {
+        flushTimerRef.current = null
+        flushTextBuffer()
+      }, 60)
+    }
+
+    // Sample thinking snippets every 1.5s from the buffer
+    thinkingTimerRef.current = setInterval(() => {
+      const buf = thinkingBufferRef.current
+      if (!buf) return
+      const tail = buf.slice(-120)
+      const lastNewline = tail.lastIndexOf('\n')
+      const line = lastNewline >= 0 ? tail.slice(lastNewline + 1) : tail
+      const snippet = line.trim().slice(0, 80)
+      if (snippet) setThinkingSnippet(snippet)
+    }, 1500)
+
+    /** Flush remaining text and reset all streaming state. */
+    function finalise() {
+      if (flushTimerRef.current) {
+        clearTimeout(flushTimerRef.current)
+        flushTimerRef.current = null
+      }
+      if (textBufferRef.current) {
+        const finalContent = assistantContentRef.current + textBufferRef.current
+        const id = assistantIdRef.current
+        textBufferRef.current = ''
+        assistantContentRef.current = finalContent
+        setMessages((prev) =>
+          prev.map((m) => (m.id === id ? { ...m, content: finalContent } : m)),
+        )
+      }
+      setIsStreaming(false)
+      isStreamingRef.current = false
+      setActiveToolCalls([])
+      setThinkingSnippet(null)
+      thinkingBufferRef.current = ''
+      if (thinkingTimerRef.current) {
+        clearInterval(thinkingTimerRef.current)
+        thinkingTimerRef.current = null
+      }
+    }
+
+    return { scheduleFlush, finalise }
+  }
+
   // Clean up timers on unmount
   useEffect(() => {
     return () => {
@@ -200,116 +276,52 @@ export function useAgentSession(
         // Session is actively streaming — set up recovery state
         const recoveryAssistantId = `recovery-${Date.now()}-assistant`
         setMessages((prev) => {
-          // Only add placeholder if there isn't already an empty assistant msg
           const last = prev[prev.length - 1]
           if (last?.role === 'assistant' && last.content === '') return prev
           return [...prev, { id: recoveryAssistantId, role: 'assistant', content: '', userName: 'Workhorse' }]
         })
 
-        setIsStreaming(true)
-        isStreamingRef.current = true
-        assistantContentRef.current = ''
-        assistantIdRef.current = recoveryAssistantId
-        textBufferRef.current = ''
-        thinkingBufferRef.current = ''
-        turnConfirmedRef.current = false
+        const { scheduleFlush, finalise } = startStreamProcessor(recoveryAssistantId)
 
-        function flushTextBuffer() {
-          if (!textBufferRef.current) return
-          const flushed = assistantContentRef.current + textBufferRef.current
-          assistantContentRef.current = flushed
-          textBufferRef.current = ''
-          const id = assistantIdRef.current
-          setMessages((prev) =>
-            prev.map((m) => (m.id === id ? { ...m, content: flushed } : m)),
-          )
-        }
-
-        function scheduleFlush() {
-          if (flushTimerRef.current) return
-          flushTimerRef.current = setTimeout(() => {
-            flushTimerRef.current = null
-            flushTextBuffer()
-          }, 60)
-        }
-
-        // Start thinking snippet sampler
-        thinkingTimerRef.current = setInterval(() => {
-          const b = thinkingBufferRef.current
-          if (!b) return
-          const tail = b.slice(-120)
-          const lastNewline = tail.lastIndexOf('\n')
-          const line = lastNewline >= 0 ? tail.slice(lastNewline + 1) : tail
-          const snippet = line.trim().slice(0, 80)
-          if (snippet) setThinkingSnippet(snippet)
-        }, 1500)
-
-        // Process remaining buffered data and continue reading
-        const processLines = (text: string) => {
-          const lines = text.split('\n')
-          const remainder = lines.pop() ?? ''
-          for (const line of lines) {
-            if (!line.startsWith('data: ')) continue
-            const data = line.slice(6)
-            if (data === '[DONE]') continue
-            try {
-              const event = JSON.parse(data)
-              if (event.type === 'status' && event.status === 'idle') {
-                // Stream ended
-                return { remainder, done: true }
-              }
-              processEvent(event, recoveryAssistantId, scheduleFlush)
-            } catch { /* skip */ }
+        try {
+          // Process SSE lines from the recovery stream
+          const processLines = (text: string) => {
+            const lines = text.split('\n')
+            const remainder = lines.pop() ?? ''
+            for (const line of lines) {
+              if (!line.startsWith('data: ')) continue
+              const data = line.slice(6)
+              if (data === '[DONE]') continue
+              try {
+                const event = JSON.parse(data)
+                if (event.type === 'status' && event.status === 'idle') {
+                  return { remainder, done: true }
+                }
+                processEvent(event, recoveryAssistantId, scheduleFlush)
+              } catch { /* skip */ }
+            }
+            return { remainder, done: false }
           }
-          return { remainder, done: false }
-        }
 
-        // Process any replay events still in buffer
-        const initial = processLines(buf)
-        buf = initial.remainder
-        if (initial.done) {
-          // Clean up
-          setIsStreaming(false)
-          isStreamingRef.current = false
-          setThinkingSnippet(null)
-          if (thinkingTimerRef.current) { clearInterval(thinkingTimerRef.current); thinkingTimerRef.current = null }
-          return
+          // Process any replay events still in buffer
+          const initial = processLines(buf)
+          buf = initial.remainder
+          if (!initial.done) {
+            // Continue reading live events
+            while (!abort.signal.aborted) {
+              const { done, value } = await reader.read()
+              if (done) break
+              buf += decoder.decode(value, { stream: true })
+              const result = processLines(buf)
+              buf = result.remainder
+              if (result.done) break
+            }
+          }
+        } finally {
+          finalise()
         }
-
-        // Continue reading live events
-        while (!abort.signal.aborted) {
-          const { done, value } = await reader.read()
-          if (done) break
-
-          buf += decoder.decode(value, { stream: true })
-          const result = processLines(buf)
-          buf = result.remainder
-          if (result.done) break
-        }
-
-        // Flush remaining text before finally block resets streaming state
-        if (textBufferRef.current) {
-          if (flushTimerRef.current) { clearTimeout(flushTimerRef.current); flushTimerRef.current = null }
-          const finalContent = assistantContentRef.current + textBufferRef.current
-          textBufferRef.current = ''
-          assistantContentRef.current = finalContent
-          const id = assistantIdRef.current
-          setMessages((prev) =>
-            prev.map((m) => (m.id === id ? { ...m, content: finalContent } : m)),
-          )
-        }
-      } catch (err) {
-        // Recovery is best-effort — if it fails, the user just doesn't see the in-progress stream
-      } finally {
-        // Always reset streaming state — especially important when aborted
-        // by sendMessage, which checks isStreamingRef before proceeding.
-        if (flushTimerRef.current) { clearTimeout(flushTimerRef.current); flushTimerRef.current = null }
-        setIsStreaming(false)
-        isStreamingRef.current = false
-        setActiveToolCalls([])
-        setThinkingSnippet(null)
-        thinkingBufferRef.current = ''
-        if (thinkingTimerRef.current) { clearInterval(thinkingTimerRef.current); thinkingTimerRef.current = null }
+      } catch {
+        // Recovery is best-effort
       }
     }
 
@@ -365,51 +377,9 @@ export function useAgentSession(
         { id: assistantId, role: 'assistant', content: '', userName: 'Workhorse' },
       ])
 
-      setIsStreaming(true)
-      isStreamingRef.current = true
-      setActiveToolCalls([])
-      setThinkingSnippet(null)
-      setThinkingVerb('Thinking...')
-      thinkingBufferRef.current = ''
-      textBufferRef.current = ''
-      assistantContentRef.current = ''
-      assistantIdRef.current = assistantId
-      turnConfirmedRef.current = false
+      const { scheduleFlush, finalise } = startStreamProcessor(assistantId)
       abortRef.current = new AbortController()
       wasAbortedRef.current = false
-
-      // Flush buffered text to React state — called on a 60ms throttle
-      // so multiple small deltas batch into one smooth render.
-      function flushTextBuffer() {
-        if (!textBufferRef.current) return
-        const flushed = assistantContentRef.current + textBufferRef.current
-        assistantContentRef.current = flushed
-        textBufferRef.current = ''
-        const id = assistantIdRef.current
-        setMessages((prev) =>
-          prev.map((m) => (m.id === id ? { ...m, content: flushed } : m)),
-        )
-      }
-
-      function scheduleFlush() {
-        if (flushTimerRef.current) return
-        flushTimerRef.current = setTimeout(() => {
-          flushTimerRef.current = null
-          flushTextBuffer()
-        }, 60)
-      }
-
-      // Sample thinking snippets every 1.5s from the buffer
-      thinkingTimerRef.current = setInterval(() => {
-        const buf = thinkingBufferRef.current
-        if (!buf) return
-        // Take the last ~80 chars, find a word boundary
-        const tail = buf.slice(-120)
-        const lastNewline = tail.lastIndexOf('\n')
-        const line = lastNewline >= 0 ? tail.slice(lastNewline + 1) : tail
-        const snippet = line.trim().slice(0, 80)
-        if (snippet) setThinkingSnippet(snippet)
-      }, 1500)
 
       try {
         const attachmentIds = attachments?.map((a) => a.id) ?? []
@@ -469,20 +439,6 @@ export function useAgentSession(
           ),
         )
       } finally {
-        // Flush any remaining buffered text before closing
-        if (flushTimerRef.current) {
-          clearTimeout(flushTimerRef.current)
-          flushTimerRef.current = null
-        }
-        if (textBufferRef.current) {
-          const finalContent = assistantContentRef.current + textBufferRef.current
-          const id = assistantIdRef.current
-          textBufferRef.current = ''
-          assistantContentRef.current = finalContent
-          setMessages((prev) =>
-            prev.map((m) => (m.id === id ? { ...m, content: finalContent } : m)),
-          )
-        }
         // If aborted with no content, show "Stopped." notice
         if (wasAbortedRef.current && !assistantContentRef.current) {
           const id = assistantIdRef.current
@@ -491,15 +447,7 @@ export function useAgentSession(
           )
         }
 
-        setIsStreaming(false)
-        isStreamingRef.current = false
-        setActiveToolCalls([])
-        setThinkingSnippet(null)
-        thinkingBufferRef.current = ''
-        if (thinkingTimerRef.current) {
-          clearInterval(thinkingTimerRef.current)
-          thinkingTimerRef.current = null
-        }
+        finalise()
         abortRef.current = null
       }
     },

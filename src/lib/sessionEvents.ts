@@ -35,7 +35,7 @@ function getOrCreate(sessionId: string): SessionChannel {
 /** Read replay events from the circular buffer in insertion order. */
 function replayEvents(channel: SessionChannel): Record<string, unknown>[] {
   const events: Record<string, unknown>[] = []
-  const start = channel.count <= REPLAY_BUFFER_SIZE
+  const start = channel.count < REPLAY_BUFFER_SIZE
     ? 0
     : channel.head
   const len = Math.min(channel.count, REPLAY_BUFFER_SIZE)
@@ -121,4 +121,56 @@ export function close(sessionId: string) {
 /** Check if a session has an active channel (created by publish or subscribe). */
 export function isActive(sessionId: string): boolean {
   return channels.has(sessionId)
+}
+
+// ── Stale streaming cleanup ──
+
+// Lazy import to avoid circular dependency at module load time.
+// prisma is only resolved on first call to clearStaleSessions().
+let _prisma: typeof import('../prisma').prisma | null = null
+async function getPrisma() {
+  if (!_prisma) {
+    const mod = await import('../prisma')
+    _prisma = mod.prisma
+  }
+  return _prisma
+}
+
+/**
+ * Clear stale streamingStartedAt flags. Accepts an optional scope:
+ * - no args: clears all stale sessions (for startup cleanup)
+ * - { userId }: clears stale sessions for a specific user
+ * - { sessionId }: clears a single stale session
+ *
+ * Returns the number of sessions cleared.
+ */
+export async function clearStaleSessions(
+  scope?: { userId?: string; sessionId?: string },
+): Promise<number> {
+  const prisma = await getPrisma()
+  const staleThreshold = new Date(Date.now() - STALE_STREAMING_THRESHOLD_MS)
+
+  if (scope?.sessionId) {
+    const result = await prisma.conversationSession.updateMany({
+      where: {
+        id: scope.sessionId,
+        streamingStartedAt: { not: null, lte: staleThreshold },
+      },
+      data: { streamingStartedAt: null },
+    })
+    return result.count
+  }
+
+  const where: Record<string, unknown> = {
+    streamingStartedAt: { not: null, lte: staleThreshold },
+  }
+  if (scope?.userId) {
+    where.userId = scope.userId
+  }
+
+  const result = await prisma.conversationSession.updateMany({
+    where,
+    data: { streamingStartedAt: null },
+  })
+  return result.count
 }

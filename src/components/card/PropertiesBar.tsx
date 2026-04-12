@@ -31,8 +31,25 @@ const PRIORITY_OPTIONS: PropertyOption[] = [
   { value: 'LOW', label: 'Low' },
 ]
 
-function formatDate(dateStr: string): string {
+function formatTimestamp(dateStr: string): string {
   const date = new Date(dateStr)
+  const now = new Date()
+
+  // Same calendar day → relative time
+  if (
+    date.getFullYear() === now.getFullYear() &&
+    date.getMonth() === now.getMonth() &&
+    date.getDate() === now.getDate()
+  ) {
+    const diffMs = now.getTime() - date.getTime()
+    const diffMin = Math.floor(diffMs / 60_000)
+    if (diffMin < 1) return 'just now'
+    if (diffMin < 60) return `${diffMin} min`
+    const diffHours = Math.floor(diffMin / 60)
+    return `${diffHours} ${diffHours === 1 ? 'hour' : 'hours'}`
+  }
+
+  // Different day → succinct absolute date
   const day = date.getDate()
   const month = date.toLocaleString('en-AU', { month: 'short' })
   return `${day} ${month}`
@@ -258,8 +275,8 @@ function JourneySection({
               <span className="w-4 flex justify-center shrink-0">
                 <span className="w-2 h-2 rounded-full bg-[var(--green)]" />
               </span>
-              <span className="flex-1 truncate">{entry.summary}</span>
-              <span className="text-[11px] text-[var(--text-faint)] shrink-0">{formatDate(entry.createdAt)}</span>
+              <span className="flex-1 truncate">{entry.label}</span>
+              <span className="text-[11px] text-[var(--text-faint)] shrink-0">{formatTimestamp(entry.createdAt)}</span>
             </div>
           ))}
 

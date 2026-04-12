@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '../../../lib/prisma'
 import { requireUser, requireCardAccess } from '../../../lib/auth/session'
 import { getDefaultPills, getDefaultSuggestions } from '../../../lib/jockey/assess'
+import { BUILT_IN_SKILLS } from '../../../lib/skills/registry'
 import { getChangedFiles } from '../../../lib/git/worktree'
 
 export async function GET(request: NextRequest) {
@@ -28,7 +29,7 @@ export async function GET(request: NextRequest) {
     prisma.journalEntry.findMany({
       where: { cardId },
       orderBy: { createdAt: 'asc' },
-      select: { id: true, type: true, summary: true, createdAt: true },
+      select: { id: true, type: true, label: true, summary: true, createdAt: true },
       take: 100,
     }),
     prisma.scheduledStep.findMany({
@@ -55,6 +56,7 @@ export async function GET(request: NextRequest) {
     journalEntries: journalEntries.map(e => ({
       id: e.id,
       type: e.type,
+      label: e.label ?? BUILT_IN_SKILLS[e.type]?.label ?? e.type,
       summary: e.summary,
       createdAt: e.createdAt.toISOString(),
     })),

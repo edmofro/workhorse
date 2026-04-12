@@ -784,6 +784,8 @@ async function runJockeyAfterExchange(
           cardId,
           // Constrain type to alphanumeric + hyphens, max 50 chars
           type: entry.type.replace(/[^a-z0-9-]/gi, '').slice(0, 50) || 'general',
+          // Short display label for the journey section, capped at 50 chars
+          label: entry.label.slice(0, 50),
           // Length-limit summary to prevent unbounded storage
           summary: entry.summary.slice(0, 500),
         })),

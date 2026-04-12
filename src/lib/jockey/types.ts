@@ -25,7 +25,7 @@ export interface JockeyInput {
 
 export interface JockeyAssessment {
   /** New journal entries to create (empty if nothing noteworthy) */
-  journalEntries: { type: string; summary: string }[]
+  journalEntries: { type: string; label: string; summary: string }[]
   /** Label for the currently active step (for collapsed journey bar) */
   activeStep: string | null
   /** Pill suggestions — 2-4 skills relevant right now */

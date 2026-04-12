@@ -7,6 +7,7 @@ import { BUILT_IN_SKILLS } from '../skills/registry'
 export interface JournalEntryData {
   id: string
   type: string
+  label: string
   summary: string
   createdAt: string
 }
@@ -63,7 +64,7 @@ export function useJockeyState(cardId: string) {
 
   /** Called when a jockey SSE event arrives during conversation */
   const handleJockeyEvent = useCallback((event: {
-    journalEntries?: { type: string; summary: string }[]
+    journalEntries?: { type: string; label: string; summary: string }[]
     pills?: PillSuggestion[]
     suggestions?: PillSuggestion[]
     activeStep?: string | null
@@ -76,6 +77,7 @@ export function useJockeyState(cardId: string) {
             ...event.journalEntries.map(e => ({
               id: `temp-${Date.now()}-${Math.random()}`,
               type: e.type,
+              label: e.label,
               summary: e.summary,
               createdAt: new Date().toISOString(),
             })),

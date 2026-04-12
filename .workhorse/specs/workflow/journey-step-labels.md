@@ -16,7 +16,8 @@ Journal entries carry a short, stable label used as the display text throughout 
 
 ## Journey section display
 
-- [ ] The expanded journey dropdown shows each completed entry's label as the primary text, with the timestamp on the right
+- [ ] The expanded journey dropdown shows each completed entry's label as the primary text, with a relative or absolute timestamp on the right
+- [ ] Timestamps show relative time ("2 min", "3 hours") while the entry is from the current calendar day, switching to a succinct absolute date ("2 Apr") once the entry falls on a previous day
 - [ ] The full summary is not shown in the journey dropdown — the label is sufficient
 - [ ] The collapsed journey bar shows the active step's label beside the progress dots (unchanged from current behaviour)
 

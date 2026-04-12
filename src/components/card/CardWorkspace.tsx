@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useEffect, useRef } from 'react'
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
 import type { ViewState } from '../../lib/hooks/useViewNavigation'
 import { useRouter } from 'next/navigation'
 import { cn } from '../../lib/cn'
@@ -21,6 +21,7 @@ import { SpecEditor } from './SpecEditor'
 import { MockupArtifact } from './MockupArtifact'
 import { NewSpecDialog } from './NewSpecDialog'
 import { ArtifactsSidebar, type CodeFileItem } from './ArtifactsSidebar'
+import { PrSection } from './PrSection'
 import { Skeleton } from '../Skeleton'
 import { CodeDiffArtifact } from './CodeDiffArtifact'
 import { CodeEditorView } from './CodeEditorView'
@@ -462,6 +463,20 @@ export function CardWorkspace({
     router.refresh()
   }, [router])
 
+  const prProps = useMemo(() => ({
+    cardId: card.id,
+    cardIdentifier: card.identifier,
+    hasCodeChanges: jockey.hasCodeChanges,
+    prUrl: localPrUrl,
+    prNumber: localPrNumber,
+    cardBranch: card.cardBranch,
+    dependsOn: card.dependsOn,
+    defaultBranch: card.project.defaultBranch,
+    repoOwner: card.project.owner,
+    repoName: card.project.repoName,
+    onPrCreated: handlePrCreated,
+  }), [card.id, card.identifier, card.cardBranch, card.dependsOn, card.project, jockey.hasCodeChanges, localPrUrl, localPrNumber, handlePrCreated])
+
   // Spec operations
   const ensureWorktree = useCallback(async () => {
     setIsEnsuring(true)
@@ -821,26 +836,16 @@ export function CardWorkspace({
               />
             </div>
           </div>
-          <ArtifactsSidebar
-            specs={specFiles.map((f) => ({ filePath: f.filePath, isNew: f.isNew, content: f.content }))}
-            mockups={allMockupFiles}
-            codeFiles={codeFileItems}
-            activeFilePath={null}
-            onSelectFile={(fp) => openFileExpanded(fp)}
-            pr={{
-              cardId: card.id,
-              cardIdentifier: card.identifier,
-              hasCodeChanges: jockey.hasCodeChanges,
-              prUrl: localPrUrl,
-              prNumber: localPrNumber,
-              cardBranch: card.cardBranch,
-              dependsOn: card.dependsOn,
-              defaultBranch: card.project.defaultBranch,
-              repoOwner: card.project.owner,
-              repoName: card.project.repoName,
-              onPrCreated: handlePrCreated,
-            }}
-          />
+          <aside className="shrink-0 w-[248px] border-l border-[var(--border-subtle)] bg-[var(--bg-page)] flex flex-col overflow-y-auto">
+            <PrSection {...prProps} />
+            <ArtifactsSidebar
+              specs={specFiles.map((f) => ({ filePath: f.filePath, isNew: f.isNew, content: f.content }))}
+              mockups={allMockupFiles}
+              codeFiles={codeFileItems}
+              activeFilePath={null}
+              onSelectFile={(fp) => openFileExpanded(fp)}
+            />
+          </aside>
         </>
       )}
 
@@ -857,25 +862,16 @@ export function CardWorkspace({
               <Skeleton className="h-4 w-2/3" />
             </aside>
           ) : (
-            <ArtifactsSidebar
-              specs={specFiles.map((f) => ({ filePath: f.filePath, isNew: f.isNew, content: f.content }))}
-              mockups={allMockupFiles}
-              codeFiles={codeFileItems}
-              activeFilePath={activeFilePath}
-              onSelectFile={(fp) => openFile(fp)}
-              pr={{
-                cardId: card.id,
-                cardIdentifier: card.identifier,
-                hasCodeChanges: jockey.hasCodeChanges,
-                prUrl: localPrUrl,
-                prNumber: localPrNumber,
-                cardBranch: card.cardBranch,
-                dependsOn: card.dependsOn,
-                repoOwner: card.project.owner,
-                repoName: card.project.repoName,
-                onPrCreated: handlePrCreated,
-              }}
-            />
+            <aside className="shrink-0 w-[248px] border-l border-[var(--border-subtle)] bg-[var(--bg-page)] flex flex-col overflow-y-auto">
+              <PrSection {...prProps} />
+              <ArtifactsSidebar
+                specs={specFiles.map((f) => ({ filePath: f.filePath, isNew: f.isNew, content: f.content }))}
+                mockups={allMockupFiles}
+                codeFiles={codeFileItems}
+                activeFilePath={activeFilePath}
+                onSelectFile={(fp) => openFile(fp)}
+              />
+            </aside>
           )}
         </>
       )}

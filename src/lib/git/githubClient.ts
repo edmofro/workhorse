@@ -136,18 +136,20 @@ export async function getCheckStatus(
   repo: string,
   ref: string,
 ): Promise<{ status: 'passing' | 'failing' | 'pending' | null; total: number }> {
-  // Use the combined status + check runs endpoints in parallel
-  const [statusRes, checksRes] = await Promise.all([
-    fetch(`${GITHUB_API}/repos/${owner}/${repo}/commits/${ref}/status`, {
+  const encodedRef = encodeURIComponent(ref)
+
+  // Combined status (legacy statuses) + check suites (GitHub Actions) in parallel
+  const [statusRes, suitesRes] = await Promise.all([
+    fetch(`${GITHUB_API}/repos/${owner}/${repo}/commits/${encodedRef}/status`, {
       headers: getHeaders(token),
     }),
-    fetch(`${GITHUB_API}/repos/${owner}/${repo}/commits/${ref}/check-runs?per_page=1`, {
+    fetch(`${GITHUB_API}/repos/${owner}/${repo}/commits/${encodedRef}/check-suites`, {
       headers: getHeaders(token),
     }),
   ])
 
   let commitStatus: string | null = null
-  let checkConclusion: string | null = null
+  let suiteConclusion: string | null = null
   let total = 0
 
   if (statusRes.ok) {
@@ -156,32 +158,31 @@ export async function getCheckStatus(
     total += data.total_count ?? 0
   }
 
-  if (checksRes.ok) {
-    const data = await checksRes.json()
-    total += data.total_count ?? 0
-    if (data.check_runs?.length > 0) {
-      // Check if any are in progress or have failed
-      const run = data.check_runs[0]
-      if (run.status === 'in_progress' || run.status === 'queued') {
-        checkConclusion = 'pending'
-      } else if (run.conclusion === 'failure' || run.conclusion === 'timed_out') {
-        checkConclusion = 'failure'
-      } else if (run.conclusion === 'success') {
-        checkConclusion = 'success'
-      }
-    }
+  if (suitesRes.ok) {
+    const data = await suitesRes.json()
+    const suites: { status: string; conclusion: string | null }[] = data.check_suites ?? []
+    total += suites.length
+
+    // Aggregate across all check suites
+    const hasFailure = suites.some((s) => s.conclusion === 'failure' || s.conclusion === 'timed_out')
+    const hasPending = suites.some((s) => s.status === 'in_progress' || s.status === 'queued')
+    const hasSuccess = suites.some((s) => s.conclusion === 'success')
+
+    if (hasFailure) suiteConclusion = 'failure'
+    else if (hasPending) suiteConclusion = 'pending'
+    else if (hasSuccess) suiteConclusion = 'success'
   }
 
   if (total === 0) return { status: null, total: 0 }
 
   // Combine: any failure → failing, any pending → pending, else passing
-  if (commitStatus === 'failure' || commitStatus === 'error' || checkConclusion === 'failure') {
+  if (commitStatus === 'failure' || commitStatus === 'error' || suiteConclusion === 'failure') {
     return { status: 'failing', total }
   }
-  if (commitStatus === 'pending' || checkConclusion === 'pending') {
+  if (commitStatus === 'pending' || suiteConclusion === 'pending') {
     return { status: 'pending', total }
   }
-  if (commitStatus === 'success' || checkConclusion === 'success') {
+  if (commitStatus === 'success' || suiteConclusion === 'success') {
     return { status: 'passing', total }
   }
 

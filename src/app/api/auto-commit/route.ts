@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireUser, requireCardAccess } from '../../../lib/auth/session'
 import { prisma } from '../../../lib/prisma'
-import { autoCommit, pushBranch } from '../../../lib/git/worktree'
+import { autoCommit } from '../../../lib/git/worktree'
 
 /**
  * Auto-commit changed files in a card's worktree.
@@ -11,10 +11,9 @@ export async function POST(request: NextRequest) {
   const user = await requireUser()
 
   const body = await request.json()
-  const { cardId, commitMessage, pushOnly } = body as {
+  const { cardId, commitMessage } = body as {
     cardId: string
     commitMessage?: string
-    pushOnly?: boolean
   }
 
   if (!cardId) {
@@ -30,12 +29,6 @@ export async function POST(request: NextRequest) {
   const { owner, repoName } = card.team.project
 
   try {
-    // Push-only mode: just push existing commits to remote
-    if (pushOnly) {
-      await pushBranch(owner, repoName, card.identifier, user.accessToken)
-      return NextResponse.json({ pushed: true })
-    }
-
     const message = commitMessage || 'Update specs'
     const changedFiles = await autoCommit(
       owner,
@@ -65,8 +58,7 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({ changedFiles })
-  } catch (err) {
-    const message = err instanceof Error ? err.message : 'Auto-commit failed'
-    return new Response(message, { status: 500 })
+  } catch {
+    return new Response('Auto-commit failed', { status: 500 })
   }
 }

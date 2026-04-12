@@ -636,59 +636,42 @@ export async function getBranchStatus(
 }> {
   const wtPath = worktreePath(owner, repo, cardIdentifier)
 
-  let localChanges = 0
-  let unpushedCommits = 0
-  let remoteAhead = 0
+  // Run independent queries in parallel: local changes + branch name
+  const [statusResult, branchResult] = await Promise.all([
+    git(['status', '--porcelain'], wtPath).catch(() => ''),
+    git(['rev-parse', '--abbrev-ref', 'HEAD'], wtPath).catch(() => ''),
+  ])
 
-  // Count uncommitted changes
-  try {
-    const status = await git(['status', '--porcelain'], wtPath)
-    if (status) {
-      localChanges = status.split('\n').filter(Boolean).length
-    }
-  } catch {
-    // Worktree may not exist
+  const localChanges = statusResult
+    ? statusResult.split('\n').filter(Boolean).length
+    : 0
+
+  if (!branchResult) return { localChanges, unpushedCommits: 0, remoteAhead: 0 }
+
+  const trackingBranch = `origin/${branchResult}`
+
+  // Check if remote tracking branch exists
+  const hasRemote = await git(['rev-parse', '--verify', trackingBranch], wtPath)
+    .then(() => true)
+    .catch(() => false)
+
+  if (!hasRemote) {
+    // No remote tracking — use rev-list --count instead of log --oneline
+    const count = await git(['rev-list', '--count', 'HEAD'], wtPath).catch(() => '0')
+    return { localChanges, unpushedCommits: parseInt(count, 10) || 0, remoteAhead: 0 }
   }
 
-  // Count unpushed commits and remote-ahead commits
-  try {
-    const branchName = await git(['rev-parse', '--abbrev-ref', 'HEAD'], wtPath)
-    const trackingBranch = `origin/${branchName}`
+  // Ahead/behind counts are independent — run in parallel
+  const [ahead, behind] = await Promise.all([
+    git(['rev-list', '--count', `${trackingBranch}..HEAD`], wtPath).catch(() => '0'),
+    git(['rev-list', '--count', `HEAD..${trackingBranch}`], wtPath).catch(() => '0'),
+  ])
 
-    // Check if remote tracking branch exists
-    try {
-      await git(['rev-parse', '--verify', trackingBranch], wtPath)
-    } catch {
-      // No remote tracking branch — everything is unpushed
-      try {
-        const log = await git(['log', '--oneline', 'HEAD'], wtPath)
-        unpushedCommits = log ? log.split('\n').filter(Boolean).length : 0
-      } catch {
-        // ignore
-      }
-      return { localChanges, unpushedCommits, remoteAhead }
-    }
-
-    // Commits ahead (local but not pushed)
-    try {
-      const ahead = await git(['rev-list', '--count', `${trackingBranch}..HEAD`], wtPath)
-      unpushedCommits = parseInt(ahead, 10) || 0
-    } catch {
-      // ignore
-    }
-
-    // Commits behind (remote has but local doesn't)
-    try {
-      const behind = await git(['rev-list', '--count', `HEAD..${trackingBranch}`], wtPath)
-      remoteAhead = parseInt(behind, 10) || 0
-    } catch {
-      // ignore
-    }
-  } catch {
-    // ignore
+  return {
+    localChanges,
+    unpushedCommits: parseInt(ahead, 10) || 0,
+    remoteAhead: parseInt(behind, 10) || 0,
   }
-
-  return { localChanges, unpushedCommits, remoteAhead }
 }
 
 /**

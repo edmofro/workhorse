@@ -64,7 +64,6 @@ function skillLabel(skillId: string): string {
 interface CardPropertiesProps {
   card: {
     id: string
-    identifier: string
     status: string
     priority: string
     team: { id: string; name: string }
@@ -357,7 +356,6 @@ function JourneySection({
 interface PropertiesBarProps {
   card: {
     id: string
-    identifier: string
     status: string
     priority: string
     team: { id: string; name: string }

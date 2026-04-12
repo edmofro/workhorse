@@ -54,14 +54,13 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  // Run all status checks in parallel
-  const hasWorktree = card.cardBranch ? await worktreeExists(owner, repoName, cardId) : false
+  // Run all status checks in parallel — worktreeExists runs alongside GitHub API calls
+  const worktreeCheck = card.cardBranch
+    ? worktreeExists(owner, repoName, cardId)
+    : Promise.resolve(false)
 
-  const [branchStatus, pr, ciStatus, upstreamBehind] = await Promise.all([
-    // Branch sync status (only if worktree exists)
-    hasWorktree
-      ? getBranchStatus(owner, repoName, cardId)
-      : Promise.resolve({ localChanges: 0, unpushedCommits: 0, remoteAhead: 0 }),
+  const [hasWorktree, pr, ciStatus] = await Promise.all([
+    worktreeCheck,
 
     // PR status from GitHub (only if PR exists)
     card.prNumber
@@ -72,17 +71,19 @@ export async function GET(request: NextRequest) {
     card.cardBranch
       ? getCheckStatus(user.accessToken, owner, repoName, card.cardBranch)
       : Promise.resolve({ status: null, total: 0 }),
+  ])
 
-    // Upstream behind count
-    hasWorktree
-      ? (() => {
-          // If card depends on another card, use that card's branch as upstream
+  // Git-based queries depend on worktree existing
+  const [branchStatus, upstreamBehind] = hasWorktree
+    ? await Promise.all([
+        getBranchStatus(owner, repoName, cardId),
+        (() => {
           const parentBranch = card.dependsOn[0]?.parent.cardBranch
           const upstreamRef = parentBranch ?? defaultBranch
           return getUpstreamBehindCount(owner, repoName, cardId, upstreamRef)
-        })()
-      : Promise.resolve(0),
-  ])
+        })(),
+      ])
+    : [{ localChanges: 0, unpushedCommits: 0, remoteAhead: 0 }, 0]
 
   return NextResponse.json({
     // PR state

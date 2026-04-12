@@ -4,7 +4,6 @@ import { FileText, Image as ImageIcon, Code2 } from 'lucide-react'
 import { cn } from '../../lib/cn'
 import { deriveLabel } from '../../lib/labels'
 import type { SpecFileItem, MockupFileItem } from './types'
-import { PrSection } from './PrSection'
 
 export interface CodeFileItem {
   filePath: string
@@ -20,20 +19,6 @@ interface ArtifactsSidebarProps {
   codeFiles: CodeFileItem[]
   activeFilePath?: string | null
   onSelectFile: (filePath: string) => void
-  /** PR section props — when provided, the PR section renders at the top */
-  pr?: {
-    cardId: string
-    cardIdentifier: string
-    hasCodeChanges: boolean
-    prUrl: string | null
-    prNumber: number | null
-    cardBranch: string | null
-    dependsOn: { identifier: string; title: string }[]
-    defaultBranch: string
-    repoOwner: string
-    repoName: string
-    onPrCreated: (prUrl: string, prNumber?: number) => void
-  }
 }
 
 /** Artifacts sidebar shown in the chat view. Three sections: Specs, Mockups, Code. */
@@ -43,26 +28,9 @@ export function ArtifactsSidebar({
   codeFiles,
   activeFilePath,
   onSelectFile,
-  pr,
 }: ArtifactsSidebarProps) {
   return (
-    <aside className="shrink-0 w-[248px] border-l border-[var(--border-subtle)] bg-[var(--bg-page)] flex flex-col overflow-y-auto">
-      {/* PR section */}
-      {pr && (
-        <PrSection
-          cardId={pr.cardId}
-          cardIdentifier={pr.cardIdentifier}
-          hasCodeChanges={pr.hasCodeChanges}
-          prUrl={pr.prUrl}
-          prNumber={pr.prNumber}
-          cardBranch={pr.cardBranch}
-          dependsOn={pr.dependsOn}
-          defaultBranch={pr.defaultBranch}
-          repoOwner={pr.repoOwner}
-          repoName={pr.repoName}
-          onPrCreated={pr.onPrCreated}
-        />
-      )}
+    <div className="flex flex-col overflow-y-auto flex-1">
 
       {/* Specs */}
       <Section label="Specs">
@@ -120,7 +88,7 @@ export function ArtifactsSidebar({
           <p className="px-2 py-1 text-[11px] text-[var(--text-faint)]">No changes yet</p>
         )}
       </Section>
-    </aside>
+    </div>
   )
 }
 

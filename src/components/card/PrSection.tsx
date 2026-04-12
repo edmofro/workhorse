@@ -50,6 +50,7 @@ export function PrSection({
   onPrCreated,
 }: PrSectionProps) {
   const [isCreating, setIsCreating] = useState(false)
+  const [isOperating, setIsOperating] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [expanded, setExpanded] = useState(false)
   const [copied, setCopied] = useState(false)
@@ -123,41 +124,29 @@ export function PrSection({
     setTimeout(() => setCopied(false), 1500)
   }, [])
 
-  const handleCommit = useCallback(async () => {
+  const runOperation = useCallback(async (url: string, body: Record<string, unknown>) => {
+    setIsOperating(true)
+    setError(null)
     try {
-      await fetch('/api/auto-commit', {
+      const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cardId }),
+        body: JSON.stringify(body),
       })
-    } catch {
-      // best-effort
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({ error: 'Operation failed' }))
+        throw new Error(data.error ?? 'Operation failed')
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Operation failed')
+    } finally {
+      setIsOperating(false)
     }
-  }, [cardId])
+  }, [])
 
-  const handlePush = useCallback(async () => {
-    try {
-      await fetch('/api/auto-commit', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cardId, pushOnly: true }),
-      })
-    } catch {
-      // best-effort
-    }
-  }, [cardId])
-
-  const handlePull = useCallback(async () => {
-    try {
-      await fetch('/api/git-pull', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cardId }),
-      })
-    } catch {
-      // best-effort
-    }
-  }, [cardId])
+  const handleCommit = useCallback(() => runOperation('/api/auto-commit', { cardId }), [cardId, runOperation])
+  const handlePush = useCallback(() => runOperation('/api/git-push', { cardId }), [cardId, runOperation])
+  const handlePull = useCallback(() => runOperation('/api/git-pull', { cardId }), [cardId, runOperation])
 
   if (state === 'hidden') return null
 
@@ -166,7 +155,7 @@ export function PrSection({
     return (
       <div className="px-4 py-2 border-b border-[var(--border-subtle)]">
         {error && (
-          <p className="text-[11px] text-[var(--diff-red)] mb-1.5">{error}</p>
+          <p className="text-[11px] text-[var(--diff-red,#dc2626)] mb-1.5">{error}</p>
         )}
         <button
           onClick={handleCreatePr}
@@ -260,7 +249,7 @@ export function PrSection({
       {expanded && (
         <div className="px-4 pb-3 flex flex-col gap-2">
           {error && (
-            <p className="text-[11px] text-[var(--diff-red)]">{error}</p>
+            <p className="text-[11px] text-[var(--diff-red,#dc2626)]">{error}</p>
           )}
 
           {/* CI status */}
@@ -279,6 +268,7 @@ export function PrSection({
                 unpushedCommits={branch?.unpushedCommits ?? 0}
                 remoteAhead={branch?.remoteAhead ?? 0}
                 copied={copied}
+                disabled={isOperating}
                 onCopy={handleCopyBranch}
                 onCommit={handleCommit}
                 onPush={handlePush}
@@ -332,7 +322,7 @@ function CiStatusRow({ ci, checksUrl }: { ci: BranchStatusData['ci'] | null; che
 
   const colour =
     ci.status === 'passing' ? 'text-[var(--green)]' :
-    ci.status === 'failing' ? 'text-[var(--diff-red)]' :
+    ci.status === 'failing' ? 'text-[var(--diff-red,#dc2626)]' :
     ci.status === 'pending' ? 'text-[var(--amber)]' :
     'text-[var(--text-faint)]'
 
@@ -365,6 +355,7 @@ function BranchDetails({
   unpushedCommits,
   remoteAhead,
   copied,
+  disabled,
   onCopy,
   onCommit,
   onPush,
@@ -377,6 +368,7 @@ function BranchDetails({
   unpushedCommits: number
   remoteAhead: number
   copied: boolean
+  disabled?: boolean
   onCopy: (name: string) => void
   onCommit: () => void
   onPush: () => void
@@ -428,6 +420,7 @@ function BranchDetails({
         isWarning={localChanges > 0}
         action={localChanges > 0 ? 'Commit' : undefined}
         onAction={localChanges > 0 ? onCommit : undefined}
+        disabled={disabled}
       />
       <StatusRow
         label="Unpushed"
@@ -435,6 +428,7 @@ function BranchDetails({
         isWarning={unpushedCommits > 0}
         action={unpushedCommits > 0 ? 'Push' : undefined}
         onAction={unpushedCommits > 0 ? onPush : undefined}
+        disabled={disabled}
       />
       <StatusRow
         label="Remote"
@@ -442,6 +436,7 @@ function BranchDetails({
         isWarning={remoteAhead > 0}
         action={remoteAhead > 0 ? 'Pull' : undefined}
         onAction={remoteAhead > 0 ? onPull : undefined}
+        disabled={disabled}
       />
     </div>
   )
@@ -453,12 +448,14 @@ function StatusRow({
   isWarning,
   action,
   onAction,
+  disabled,
 }: {
   label: string
   value: string
   isWarning?: boolean
   action?: string
   onAction?: () => void
+  disabled?: boolean
 }) {
   return (
     <div className="flex items-center justify-between px-0.5">
@@ -473,7 +470,11 @@ function StatusRow({
         {action && onAction && (
           <button
             onClick={onAction}
-            className="text-[11px] font-medium text-[var(--accent)] hover:underline cursor-pointer"
+            disabled={disabled}
+            className={cn(
+              'text-[11px] font-medium text-[var(--accent)] hover:underline cursor-pointer',
+              disabled && 'opacity-50 cursor-not-allowed hover:no-underline',
+            )}
           >
             {action}
           </button>

@@ -23,6 +23,7 @@ model User {
 
   attachments          Attachment[]
   conversationSessions ConversationSession[]
+  fileLocks            FileLock[]
 }
 
 model Project {
@@ -88,6 +89,7 @@ model Card {
   sessions       ConversationSession[]
   journalEntries JournalEntry[]
   scheduledSteps ScheduledStep[]
+  fileLocks      FileLock[]
 
   @@index([teamId])
   @@index([assigneeId])
@@ -203,4 +205,20 @@ model ConversationSession {
 
   @@index([cardId, lastMessageAt(sort: Desc)])
   @@index([userId, lastMessageAt(sort: Desc)])
+}
+
+model FileLock {
+  id        String   @id @default(cuid())
+  cardId    String
+  filePath  String
+  lockedBy  String
+  userId    String?
+  expiresAt DateTime
+
+  card Card  @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@unique([cardId, filePath])
+  @@index([cardId])
+  @@index([expiresAt])
 }

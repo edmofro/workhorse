@@ -46,7 +46,7 @@ function formatTimestamp(dateStr: string): string {
     if (diffMin < 1) return 'just now'
     if (diffMin < 60) return `${diffMin} min`
     const diffHours = Math.floor(diffMin / 60)
-    return `${diffHours} ${diffHours === 1 ? 'hour' : 'hours'}`
+    return `${diffHours} hr`
   }
 
   // Different day → succinct absolute date

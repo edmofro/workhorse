@@ -56,7 +56,7 @@ export async function GET(request: NextRequest) {
     journalEntries: journalEntries.map(e => ({
       id: e.id,
       type: e.type,
-      label: e.label ?? BUILT_IN_SKILLS[e.type]?.label ?? e.type,
+      label: e.label ?? BUILT_IN_SKILLS[e.type]?.label ?? e.type.replace(/-/g, ' ').replace(/^\w/, c => c.toUpperCase()),
       summary: e.summary,
       createdAt: e.createdAt.toISOString(),
     })),

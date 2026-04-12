@@ -10,7 +10,7 @@ import path from 'path'
 import { prisma } from '../../../lib/prisma'
 import { requireUser, requireCardAccess } from '../../../lib/auth/session'
 import { buildSessionInstructions } from '../../../lib/ai/sessionPrompt'
-import { isValidSkillId } from '../../../lib/skills/registry'
+import { isValidSkillId, humaniseSkillId } from '../../../lib/skills/registry'
 import { runJockeyAssessment } from '../../../lib/jockey/assess'
 import { detectSkillIntent } from '../../../lib/jockey/detectIntent'
 import type { JockeyAssessment } from '../../../lib/jockey/types'
@@ -785,8 +785,8 @@ async function runJockeyAfterExchange(
           // Constrain type to alphanumeric + hyphens, max 50 chars
           type: entry.type.replace(/[^a-z0-9-]/gi, '').slice(0, 50) || 'general',
           // Short display label for the journey section, capped at 50 chars.
-          // Fall back to type if the LLM returns an empty string.
-          label: entry.label.slice(0, 50) || entry.type,
+          // Fall back to a humanised type if the LLM returns an empty string.
+          label: entry.label.slice(0, 50) || humaniseSkillId(entry.type),
           // Length-limit summary to prevent unbounded storage
           summary: entry.summary.slice(0, 500),
         })),

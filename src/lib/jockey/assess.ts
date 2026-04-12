@@ -4,7 +4,7 @@
  */
 
 import { anthropic } from '../anthropic'
-import { BUILT_IN_SKILLS } from '../skills/registry'
+import { BUILT_IN_SKILLS, humaniseSkillId } from '../skills/registry'
 import type { JockeyInput, JockeyAssessment } from './types'
 
 const JOCKEY_SYSTEM_PROMPT = `You are the jockey — a lightweight observer that tracks the progress of a card's workflow in Workhorse, a spec-driven development workbench.
@@ -149,7 +149,7 @@ export async function runJockeyAssessment(input: JockeyInput): Promise<JockeyAss
       ...e,
       label: typeof e.label === 'string' && e.label.length > 0
         ? e.label
-        : BUILT_IN_SKILLS[e.type]?.label ?? e.type,
+        : BUILT_IN_SKILLS[e.type]?.label ?? humaniseSkillId(e.type),
     })
     const validPill = (p: unknown): p is { skillId: string; label: string } =>
       !!p && typeof (p as Record<string, unknown>).skillId === 'string' && typeof (p as Record<string, unknown>).label === 'string'

@@ -1,0 +1,505 @@
+<!-- spec: workflow/branch-context-bar.md (draft) -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Branch Context Bar — WH-078</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-page: #f8f7f4;
+    --bg-surface: #ffffff;
+    --bg-sidebar: #f1efeb;
+    --bg-hover: #edeae5;
+    --bg-inset: #e8e5df;
+    --text-primary: #1c1917;
+    --text-secondary: #57534e;
+    --text-muted: #a8a29e;
+    --text-faint: #d1cdc6;
+    --border-default: #dfdcd5;
+    --border-subtle: #eae7e1;
+    --accent: #c2410c;
+    --accent-hover: #b33b09;
+    --green: #16a34a;
+    --amber: #b45309;
+    --blue: #2563eb;
+    --shadow-sm: 0 1px 3px rgba(28,25,23,0.04);
+    --shadow-md: 0 2px 8px rgba(28,25,23,0.06);
+    --radius-default: 8px;
+    --radius-sm: 4px;
+    --radius-md: 6px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg-page);
+    color: var(--text-secondary);
+    padding: 40px;
+    display: flex;
+    flex-direction: column;
+    gap: 48px;
+  }
+
+  .scenario { display: flex; flex-direction: column; gap: 12px; }
+  .scenario-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  /* ─── The bar itself ─── */
+  .context-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background: var(--bg-surface);
+    border-bottom: 1px solid var(--border-subtle);
+    font-size: 12px;
+    min-height: 36px;
+  }
+
+  .base-label {
+    color: var(--text-muted);
+    font-weight: 500;
+    white-space: nowrap;
+  }
+
+  .base-value {
+    color: var(--text-primary);
+    font-weight: 500;
+    white-space: nowrap;
+  }
+
+  .base-value .card-id {
+    font-family: ui-monospace, 'SF Mono', 'Cascadia Code', monospace;
+    color: var(--text-muted);
+    font-size: 11px;
+    margin-right: 4px;
+  }
+
+  .base-timestamp {
+    color: var(--text-muted);
+    font-weight: 400;
+    font-size: 11px;
+    white-space: nowrap;
+  }
+
+  .spacer { flex: 1; }
+
+  /* Update nudge */
+  .update-nudge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--amber);
+    font-size: 11px;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+
+  .update-nudge .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--amber);
+    flex-shrink: 0;
+  }
+
+  .update-btn {
+    padding: 3px 10px;
+    border-radius: var(--radius-md);
+    font-size: 11px;
+    font-weight: 500;
+    background: transparent;
+    color: var(--accent);
+    border: 1px solid var(--border-default);
+    cursor: pointer;
+    transition: background 0.1s, border-color 0.1s;
+    white-space: nowrap;
+  }
+  .update-btn:hover {
+    background: var(--bg-hover);
+    border-color: var(--accent);
+  }
+
+  /* Separator dot */
+  .sep {
+    width: 3px;
+    height: 3px;
+    border-radius: 50%;
+    background: var(--border-default);
+    flex-shrink: 0;
+  }
+
+  /* PR actions inline */
+  .pr-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .pr-btn-primary {
+    padding: 3px 10px;
+    border-radius: var(--radius-md);
+    font-size: 11px;
+    font-weight: 500;
+    background: var(--accent);
+    color: white;
+    border: none;
+    cursor: pointer;
+    transition: background 0.1s;
+    white-space: nowrap;
+  }
+  .pr-btn-primary:hover { background: var(--accent-hover); }
+
+  .pr-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 10px;
+    border-radius: var(--radius-md);
+    font-size: 11px;
+    font-weight: 500;
+    background: var(--accent);
+    color: white;
+    text-decoration: none;
+    transition: background 0.1s;
+    white-space: nowrap;
+  }
+  .pr-link:hover { background: var(--accent-hover); }
+  .pr-link svg { width: 10px; height: 10px; }
+
+  .overflow-btn {
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-sm);
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: background 0.1s, color 0.1s;
+    font-size: 14px;
+  }
+  .overflow-btn:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+  }
+
+  /* Up-to-date badge */
+  .up-to-date {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--green);
+    font-size: 11px;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+  .up-to-date svg { width: 12px; height: 12px; }
+
+  /* Resolving state */
+  .resolving {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--text-muted);
+    font-size: 11px;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+  .resolving .spinner {
+    width: 12px;
+    height: 12px;
+    border: 1.5px solid var(--border-default);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Variant B — positioned above journey bar */
+  .workspace-frame {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: 10px;
+    overflow: hidden;
+    max-width: 720px;
+  }
+
+  .fake-topbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 16px;
+    height: 44px;
+    border-bottom: 1px solid var(--border-subtle);
+    background: var(--bg-surface);
+  }
+  .fake-topbar .card-title {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-primary);
+  }
+  .fake-topbar .card-id {
+    font-family: ui-monospace, 'SF Mono', 'Cascadia Code', monospace;
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+
+  .fake-journey {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 16px;
+    border-bottom: 1px solid var(--border-subtle);
+    background: var(--bg-surface);
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+  .fake-journey .dots {
+    display: flex;
+    gap: 4px;
+  }
+  .fake-journey .dot-filled {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--green);
+  }
+  .fake-journey .dot-active {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--accent);
+  }
+  .fake-journey .dot-empty {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    border: 1.5px dashed var(--border-default);
+  }
+
+  .fake-content {
+    padding: 24px 16px;
+    min-height: 80px;
+    color: var(--text-faint);
+    font-size: 13px;
+    font-style: italic;
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════ -->
+<!-- OPTION A: Standalone bar between journey and chat  -->
+<!-- ═══════════════════════════════════════════════════ -->
+
+<div class="scenario">
+  <span class="scenario-label">Option A — Standalone bar, between topbar and content</span>
+</div>
+
+<!-- A1: Up to date, based on latest specs, no PR yet -->
+<div class="scenario">
+  <span class="scenario-label">A1. Based on latest specs, up to date, pre-PR</span>
+  <div class="workspace-frame">
+    <div class="fake-topbar">
+      <span class="card-id" style="font-family: ui-monospace, 'SF Mono', monospace; font-size: 12px; color: var(--text-muted);">WH-078</span>
+      <span class="card-title" style="font-size: 14px; font-weight: 500; color: var(--text-primary);">Improve PR control bar</span>
+    </div>
+    <div class="context-bar">
+      <span class="base-label">Based on</span>
+      <span class="base-value">Latest specs</span>
+      <span class="base-timestamp">3 Apr</span>
+      <span class="spacer"></span>
+      <div class="pr-actions">
+        <button class="pr-btn-primary">Create PR</button>
+      </div>
+    </div>
+    <div class="fake-content">Chat / content area...</div>
+  </div>
+</div>
+
+<!-- A2: Updates available, based on latest specs -->
+<div class="scenario">
+  <span class="scenario-label">A2. 4 newer changes available upstream</span>
+  <div class="workspace-frame">
+    <div class="fake-topbar">
+      <span class="card-id" style="font-family: ui-monospace, 'SF Mono', monospace; font-size: 12px; color: var(--text-muted);">WH-078</span>
+      <span class="card-title" style="font-size: 14px; font-weight: 500; color: var(--text-primary);">Improve PR control bar</span>
+    </div>
+    <div class="context-bar">
+      <span class="base-label">Based on</span>
+      <span class="base-value">Latest specs</span>
+      <span class="base-timestamp">3 Apr</span>
+      <span class="spacer"></span>
+      <div class="update-nudge">
+        <span class="dot"></span>
+        4 newer changes
+      </div>
+      <button class="update-btn">Update</button>
+      <span class="sep"></span>
+      <div class="pr-actions">
+        <button class="pr-btn-primary">Create PR</button>
+      </div>
+    </div>
+    <div class="fake-content">Chat / content area...</div>
+  </div>
+</div>
+
+<!-- A3: Based on another card -->
+<div class="scenario">
+  <span class="scenario-label">A3. Depends on another card, up to date</span>
+  <div class="workspace-frame">
+    <div class="fake-topbar">
+      <span class="card-id" style="font-family: ui-monospace, 'SF Mono', monospace; font-size: 12px; color: var(--text-muted);">WH-082</span>
+      <span class="card-title" style="font-size: 14px; font-weight: 500; color: var(--text-primary);">Allergy checking in lab requests</span>
+    </div>
+    <div class="context-bar">
+      <span class="base-label">Based on</span>
+      <span class="base-value"><span class="card-id">WH-058</span>Patient allergies</span>
+      <span class="spacer"></span>
+      <span class="up-to-date">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+        Up to date
+      </span>
+      <span class="sep"></span>
+      <div class="pr-actions">
+        <a class="pr-link" href="#">View PR <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a>
+        <button class="overflow-btn" title="More options">···</button>
+      </div>
+    </div>
+    <div class="fake-content">Chat / content area...</div>
+  </div>
+</div>
+
+<!-- A4: Resolving conflicts after update -->
+<div class="scenario">
+  <span class="scenario-label">A4. Updating — resolving conflicts</span>
+  <div class="workspace-frame">
+    <div class="fake-topbar">
+      <span class="card-id" style="font-family: ui-monospace, 'SF Mono', monospace; font-size: 12px; color: var(--text-muted);">WH-078</span>
+      <span class="card-title" style="font-size: 14px; font-weight: 500; color: var(--text-primary);">Improve PR control bar</span>
+    </div>
+    <div class="context-bar">
+      <span class="base-label">Based on</span>
+      <span class="base-value">Latest specs</span>
+      <span class="base-timestamp">3 Apr</span>
+      <span class="spacer"></span>
+      <div class="resolving">
+        <span class="spinner"></span>
+        Updating — resolving changes...
+      </div>
+    </div>
+    <div class="fake-content">Chat / content area...</div>
+  </div>
+</div>
+
+<!-- A5: Just updated, showing what happened -->
+<div class="scenario">
+  <span class="scenario-label">A5. Just updated successfully</span>
+  <div class="workspace-frame">
+    <div class="fake-topbar">
+      <span class="card-id" style="font-family: ui-monospace, 'SF Mono', monospace; font-size: 12px; color: var(--text-muted);">WH-078</span>
+      <span class="card-title" style="font-size: 14px; font-weight: 500; color: var(--text-primary);">Improve PR control bar</span>
+    </div>
+    <div class="context-bar">
+      <span class="base-label">Based on</span>
+      <span class="base-value">Latest specs</span>
+      <span class="base-timestamp">12 Apr</span>
+      <span class="spacer"></span>
+      <span class="up-to-date">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+        Updated just now
+      </span>
+      <span class="sep"></span>
+      <div class="pr-actions">
+        <button class="pr-btn-primary">Create PR</button>
+      </div>
+    </div>
+    <div class="fake-content">Chat / content area...</div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ -->
+<!-- OPTION B: Merged into journey bar area             -->
+<!-- ═══════════════════════════════════════════════════ -->
+
+<div class="scenario" style="margin-top: 16px;">
+  <span class="scenario-label">Option B — Context merged into journey row (more compact)</span>
+</div>
+
+<div class="scenario">
+  <span class="scenario-label">B1. Journey bar with upstream context and update nudge</span>
+  <div class="workspace-frame">
+    <div class="fake-topbar">
+      <span class="card-id" style="font-family: ui-monospace, 'SF Mono', monospace; font-size: 12px; color: var(--text-muted);">WH-078</span>
+      <span class="card-title" style="font-size: 14px; font-weight: 500; color: var(--text-primary);">Improve PR control bar</span>
+    </div>
+    <div class="fake-journey" style="justify-content: space-between;">
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <div class="dots">
+          <span class="dot-filled"></span>
+          <span class="dot-filled"></span>
+          <span class="dot-active"></span>
+          <span class="dot-empty"></span>
+          <span class="dot-empty"></span>
+        </div>
+        <span style="font-weight: 500; color: var(--text-secondary);">Implementing</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span style="color: var(--text-muted); font-size: 11px;">Based on Latest specs · 3 Apr</span>
+        <span class="sep"></span>
+        <div class="update-nudge">
+          <span class="dot"></span>
+          4 newer
+        </div>
+        <button class="update-btn">Update</button>
+        <span class="sep"></span>
+        <button class="pr-btn-primary" style="font-size: 11px; padding: 2px 8px;">Create PR</button>
+      </div>
+    </div>
+    <div class="fake-content">Chat / content area...</div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ -->
+<!-- OPTION C: In topbar                                -->
+<!-- ═══════════════════════════════════════════════════ -->
+
+<div class="scenario" style="margin-top: 16px;">
+  <span class="scenario-label">Option C — In the topbar, right-aligned</span>
+</div>
+
+<div class="scenario">
+  <span class="scenario-label">C1. Topbar with upstream + PR</span>
+  <div class="workspace-frame">
+    <div class="fake-topbar" style="justify-content: space-between;">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span class="card-id" style="font-family: ui-monospace, 'SF Mono', monospace; font-size: 12px; color: var(--text-muted);">WH-078</span>
+        <span class="card-title" style="font-size: 14px; font-weight: 500; color: var(--text-primary);">Improve PR control bar</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 8px; font-size: 11px;">
+        <span style="color: var(--text-muted);">Based on Latest specs · 3 Apr</span>
+        <div class="update-nudge">
+          <span class="dot"></span>
+          4 newer
+        </div>
+        <button class="update-btn">Update</button>
+        <span class="sep"></span>
+        <button class="pr-btn-primary" style="font-size: 11px; padding: 3px 10px;">Create PR</button>
+      </div>
+    </div>
+    <div class="fake-content">Chat / content area...</div>
+  </div>
+</div>
+
+</body>
+</html>

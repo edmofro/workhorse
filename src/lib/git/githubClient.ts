@@ -13,6 +13,36 @@ function getHeaders(token: string) {
   }
 }
 
+/**
+ * ETag cache for conditional requests — avoids consuming GitHub rate limit
+ * when polled data hasn't changed. Entries expire after 60s to limit memory.
+ */
+const etagCache = new Map<string, { etag: string; data: unknown; ts: number }>()
+const ETAG_TTL_MS = 60_000
+
+async function fetchWithEtag<T>(url: string, headers: Record<string, string>): Promise<{ data: T | null; ok: boolean }> {
+  const cached = etagCache.get(url)
+  const reqHeaders: Record<string, string> = { ...headers }
+  if (cached && Date.now() - cached.ts < ETAG_TTL_MS) {
+    reqHeaders['If-None-Match'] = cached.etag
+  }
+
+  const res = await fetch(url, { headers: reqHeaders })
+
+  if (res.status === 304 && cached) {
+    return { data: cached.data as T, ok: true }
+  }
+
+  if (!res.ok) return { data: null, ok: false }
+
+  const data = await res.json()
+  const etag = res.headers.get('etag')
+  if (etag) {
+    etagCache.set(url, { etag, data, ts: Date.now() })
+  }
+  return { data: data as T, ok: true }
+}
+
 export async function getRef(token: string, owner: string, repo: string, ref: string) {
   const res = await fetch(
     `${GITHUB_API}/repos/${owner}/${repo}/git/ref/heads/${ref}`,
@@ -139,28 +169,29 @@ export async function getCheckStatus(
   const encodedRef = encodeURIComponent(ref)
 
   // Combined status (legacy statuses) + check suites (GitHub Actions) in parallel
-  const [statusRes, suitesRes] = await Promise.all([
-    fetch(`${GITHUB_API}/repos/${owner}/${repo}/commits/${encodedRef}/status`, {
-      headers: getHeaders(token),
-    }),
-    fetch(`${GITHUB_API}/repos/${owner}/${repo}/commits/${encodedRef}/check-suites?per_page=100`, {
-      headers: getHeaders(token),
-    }),
+  const headers = getHeaders(token)
+  const [statusResult, suitesResult] = await Promise.all([
+    fetchWithEtag<{ state: string; total_count?: number }>(
+      `${GITHUB_API}/repos/${owner}/${repo}/commits/${encodedRef}/status`,
+      headers,
+    ),
+    fetchWithEtag<{ check_suites?: { status: string; conclusion: string | null }[] }>(
+      `${GITHUB_API}/repos/${owner}/${repo}/commits/${encodedRef}/check-suites?per_page=100`,
+      headers,
+    ),
   ])
 
   let commitStatus: string | null = null
   let suiteConclusion: string | null = null
   let total = 0
 
-  if (statusRes.ok) {
-    const data = await statusRes.json()
-    commitStatus = data.state // 'success', 'failure', 'pending', 'error'
-    total += data.total_count ?? 0
+  if (statusResult.ok && statusResult.data) {
+    commitStatus = statusResult.data.state
+    total += statusResult.data.total_count ?? 0
   }
 
-  if (suitesRes.ok) {
-    const data = await suitesRes.json()
-    const suites: { status: string; conclusion: string | null }[] = data.check_suites ?? []
+  if (suitesResult.ok && suitesResult.data) {
+    const suites = suitesResult.data.check_suites ?? []
     total += suites.length
 
     // Aggregate across all check suites
@@ -204,12 +235,16 @@ export async function getPullRequest(
   title: string
   mergedAt: string | null
 } | null> {
-  const res = await fetch(
+  const { data, ok } = await fetchWithEtag<{
+    state: string
+    merged?: boolean
+    title: string
+    merged_at?: string | null
+  }>(
     `${GITHUB_API}/repos/${owner}/${repo}/pulls/${prNumber}`,
-    { headers: getHeaders(token) },
+    getHeaders(token),
   )
-  if (!res.ok) return null
-  const data = await res.json()
+  if (!ok || !data) return null
   return {
     state: data.state,
     merged: data.merged ?? false,

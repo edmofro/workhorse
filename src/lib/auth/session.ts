@@ -91,7 +91,7 @@ export function withCardAuth(
       return new Response('Invalid request body', { status: 400 })
     }
 
-    if (!cardId) {
+    if (!cardId || typeof cardId !== 'string') {
       return new Response('Missing cardId', { status: 400 })
     }
 

@@ -166,8 +166,8 @@ export function usePrSection(input: PrSectionInput): PrSectionState {
         body: JSON.stringify(body),
       })
       if (!res.ok) {
-        const data = await res.json().catch(() => ({ error: 'Operation failed' }))
-        throw new Error(data.error ?? 'Operation failed')
+        const text = await res.text().catch(() => '')
+        throw new Error(text || 'Operation failed')
       }
       invalidateBranchStatus()
     } catch (err) {

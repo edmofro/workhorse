@@ -77,12 +77,12 @@ export function PrSection(props: PrSectionInput) {
             {s.displayTitle}
           </span>
           {s.displayNumber && (
-            <span className="shrink-0 text-[11px] font-medium font-mono text-[var(--text-muted)]">
+            <span className="shrink-0 text-[11px] font-medium text-[var(--text-muted)]">
               {s.displayNumber}
             </span>
           )}
           {s.state === 'merged-new' && (
-            <span className="shrink-0 text-[11px] font-semibold text-[var(--accent)] bg-[rgba(194,65,12,0.06)] px-1.5 py-px rounded-full">
+            <span className="shrink-0 text-[11px] font-semibold text-[var(--accent)] bg-[rgba(194,65,12,0.06)] px-2 py-0.5 rounded-full">
               {s.postMergeCommits} new
             </span>
           )}

@@ -475,7 +475,7 @@ export function CardWorkspace({
     repoOwner: card.project.owner,
     repoName: card.project.repoName,
     onPrCreated: handlePrCreated,
-  }), [card.id, card.identifier, card.cardBranch, card.dependsOn, card.project, jockey.hasCodeChanges, localPrUrl, localPrNumber, handlePrCreated])
+  }), [card.id, card.identifier, card.cardBranch, card.dependsOn?.[0]?.identifier, card.project.owner, card.project.repoName, card.project.defaultBranch, jockey.hasCodeChanges, localPrUrl, localPrNumber, handlePrCreated])
 
   // Spec operations
   const ensureWorktree = useCallback(async () => {

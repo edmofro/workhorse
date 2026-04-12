@@ -1,0 +1,295 @@
+<!-- spec: attachments.md -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Workhorse — Chat Attachments</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,450;14..32,500;14..32,600;14..32,700&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #f8f7f4;
+    --surface: #ffffff;
+    --sidebar-bg: #f1efeb;
+    --hover: #edeae5;
+    --inset: #e8e5df;
+    --border: #dfdcd5;
+    --border-light: #eae7e1;
+    --text: #1c1917;
+    --text-2: #57534e;
+    --text-3: #a8a29e;
+    --text-4: #d1cdc6;
+    --accent: #c2410c;
+    --green: #16a34a;
+    --amber: #b45309;
+    --blue: #2563eb;
+    --r: 8px;
+    --shadow: 0 1px 3px rgba(28,25,23,0.04);
+  }
+
+  body {
+    font-family: 'Inter', -apple-system, sans-serif;
+    background: var(--bg); color: var(--text);
+    font-size: 14px; line-height: 1.5;
+    height: 100vh; display: flex; overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Sidebar */
+  .sidebar {
+    width: 216px; background: var(--sidebar-bg);
+    border-right: 1px solid var(--border-light);
+    display: flex; flex-direction: column; flex-shrink: 0;
+  }
+  .sidebar-header {
+    padding: 20px 16px 24px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .logo {
+    width: 26px; height: 26px; background: var(--accent); border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 13px; color: white;
+  }
+  .logo-text { font-weight: 700; font-size: 15px; letter-spacing: -0.03em; }
+  .sidebar-nav { padding: 0 8px; flex: 1; }
+  .nav-label {
+    padding: 20px 8px 6px; font-size: 11px; font-weight: 600;
+    color: var(--text-3); text-transform: uppercase; letter-spacing: 0.06em;
+  }
+  .nav-item {
+    display: flex; align-items: center; gap: 8px;
+    padding: 7px 8px; border-radius: 6px;
+    color: var(--text-2); cursor: pointer; font-size: 13px; font-weight: 450;
+  }
+  .nav-item:hover { background: var(--hover); }
+  .nav-item.active { background: var(--surface); color: var(--text); font-weight: 500; box-shadow: var(--shadow); }
+  .nav-dot { width: 7px; height: 7px; border-radius: 50%; }
+
+  /* Main */
+  .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+  .topbar {
+    height: 52px; background: var(--surface);
+    border-bottom: 1px solid var(--border-light);
+    display: flex; align-items: center; padding: 0 24px; gap: 12px;
+    flex-shrink: 0;
+  }
+  .topbar-id { font-family: ui-monospace, 'SF Mono', monospace; font-size: 12px; font-weight: 500; color: var(--text-3); }
+  .topbar-title { font-size: 15px; font-weight: 600; letter-spacing: -0.01em; }
+
+  /* Chat area */
+  .chat-area {
+    flex: 1; overflow-y: auto; display: flex; flex-direction: column;
+    padding: 32px 32px 0;
+  }
+  .chat-messages {
+    max-width: 680px; width: 100%; margin: 0 auto;
+    display: flex; flex-direction: column; gap: 24px;
+    flex: 1;
+  }
+
+  /* Message */
+  .message { display: flex; gap: 12px; }
+  .msg-avatar {
+    width: 26px; height: 26px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 600; flex-shrink: 0;
+  }
+  .msg-avatar.human { background: var(--accent); color: white; }
+  .msg-avatar.ai { background: var(--inset); color: var(--text-2); }
+  .msg-body { flex: 1; min-width: 0; }
+  .msg-header { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+  .msg-name { font-size: 13px; font-weight: 500; }
+  .msg-time { font-size: 11px; color: var(--text-4); }
+  .msg-text { font-size: 14px; line-height: 1.7; color: var(--text-2); }
+
+  /* Message attachments */
+  .msg-attachments {
+    display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px;
+  }
+  .msg-image {
+    width: 200px; height: 134px; border-radius: 8px;
+    object-fit: cover; border: 1px solid var(--border-light);
+    cursor: pointer; transition: border-color 0.1s;
+    display: flex; align-items: center; justify-content: center;
+    background: linear-gradient(135deg, var(--inset) 0%, var(--hover) 100%);
+    color: var(--text-3); font-size: 11px; font-weight: 500;
+  }
+  .msg-image:hover { border-color: var(--border); }
+
+  /* Chat input */
+  .chat-input-container {
+    max-width: 680px; width: 100%; margin: 0 auto;
+    padding: 20px 0 28px;
+  }
+  .chat-input-box {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 6px 6px 6px 16px;
+    box-shadow: var(--shadow);
+    display: flex; flex-direction: column;
+  }
+  .chat-input-box:focus-within {
+    border-color: var(--accent);
+    box-shadow: var(--shadow), 0 0 0 3px rgba(194,65,12,0.05);
+  }
+
+  /* Pending attachments row inside input */
+  .input-pending {
+    display: flex; gap: 8px; flex-wrap: wrap;
+    padding: 8px 0 4px;
+  }
+  .input-pending-thumb {
+    position: relative; width: 56px; height: 56px;
+    border-radius: 6px; overflow: hidden;
+    border: 1px solid var(--border-light);
+  }
+  .input-pending-thumb .thumb-content {
+    width: 100%; height: 100%;
+    display: flex; align-items: center; justify-content: center;
+    background: linear-gradient(135deg, var(--inset) 0%, var(--hover) 100%);
+    color: var(--text-3); font-size: 9px; font-weight: 500;
+  }
+  .input-pending-remove {
+    position: absolute; top: -3px; right: -3px;
+    width: 16px; height: 16px; border-radius: 50%;
+    background: var(--text); color: white;
+    border: 2px solid var(--surface);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 9px; cursor: pointer; line-height: 1;
+  }
+
+  .chat-input-row {
+    display: flex; align-items: center; gap: 8px;
+  }
+  .chat-input {
+    flex: 1; border: none; outline: none;
+    font-size: 14px; font-family: inherit;
+    color: var(--text-2); background: transparent;
+    padding: 8px 0;
+  }
+  .chat-input::placeholder { color: var(--text-4); }
+  .paperclip-btn {
+    display: flex; align-items: center; justify-content: center;
+    width: 32px; height: 32px; border-radius: 6px;
+    border: none; background: transparent; color: var(--text-3);
+    cursor: pointer; transition: background 0.1s, color 0.1s;
+    flex-shrink: 0;
+  }
+  .paperclip-btn:hover { background: var(--hover); color: var(--text-2); }
+  .send-btn {
+    padding: 8px 16px; border-radius: 8px;
+    background: var(--accent); color: white;
+    border: none; font-size: 12px; font-weight: 500;
+    cursor: pointer; flex-shrink: 0;
+  }
+
+  /* Paste hint */
+  .paste-hint {
+    font-size: 11px; color: var(--text-4);
+    padding: 4px 0 0 0;
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+
+<!-- Sidebar -->
+<div class="sidebar">
+  <div class="sidebar-header">
+    <div class="logo">W</div>
+    <div class="logo-text">Workhorse</div>
+  </div>
+  <div class="sidebar-nav">
+    <div class="nav-label">Products</div>
+    <div class="nav-item active">
+      <div class="nav-dot" style="background: var(--accent)"></div>
+      Workhorse
+    </div>
+    <div class="nav-label">Teams</div>
+    <div class="nav-item">
+      <div class="nav-dot" style="background: var(--blue)"></div>
+      Core
+    </div>
+  </div>
+</div>
+
+<!-- Main -->
+<div class="main">
+  <div class="topbar">
+    <span class="topbar-id">WH-002</span>
+    <span class="topbar-title">Attachment/image upload with copy paste</span>
+  </div>
+
+  <div class="chat-area">
+    <div class="chat-messages">
+
+      <!-- User message with pasted screenshot -->
+      <div class="message">
+        <div class="msg-avatar human">Y</div>
+        <div class="msg-body">
+          <div class="msg-header">
+            <span class="msg-name">You</span>
+            <span class="msg-time">3 min ago</span>
+          </div>
+          <div class="msg-text">Here's a screenshot of the error I'm seeing when the upload fails.</div>
+          <div class="msg-attachments">
+            <div class="msg-image">pasted-image.png</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- AI response -->
+      <div class="message">
+        <div class="msg-avatar ai">W</div>
+        <div class="msg-body">
+          <div class="msg-header">
+            <span class="msg-name">Workhorse</span>
+            <span class="msg-time">3 min ago</span>
+          </div>
+          <div class="msg-text">I can see the error in your screenshot. The upload is failing because the file exceeds the 10 MB limit. The image appears to be an uncompressed BMP — you could convert it to PNG or JPEG to reduce the size.</div>
+        </div>
+      </div>
+
+      <!-- User message with multiple attachments -->
+      <div class="message">
+        <div class="msg-avatar human">Y</div>
+        <div class="msg-body">
+          <div class="msg-header">
+            <span class="msg-name">You</span>
+            <span class="msg-time">1 min ago</span>
+          </div>
+          <div class="msg-text">Converted them. Here are the two screenshots showing the before and after states.</div>
+          <div class="msg-attachments">
+            <div class="msg-image">before-state.png</div>
+            <div class="msg-image">after-state.png</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Chat input with pending pasted image -->
+    <div class="chat-input-container">
+      <div class="chat-input-box">
+        <div class="input-pending">
+          <div class="input-pending-thumb">
+            <div class="thumb-content">pasted</div>
+            <div class="input-pending-remove">×</div>
+          </div>
+        </div>
+        <div class="chat-input-row">
+          <button class="paperclip-btn" title="Attach file">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+          </button>
+          <input class="chat-input" placeholder="Message..." value="And here's the final result" />
+          <button class="send-btn">Send</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

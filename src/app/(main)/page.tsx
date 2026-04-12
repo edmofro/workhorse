@@ -1,11 +1,41 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
+import { cookies } from 'next/headers'
 import { getProjects } from '../../lib/actions/projects'
+import { getCurrentUser } from '../../lib/auth/session'
+import { filterAccessibleRepos } from '../../lib/auth/github'
 
 export default async function HomePage() {
-  const projects = await getProjects()
+  const user = await getCurrentUser()
+  const allProjects = await getProjects()
+
+  // Filter to accessible projects
+  const accessibleRepoKeys = user
+    ? await filterAccessibleRepos(
+        user.accessToken,
+        allProjects.map((p) => ({ owner: p.owner, repoName: p.repoName })),
+      )
+    : new Set<string>()
+
+  const projects = allProjects.filter((p) =>
+    accessibleRepoKeys.has(`${p.owner}/${p.repoName}`),
+  )
 
   if (projects.length > 0) {
+    // Check for a last-used project preference
+    const cookieStore = await cookies()
+    const lastSlug = cookieStore.get('lastProject')?.value
+    if (lastSlug) {
+      const decoded = decodeURIComponent(lastSlug)
+      const lastProject = projects.find(
+        (p) => p.name.toLowerCase() === decoded,
+      )
+      if (lastProject) {
+        redirect(`/${encodeURIComponent(lastProject.name.toLowerCase())}`)
+      }
+    }
+
+    // Fall back to first accessible project
     redirect(`/${encodeURIComponent(projects[0].name.toLowerCase())}`)
   }
 

@@ -18,8 +18,8 @@ export async function getSpecFiles(cardId: string) {
 
   const { owner, repoName, defaultBranch } = card.team.project
 
-  const files = await getChangedFiles(owner, repoName, card.identifier, defaultBranch)
-  return files
+  const { workhorseFiles } = await getChangedFiles(owner, repoName, card.identifier, defaultBranch)
+  return workhorseFiles
     .filter((f) => f.filePath.startsWith('.workhorse/specs/'))
     .map((f) => ({
       filePath: f.filePath,

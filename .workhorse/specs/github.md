@@ -2,7 +2,6 @@
 title: GitHub integration
 area: integrations
 card: WH-013
-status: draft
 ---
 
 Deep GitHub integration — authentication (SSO), create PRs, view diffs, run reviews (via Review Hero), manage branches. Eventually may bring some GitHub workflows into Workhorse directly.
@@ -14,10 +13,18 @@ Deep GitHub integration — authentication (SSO), create PRs, view diffs, run re
 - [ ] All GitHub API calls (branch creation, commits, PRs, file reads) use the authenticated user's OAuth token — no server-side personal access token (PAT) is required
 - [ ] Operations are scoped to the repos the acting user has access to; Workhorse never acts with broader privileges than the user themselves
 
-## Key ideas
+## Pull requests
 
-- [ ] Create PRs from specs
-- [ ] View code diffs within Workhorse
-- [ ] Trigger Review Hero reviews
+- [ ] PR creation is a skill (see `workflow-orchestration.md`) — the agent decides the PR title and description, the backend executes the GitHub API call using the user's OAuth token
+- [ ] The PR bar appears on cards with code changes (see `workflow-orchestration.md`), providing Create PR, View PR, and auto-fix controls
+- [ ] The jockey detects PR status changes (opened, CI results, review comments) and updates the card's journal
+
+## Code diffs
+
+- [ ] View code diffs within Workhorse as artifacts (see `card-navigation.md`)
+
+## Future integrations
+
+- [ ] Trigger Review Hero reviews via custom skills (see `workflow-orchestration.md`)
 - [ ] Status sync between Workhorse cards and GitHub PRs
 - [ ] Integrate with common-rules for consistent AI agent behaviour

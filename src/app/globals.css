@@ -183,32 +183,33 @@ body {
 .prose-workhorse table.md-table tbody tr:last-child td {
   border-bottom: none;
 }
-.prose-workhorse .inline-image-link {
-  display: block; margin: 12px 0;
+
+/* Checklist items in prose */
+.prose-workhorse .checklist { list-style: none; padding-left: 0; margin-bottom: 12px; }
+.prose-workhorse .check-item { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 8px; }
+.prose-workhorse .check-box {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 16px; height: 16px; min-width: 16px; margin-top: 2px;
+  border: 1.5px solid var(--border-default); border-radius: 3px;
+  font-size: 10px; color: transparent;
 }
-.prose-workhorse .inline-image {
-  display: block; max-width: 100%; border-radius: var(--radius-default);
-  border: 1px solid var(--border-subtle); cursor: pointer;
-  transition: border-color 0.1s;
+.prose-workhorse .check-box.done {
+  background: var(--green); border-color: var(--green); color: white;
 }
-.prose-workhorse .inline-image:hover {
-  border-color: var(--border-default);
+
+/* Inline diff annotations (tracked changes) */
+.diff-added {
+  background: rgba(22, 163, 74, 0.07);
+  color: #16a34a;
+  border-radius: 2px;
+  padding: 0 2px;
 }
-.prose-workhorse .inline-file-chip {
-  display: inline-flex; align-items: center; gap: 6px;
-  padding: 4px 10px; border-radius: var(--radius-default);
-  background: var(--bg-page); border: 1px solid var(--border-subtle);
-  font-size: 12px; color: var(--text-secondary); text-decoration: none;
-  margin: 8px 0; transition: border-color 0.1s;
-}
-.prose-workhorse .inline-file-chip:hover {
-  border-color: var(--border-default);
-}
-.prose-workhorse .inline-file-icon {
-  font-size: 13px; color: var(--text-muted);
-}
-.prose-workhorse .inline-file-name {
-  font-weight: 500;
+.diff-removed {
+  background: rgba(220, 38, 38, 0.07);
+  color: #dc2626;
+  text-decoration: line-through;
+  border-radius: 2px;
+  padding: 0 2px;
 }
 
 /* Spec extract block in chat */

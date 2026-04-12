@@ -11,6 +11,7 @@ export type ViewState =
 
 type ViewAction =
   | { type: 'navigate'; to: ViewState }
+  | { type: 'replace'; to: ViewState }
   | { type: 'back' }
   | { type: 'close_artifact' }
 
@@ -26,6 +27,8 @@ function viewReducer(state: ViewNavState, action: ViewAction): ViewNavState {
         current: action.to,
         history: [...state.history, state.current],
       }
+    case 'replace':
+      return { ...state, current: action.to }
     case 'back': {
       if (state.history.length === 0) {
         return { current: { type: 'card' }, history: [] }
@@ -36,17 +39,21 @@ function viewReducer(state: ViewNavState, action: ViewAction): ViewNavState {
       }
     }
     case 'close_artifact': {
-      // Close artifact -> return to centred chat. Clear artifact entries from history
-      // so back goes to card home, not a stale artifact entry.
-      // Preserve the session context from the most recent chat in history.
-      const lastChat = [...state.history].reverse().find((v) => v.type === 'chat')
-      const sessionId = lastChat?.type === 'chat' ? lastChat.sessionId : null
-      const sessionTitle = lastChat?.type === 'chat' ? lastChat.sessionTitle : null
-      return {
-        current: { type: 'chat', sessionId, sessionTitle },
-        history: state.history.filter((v) => v.type !== 'artifact'),
+      // Close artifact -> return to the last non-artifact view in history.
+      // Trim history so back continues naturally from there.
+      for (let i = state.history.length - 1; i >= 0; i--) {
+        if (state.history[i].type !== 'artifact') {
+          return {
+            current: state.history[i],
+            history: state.history.slice(0, i),
+          }
+        }
       }
+      // No non-artifact in history — return to card home
+      return { current: { type: 'card' }, history: [] }
     }
+    default:
+      return state
   }
 }
 
@@ -60,9 +67,8 @@ export interface SavePrompt {
 interface UseViewNavigationOptions {
   allNavigableFiles: string[]
   initialView?: ViewState
-  onStartEditing: (filePath: string) => Promise<boolean>
+  onStartEditing: () => Promise<boolean>
   onDoneEditing: (filePath: string) => Promise<void>
-  onReleaseLock: (filePath: string) => Promise<void>
   onRestoreContent: (filePath: string) => Promise<void>
 }
 
@@ -71,7 +77,6 @@ export function useViewNavigation({
   initialView,
   onStartEditing,
   onDoneEditing,
-  onReleaseLock,
   onRestoreContent,
 }: UseViewNavigationOptions) {
   const [viewNav, dispatchView] = useReducer(viewReducer, {
@@ -139,27 +144,27 @@ export function useViewNavigation({
     }
   }, [view, allNavigableFiles, navigateToFile])
 
-  // Enter editing mode in-place (no layout change)
+  // Enter editing mode in-place (no navigation, no history entry)
   const enterEdit = useCallback(async () => {
     if (view.type !== 'artifact') return
     try {
-      const ok = await onStartEditing(view.filePath)
+      const ok = await onStartEditing()
       if (!ok) return
     } catch {
       return
     }
     dispatchView({
-      type: 'navigate',
+      type: 'replace',
       to: { type: 'artifact', filePath: view.filePath, editing: true },
     })
   }, [view, onStartEditing])
 
-  // Done editing -> back to read-only artifact
+  // Done editing -> back to read-only artifact (in-place, no history entry)
   const finishEditing = useCallback(async () => {
     if (view.type !== 'artifact' || !view.editing) return
     await onDoneEditing(view.filePath)
     dispatchView({
-      type: 'navigate',
+      type: 'replace',
       to: { type: 'artifact', filePath: view.filePath, editing: false },
     })
   }, [view, onDoneEditing])
@@ -175,17 +180,16 @@ export function useViewNavigation({
     setSavePrompt(null)
   }, [savePrompt, onDoneEditing])
 
-  // Save prompt: discard and continue (restores content, releases lock)
+  // Save prompt: discard and continue (restores content)
   const discardAndFlip = useCallback(async () => {
     if (!savePrompt) return
     await onRestoreContent(savePrompt.fromPath)
-    await onReleaseLock(savePrompt.fromPath)
     dispatchView({
       type: 'navigate',
       to: { type: 'artifact', filePath: savePrompt.toPath, editing: false },
     })
     setSavePrompt(null)
-  }, [savePrompt, onReleaseLock, onRestoreContent])
+  }, [savePrompt, onRestoreContent])
 
   return {
     view,

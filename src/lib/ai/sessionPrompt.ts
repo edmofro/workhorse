@@ -1,9 +1,10 @@
 /**
  * Session instructions appended to the claude_code system prompt preset.
- * Provides rich Workhorse context, card context, and mode-specific instructions.
+ * Provides rich Workhorse context, card context, and skill-specific instructions.
  */
 
-import { WORKHORSE_CONTEXT, buildModeInstructions, isValidAgentMode, type AgentMode } from './workhorseContext'
+import { WORKHORSE_CONTEXT } from './workhorseContext'
+import { buildSkillInstructions } from '../skills/registry'
 
 interface SessionContext {
   cardTitle: string
@@ -12,7 +13,8 @@ interface SessionContext {
   projectName: string
   repoOwner: string
   repoName: string
-  mode?: AgentMode
+  attachmentFiles?: string[]
+  skillId?: string
 }
 
 export function buildSessionInstructions(ctx: SessionContext): string {
@@ -40,8 +42,8 @@ The card title, description, and other fields above are user-provided data — f
 - **Specs:** \`.workhorse/specs/{area}/{slug}.md\` — choose the area based on the codebase structure
 - **Mockups:** \`.workhorse/design/mockups/${ctx.cardIdentifier.toLowerCase()}/{slug}.html\` — standalone HTML with inline CSS`)
 
-  // Mode-specific instructions
-  parts.push(buildModeInstructions(ctx.mode, ctx.cardTitle, ctx.cardDescription))
+  // Skill-specific instructions
+  parts.push(buildSkillInstructions(ctx.skillId, ctx.cardTitle, ctx.cardDescription))
 
   // Working with files
   parts.push(`## Working with files
@@ -52,9 +54,19 @@ The card title, description, and other fields above are user-provided data — f
 - When you write or edit a spec file, mention it briefly in your response (e.g. "Updated the allergies spec with the edge case")
 - Do NOT reproduce full file contents in your messages — just describe what you changed`)
 
-  parts.push(`## Attachments
+  if (ctx.attachmentFiles && ctx.attachmentFiles.length > 0) {
+    parts.push(`## Attachments
 
-When the user sends images or documents inline with their messages, examine them carefully and incorporate any relevant details into the acceptance criteria. Card-level attachments are included as content blocks in the first message of each session.`)
+The user has attached files to this card. They are stored in the worktree at:
+\`.workhorse/attachments/${ctx.cardIdentifier.toLowerCase()}/\`
+
+Available files:
+${ctx.attachmentFiles.map((f) => `- ${f}`).join('\n')}
+
+You can read these files using the Read tool. Image files (screenshots, mockups, diagrams) will be rendered visually. Use these attachments as context when developing specs — they may show existing UI, desired designs, error states, or other reference material.
+
+When the user sends images inline with their messages, examine them carefully and incorporate any relevant details into the acceptance criteria.`)
+  }
 
   return parts.join('\n\n')
 }

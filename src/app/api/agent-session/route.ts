@@ -1,22 +1,30 @@
 import '../../../lib/ai/ensureSessionStorage'
 import { NextRequest } from 'next/server'
 import { query } from '@anthropic-ai/claude-agent-sdk'
+import { anthropic } from '../../../lib/anthropic'
 import type { SDKUserMessage } from '@anthropic-ai/claude-agent-sdk'
-import type Anthropic from '@anthropic-ai/sdk'
-import { readFile } from 'fs/promises'
+import type { ImageBlockParam, TextBlockParam } from '@anthropic-ai/sdk/resources/messages/messages'
+import { readFile, mkdir, copyFile } from 'fs/promises'
+import { existsSync } from 'fs'
+import path from 'path'
 import { prisma } from '../../../lib/prisma'
 import { requireUser, requireCardAccess } from '../../../lib/auth/session'
 import { buildSessionInstructions } from '../../../lib/ai/sessionPrompt'
-import { isValidAgentMode } from '../../../lib/ai/workhorseContext'
+import { isValidSkillId, humaniseSkillId } from '../../../lib/skills/registry'
+import { runJockeyAssessment } from '../../../lib/jockey/assess'
+import { detectSkillIntent } from '../../../lib/jockey/detectIntent'
+import type { JockeyAssessment } from '../../../lib/jockey/types'
 import {
   ensureBareClone,
   createWorktree,
   worktreePath,
   autoCommit,
+  getChangedFiles,
+  getPendingChanges,
 } from '../../../lib/git/worktree'
 import { branchNameFromCard } from '../../../lib/git/branchNaming'
-import { releaseAllLocks, AI_LOCK_AGENT } from '../../../lib/fileLock'
 import { safeParseTouchedFiles } from '../../../lib/safeParseTouchedFiles'
+import { emit as emitSidebarEvent, type SidebarEvent } from '../../../lib/sidebarEvents'
 
 class StaleSessionError extends Error {
   constructor() {
@@ -28,12 +36,12 @@ export async function POST(request: NextRequest) {
   const user = await requireUser()
 
   const body = await request.json()
-  const { cardId, sessionId: incomingSessionId, message, attachmentIds, mode } = body as {
+  const { cardId, sessionId: incomingSessionId, message, attachmentIds, skillId } = body as {
     cardId: string
     sessionId?: string
     message: string
     attachmentIds?: string[]
-    mode?: string
+    skillId?: string
   }
 
   if (!cardId || !message) {
@@ -69,6 +77,21 @@ export async function POST(request: NextRequest) {
       },
     })
   }
+
+  // Helper to build sidebar event payload
+  const sidebarSession = (overrides?: Partial<SidebarEvent['session']>): SidebarEvent['session'] => ({
+    id: convSession.id,
+    title: convSession.title,
+    messageCount: convSession.messageCount,
+    lastMessageAt: new Date().toISOString(),
+    cardId: card.id,
+    cardIdentifier: card.identifier,
+    cardTitle: card.title,
+    cardStatus: card.status,
+    teamColour: card.team.colour,
+    projectName: card.team.project.name,
+    ...overrides,
+  })
 
   const { project } = card.team
   const { owner, repoName, defaultBranch } = project
@@ -114,12 +137,44 @@ export async function POST(request: NextRequest) {
     ? allAttachments.filter((a) => attachmentIds.includes(a.id))
     : []
 
-  // Card-level attachments not in the current message — passed as context
-  const cardAttachments = allAttachments.filter(
-    (a) => !attachmentIds?.includes(a.id),
-  )
+  // Copy attachments to worktree for persistence, skipping already-copied files
+  if (allAttachments.length > 0) {
+    const attachDir = path.join(wtPath, '.workhorse', 'attachments', card.identifier.toLowerCase())
+    await mkdir(attachDir, { recursive: true })
+    for (const att of allAttachments) {
+      const dest = path.join(attachDir, att.fileName)
+      if (existsSync(dest)) continue
+      try {
+        await copyFile(att.storagePath, dest)
+      } catch {
+        // Source missing — continue
+      }
+    }
+  }
 
-  // Build session instructions
+  // Build deduplicated attachment file list for the prompt context
+  const allAttachmentFiles = [...new Set(allAttachments.map((a) => a.fileName))]
+
+  // Resolve skill: explicit pill/journey trigger takes precedence; otherwise ask the
+  // jockey to detect intent from the incoming message (pre-turn pass).
+  let resolvedSkillId = isValidSkillId(skillId) ? skillId : undefined
+
+  if (!resolvedSkillId) {
+    const journalEntries = await prisma.journalEntry.findMany({
+      where: { cardId },
+      orderBy: { createdAt: 'desc' },
+      select: { type: true, summary: true },
+      take: 3,
+    })
+    resolvedSkillId = (await detectSkillIntent({
+      userMessage: message,
+      cardTitle: card.title,
+      cardStatus: card.status,
+      journalEntries,
+    })) ?? undefined
+  }
+
+  // Build session instructions with skill-specific context
   const sessionInstructions = buildSessionInstructions({
     cardTitle: card.title,
     cardDescription: card.description,
@@ -127,61 +182,42 @@ export async function POST(request: NextRequest) {
     projectName: project.name,
     repoOwner: owner,
     repoName,
-    mode: isValidAgentMode(mode) ? mode : undefined,
+    attachmentFiles: allAttachmentFiles.length > 0 ? allAttachmentFiles : undefined,
+    skillId: resolvedSkillId,
   })
 
-  // Build content blocks for all attachments to include in the prompt.
-  // Images → image blocks, PDFs → document blocks, SVGs/other → skipped.
-  // Cap at 10 total to limit memory usage.
-  const promptAttachments = [...messageAttachments, ...cardAttachments].slice(0, 10)
-  const contentBlocks: Anthropic.ContentBlockParam[] = []
+  // Build multimodal prompt if there are raster image attachments (exclude SVG — not a valid
+  // Claude API image media_type, and can contain scripts). Cap at 5 to limit memory usage.
+  const imageAttachments = messageAttachments
+    .filter((a) => a.mimeType.startsWith('image/') && a.mimeType !== 'image/svg+xml')
+    .slice(0, 5)
 
-  for (const att of promptAttachments) {
-    try {
-      const data = await readFile(att.storagePath)
-      const base64 = data.toString('base64')
+  let promptInput: string | AsyncIterable<SDKUserMessage>
 
-      if (att.mimeType === 'application/pdf') {
-        contentBlocks.push({
-          type: 'document',
-          source: {
-            type: 'base64',
-            media_type: 'application/pdf',
-            data: base64,
-          },
-        })
-      } else if (att.mimeType.startsWith('image/') && att.mimeType !== 'image/svg+xml') {
-        contentBlocks.push({
+  if (imageAttachments.length > 0) {
+    // Build properly typed content blocks
+    const contentBlocks: Array<ImageBlockParam | TextBlockParam> = []
+
+    for (const att of imageAttachments) {
+      try {
+        const data = await readFile(att.storagePath)
+        const imageBlock: ImageBlockParam = {
           type: 'image',
           source: {
             type: 'base64',
             media_type: att.mimeType as 'image/png' | 'image/jpeg' | 'image/gif' | 'image/webp',
-            data: base64,
+            data: data.toString('base64'),
           },
-        })
+        }
+        contentBlocks.push(imageBlock)
+      } catch {
+        // Skip unreadable files
       }
-      // SVG and other unsupported types are skipped
-    } catch {
-      // Skip unreadable files
     }
-  }
 
-  let promptInput: string | AsyncIterable<SDKUserMessage>
-
-  if (contentBlocks.length > 0) {
     if (message.trim()) {
-      contentBlocks.push({ type: 'text', text: message })
-    }
-
-    // Label card-level attachments so the agent knows what they are
-    if (cardAttachments.length > 0) {
-      const label = cardAttachments
-        .map((a) => a.fileName)
-        .join(', ')
-      contentBlocks.unshift({
-        type: 'text',
-        text: `[Card attachments: ${label}]`,
-      })
+      const textBlock: TextBlockParam = { type: 'text', text: message }
+      contentBlocks.push(textBlock)
     }
 
     async function* generatePrompt(): AsyncGenerator<SDKUserMessage> {
@@ -209,8 +245,7 @@ export async function POST(request: NextRequest) {
     },
     settingSources: ['project' as const],
     includePartialMessages: true,
-    model: 'claude-sonnet-4-6',
-    maxTurns: 10,
+    model: 'claude-opus-4-6',
     persistSession: true,
     ...(convSession.agentSessionId ? { resume: convSession.agentSessionId } : {}),
   }
@@ -221,21 +256,43 @@ export async function POST(request: NextRequest) {
   const convSessionId = convSession.id
   const isFirstMessage = convSession.messageCount === 0
 
+  // AbortController for server-side agent cancellation — wired to the
+  // client's request signal so disconnecting the SSE stream also halts
+  // the SDK's agent loop (tool calls, API requests, etc).
+  const agentAbort = new AbortController()
+  if (request.signal.aborted) {
+    agentAbort.abort()
+  } else {
+    request.signal.addEventListener('abort', () => agentAbort.abort(), { once: true })
+  }
+
   const stream = new ReadableStream({
     async start(controller) {
+      // Safe enqueue — silently drops writes if the client has disconnected
+      function enqueue(chunk: Uint8Array) {
+        try { controller.enqueue(chunk) } catch { /* stream closed */ }
+      }
+
       try {
         // Send session ID to client immediately so it can track the session
         // before the agent stream completes (prevents duplicate session creation)
-        controller.enqueue(
+        enqueue(
           encoder.encode(
             `data: ${JSON.stringify({ type: 'session', sessionId: convSessionId })}\n\n`,
           ),
         )
 
+        // Notify sidebar: new/active session is streaming
+        emitSidebarEvent({
+          type: isFirstMessage ? 'session_created' : 'streaming_start',
+          userId: user.id,
+          session: sidebarSession(),
+        })
+
         let agentQuery: ReturnType<typeof query>
 
         try {
-          agentQuery = query({ prompt: promptInput, options })
+          agentQuery = query({ prompt: promptInput, options: { ...options, abortController: agentAbort } })
           // Eagerly pull the first event to detect stale session errors early
           const firstChunk = await (agentQuery as AsyncIterable<unknown>)[Symbol.asyncIterator]().next()
           if (!firstChunk.done) {
@@ -259,7 +316,7 @@ export async function POST(request: NextRequest) {
                 data: { agentSessionId: agentSdkSessionId },
               })
             }
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`))
+            enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`))
           }
         } catch (err) {
           // If the session ID is stale, clear it and retry without resume
@@ -275,7 +332,7 @@ export async function POST(request: NextRequest) {
               data: { agentSessionId: null },
             })
             // Retry without resume
-            const freshOptions = { ...options }
+            const freshOptions = { ...options, abortController: agentAbort }
             delete (freshOptions as Record<string, unknown>).resume
             agentQuery = query({ prompt: promptInput, options: freshOptions })
           } else {
@@ -309,13 +366,13 @@ export async function POST(request: NextRequest) {
 
           // Stream event as SSE
           const sseData = JSON.stringify(event)
-          controller.enqueue(
+          enqueue(
             encoder.encode(`data: ${sseData}\n\n`),
           )
         }
 
         // Agent turn complete — auto-commit, release locks, update session metadata
-        await finaliseSessionAfterExchange(controller, encoder, {
+        await finaliseSessionAfterExchange(enqueue, encoder, {
           owner,
           repoName,
           card,
@@ -327,13 +384,37 @@ export async function POST(request: NextRequest) {
           message,
           cardTitle: card.title,
           assistantText,
+          sidebarSession,
         })
 
-        controller.enqueue(encoder.encode('data: [DONE]\n\n'))
+        // Run jockey assessment and send before [DONE] so the client
+        // always receives it before the stream is considered complete.
+        try {
+          const jockeyResult = await runJockeyAfterExchange(
+            cardId,
+            convSessionId,
+            card.title,
+            card.status,
+            message,
+            assistantText,
+            { owner, repoName, cardIdentifier: card.identifier, defaultBranch },
+          )
+          if (jockeyResult) {
+            enqueue(
+              encoder.encode(
+                `data: ${JSON.stringify({ type: 'jockey', ...jockeyResult })}\n\n`,
+              ),
+            )
+          }
+        } catch (jockeyErr) {
+          console.warn('[jockey] Post-exchange assessment failed:', jockeyErr)
+        }
+
+        enqueue(encoder.encode('data: [DONE]\n\n'))
         controller.close()
       } catch (err) {
         const errorMsg = err instanceof Error ? err.message : 'Interview failed'
-        controller.enqueue(
+        enqueue(
           encoder.encode(
             `data: ${JSON.stringify({ type: 'error', message: errorMsg })}\n\n`,
           ),
@@ -357,28 +438,38 @@ export async function POST(request: NextRequest) {
  * Only called on the success path (full agent response received).
  */
 async function finaliseSessionAfterExchange(
-  controller: ReadableStreamDefaultController,
+  enqueue: (chunk: Uint8Array) => void,
   encoder: TextEncoder,
   ctx: {
     owner: string
     repoName: string
     card: { identifier: string }
     cardId: string
-    user: { displayName: string; githubUsername: string; accessToken: string }
+    user: { id: string; displayName: string; githubUsername: string; accessToken: string }
     convSessionId: string
     isFirstMessage: boolean
     convSessionTitle: string | null
     message: string
     cardTitle: string
     assistantText: string
+    sidebarSession: (overrides?: Partial<SidebarEvent['session']>) => SidebarEvent['session']
   },
 ) {
   try {
+    const pending = await getPendingChanges(ctx.owner, ctx.repoName, ctx.card.identifier)
+    const commitMessage = await generateCommitMessage(
+      ctx.card.identifier,
+      ctx.cardTitle,
+      pending,
+      ctx.message,
+      ctx.assistantText,
+    )
+
     const changedFiles = await autoCommit(
       ctx.owner,
       ctx.repoName,
       ctx.card.identifier,
-      'Update specs from interview',
+      commitMessage,
       ctx.user.displayName,
       `${ctx.user.githubUsername}@users.noreply.github.com`,
       ctx.user.accessToken,
@@ -393,23 +484,23 @@ async function finaliseSessionAfterExchange(
         data: { touchedFiles: JSON.stringify(allFiles) },
       })
 
-      controller.enqueue(
+      enqueue(
         encoder.encode(
           `data: ${JSON.stringify({ type: 'commit', files: changedFiles })}\n\n`,
         ),
       )
+
     }
   } catch (commitErr) {
     console.error('Auto-commit failed:', commitErr)
   }
-
-  await releaseAllLocks(ctx.cardId, AI_LOCK_AGENT)
 
   // Update conversation session metadata
   const now = new Date()
   const updateData: Record<string, unknown> = {
     messageCount: { increment: 2 },
     lastMessageAt: now,
+    dismissedFromRecent: false,
   }
 
   if (ctx.isFirstMessage && !ctx.convSessionTitle) {
@@ -424,7 +515,7 @@ async function finaliseSessionAfterExchange(
 
   // Send title update to client for sidebar refresh
   if (updatedSession.title) {
-    controller.enqueue(
+    enqueue(
       encoder.encode(
         `data: ${JSON.stringify({
           type: 'session_update',
@@ -434,6 +525,125 @@ async function finaliseSessionAfterExchange(
       ),
     )
   }
+
+  // Notify sidebar: streaming finished, update title/messageCount
+  emitSidebarEvent({
+    type: 'streaming_stop',
+    userId: ctx.user.id,
+    session: ctx.sidebarSession({
+      title: updatedSession.title,
+      lastMessageAt: now.toISOString(),
+    }),
+  })
+}
+
+/**
+ * Generate a meaningful commit message using Haiku, informed by the files changed
+ * and the recent exchange. Falls back to a file-path-derived message if the LLM call fails.
+ */
+async function generateCommitMessage(
+  cardIdentifier: string,
+  cardTitle: string,
+  pending: { filePath: string; isNew: boolean }[],
+  userMessage: string,
+  assistantText: string,
+): Promise<string> {
+  const prefix = cardIdentifier.toUpperCase()
+  const fallback = buildCommitMessageFromFiles(prefix, pending)
+
+  if (pending.length === 0) return fallback
+
+  try {
+    const fileList = pending
+      .map((f) => `${f.isNew ? 'A' : 'M'} ${f.filePath}`)
+      .join('\n')
+
+    const prompt = `Generate a concise git commit message for a spec-driven development card.
+
+Card: ${prefix} — ${cardTitle}
+
+Changed files:
+${fileList}
+
+Recent exchange summary:
+User: ${userMessage.slice(0, 400)}${userMessage.length > 400 ? '...' : ''}
+Assistant: ${assistantText.slice(0, 400)}${assistantText.length > 400 ? '...' : ''}
+
+Rules:
+- Start with "${prefix}: " (already provided — do NOT include it, just write the rest)
+- One line, under 72 characters total including the prefix
+- Be specific about what changed and why, not just which files
+- Use lowercase imperative mood (e.g. "add allergies spec", "update ward-overview mockup with bed status")
+- No full stops at the end
+
+Respond with only the message text after the prefix, nothing else.`
+
+    const response = await anthropic.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 100,
+      messages: [{ role: 'user', content: prompt }],
+    })
+
+    const text = response.content
+      .filter((b) => b.type === 'text')
+      .map((b) => ('text' in b ? b.text : ''))
+      .join('')
+      .trim()
+      .replace(/^["']|["']$/g, '') // strip any surrounding quotes
+      .replace(/\.$/, '') // strip trailing full stop
+
+    if (text && text.length <= 72) {
+      return `${prefix}: ${text}`
+    }
+  } catch (err) {
+    console.warn('[commit-message] Haiku call failed, using fallback:', err)
+  }
+
+  return fallback
+}
+
+/**
+ * Fallback commit message derived purely from changed file paths.
+ */
+function buildCommitMessageFromFiles(
+  prefix: string,
+  pending: { filePath: string; isNew: boolean }[],
+): string {
+  if (pending.length === 0) return `${prefix}: update files`
+
+  const specs = pending.filter((f) => f.filePath.startsWith('.workhorse/specs/'))
+  const mockups = pending.filter((f) => f.filePath.startsWith('.workhorse/design/mockups/'))
+  const codeFiles = pending.filter((f) => !f.filePath.startsWith('.workhorse/'))
+
+  const parts: string[] = []
+
+  if (specs.length === 1) {
+    const slug = specs[0].filePath.split('/').pop()?.replace(/\.md$/, '') ?? 'spec'
+    parts.push(`${specs[0].isNew ? 'add' : 'update'} ${slug} spec`)
+  } else if (specs.length > 1) {
+    parts.push(`${specs.every((f) => f.isNew) ? 'add' : 'update'} ${specs.length} specs`)
+  }
+
+  if (mockups.length === 1) {
+    const slug = mockups[0].filePath.split('/').pop()?.replace(/\.html$/, '') ?? 'mockup'
+    parts.push(`${mockups[0].isNew ? 'add' : 'update'} ${slug} mockup`)
+  } else if (mockups.length > 1) {
+    parts.push(`${mockups.every((f) => f.isNew) ? 'add' : 'update'} ${mockups.length} mockups`)
+  }
+
+  if (codeFiles.length === 1) {
+    const name = codeFiles[0].filePath.split('/').pop() ?? codeFiles[0].filePath
+    parts.push(`${codeFiles[0].isNew ? 'add' : 'update'} ${name}`)
+  } else if (codeFiles.length <= 3) {
+    parts.push(`update ${codeFiles.map((f) => f.filePath.split('/').pop() ?? f.filePath).join(', ')}`)
+  } else {
+    const dirs = [...new Set(codeFiles.map((f) => f.filePath.split('/')[0] ?? ''))]
+    parts.push(dirs.length === 1 && dirs[0] ? `update ${codeFiles.length} files in ${dirs[0]}/` : `update ${codeFiles.length} files`)
+  }
+
+  if (parts.length === 0) parts.push('update files')
+
+  return `${prefix}: ${parts.join(', ')}`
 }
 
 /** Known action pill messages that make poor session titles. */
@@ -507,4 +717,109 @@ function truncateTitle(text: string): string {
   const truncated = sentence.slice(0, 60)
   const lastSpace = truncated.lastIndexOf(' ')
   return (lastSpace > 20 ? truncated.slice(0, lastSpace) : truncated).trim() + '…'
+}
+
+/**
+ * Run the jockey after an agent exchange. Reads the card's journal and recent
+ * conversation, calls Haiku for an assessment, and persists any new journal entries.
+ */
+async function runJockeyAfterExchange(
+  cardId: string,
+  convSessionId: string,
+  cardTitle: string,
+  cardStatus: string,
+  userMessage: string,
+  assistantText: string,
+  repo: { owner: string; repoName: string; cardIdentifier: string; defaultBranch: string },
+): Promise<JockeyAssessment | null> {
+  try {
+    // Fetch current state
+    const [journalEntries, scheduledSteps, card, { workhorseFiles, codeFiles: changedCodeFiles }] = await Promise.all([
+      prisma.journalEntry.findMany({
+        where: { cardId },
+        orderBy: { createdAt: 'asc' },
+        select: { type: true, summary: true, createdAt: true },
+        take: 100,
+      }),
+      prisma.scheduledStep.findMany({
+        where: { cardId },
+        orderBy: { position: 'asc' },
+        select: { id: true, skillId: true, position: true },
+      }),
+      prisma.card.findUnique({
+        where: { id: cardId },
+        select: { prUrl: true },
+      }),
+      getChangedFiles(repo.owner, repo.repoName, repo.cardIdentifier, repo.defaultBranch),
+    ])
+
+    const hasSpecs = workhorseFiles.some(f => f.filePath.startsWith('.workhorse/specs/'))
+    const hasCodeChanges = changedCodeFiles.length > 0
+
+    // Build recent messages from the current exchange
+    // (We don't have the full transcript here, so we use the current user + assistant messages)
+    const recentMessages: { role: 'user' | 'assistant'; content: string }[] = [
+      { role: 'user', content: userMessage },
+    ]
+    if (assistantText) {
+      recentMessages.push({ role: 'assistant', content: assistantText })
+    }
+
+    const assessment = await runJockeyAssessment({
+      journalEntries,
+      scheduledSteps,
+      recentMessages,
+      newMessageCount: recentMessages.length,
+      cardTitle,
+      cardStatus,
+      hasSpecs,
+      hasCodeChanges,
+      hasPr: !!card?.prUrl,
+    })
+
+    // Persist new journal entries — sanitise LLM output before storing
+    if (assessment.journalEntries.length > 0) {
+      await prisma.journalEntry.createMany({
+        data: assessment.journalEntries.map(entry => ({
+          cardId,
+          // Constrain type to alphanumeric + hyphens, max 50 chars
+          type: entry.type.replace(/[^a-z0-9-]/gi, '').slice(0, 50) || 'general',
+          // Short display label for the journey section, capped at 50 chars.
+          // Fall back to a humanised type if the LLM returns an empty string.
+          label: entry.label.slice(0, 50) || humaniseSkillId(entry.type),
+          // Length-limit summary to prevent unbounded storage
+          summary: entry.summary.slice(0, 500),
+        })),
+      })
+    }
+
+    // Update jockey cursor atomically — messageCount may have been
+    // incremented by finaliseSessionAfterExchange since we read it.
+    await prisma.conversationSession.update({
+      where: { id: convSessionId },
+      data: { jockeyCursor: { increment: recentMessages.length } },
+    }).catch(() => {
+      // Session may have been deleted concurrently
+    })
+
+    // Handle scheduled step auto-start
+    if (assessment.startNextScheduled && scheduledSteps.length > 0) {
+      // Remove the first scheduled step (it's being started)
+      await prisma.scheduledStep.delete({
+        where: { id: scheduledSteps[0].id },
+      }).catch(() => {
+        // Step may have been cancelled concurrently, ignore
+      })
+    }
+
+    // Sanitise activeStep — strip any HTML tags as defence-in-depth
+    if (assessment.activeStep) {
+      assessment.activeStep = assessment.activeStep.replace(/<[^>]*>/g, '').slice(0, 200)
+    }
+
+    return assessment
+  } catch (error) {
+    console.warn('[jockey] Post-exchange assessment failed:', error)
+    return null
+  }
 }

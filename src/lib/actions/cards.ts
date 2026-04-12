@@ -21,7 +21,6 @@ export async function getCard(identifier: string) {
     include: {
       team: { include: { project: true } },
       assignee: true,
-      mockups: true,
       comments: {
         include: { user: true, attachments: true },
         orderBy: { createdAt: 'asc' },
@@ -84,16 +83,35 @@ export async function updateCard(
     tags?: string[]
   },
 ) {
-  await requireUser()
+  const user = await requireUser()
 
   const updateData: Record<string, unknown> = { ...data }
   if (data.tags) {
     updateData.tags = JSON.stringify(data.tags)
   }
 
-  const card = await prisma.card.update({
-    where: { id },
-    data: updateData,
+  const card = await prisma.$transaction(async (tx) => {
+    const current = data.status
+      ? await tx.card.findUnique({ where: { id }, select: { status: true } })
+      : null
+
+    const updated = await tx.card.update({
+      where: { id },
+      data: updateData,
+    })
+
+    if (data.status && current && current.status !== data.status) {
+      await tx.cardActivity.create({
+        data: {
+          cardId: id,
+          userId: user.id,
+          action: 'status_changed',
+          details: JSON.stringify({ from: current.status, to: data.status }),
+        },
+      })
+    }
+
+    return updated
   })
 
   revalidatePath('/')

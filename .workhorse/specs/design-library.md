@@ -2,7 +2,6 @@
 title: Design library
 area: design-library
 card: WH-020
-status: draft
 ---
 
 Each product has a `.workhorse/design/` directory in its codebase containing a living design library: design system documentation, reusable components, view layouts, and committed mockups. Everything in the design library is design-only: it doesn't need to be functional beyond allowing users to work through specs and providing visual context to the AI agent during implementation.

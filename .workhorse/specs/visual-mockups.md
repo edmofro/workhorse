@@ -2,7 +2,6 @@
 title: Visual mockups
 area: mockups
 card: WH-003
-status: draft
 ---
 
 The AI generates HTML/CSS mockups during the chat conversation. Mockups are artifacts — they open in the same chat + artifact layout as specs (see `card-navigation.md`). Clicking a mockup opens it alongside the chat, not as a full-screen overlay. There may be many mockups over the course of specifying a card: a date picker detail, a full page layout, a merge conflict dialog, etc.

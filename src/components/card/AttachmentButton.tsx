@@ -40,7 +40,7 @@ export function AttachmentButton({ onFiles, disabled, compact }: AttachmentButto
         type="button"
         onClick={handleClick}
         disabled={disabled}
-        className={`shrink-0 text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors duration-100 cursor-pointer disabled:opacity-40 disabled:cursor-default ${compact ? 'p-1' : 'p-2'}`}
+        className={`shrink-0 text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors duration-100 cursor-pointer disabled:opacity-40 disabled:cursor-default ${compact ? 'p-1 mb-[5px]' : 'p-2 mb-[2px]'}`}
         title="Attach file"
       >
         <Paperclip size={compact ? 14 : 16} />

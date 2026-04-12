@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import type { ViewState } from '../../lib/hooks/useViewNavigation'
 import { useRouter } from 'next/navigation'
 import { cn } from '../../lib/cn'
@@ -8,34 +8,36 @@ import { useUser } from '../UserProvider'
 import { useAgentSession } from '../../lib/hooks/useAgentSession'
 import { useAttachments } from '../../lib/hooks/useAttachments'
 import { useViewNavigation } from '../../lib/hooks/useViewNavigation'
-import { FilesPanel } from './FilesPanel'
 import { SpecHeaderBar } from './SpecHeaderBar'
 import type { DeviceKey } from './SpecHeaderBar'
-import { ActionPills, getPillsForContext, type ActionPill } from './ActionPills'
+import { ActionPills, type ActionPill } from './ActionPills'
+import { PropertiesBar } from './PropertiesBar'
+import { PrBar } from './PrBar'
+import { useJockeyState } from '../../lib/hooks/useJockeyState'
+import { BUILT_IN_SKILLS } from '../../lib/skills/registry'
 import { ChatMessage } from './ChatMessage'
 import { ChatInput } from './ChatInput'
 import { ThinkingIndicator } from './ThinkingIndicator'
 import { SpecEditor } from './SpecEditor'
 import { MockupArtifact } from './MockupArtifact'
 import { NewSpecDialog } from './NewSpecDialog'
+import { ArtifactsSidebar, type CodeFileItem } from './ArtifactsSidebar'
+import { Skeleton } from '../Skeleton'
+import { CodeDiffArtifact } from './CodeDiffArtifact'
+import { CodeEditorView } from './CodeEditorView'
+import { SpecDiffView } from './SpecDiffView'
 import { FileText, MessageCircle } from 'lucide-react'
 import { parseSpec, buildDefaultSpec, generateSpecPath } from '../../lib/specs/format'
 import { deriveLabel } from '../../lib/labels'
 import { updateCardTitleFromSpec } from '../../lib/actions/cards'
 import { formatRelativeTime } from '../../lib/formatRelativeTime'
 import { isMockupPath } from '../../lib/paths'
+import { useCardBackRegister } from './CardBackContext'
 
 interface SpecFileData {
   filePath: string
   isNew: boolean
   content: string
-}
-
-interface MockupData {
-  id: string
-  title: string
-  html: string
-  filePath: string
 }
 
 interface ProjectSpecData {
@@ -57,11 +59,19 @@ interface CardWorkspaceProps {
     identifier: string
     title: string
     status: string
+    priority: string
+    team: { id: string; name: string }
+    assignee: { id: string; displayName: string } | null
+    dependsOn: { identifier: string; title: string }[]
     cardBranch: string | null
+    prUrl?: string | null
   }
+  users: { id: string; displayName: string }[]
+  teams: { id: string; name: string }[]
   cardTabContent: React.ReactNode
   initialFiles: SpecFileData[]
-  mockups: MockupData[]
+  initialCodeFiles?: { filePath: string; isNew: boolean; linesAdded?: number; linesRemoved?: number }[]
+  filesLoading?: boolean
   projectSpecs: ProjectSpecData[]
   sessions: ConversationSessionData[]
   initialSessionId?: string | null
@@ -69,9 +79,12 @@ interface CardWorkspaceProps {
 
 export function CardWorkspace({
   card,
+  users,
+  teams,
   cardTabContent,
   initialFiles,
-  mockups,
+  initialCodeFiles = [],
+  filesLoading = false,
   projectSpecs,
   sessions: initialSessions,
   initialSessionId,
@@ -87,8 +100,26 @@ export function CardWorkspace({
     initialSessionId ?? null,
   )
 
-  // Spec files state
+  // Spec files state — synced from props when files load asynchronously.
+  // Only sync once (empty → loaded), and never while user is editing.
   const [files, setFiles] = useState(initialFiles)
+  const [codeFiles, setCodeFiles] = useState<{ filePath: string; isNew: boolean; linesAdded?: number; linesRemoved?: number }[]>(initialCodeFiles)
+  const filesSyncedRef = useRef(initialFiles.length > 0)
+  const codeFilesSyncedRef = useRef(initialCodeFiles.length > 0)
+
+  useEffect(() => {
+    if (!filesSyncedRef.current && initialFiles.length > 0 && !isEditingRef.current) {
+      setFiles(initialFiles)
+      filesSyncedRef.current = true
+    }
+  }, [initialFiles])
+
+  useEffect(() => {
+    if (!codeFilesSyncedRef.current && initialCodeFiles.length > 0) {
+      setCodeFiles(initialCodeFiles)
+      codeFilesSyncedRef.current = true
+    }
+  }, [initialCodeFiles])
   const [showNewSpecDialog, setShowNewSpecDialog] = useState(false)
   const [isEnsuring, setIsEnsuring] = useState(false)
   const chatScrollRef = useRef<HTMLDivElement>(null)
@@ -96,17 +127,24 @@ export function CardWorkspace({
 
   // Mockup device state
   const [mockupDevice, setMockupDevice] = useState<DeviceKey>('desktop')
+  const [expanded, setExpanded] = useState(false)
+  const [showChanges, setShowChanges] = useState(true)
+
+  // Jockey state — journal, pills, suggestions, scheduling
+  const jockey = useJockeyState(card.id)
 
   // Agent session state — uses activeSessionId for history loading
   const {
     messages,
     isStreaming,
     fileWrites,
+    committedFiles,
     thinkingSnippet,
     currentSessionId,
     currentSessionTitle,
     sendMessage: rawSendMessage,
-  } = useAgentSession(card.id, activeSessionId)
+    interrupt,
+  } = useAgentSession(card.id, activeSessionId, jockey.handleJockeyEvent)
 
   // Sync back the session ID from the hook (set after first message creates a session)
   const activeSessionIdRef = useRef(activeSessionId)
@@ -150,43 +188,52 @@ export function CardWorkspace({
   const mockupFiles = files
     .filter((f) => isMockupPath(f.filePath))
     .map((f) => ({ filePath: f.filePath, content: f.content }))
-  const allMockupFiles = [
-    ...mockupFiles,
-    ...mockups
-      .filter((m) => !mockupFiles.some((mf) => mf.filePath === m.filePath))
-      .map((m) => ({ filePath: m.filePath, content: m.html })),
-  ]
+  const allMockupFiles = mockupFiles
 
-  // All navigable files (specs + mockups) for prev/next
+  // Code file items for the sidebar
+  const codeFileItems: CodeFileItem[] = codeFiles.map((f) => ({
+    filePath: f.filePath,
+    ext: f.filePath.split('.').pop() ?? '',
+    linesAdded: f.linesAdded,
+    linesRemoved: f.linesRemoved,
+  }))
+
+  // All navigable files (specs + mockups + code) for prev/next
   const allNavigableFiles = [
     ...specFiles.map((f) => f.filePath),
     ...allMockupFiles.map((f) => f.filePath),
+    ...codeFiles.map((f) => f.filePath),
   ]
 
   // Spec editing operations
   const handleStartEditing = useCallback(
-    async (filePath: string) => {
-      const res = await fetch('/api/file-lock', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cardId: card.id, filePath }),
-      })
-      if (res.status === 409) {
-        const data = await res.json()
-        alert(`File is being edited by ${data.holder?.displayName ?? 'someone else'}`)
-        return false
-      }
+    async () => {
       return true
     },
-    [card.id],
+    [],
+  )
+
+  // Persist a file to the worktree API
+  const persistFile = useCallback(
+    async (filePath: string) => {
+      const file = files.find((f) => f.filePath === filePath)
+      if (!file) return
+      const res = await fetch('/api/worktree-files', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cardId: card.id, filePath, content: file.content }),
+      })
+      if (!res.ok) {
+        console.error('Failed to save file')
+      }
+    },
+    [card.id, files],
   )
 
   const handleDoneEditing = useCallback(
     async (filePath: string) => {
-      await fetch(
-        `/api/file-lock?cardId=${card.id}&filePath=${encodeURIComponent(filePath)}`,
-        { method: 'DELETE' },
-      )
+      // Persist buffered content to the worktree
+      await persistFile(filePath)
       await fetch('/api/auto-commit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -203,17 +250,7 @@ export function CardWorkspace({
         }
       }
     },
-    [card.id, card.title, files, router],
-  )
-
-  const handleReleaseLock = useCallback(
-    async (filePath: string) => {
-      await fetch(
-        `/api/file-lock?cardId=${card.id}&filePath=${encodeURIComponent(filePath)}`,
-        { method: 'DELETE' },
-      )
-    },
-    [card.id],
+    [card.id, card.title, files, persistFile, router],
   )
 
   // Restore file content from worktree (used on discard)
@@ -266,7 +303,6 @@ export function CardWorkspace({
     initialView: initialViewForNav,
     onStartEditing: handleStartEditing,
     onDoneEditing: handleDoneEditing,
-    onReleaseLock: handleReleaseLock,
     onRestoreContent: handleRestoreContent,
   })
 
@@ -316,7 +352,7 @@ export function CardWorkspace({
     return () => clearInterval(interval)
   }, [card.id])
 
-  // Track file writes from the agent — add new files to the list
+  // Track file writes from the agent — add or update files in the list
   useEffect(() => {
     for (const fw of fileWrites) {
       if (fw.filePath.startsWith('.workhorse/specs/') || isMockupPath(fw.filePath)) {
@@ -324,9 +360,50 @@ export function CardWorkspace({
           if (prev.some((f) => f.filePath === fw.filePath)) return prev
           return [...prev, { filePath: fw.filePath, isNew: true, content: '' }]
         })
+        // Fetch the latest file content from the worktree — both for newly
+        // added files and for existing files the agent has just edited
+        fetch(`/api/worktree-files?cardId=${card.id}&filePath=${encodeURIComponent(fw.filePath)}`)
+          .then((res) => res.ok ? res.json() : null)
+          .then((data) => {
+            if (data?.content) {
+              setFiles((prev) =>
+                prev.map((f) => f.filePath === fw.filePath ? { ...f, content: data.content as string } : f),
+              )
+            }
+          })
+          .catch(() => { /* best-effort */ })
+      } else {
+        // Track code file changes
+        setCodeFiles((prev) => {
+          if (prev.some((f) => f.filePath === fw.filePath)) return prev
+          return [...prev, { filePath: fw.filePath, isNew: true }]
+        })
       }
     }
-  }, [fileWrites])
+  }, [fileWrites, card.id])
+
+  // Refresh code files after a commit so the artifacts bar updates with
+  // accurate line stats from git, without requiring a page refresh.
+  useEffect(() => {
+    if (committedFiles.length === 0) return
+    fetch(`/api/card-files?cardId=${encodeURIComponent(card.identifier)}`)
+      .then((res) => res.ok ? res.json() : null)
+      .then((data) => {
+        if (data?.initialCodeFiles) {
+          setCodeFiles(data.initialCodeFiles)
+        }
+      })
+      .catch(() => { /* best-effort */ })
+  }, [committedFiles, card.identifier])
+
+  // Open a file from card home in expanded mode (chat contracted)
+  const openFileExpanded = useCallback(
+    (filePath: string) => {
+      setExpanded(true)
+      openFile(filePath)
+    },
+    [openFile],
+  )
 
   // Navigate to a session's chat zone
   const openSession = useCallback(
@@ -342,11 +419,11 @@ export function CardWorkspace({
     [sessions, navigateTo],
   )
 
-  // Send message with mode support
+  // Send message with optional skill
   const handleSendMessage = useCallback(
-    (content: string, mode?: string) => {
+    (content: string, skillId?: string) => {
       const uploaded = chatAttachments.getUploadedAttachments()
-      rawSendMessage(content, user.displayName, uploaded.length > 0 ? uploaded : undefined, mode)
+      rawSendMessage(content, user.displayName, uploaded.length > 0 ? uploaded : undefined, skillId)
       chatAttachments.clear()
 
       if (view.type === 'card') {
@@ -360,10 +437,27 @@ export function CardWorkspace({
 
   const handlePillSelect = useCallback(
     (pill: ActionPill) => {
-      handleSendMessage(pill.message, pill.mode)
+      handleSendMessage(pill.message, pill.skillId)
     },
     [handleSendMessage],
   )
+
+  /** Trigger a skill from the journey bar */
+  const handleTriggerSkill = useCallback(
+    (skillId: string, label: string) => {
+      const skill = BUILT_IN_SKILLS[skillId]
+      const message = skill?.description ?? `Run ${label}`
+      handleSendMessage(message, skillId)
+    },
+    [handleSendMessage],
+  )
+
+  /** Handle PR creation — update local state with the new PR URL */
+  const [localPrUrl, setLocalPrUrl] = useState<string | null>(card.prUrl ?? null)
+  const handlePrCreated = useCallback((prUrl: string) => {
+    setLocalPrUrl(prUrl)
+    router.refresh()
+  }, [router])
 
   // Spec operations
   const ensureWorktree = useCallback(async () => {
@@ -382,22 +476,14 @@ export function CardWorkspace({
     }
   }, [card.id])
 
-  const handleSpecUpdate = useCallback(
-    async (filePath: string, content: string) => {
-      const res = await fetch('/api/worktree-files', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cardId: card.id, filePath, content }),
-      })
-      if (!res.ok) {
-        console.error('Failed to save spec update')
-        return
-      }
+  // Buffer content changes locally (does not write to API)
+  const handleContentChange = useCallback(
+    (filePath: string, content: string) => {
       setFiles((prev) =>
         prev.map((f) => (f.filePath === filePath ? { ...f, content } : f)),
       )
     },
-    [card.id],
+    [],
   )
 
   const handleCreateSpec = useCallback(
@@ -461,62 +547,36 @@ export function CardWorkspace({
     ? files.find((f) => f.filePath === activeFilePath) ?? null
     : null
   const isMockupFile = activeFilePath ? isMockupPath(activeFilePath) : false
+  const isCodeFile = activeFilePath
+    ? !activeFilePath.startsWith('.workhorse/') && !isMockupFile
+    : false
 
-  // Find mockup data (either from files or from mockups prop)
   const activeMockupHtml = isMockupFile && activeFilePath
-    ? (files.find((f) => f.filePath === activeFilePath)?.content ||
-       mockups.find((m) => m.filePath === activeFilePath)?.html ||
-       '')
+    ? (files.find((f) => f.filePath === activeFilePath)?.content || '')
     : ''
   const activeMockupTitle = activeFilePath ? deriveLabel(activeFilePath, activeMockupHtml) : ''
 
   const extractedAreas = extractAreas(projectSpecs)
 
-  // Determine pill context using discriminated union so isMockup is only
-  // expressible when the view is 'artifact'.
-  const pillView = view.type === 'artifact'
-    ? { type: 'artifact' as const, isMockup: isMockupFile }
-    : { type: view.type as 'card' | 'chat' }
-  const pills = getPillsForContext(card.status, messages.length > 0, pillView)
-
-  // Session title for the chat zone header
-  const chatSessionTitle = view.type === 'chat' ? view.sessionTitle : null
-
-  // --- Shared files panel props ---
-  const handleFilesPanelSelect = useCallback((fp: string) => {
-    if (view.type === 'artifact') {
-      navigateToFile(fp)
-    } else {
-      openFile(fp)
+  // Convert jockey pill suggestions to ActionPill format
+  const pills: ActionPill[] = jockey.pills.map(p => {
+    const skill = BUILT_IN_SKILLS[p.skillId]
+    return {
+      label: p.label,
+      message: skill?.description ?? `Run ${p.label}`,
+      skillId: p.skillId,
     }
-  }, [view.type, navigateToFile, openFile])
+  })
 
-  const handleFilesPanelCreate = useCallback(() => {
-    setShowNewSpecDialog(true)
-  }, [])
-
-  const filesPanelProps = useMemo(() => ({
-    specs: specFiles.map((f) => ({ filePath: f.filePath, isNew: f.isNew, content: f.content })),
-    mockups: allMockupFiles,
-    activeFilePath,
-    onSelectFile: handleFilesPanelSelect,
-    onCreateSpec: handleFilesPanelCreate,
-  }), [specFiles, allMockupFiles, activeFilePath, handleFilesPanelSelect, handleFilesPanelCreate])
+  // Deduplicate: remove suggestions that already appear in pills
+  const pillSkillIds = new Set(jockey.pills.map(p => p.skillId))
+  const dedupedSuggestions = jockey.suggestions.filter(s => !pillSkillIds.has(s.skillId))
 
   // --- Chat column (shared between chat mode and artifact mode) ---
   const chatColumn = (
     <div className="flex-1 flex flex-col overflow-hidden">
-      {/* Session header bar in chat zone */}
-      {view.type === 'chat' && chatSessionTitle && (
-        <div className="shrink-0 px-4 py-3 border-b border-[var(--border-subtle)] flex items-center gap-2">
-          <MessageCircle size={13} className="text-[var(--text-muted)]" />
-          <span className="text-[13px] font-medium text-[var(--text-secondary)] truncate">
-            {chatSessionTitle}
-          </span>
-        </div>
-      )}
       <div ref={chatScrollRef} className="flex-1 overflow-y-auto flex justify-center">
-        <div className="w-full" style={{ maxWidth: '680px', padding: '32px 24px 32px' }}>
+        <div className="w-full" style={{ maxWidth: '680px', padding: '32px 24px 80px' }}>
           {messages.length === 0 && (
             <div className="text-center py-16">
               <p className="text-[14px] text-[var(--text-muted)] mb-1">
@@ -580,14 +640,24 @@ export function CardWorkspace({
           </div>
         )}
         <ChatInput
+          key={activeSessionId ?? 'new'}
           onSend={(content) => handleSendMessage(content)}
-          disabled={isStreaming}
+          isStreaming={isStreaming}
+          onStop={interrupt}
+          autoFocus
           pendingAttachments={chatAttachments.pending}
           onAddFiles={chatAttachments.addFiles}
           onRemoveAttachment={chatAttachments.removeAttachment}
           isUploading={chatAttachments.isUploading}
         />
       </div>
+      {/* PR bar — bottom of chat area */}
+      <PrBar
+        cardId={card.id}
+        hasCodeChanges={jockey.hasCodeChanges}
+        prUrl={localPrUrl}
+        onPrCreated={handlePrCreated}
+      />
     </div>
   )
 
@@ -597,56 +667,99 @@ export function CardWorkspace({
       <SpecHeaderBar
         filePath={activeFilePath}
         fileContent={activeFile?.content}
-        cardId={card.id}
         allNavigableFiles={allNavigableFiles}
         specs={specFiles.map((f) => ({ filePath: f.filePath, isNew: f.isNew, content: f.content }))}
+        mockups={allMockupFiles}
+        codeFiles={codeFileItems}
         projectSpecs={projectSpecs}
         isEditing={isEditing}
         isMockup={isMockupFile}
+        isCode={isCodeFile}
         device={mockupDevice}
         onDeviceChange={setMockupDevice}
         onPrev={navigatePrev}
         onNext={navigateNext}
         onSelectSpec={(fp) => navigateToFile(fp)}
         onSelectProjectSpec={handleSelectProjectSpec}
-        onClose={closeArtifact}
+        onClose={() => { setExpanded(false); closeArtifact() }}
         onEdit={enterEdit}
+        onSave={finishEditing}
+        showChanges={showChanges}
+        onToggleChanges={() => setShowChanges(!showChanges)}
+        expanded={expanded}
+        onToggleExpand={() => setExpanded(!expanded)}
       />
-      {/* Render spec or mockup content based on file type */}
-      {isMockupFile ? (
+      {/* Render content based on file type and changes toggle */}
+      {isCodeFile ? (
+        showChanges && !isEditing ? (
+          <CodeDiffArtifact cardId={card.id} filePath={activeFilePath} />
+        ) : (
+          <CodeEditorView
+            cardId={card.id}
+            filePath={activeFilePath}
+            isEditing={isEditing}
+            onContentChange={(content) => handleContentChange(activeFilePath, content)}
+          />
+        )
+      ) : isMockupFile ? (
         <MockupArtifact
           html={activeMockupHtml}
           title={activeMockupTitle}
           device={mockupDevice}
+          isEditing={isEditing}
+          onContentChange={(newHtml) => {
+            if (activeFilePath) handleContentChange(activeFilePath, newHtml)
+          }}
         />
       ) : activeFile ? (
-        <div className="flex-1 overflow-y-auto flex justify-center">
-          <div className="w-full" style={{ maxWidth: '720px', padding: '48px 40px 80px' }}>
-            <SpecEditor
-              key={activeFile.filePath}
-              spec={{
-                id: activeFile.filePath,
-                filePath: activeFile.filePath,
-                content: activeFile.content,
-                isNew: activeFile.isNew,
-              }}
-              onContentChange={(_, content) =>
-                handleSpecUpdate(activeFile.filePath, content)
-              }
-              isEditing={isEditing}
-              onStartEditing={() => handleStartEditing(activeFile.filePath)}
-              onDoneEditing={finishEditing}
-              cardStatus={card.status}
-              hideEditButton
-            />
+        showChanges && !isEditing ? (
+          <SpecDiffView cardId={card.id} filePath={activeFile.filePath} currentContent={activeFile.content} />
+        ) : (
+          <div className="flex-1 overflow-y-auto flex justify-center">
+            <div className="w-full" style={{ maxWidth: '720px', padding: '48px 40px 80px' }}>
+              <SpecEditor
+                key={activeFile.filePath}
+                spec={{
+                  id: activeFile.filePath,
+                  filePath: activeFile.filePath,
+                  content: activeFile.content,
+                  isNew: activeFile.isNew,
+                }}
+                onContentChange={(_, content) =>
+                  handleContentChange(activeFile.filePath, content)
+                }
+                isEditing={isEditing}
+                onStartEditing={() => handleStartEditing()}
+                cardStatus={card.status}
+                hideEditButton
+              />
+            </div>
           </div>
-        </div>
+        )
       ) : null}
     </div>
   ) : null
 
+  // Register back handler for topbar: go to card home when in chat/artifact, null when already on card home
+  const backHandler = view.type !== 'card' ? goBack : null
+  useCardBackRegister(backHandler)
+
   return (
-    <div className="flex-1 flex overflow-hidden">
+    <div className="flex-1 flex flex-col overflow-hidden">
+      {/* Properties bar — single instance shared across all views */}
+      <PropertiesBar
+        card={card}
+        users={users}
+        teams={teams}
+        journalEntries={jockey.journalEntries}
+        scheduledSteps={jockey.scheduledSteps}
+        suggestions={dedupedSuggestions}
+        activeStep={jockey.activeStep}
+        onTriggerSkill={handleTriggerSkill}
+        onScheduleStep={jockey.scheduleStep}
+        onUnscheduleStep={jockey.unscheduleStep}
+      />
+      <div className="flex-1 flex overflow-hidden">
       {/* ===== Card home ===== */}
       {view.type === 'card' && (
         <>
@@ -654,9 +767,8 @@ export function CardWorkspace({
             <div className="flex-1 overflow-y-auto">
               {cardTabContent}
 
-              {/* Conversations and specs/mockups sections */}
+              {/* Conversations section */}
               <div className="max-w-[720px] mx-auto px-10 pb-8">
-                {/* Conversations section */}
                 {sessions.length > 0 && (
                   <div className="border-t border-[var(--border-subtle)] pt-6">
                     <h3 className="text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-[0.06em] mb-3">
@@ -678,59 +790,9 @@ export function CardWorkspace({
                             )}>
                               {session.title ?? 'New conversation'}
                             </span>
-                            <span className="text-[11px] text-[var(--text-muted)] shrink-0">
+                            <span className="text-[11px] text-[var(--text-faint)] shrink-0">
                               {isSessionStreaming ? 'Working…' : formatRelativeTime(session.lastMessageAt)}
                             </span>
-                          </button>
-                        )
-                      })}
-                    </div>
-                  </div>
-                )}
-
-                {/* Inline specs and mockups */}
-                {(specFiles.length > 0 || allMockupFiles.length > 0) && (
-                  <div className="border-t border-[var(--border-subtle)] pt-6 mt-2">
-                    <div className="flex items-center justify-between mb-3">
-                      <h3 className="text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-[0.06em]">
-                        Specs &amp; Mockups
-                      </h3>
-                      <button
-                        onClick={() => setShowNewSpecDialog(true)}
-                        className="text-[11px] font-medium text-[var(--accent)] hover:text-[var(--accent-hover)] cursor-pointer transition-colors duration-100"
-                      >
-                        + New spec
-                      </button>
-                    </div>
-                    <div className="space-y-1">
-                      {specFiles.map((spec) => {
-                        const label = deriveLabel(spec.filePath, spec.content)
-                        return (
-                          <button
-                            key={spec.filePath}
-                            onClick={() => openFile(spec.filePath)}
-                            className="flex items-center gap-2 w-full px-3 py-2 rounded-[var(--radius-default)] text-left text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer"
-                          >
-                            <FileText size={13} className="shrink-0 text-[var(--text-muted)]" />
-                            <span className="text-[13px] font-medium flex-1">{label}</span>
-                            {spec.isNew ? (
-                              <span className="text-[10px] text-[var(--green)] font-medium shrink-0">new</span>
-                            ) : (
-                              <span className="text-[10px] text-[var(--amber)] font-medium shrink-0">updated</span>
-                            )}
-                          </button>
-                        )
-                      })}
-                      {allMockupFiles.map((mockup) => {
-                        const label = deriveLabel(mockup.filePath, mockup.content)
-                        return (
-                          <button
-                            key={mockup.filePath}
-                            onClick={() => openFile(mockup.filePath)}
-                            className="flex items-center gap-2 w-full px-3 py-2 rounded-[var(--radius-default)] text-left text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer"
-                          >
-                            <FileText size={13} className="shrink-0 text-[var(--text-muted)]" />
-                            <span className="text-[13px] font-medium">{label}</span>
                           </button>
                         )
                       })}
@@ -753,7 +815,8 @@ export function CardWorkspace({
               )}
               <ChatInput
                 onSend={(content) => handleSendMessage(content)}
-                disabled={isStreaming}
+                isStreaming={isStreaming}
+                onStop={interrupt}
                 placeholder="Start a new conversation..."
                 pendingAttachments={chatAttachments.pending}
                 onAddFiles={chatAttachments.addFiles}
@@ -762,8 +825,13 @@ export function CardWorkspace({
               />
             </div>
           </div>
-          {/* Files panel — open by default on card home */}
-          <FilesPanel {...filesPanelProps} defaultOpen={true} />
+          <ArtifactsSidebar
+            specs={specFiles.map((f) => ({ filePath: f.filePath, isNew: f.isNew, content: f.content }))}
+            mockups={allMockupFiles}
+            codeFiles={codeFileItems}
+            activeFilePath={null}
+            onSelectFile={(fp) => openFileExpanded(fp)}
+          />
         </>
       )}
 
@@ -771,24 +839,51 @@ export function CardWorkspace({
       {view.type === 'chat' && (
         <>
           {chatColumn}
-          {/* Files panel — open by default in chat mode */}
-          <FilesPanel {...filesPanelProps} defaultOpen={true} />
+          {filesLoading ? (
+            <aside className="shrink-0 w-[248px] border-l border-[var(--border-subtle)] bg-[var(--bg-page)] flex flex-col p-4 space-y-3">
+              <Skeleton className="h-3 w-12" />
+              <Skeleton className="h-4 w-3/4" />
+              <Skeleton className="h-4 w-1/2" />
+              <Skeleton className="h-3 w-10 mt-2" />
+              <Skeleton className="h-4 w-2/3" />
+            </aside>
+          ) : (
+            <ArtifactsSidebar
+              specs={specFiles.map((f) => ({ filePath: f.filePath, isNew: f.isNew, content: f.content }))}
+              mockups={allMockupFiles}
+              codeFiles={codeFileItems}
+              activeFilePath={activeFilePath}
+              onSelectFile={(fp) => openFile(fp)}
+            />
+          )}
         </>
       )}
 
       {/* ===== Chat + artifact (spec or mockup open) ===== */}
       {view.type === 'artifact' && (
         <>
-          <div className="flex flex-col overflow-hidden" style={{ width: '40%', minWidth: '320px' }}>
-            {chatColumn}
-          </div>
-          <div className="flex flex-col overflow-hidden border-l border-[var(--border-subtle)] relative" style={{ flex: '1 1 60%' }}>
+          {!expanded && (
+            <div className="flex flex-col overflow-hidden" style={{ width: '40%', minWidth: '320px' }}>
+              {chatColumn}
+            </div>
+          )}
+          {expanded && (
+            <div className="shrink-0 flex flex-col items-center py-3 border-r border-[var(--border-subtle)] bg-[var(--bg-page)]" style={{ width: '40px' }}>
+              <button
+                onClick={() => setExpanded(false)}
+                className="p-2 rounded-[var(--radius-default)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer"
+                title="Show chat"
+              >
+                <MessageCircle size={16} />
+              </button>
+            </div>
+          )}
+          <div className="flex-1 flex flex-col overflow-hidden border-l border-[var(--border-subtle)]">
             {artifactColumn}
-            {/* Files panel — collapsed by default in artifact mode, hover to peek */}
-            <FilesPanel {...filesPanelProps} mode="overlay" defaultOpen={false} />
           </div>
         </>
       )}
+      </div>
 
       {/* New spec dialog */}
       {showNewSpecDialog && (

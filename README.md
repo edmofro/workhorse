@@ -180,7 +180,6 @@ Each spec is a markdown file with YAML frontmatter:
 title: Patient allergies
 area: patient
 card: WH-042
-status: complete
 ---
 
 Summary paragraph describing what this feature does.

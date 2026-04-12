@@ -2,7 +2,6 @@
 title: Human-readable labels for specs and mockups
 area: ui
 card: WH-014
-status: draft
 ---
 
 Wherever Workhorse displays a reference to a spec, mockup, or design library file, it shows a clean human-readable label rather than a raw file path or filename. This applies consistently across all surfaces: the files panel, spec explorer, design library browser, and chat notifications.
@@ -13,6 +12,7 @@ The label for any file is derived as follows:
 
 - **Spec files**: use the frontmatter `title` field. If absent, fall back to the humanised filename.
 - **HTML files** (mockups, design library components and views): use the HTML `<title>` element. If absent, fall back to the humanised filename.
+- **Code files**: shown as-is — the raw filename with extension, not humanised or sentence-cased. Code filenames like `PatientSearch.tsx` or `index.ts` are already meaningful to developers and should not be transformed.
 
 ## Humanised filename fallback
 

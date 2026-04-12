@@ -23,8 +23,6 @@ const execFileAsync = promisify(execFile)
 
 const REPOS_BASE = process.env.REPOS_BASE_PATH ?? '/data/repos'
 
-const SHA_RE = /^[a-f0-9]{7,40}$/
-
 /** Validate that a resolved path is within the expected root directory. */
 function assertPathWithin(root: string, resolved: string): void {
   const normalRoot = root.endsWith(path.sep) ? root : root + path.sep
@@ -38,13 +36,6 @@ function safeResolvePath(wtPath: string, filePath: string): string {
   const resolved = path.resolve(wtPath, filePath)
   assertPathWithin(wtPath, resolved)
   return resolved
-}
-
-/** Validate a git SHA. */
-function assertValidSha(sha: string): void {
-  if (!SHA_RE.test(sha)) {
-    throw new Error('Invalid SHA')
-  }
 }
 
 /** Get the bare clone path for a project */
@@ -90,6 +81,8 @@ const lastFetchTime = new Map<string, number>()
 const FETCH_INTERVAL_MS = 30_000
 /** Tracks repos already checked for mirror→bare migration this process. */
 const migratedRepos = new Set<string>()
+/** Track in-flight background fetches to avoid duplicate git fetch processes. */
+const pendingFetches = new Set<string>()
 
 /**
  * Ensure the bare clone exists and is reasonably up to date.
@@ -146,15 +139,24 @@ export async function ensureBareClone(
     lastFetchTime.set(repoKey, Date.now())
   }
 
-  // Fetch if stale (skip if we just cloned)
+  // Stale-while-revalidate: if the bare clone is stale, return it immediately
+  // and trigger a background git fetch so the next caller gets fresh data.
   const lastFetch = lastFetchTime.get(repoKey) ?? 0
   if (!clonedJustNow && Date.now() - lastFetch > FETCH_INTERVAL_MS) {
-    try {
-      await fetchBareClone(owner, repo, token)
-    } catch (err) {
-      console.warn(`[git] Fetch failed for ${repoKey} (stale data used):`, err)
+    if (!pendingFetches.has(repoKey)) {
+      pendingFetches.add(repoKey)
+      // Set lastFetchTime optimistically to prevent duplicate fetches from
+      // callers arriving while the background fetch is still in flight
+      lastFetchTime.set(repoKey, Date.now())
+      fetchBareClone(owner, repo, token)
+        .catch((err) => console.warn(`[git] Background fetch failed for ${repoKey}:`, err))
+        .finally(() => {
+          // Update lastFetchTime on completion so the stale window starts
+          // from when the fetch actually finished
+          lastFetchTime.set(repoKey, Date.now())
+          pendingFetches.delete(repoKey)
+        })
     }
-    lastFetchTime.set(repoKey, Date.now())
   }
 
   return barePath
@@ -340,8 +342,8 @@ export async function autoCommit(
   const status = await git(['status', '--porcelain'], wtPath)
   if (!status) return []
 
-  // Stage all changes in .workhorse/ directory
-  await git(['add', '.workhorse/'], wtPath)
+  // Stage all changes (specs, mockups, and code files)
+  await git(['add', '-A'], wtPath)
 
   // Check if there are staged changes
   const staged = await git(['diff', '--cached', '--name-only'], wtPath)
@@ -350,6 +352,7 @@ export async function autoCommit(
   const changedFiles = staged.split('\n').filter(Boolean)
 
   // Commit with author info
+  // Set committer identity via env vars so git doesn't require global config
   await git(
     [
       'commit',
@@ -357,6 +360,10 @@ export async function autoCommit(
       '--author', `${authorName} <${authorEmail}>`,
     ],
     wtPath,
+    {
+      GIT_COMMITTER_NAME: authorName,
+      GIT_COMMITTER_EMAIL: authorEmail,
+    },
   )
 
   // Push to remote using GIT_ASKPASS to avoid persisting token in config
@@ -375,28 +382,61 @@ export async function autoCommit(
 /**
  * Get the list of spec/mockup files changed on a branch vs main.
  */
+const MAX_CODE_FILES = 200
+
+interface ChangedFilesResult {
+  workhorseFiles: { filePath: string; isNew: boolean }[]
+  codeFiles: { filePath: string; isNew: boolean; linesAdded?: number; linesRemoved?: number }[]
+  codeFilesTruncated: boolean
+}
+
 export async function getChangedFiles(
   owner: string,
   repo: string,
   cardIdentifier: string,
   defaultBranch: string,
-): Promise<{ filePath: string; isNew: boolean }[]> {
+): Promise<ChangedFilesResult> {
   const wtPath = worktreePath(owner, repo, cardIdentifier)
-  const changedFiles = new Map<string, boolean>()
+  const workhorseMap = new Map<string, boolean>()
+  const codeFiles: { filePath: string; isNew: boolean; linesAdded?: number; linesRemoved?: number }[] = []
+  let codeFilesTruncated = false
 
   // Committed changes: files changed on the card branch vs the default branch.
+  // Run --name-status and --numstat in parallel for efficiency.
   try {
-    const diff = await git(
-      ['diff', '--name-status', `origin/${defaultBranch}...HEAD`],
-      wtPath,
-    )
+    const [nameStatus, numstat] = await Promise.all([
+      git(['diff', '--name-status', `origin/${defaultBranch}...HEAD`], wtPath),
+      git(['diff', '--numstat', `origin/${defaultBranch}...HEAD`], wtPath),
+    ])
 
-    for (const line of diff.split('\n').filter(Boolean)) {
+    // Build a map of file → { linesAdded, linesRemoved } from numstat
+    const lineStats = new Map<string, { added: number; removed: number }>()
+    for (const line of numstat.split('\n').filter(Boolean)) {
+      const parts = line.split('\t')
+      const added = parseInt(parts[0]!, 10)
+      const removed = parseInt(parts[1]!, 10)
+      const fp = parts[2]!
+      if (!isNaN(added) && !isNaN(removed) && fp) {
+        lineStats.set(fp, { added, removed })
+      }
+    }
+
+    for (const line of nameStatus.split('\n').filter(Boolean)) {
       const parts = line.split('\t')
       const status = parts[0]!
       const filePath = status.startsWith('R') ? parts[2]! : parts[1]!
       if (filePath.startsWith('.workhorse/')) {
-        changedFiles.set(filePath, status === 'A')
+        workhorseMap.set(filePath, status === 'A')
+      } else if (codeFiles.length < MAX_CODE_FILES) {
+        const stats = lineStats.get(filePath)
+        codeFiles.push({
+          filePath,
+          isNew: status === 'A',
+          linesAdded: stats?.added,
+          linesRemoved: stats?.removed,
+        })
+      } else {
+        codeFilesTruncated = true
       }
     }
   } catch {
@@ -412,90 +452,62 @@ export async function getChangedFiles(
       const statusCodes = line.slice(0, 2)
       const filePath = line.slice(3)
       if (!filePath.startsWith('.workhorse/')) continue
-      if (changedFiles.has(filePath)) continue
+      if (workhorseMap.has(filePath)) continue
       const isNew = statusCodes === '??' || statusCodes.startsWith('A')
-      changedFiles.set(filePath, isNew)
+      workhorseMap.set(filePath, isNew)
     }
   } catch {
     // Fall through
   }
 
-  return [...changedFiles.entries()].map(([filePath, isNew]) => ({
-    filePath,
-    isNew,
-  }))
-}
-
-/**
- * Get the commit log for a specific file (for per-file version history).
- */
-export async function getFileHistory(
-  owner: string,
-  repo: string,
-  cardIdentifier: string,
-  filePath: string,
-): Promise<{ sha: string; message: string; author: string; date: string }[]> {
-  const wtPath = worktreePath(owner, repo, cardIdentifier)
-
-  try {
-    const log = await git(
-      ['log', '--format=%H\t%s\t%an\t%aI', '--', filePath],
-      wtPath,
-    )
-
-    return log
-      .split('\n')
-      .filter(Boolean)
-      .map((line) => {
-        const [sha, message, author, date] = line.split('\t')
-        return { sha: sha!, message: message!, author: author!, date: date! }
-      })
-  } catch {
-    return []
+  return {
+    workhorseFiles: [...workhorseMap.entries()].map(([filePath, isNew]) => ({
+      filePath,
+      isNew,
+    })),
+    codeFiles,
+    codeFilesTruncated,
   }
 }
 
 /**
- * Get the content of a file at a specific commit.
+ * Get the unified diff for a file against the base branch (origin/defaultBranch).
  */
-export async function getFileAtCommit(
+export async function getFileDiffFromBase(
   owner: string,
   repo: string,
   cardIdentifier: string,
-  sha: string,
+  defaultBranch: string,
   filePath: string,
 ): Promise<string | null> {
-  assertValidSha(sha)
   const wtPath = worktreePath(owner, repo, cardIdentifier)
-  safeResolvePath(wtPath, filePath) // validate path doesn't escape worktree
+  safeResolvePath(wtPath, filePath)
 
   try {
-    return await git(['show', `${sha}:${filePath}`], wtPath)
+    return await git(['diff', `origin/${defaultBranch}...HEAD`, '--', filePath], wtPath)
   } catch {
     return null
   }
 }
 
 /**
- * Get the diff between two commits for a specific file.
+ * Read a file's content from the base branch (origin/defaultBranch).
+ * Returns null if the file doesn't exist on the base branch.
  */
-export async function getFileDiff(
+export async function getBaseFileContent(
   owner: string,
   repo: string,
   cardIdentifier: string,
-  sha1: string,
-  sha2: string,
+  defaultBranch: string,
   filePath: string,
-): Promise<string> {
-  assertValidSha(sha1)
-  assertValidSha(sha2)
+): Promise<string | null> {
   const wtPath = worktreePath(owner, repo, cardIdentifier)
-  safeResolvePath(wtPath, filePath) // validate path doesn't escape worktree
+  safeResolvePath(wtPath, filePath)
 
   try {
-    return await git(['diff', sha1, sha2, '--', filePath], wtPath)
+    return await git(['show', `origin/${defaultBranch}:${filePath}`], wtPath)
   } catch {
-    return ''
+    return null
   }
 }
 
@@ -533,6 +545,33 @@ export async function writeWorktreeFile(
 
   await fs.mkdir(path.dirname(fullPath), { recursive: true })
   await fs.writeFile(fullPath, content, 'utf-8')
+}
+
+/**
+ * Get the list of files with pending changes (staged or unstaged) in a worktree.
+ * Used to generate a commit message before committing.
+ */
+export async function getPendingChanges(
+  owner: string,
+  repo: string,
+  cardIdentifier: string,
+): Promise<{ filePath: string; isNew: boolean }[]> {
+  const wtPath = worktreePath(owner, repo, cardIdentifier)
+  try {
+    const status = await git(['status', '--porcelain'], wtPath)
+    if (!status) return []
+    return status
+      .split('\n')
+      .filter(Boolean)
+      .map((line) => {
+        const code = line.slice(0, 2)
+        const filePath = line.slice(3).trim()
+        const isNew = code === '??' || code[0] === 'A' || code[1] === 'A'
+        return { filePath, isNew }
+      })
+  } catch {
+    return []
+  }
 }
 
 /**

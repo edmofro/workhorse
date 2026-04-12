@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useCallback, useRef, useEffect } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import type { AttachmentData } from '../attachments'
 
 export interface SessionMessage {
@@ -24,7 +25,11 @@ export interface FileWriteNotification {
   timestamp: string
 }
 
-export function useAgentSession(cardId: string, sessionId: string | null) {
+export function useAgentSession(
+  cardId: string,
+  sessionId: string | null,
+  onJockeyEvent?: (event: Record<string, unknown>) => void,
+) {
   const [messages, setMessages] = useState<SessionMessage[]>([])
   const [isStreaming, setIsStreaming] = useState(false)
   const isStreamingRef = useRef(false)
@@ -36,10 +41,22 @@ export function useAgentSession(cardId: string, sessionId: string | null) {
   const thinkingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const historySessionIdRef = useRef<string | null>(null)
   const abortRef = useRef<AbortController | null>(null)
+  const wasAbortedRef = useRef(false)
+  const [queuedMessage, setQueuedMessage] = useState<{
+    content: string
+    userName: string
+    attachments?: AttachmentData[]
+    skillId?: string
+    tempId: string
+  } | null>(null)
+  const queuedMessageRef = useRef(queuedMessage)
+  queuedMessageRef.current = queuedMessage
   // Track the conversation session ID and title (may be set after first message)
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(sessionId)
   const currentSessionIdRef = useRef<string | null>(sessionId)
   const [currentSessionTitle, setCurrentSessionTitle] = useState<string | null>(null)
+  const onJockeyEventRef = useRef(onJockeyEvent)
+  onJockeyEventRef.current = onJockeyEvent
 
   // Text buffering for smooth streaming — accumulate deltas and flush every ~60ms
   const textBufferRef = useRef('')
@@ -49,52 +66,63 @@ export function useAgentSession(cardId: string, sessionId: string | null) {
   const turnConfirmedRef = useRef(false)
 
   // Update currentSessionId when prop changes — abort any in-flight stream
-  // to prevent events from the old session corrupting the new one
+  // ONLY if this is an explicit session switch (not a sync-back from the server).
+  // When the server assigns a session ID to a new conversation, currentSessionIdRef
+  // is already set to that value by processEvent, so we skip the abort.
   useEffect(() => {
+    if (sessionId !== currentSessionIdRef.current) {
+      // Genuine session switch — abort any in-flight stream and clear messages
+      // so stale cached data from react-query can't leak into the wrong session
+      if (abortRef.current) {
+        abortRef.current.abort()
+      }
+      setMessages([])
+      historySessionIdRef.current = null
+    }
     setCurrentSessionId(sessionId)
     currentSessionIdRef.current = sessionId
-    // Abort any active stream from the previous session
-    if (abortRef.current) {
-      abortRef.current.abort()
-    }
   }, [sessionId])
 
-  // Load chat history from Agent SDK session on mount or when sessionId changes
+  // Load chat history from Agent SDK session — cached by react-query so switching
+  // back to a previously-viewed session is instant
+  const { data: historyData, isFetching: isHistoryFetching } = useQuery({
+    queryKey: ['chat-history', sessionId],
+    queryFn: async () => {
+      const res = await fetch(`/api/chat-history?sessionId=${sessionId}`)
+      if (!res.ok) return { messages: [] }
+      return res.json()
+    },
+    enabled: !!sessionId,
+    staleTime: 30_000,
+    gcTime: 10 * 60_000, // Keep chat history cached for 10 minutes
+  })
+
   useEffect(() => {
     if (!sessionId) {
-      // No session yet — clear messages
       if (historySessionIdRef.current !== null) {
         setMessages([])
         historySessionIdRef.current = null
       }
       return
     }
+    // Sync history once per session switch — never overwrite after that, because
+    // streaming and local state may have added messages the server doesn't know about.
     if (historySessionIdRef.current === sessionId) return
-    historySessionIdRef.current = sessionId
-
-    const controller = new AbortController()
-
-    async function loadHistory() {
-      try {
-        const res = await fetch(`/api/chat-history?sessionId=${sessionId}`, {
-          signal: controller.signal,
-        })
-        if (res.ok) {
-          const data = await res.json()
-          // Guard against stale response — only apply if this sessionId is still current
-          if (historySessionIdRef.current === sessionId && data.messages && data.messages.length > 0) {
-            setMessages(data.messages)
-          }
-        }
-      } catch {
-        // Ignore — history retrieval is best-effort (includes AbortError)
-      }
+    // Never overwrite local messages while actively streaming — the local state
+    // is more up-to-date than the server history (which may not be persisted yet).
+    if (isStreamingRef.current) return
+    // Wait for the fetch to settle so we don't apply stale cached data from a
+    // previously-viewed session while the fresh fetch is still in flight.
+    if (isHistoryFetching) return
+    if (historyData !== undefined && currentSessionIdRef.current === sessionId) {
+      historySessionIdRef.current = sessionId
+      setMessages(historyData?.messages?.length > 0 ? historyData.messages : [])
     }
+  }, [sessionId, historyData, isHistoryFetching])
 
-    loadHistory()
-
-    return () => controller.abort()
-  }, [sessionId])
+  // Stable ref for sendMessage — initialised after sendMessage is defined (below),
+  // kept in sync every render so the dispatch effect doesn't depend on callback identity
+  const sendMessageRef = useRef<typeof sendMessage | null>(null)
 
   // Clean up timers on unmount
   useEffect(() => {
@@ -111,8 +139,29 @@ export function useAgentSession(cardId: string, sessionId: string | null) {
   }, [])
 
   const sendMessage = useCallback(
-    async (content: string, userName: string, attachments?: AttachmentData[], mode?: string) => {
-      if ((!content.trim() && (!attachments || attachments.length === 0)) || isStreamingRef.current) return
+    async (content: string, userName: string, attachments?: AttachmentData[], skillId?: string) => {
+      if (!content.trim() && (!attachments || attachments.length === 0)) return
+
+      // If already streaming, queue the message for after the current turn
+      if (isStreamingRef.current) {
+        const tempId = `temp-${Date.now()}-queued`
+        // Remove the previous queued message's optimistic preview if overwriting
+        const prev = queuedMessageRef.current
+        if (prev) {
+          setMessages((msgs) => msgs.filter((m) => m.id !== prev.tempId))
+        }
+        setQueuedMessage({ content, userName, attachments, skillId, tempId })
+        const userMsg: SessionMessage = {
+          id: tempId,
+          role: 'user',
+          content,
+          userName,
+          createdAt: new Date().toISOString(),
+          attachments,
+        }
+        setMessages((prev) => [...prev, userMsg])
+        return
+      }
 
       // Add user message
       const userMsg: SessionMessage = {
@@ -142,6 +191,7 @@ export function useAgentSession(cardId: string, sessionId: string | null) {
       assistantIdRef.current = assistantId
       turnConfirmedRef.current = false
       abortRef.current = new AbortController()
+      wasAbortedRef.current = false
 
       // Flush buffered text to React state — called on a 60ms throttle
       // so multiple small deltas batch into one smooth render.
@@ -186,7 +236,7 @@ export function useAgentSession(cardId: string, sessionId: string | null) {
             sessionId: currentSessionIdRef.current,
             message: content,
             attachmentIds,
-            mode,
+            skillId,
           }),
           signal: abortRef.current.signal,
         })
@@ -222,7 +272,10 @@ export function useAgentSession(cardId: string, sessionId: string | null) {
           }
         }
       } catch (err) {
-        if (err instanceof DOMException && err.name === 'AbortError') return
+        if (err instanceof DOMException && err.name === 'AbortError') {
+          wasAbortedRef.current = true
+          return
+        }
         setMessages((prev) =>
           prev.map((m) =>
             m.id === assistantId
@@ -245,6 +298,14 @@ export function useAgentSession(cardId: string, sessionId: string | null) {
             prev.map((m) => (m.id === id ? { ...m, content: finalContent } : m)),
           )
         }
+        // If aborted with no content, show "Stopped." notice
+        if (wasAbortedRef.current && !assistantContentRef.current) {
+          const id = assistantIdRef.current
+          setMessages((prev) =>
+            prev.map((m) => (m.id === id ? { ...m, content: 'Stopped.' } : m)),
+          )
+        }
+
         setIsStreaming(false)
         isStreamingRef.current = false
         setActiveToolCalls([])
@@ -259,6 +320,18 @@ export function useAgentSession(cardId: string, sessionId: string | null) {
     },
     [cardId],
   )
+  sendMessageRef.current = sendMessage
+
+  // Dispatch queued message when streaming stops
+  useEffect(() => {
+    if (!isStreaming && queuedMessage) {
+      const { content, userName, attachments, skillId, tempId } = queuedMessage
+      setQueuedMessage(null)
+      // Remove the optimistic preview — sendMessage will add its own user message
+      setMessages((prev) => prev.filter((m) => m.id !== tempId))
+      sendMessageRef.current?.(content, userName, attachments, skillId)
+    }
+  }, [isStreaming, queuedMessage])
 
   function processEvent(
     event: Record<string, unknown>,
@@ -394,10 +467,21 @@ export function useAgentSession(cardId: string, sessionId: string | null) {
       const files = event.files as string[]
       setCommittedFiles(files)
     }
+
+    // Handle jockey assessment event
+    if (event.type === 'jockey') {
+      onJockeyEventRef.current?.(event)
+    }
   }
 
   const interrupt = useCallback(() => {
     abortRef.current?.abort()
+    // Clear any queued message so it doesn't fire after the abort settles
+    const queued = queuedMessageRef.current
+    if (queued) {
+      setMessages((msgs) => msgs.filter((m) => m.id !== queued.tempId))
+      setQueuedMessage(null)
+    }
   }, [])
 
   return {

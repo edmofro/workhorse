@@ -2,7 +2,6 @@
 title: Card dependencies
 area: cards
 card: WH-019
-status: draft
 ---
 
 Cards can depend on other cards. When card B depends on card A, B's specs build on top of A's. Under the hood this means branches, rebases, and ordering — but the user never sees any of that. They just see "B depends on A" and Workhorse handles the rest.

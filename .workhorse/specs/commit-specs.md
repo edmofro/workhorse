@@ -2,7 +2,6 @@
 title: Commit specs to codebase
 area: workflow
 card: WH-005
-status: draft
 ---
 
 Specs are auto-committed to the card's git branch on every change. The user never sees branch names, SHAs, or git operations. A card may create new specs and modify existing ones — all committed to the same branch.
@@ -17,23 +16,24 @@ For developers picking up the work, Workhorse generates an implementation prompt
 - [ ] Committed specs do not include mockup HTML
 - [ ] If the card depends on another card (see WH-019), commits are ordered correctly
 
-## Per-file version history
+## Changes view
 
-Each file has a navigable edit history powered by descriptive commit messages:
+What the user cares about most is changes _in this card_ — what's different from the base branch. Every artifact (spec, code) has a **Changes** toggle that shows the diff:
 
-- [ ] "History" affordance per file in the spec view
-- [ ] Shows: relative timestamp, author (user name or "Workhorse"), change description
-- [ ] Click a version to see the file at that point
-- [ ] Diff between any two versions
-- [ ] Powered by `git log -- {filepath}` under the hood
+- [ ] **Spec changes:** inline tracked-changes view (additions highlighted, removals struck through) — readable by product people, not a code diff
+- [ ] **Code changes:** unified diff view (like GitHub) with line numbers and colour-coded additions/deletions
+- [ ] Changes toggle defaults to **on** when opening any artifact
+- [ ] Switching to edit mode automatically switches to the File view
+
+The per-file version history (git log per file) is available under the hood but not exposed in the UI — the changes view against the base branch is the primary way users understand what's different.
 
 ## Status transitions
 
-Status changes (including `SPECIFYING` → `IMPLEMENTING`) are handled via the status dropdown on the card view — no dedicated button. This avoids conditionally-rendered topbar buttons that flash in and shift the layout.
+Status changes are handled via the status dropdown on the card view. Statuses are configurable per project (see `workflow-orchestration.md`).
 
-- [ ] Status dropdown on the card view handles all transitions including `SPECIFYING` → `IMPLEMENTING`
-- [ ] No PR is created at this point. The implementation phase creates PRs when the developer is ready
-- [ ] Backward transition allowed: `IMPLEMENTING` → `SPECIFYING` if specs need rework
+- [ ] Status dropdown on the card view handles all transitions
+- [ ] Backward transitions are allowed
+- [ ] PRs are created via the create-pr skill (see `workflow-orchestration.md`) when the user is ready
 
 ## Under the hood (invisible to user)
 
@@ -42,9 +42,9 @@ Status changes (including `SPECIFYING` → `IMPLEMENTING`) are handled via the s
 - [ ] Dependent cards branch off parent card branches; rebasing is automatic
 - [ ] Branch is the source of truth; worktree on disk is a recreatable cache (see agent-sdk-session spec for recovery details)
 
-## Collaborate with agent button
+## Handoff to external agents
 
-See the agent SDK session spec (`.workhorse/specs/agent-sdk-session.md`) for full details. The split dropdown button appears in both `SPECIFYING` and `IMPLEMENTING` modes, generating a phase-appropriate prompt for external Claude Code sessions.
+See `workflow-orchestration.md` for the handoff button, which generates a context-rich briefing prompt for external agents at any stage of the card's lifecycle.
 
 ## Open questions
 

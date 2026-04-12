@@ -1,26 +1,24 @@
 ---
-title: Teams and boards
+title: Projects (formerly teams) and board
 area: navigation
 card: WH-007
-status: draft
+status: superseded
+superseded_by: board-redesign
 ---
 
-The home view of Workhorse. Each team has a board — a list of open cards grouped by status. Teams belong to a single project.
+> **Superseded.** The "teams" concept is being renamed to "projects" (sub-groupings within a workspace). The board view is being redesigned as a kanban column layout with a project selector dropdown. See `board-redesign.md`.
 
-## Team board
+## Original scope (for reference)
 
-- [ ] Clicking a team in the sidebar opens its board
-- [ ] The board shows cards grouped by status: Not started, Specifying, Spec complete
-- [ ] Each card shows: ID, title, description snippet, tags, assignee
-- [ ] Cards can be created, edited, and archived
-- [ ] Clicking a card opens its workspace (card home with input bar, files panel, and action pills)
-- [ ] Cards can be filtered by status and assignee
-- [ ] Cards are created from the board via a "New card" button
+- Teams were configurable groupings (name, colour) within a project
+- Each team had a board showing its cards grouped by status
+- Cards belonged to a team and appeared on that team's board
+- Team management was available in settings
 
-## Teams
+## What's changing
 
-- [ ] Teams are configurable (name, colour)
-- [ ] Each team belongs to a single project
-- [ ] Cards belong to a team and appear on that team's board
-- [ ] All users with access to a project can interact with any team in that project — there is no team membership
-- [ ] Team management (create, edit, delete) is available in settings
+- "Team" → "Project" (an ephemeral grouping of cards within a workspace)
+- "Project" → "Workspace" (the top-level repo-backed container)
+- The board is now a kanban column layout, not a vertical list
+- Project selection is via a dropdown with search/autocomplete, not sidebar navigation
+- See `board-redesign.md` for the full redesign spec

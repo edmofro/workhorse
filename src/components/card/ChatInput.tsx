@@ -1,6 +1,8 @@
 'use client'
 
 import { useState, useRef, useCallback } from 'react'
+import { ArrowUp, Square } from 'lucide-react'
+import { cn } from '../../lib/cn'
 import { AttachmentButton } from './AttachmentButton'
 import { AttachmentPreview } from './AttachmentPreview'
 import type { PendingAttachment } from '../../lib/attachments'
@@ -10,6 +12,11 @@ interface ChatInputProps {
   disabled?: boolean
   placeholder?: string
   compact?: boolean
+  /** Whether the agent is currently streaming a response */
+  isStreaming?: boolean
+  /** Called when the user clicks the stop button */
+  onStop?: () => void
+  autoFocus?: boolean
   /** Pending attachments managed by parent */
   pendingAttachments?: PendingAttachment[]
   /** Called when user selects files */
@@ -25,6 +32,9 @@ export function ChatInput({
   disabled = false,
   placeholder = 'Continue the conversation...',
   compact = false,
+  isStreaming = false,
+  onStop,
+  autoFocus = false,
   pendingAttachments,
   onAddFiles,
   onRemoveAttachment,
@@ -34,7 +44,8 @@ export function ChatInput({
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   const handleSubmit = useCallback(() => {
-    if ((!value.trim() && (!pendingAttachments || pendingAttachments.length === 0)) || disabled || isUploading) return
+    const hasAttachments = pendingAttachments && pendingAttachments.length > 0
+    if ((!value.trim() && !hasAttachments) || disabled || isUploading) return
     onSend(value.trim())
     setValue('')
     if (textareaRef.current) {
@@ -72,7 +83,41 @@ export function ChatInput({
   }
 
   const hasAttachments = pendingAttachments && pendingAttachments.length > 0
-  const canSend = (value.trim() || hasAttachments) && !disabled && !isUploading
+  const hasContent = !!(value.trim() || hasAttachments)
+  const canSend = hasContent && !disabled && !isUploading
+
+  const iconSize = compact ? 14 : 16
+  const btnPad = compact ? 'p-1 mb-[5px]' : 'p-2 mb-[2px]'
+
+  const sendButton = (
+    <button
+      type="button"
+      onClick={handleSubmit}
+      disabled={!canSend}
+      className={cn(btnPad, 'bg-[var(--accent)] text-white rounded-[var(--radius-default)] cursor-pointer disabled:opacity-40 shrink-0 transition-colors duration-100')}
+      title="Send"
+    >
+      <ArrowUp size={iconSize} strokeWidth={2.5} />
+    </button>
+  )
+
+  const stopButton = (
+    <button
+      type="button"
+      onClick={onStop}
+      className={cn(btnPad, 'text-[var(--text-muted)] hover:text-[var(--text-primary)] rounded-[var(--radius-default)] cursor-pointer shrink-0 transition-colors duration-100')}
+      title="Stop"
+    >
+      <Square size={iconSize - 2} fill="currentColor" />
+    </button>
+  )
+
+  const buttons = isStreaming ? (
+    <>
+      {stopButton}
+      {hasContent && sendButton}
+    </>
+  ) : sendButton
 
   if (compact) {
     return (
@@ -86,7 +131,7 @@ export function ChatInput({
             />
           </div>
         )}
-        <div className="flex items-end bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-[var(--radius-lg)] shadow-[var(--shadow-sm)] transition-[border-color,box-shadow] duration-150 focus-within:border-[var(--accent)] focus-within:shadow-[var(--shadow-input-focus)]"
+        <div className="flex items-end gap-1 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-[var(--radius-lg)] shadow-[var(--shadow-sm)] transition-[border-color,box-shadow] duration-150 focus-within:border-[var(--accent)] focus-within:shadow-[var(--shadow-input-focus)]"
           style={{ padding: '4px 4px 4px 12px' }}
         >
           {onAddFiles && (
@@ -100,16 +145,12 @@ export function ChatInput({
             onPaste={handlePaste}
             placeholder="Ask to refine..."
             rows={1}
+            disabled={disabled}
+            autoFocus={autoFocus}
             className="flex-1 border-none bg-transparent outline-none resize-none text-[13px] leading-[1.5] min-h-[24px]"
-            style={{ padding: '6px 0' }}
+            style={{ padding: '6px 0', maxHeight: '160px', overflowY: 'auto' }}
           />
-          <button
-            onClick={handleSubmit}
-            disabled={!canSend}
-            className="px-3 py-[6px] bg-[var(--accent)] text-white rounded-[var(--radius-default)] text-xs font-medium cursor-pointer disabled:opacity-40 shrink-0"
-          >
-            Send
-          </button>
+          {buttons}
         </div>
       </div>
     )
@@ -125,7 +166,7 @@ export function ChatInput({
           />
         </div>
       )}
-      <div className="flex items-end bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] transition-[border-color,box-shadow] duration-150 focus-within:border-[var(--accent)] focus-within:shadow-[var(--shadow-input-focus)]"
+      <div className="flex items-end gap-1 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] transition-[border-color,box-shadow] duration-150 focus-within:border-[var(--accent)] focus-within:shadow-[var(--shadow-input-focus)]"
         style={{ padding: '6px 6px 6px 16px' }}
       >
         {onAddFiles && (
@@ -140,16 +181,11 @@ export function ChatInput({
           placeholder={placeholder}
           rows={1}
           disabled={disabled}
+          autoFocus={autoFocus}
           className="flex-1 border-none bg-transparent outline-none resize-none text-[14px] leading-[1.5] min-h-[24px] placeholder:text-[var(--text-faint)]"
-          style={{ padding: '8px 0' }}
+          style={{ padding: '8px 0', maxHeight: '200px', overflowY: 'auto' }}
         />
-        <button
-          onClick={handleSubmit}
-          disabled={!canSend}
-          className="px-4 py-2 bg-[var(--accent)] text-white rounded-[var(--radius-default)] text-xs font-medium cursor-pointer disabled:opacity-40 shrink-0"
-        >
-          Send
-        </button>
+        {buttons}
       </div>
     </div>
   )

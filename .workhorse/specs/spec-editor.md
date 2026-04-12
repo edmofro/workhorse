@@ -2,7 +2,6 @@
 title: Spec editor
 area: editor
 card: WH-002
-status: draft
 ---
 
 A rich editor for viewing and editing specs within Workhorse. Product owners and testers work with specs without touching markdown. Developers can also toggle to the underlying format.
@@ -41,8 +40,9 @@ When editing an existing spec, the user can see what they've changed relative to
 
 - [ ] The spec editor shows a "Show changes" toggle when editing an existing spec (one that was pulled from the main branch, not created new)
 - [ ] When "Show changes" is active, the editor switches to a tracked-changes view:
-  - Deleted text is shown with a strikethrough and a muted red/pink background
-  - Added text is shown with a green/teal background
+  - Deleted text is shown with a strikethrough and a muted red background
+  - Added text is shown with a muted green background
+  - Changes are grouped sensibly: a single changed word appears inline, a run of changed words appears as a contiguous block, and short unchanged runs (a word or two) between changes are absorbed into the surrounding group rather than breaking it up
   - Unchanged text is shown normally
   - Changes are rendered inline within the document flow (not side-by-side panels)
 - [ ] The tracked-changes view is read-only — the user toggles back to the normal editor to make further changes
@@ -54,10 +54,8 @@ When editing an existing spec, the user can see what they've changed relative to
 Auto-save writes to the Workhorse database continuously — the user never loses work. Git commits happen automatically when the user leaves edit mode or the agent finishes a turn (see `commit-specs.md` for full details). There is no manual commit button.
 
 - [ ] Auto-save to Workhorse database — continuous, invisible, no data loss
-- [ ] Change history available (who changed what, when)
+- [ ] Changes visible via the Changes toggle in the artifact header bar (see `card-navigation.md`)
 
 ## Open questions
 
 > **Editor framework:** Consider TipTap or Plate for the rich text foundation. McBean uses Loro CRDT for collaborative editing — worth evaluating.
-
-> **Diff algorithm:** For the tracked-changes view, what diffing approach works best for prose? The diff should understand document structure rather than treating content as flat text.

@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useMemo } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { Search, Loader2 } from 'lucide-react'
 import { Button } from './Button'
 
@@ -23,35 +24,23 @@ export function RepoPickerDialog({
   onSelect,
   onClose,
 }: RepoPickerDialogProps) {
-  const [repos, setRepos] = useState<GitHubRepo[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
 
-  useEffect(() => {
-    const controller = new AbortController()
+  const { data, isLoading: loading, error: fetchError } = useQuery({
+    queryKey: ['github-repos'],
+    queryFn: async () => {
+      const res = await fetch('/api/github-repos')
+      if (!res.ok) throw new Error('Failed to fetch repositories')
+      return res.json() as Promise<{ repos: GitHubRepo[]; permissionsUnavailable: boolean }>
+    },
+    staleTime: 5 * 60_000, // Repos list rarely changes, cache 5 minutes
+  })
 
-    async function fetchRepos() {
-      try {
-        const res = await fetch('/api/github-repos', { signal: controller.signal })
-        if (!res.ok) throw new Error('Failed to fetch repositories')
-        const data: { repos: GitHubRepo[]; permissionsUnavailable: boolean } = await res.json()
-        if (data.permissionsUnavailable) {
-          setError('Repository permissions data is unavailable. Ensure your GitHub token has the repo scope.')
-        } else {
-          setRepos(data.repos)
-        }
-      } catch (err) {
-        if ((err as { name?: string }).name === 'AbortError') return
-        setError(err instanceof Error ? err.message : 'Failed to fetch repositories')
-      } finally {
-        setLoading(false)
-      }
-    }
-    fetchRepos()
-
-    return () => controller.abort()
-  }, [])
+  const repos = data?.repos ?? []
+  const error = fetchError?.message
+    ?? (data?.permissionsUnavailable
+      ? 'Repository permissions data is unavailable. Ensure your GitHub token has the repo scope.'
+      : null)
 
   const filtered = useMemo(
     () => repos.filter((r) => r.fullName.toLowerCase().includes(search.toLowerCase())),

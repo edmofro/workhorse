@@ -1,12 +1,12 @@
 'use client'
 
 import { useState, useCallback } from 'react'
-import { ChevronLeft, ChevronRight, ChevronDown, X, Pencil } from 'lucide-react'
+import { ChevronUp, ChevronDown, X, Pencil, Check, Maximize2, Minimize2 } from 'lucide-react'
 import { SpecDropdown } from './SpecDropdown'
-import { FileHistory } from './FileHistory'
 import { deriveLabel } from '../../lib/labels'
-import type { SpecFileItem, ProjectSpecItem } from './types'
-import { cn } from '../../lib/cn'
+import type { SpecFileItem, MockupFileItem, ProjectSpecItem } from './types'
+import type { CodeFileItem } from './ArtifactsSidebar'
+import { SegmentedToggle } from './SegmentedToggle'
 
 const DEVICES = [
   { key: 'desktop', label: 'Desktop' },
@@ -16,18 +16,26 @@ const DEVICES = [
 
 export type DeviceKey = (typeof DEVICES)[number]['key']
 
+const CHANGES_OPTIONS = [
+  { key: 'file', label: 'File' },
+  { key: 'changes', label: 'Changes' },
+] as const
+
 interface SpecHeaderBarProps {
   filePath: string
   /** Content of the current file (for label derivation) */
   fileContent?: string
-  cardId: string
   /** Full ordered list of navigable files (specs + mockups) for prev/next */
   allNavigableFiles: string[]
   specs: SpecFileItem[]
+  mockups: MockupFileItem[]
+  codeFiles?: CodeFileItem[]
   projectSpecs: ProjectSpecItem[]
   isEditing: boolean
   /** Whether this is a mockup file (shows device toggle) */
   isMockup?: boolean
+  /** Whether this is a code file */
+  isCode?: boolean
   /** Current device selection for mockups */
   device?: DeviceKey
   /** Callback for device change */
@@ -38,18 +46,27 @@ interface SpecHeaderBarProps {
   onSelectProjectSpec: (filePath: string, content: string) => void
   onClose: () => void
   onEdit: () => void
+  onSave?: () => void
+  /** Whether changes diff view is active */
+  showChanges?: boolean
+  onToggleChanges?: () => void
+  /** Whether the artifact is expanded (chat collapsed) */
+  expanded?: boolean
+  onToggleExpand?: () => void
 }
 
 /** Header bar at the top of the artifact area with navigation controls. */
 export function SpecHeaderBar({
   filePath,
   fileContent,
-  cardId,
   allNavigableFiles,
   specs,
+  mockups,
+  codeFiles = [],
   projectSpecs,
   isEditing,
   isMockup = false,
+  isCode = false,
   device,
   onDeviceChange,
   onPrev,
@@ -58,10 +75,17 @@ export function SpecHeaderBar({
   onSelectProjectSpec,
   onClose,
   onEdit,
+  onSave,
+  showChanges = false,
+  onToggleChanges,
+  expanded = false,
+  onToggleExpand,
 }: SpecHeaderBarProps) {
   const [dropdownOpen, setDropdownOpen] = useState(false)
 
-  const fileName = deriveLabel(filePath, fileContent)
+  const fileName = isCode
+    ? (filePath.split('/').pop() ?? filePath)
+    : deriveLabel(filePath, fileContent)
 
   // Use allNavigableFiles for prev/next boundary detection
   const currentIdx = allNavigableFiles.indexOf(filePath)
@@ -85,7 +109,7 @@ export function SpecHeaderBar({
         className="p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors duration-100 cursor-pointer disabled:opacity-30 disabled:cursor-default"
         title="Previous file"
       >
-        <ChevronLeft size={14} />
+        <ChevronUp size={14} />
       </button>
       <button
         onClick={onNext}
@@ -93,7 +117,7 @@ export function SpecHeaderBar({
         className="p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors duration-100 cursor-pointer disabled:opacity-30 disabled:cursor-default"
         title="Next file"
       >
-        <ChevronRight size={14} />
+        <ChevronDown size={14} />
       </button>
 
       {/* File name + dropdown trigger */}
@@ -107,6 +131,8 @@ export function SpecHeaderBar({
         </button>
         <SpecDropdown
           specs={specs}
+          mockups={mockups}
+          codeFiles={codeFiles}
           projectSpecs={projectSpecs}
           onSelectSpec={handleDropdownSelect}
           onSelectProjectSpec={handleDropdownSelectProject}
@@ -118,30 +144,38 @@ export function SpecHeaderBar({
       <div className="flex-1" />
 
       {/* Device toggle (mockups only) */}
-      {isMockup && onDeviceChange && (
-        <div className="inline-flex bg-[var(--bg-page)] border border-[var(--border-subtle)] rounded-[var(--radius-default)] p-[2px] gap-[1px] mr-2">
-          {DEVICES.map((d) => (
-            <button
-              key={d.key}
-              onClick={() => onDeviceChange(d.key)}
-              className={cn(
-                'px-[14px] py-[5px] rounded-[var(--radius-md)] text-[12px] font-medium leading-none transition-colors duration-100 cursor-pointer',
-                d.key === device
-                  ? 'bg-[var(--bg-surface)] text-[var(--text-primary)] shadow-[var(--shadow-sm)]'
-                  : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]',
-              )}
-            >
-              {d.label}
-            </button>
-          ))}
-        </div>
+      {isMockup && device && onDeviceChange && (
+        <SegmentedToggle
+          options={DEVICES}
+          value={device}
+          onChange={onDeviceChange}
+          className="mr-2"
+        />
       )}
 
-      {/* History (specs only) */}
-      {!isMockup && <FileHistory cardId={cardId} filePath={filePath} />}
+      {/* Changes toggle (specs and code, not mockups) */}
+      {!isMockup && onToggleChanges && (
+        <SegmentedToggle
+          options={CHANGES_OPTIONS}
+          value={showChanges ? 'changes' : 'file'}
+          onChange={(key) => {
+            if ((key === 'changes') !== showChanges) onToggleChanges()
+          }}
+          className="mr-1"
+        />
+      )}
 
-      {/* Edit button — only for specs, and only when not already editing */}
-      {!isMockup && !isEditing && (
+      {/* Edit / Save button */}
+      {isEditing ? (
+        <button
+          onClick={onSave}
+          className="inline-flex items-center gap-1 px-[10px] py-1 rounded-[var(--radius-default)] text-[12px] font-medium bg-[var(--accent)] text-white hover:bg-[var(--accent-hover)] transition-colors duration-100 cursor-pointer"
+          title="Save changes"
+        >
+          <Check size={11} />
+          Save
+        </button>
+      ) : (
         <button
           onClick={onEdit}
           className="inline-flex items-center gap-1 px-2 py-1 rounded-[var(--radius-default)] text-[12px] font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer"
@@ -149,6 +183,17 @@ export function SpecHeaderBar({
         >
           <Pencil size={11} />
           Edit
+        </button>
+      )}
+
+      {/* Expand/collapse chat */}
+      {onToggleExpand && (
+        <button
+          onClick={onToggleExpand}
+          className="p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors duration-100 cursor-pointer"
+          title={expanded ? 'Show chat' : 'Expand'}
+        >
+          {expanded ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
         </button>
       )}
 

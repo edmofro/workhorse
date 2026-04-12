@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
+import { useQuery } from '@tanstack/react-query'
 import { Plus } from 'lucide-react'
 import { SpecTree } from './SpecTree'
 import { SpecDocument } from './SpecDocument'
@@ -33,36 +34,33 @@ export function SpecExplorer({
   projectName,
   teams,
 }: SpecExplorerProps) {
-  const [files, setFiles] = useState<SpecFile[]>([])
   const [selectedPath, setSelectedPath] = useState<string | null>(null)
-  const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [isPending, startTransition] = useTransition()
   const router = useRouter()
 
   const defaultTeamId = teams[0]?.id
 
+  const { data: specsData, isLoading: loading } = useQuery({
+    queryKey: ['specs-tree', owner, repoName, defaultBranch],
+    queryFn: async () => {
+      const res = await fetch(
+        `/api/specs-tree?owner=${owner}&repo=${repoName}&branch=${defaultBranch}`,
+      )
+      if (!res.ok) return { files: [] }
+      return res.json()
+    },
+    staleTime: 60_000, // Specs change infrequently
+  })
+
+  const files: SpecFile[] = specsData?.files ?? []
+
+  // Auto-select first file when data loads
   useEffect(() => {
-    async function fetchSpecs() {
-      try {
-        const res = await fetch(
-          `/api/specs-tree?owner=${owner}&repo=${repoName}&branch=${defaultBranch}`,
-        )
-        if (res.ok) {
-          const data = await res.json()
-          setFiles(data.files)
-          if (data.files.length > 0) {
-            setSelectedPath(data.files[0].path)
-          }
-        }
-      } catch {
-        // GitHub token may not be configured
-      } finally {
-        setLoading(false)
-      }
+    if (files.length > 0 && selectedPath === null) {
+      setSelectedPath(files[0].path)
     }
-    fetchSpecs()
-  }, [owner, repoName, defaultBranch])
+  }, [files, selectedPath])
 
   function handleNewSpec() {
     if (!defaultTeamId) return

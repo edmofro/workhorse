@@ -1,15 +1,18 @@
 'use client'
 
-import { useState, useTransition, useRef } from 'react'
+import { useState, useRef, useEffect, useMemo, useTransition } from 'react'
+import { createPortal } from 'react-dom'
+import { X, Plus } from 'lucide-react'
 import { updateCard, addComment } from '../../lib/actions/cards'
+import { associateAttachmentsWithCard } from '../../lib/actions/attachments'
 import { Avatar } from '../Avatar'
+import { Tag } from '../Tag'
+import { usePortalMenu } from '../PropertyDropdown'
 import { useUser } from '../UserProvider'
 import { useAttachments } from '../../lib/hooks/useAttachments'
 import { AttachmentButton } from './AttachmentButton'
 import { AttachmentPreview } from './AttachmentPreview'
-import { MarkdownContent } from './MarkdownContent'
-import { X, Plus } from 'lucide-react'
-import type { AttachmentData } from '../../lib/attachments'
+import { cn } from '../../lib/cn'
 
 interface CardAttachment {
   id: string
@@ -23,12 +26,7 @@ interface CardData {
   identifier: string
   title: string
   description: string | null
-  status: string
-  priority: string
   tags: string
-  team: { id: string; name: string; colour: string }
-  assignee: { id: string; displayName: string } | null
-  dependsOn: { identifier: string; title: string }[]
   attachments: CardAttachment[]
   comments: {
     id: string
@@ -37,36 +35,15 @@ interface CardData {
     user: { displayName: string; avatarUrl?: string | null }
     attachments: CardAttachment[]
   }[]
-  activities: {
-    id: string
-    action: string
-    details: string | null
-    createdAt: string
-    user: { displayName: string } | null
-  }[]
 }
 
 interface CardTabProps {
   card: CardData
-  users: { id: string; displayName: string }[]
-  teams: { id: string; name: string; colour: string }[]
 }
 
-const STATUS_OPTIONS = [
-  { value: 'NOT_STARTED', label: 'Not started' },
-  { value: 'SPECIFYING', label: 'Specifying' },
-  { value: 'IMPLEMENTING', label: 'Implementing' },
-  { value: 'COMPLETE', label: 'Complete' },
-]
+const VISIBLE_TAG_COUNT = 3
 
-const PRIORITY_OPTIONS = [
-  { value: 'URGENT', label: 'Urgent' },
-  { value: 'HIGH', label: 'High' },
-  { value: 'MEDIUM', label: 'Medium' },
-  { value: 'LOW', label: 'Low' },
-]
-
-function toAttachmentData(att: CardAttachment): AttachmentData {
+function toAttachmentData(att: CardAttachment) {
   return {
     id: att.id,
     fileName: att.fileName,
@@ -76,46 +53,93 @@ function toAttachmentData(att: CardAttachment): AttachmentData {
   }
 }
 
-/** Extract pasted files from a clipboard event */
-function extractPastedFiles(e: React.ClipboardEvent): File[] {
-  return Array.from(e.clipboardData.items)
-    .filter((item) => item.kind === 'file')
-    .map((item) => item.getAsFile())
-    .filter((f): f is File => f !== null)
+/** Portal dropdown listing hidden overflow tags, each with a remove button. */
+function TagOverflowDropdown({
+  tags,
+  onRemove,
+}: {
+  tags: string[]
+  onRemove: (tag: string) => void
+}) {
+  const { open, toggle, triggerRef, menuRef, pos } = usePortalMenu()
+
+  return (
+    <>
+      <button
+        ref={triggerRef}
+        onClick={toggle}
+        className="inline-flex items-center px-2 py-1 rounded-[var(--radius-md)] text-[11px] font-medium text-[var(--text-muted)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer"
+      >
+        +{tags.length} more
+      </button>
+
+      {open &&
+        pos &&
+        createPortal(
+          <div
+            ref={menuRef}
+            style={{ position: 'fixed', top: pos.top, left: pos.left }}
+            className="z-50 min-w-[140px] bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-[var(--radius-xl)] shadow-[var(--shadow-lg)] py-1"
+          >
+            {tags.map((tag) => (
+              <div
+                key={tag}
+                className="flex items-center justify-between px-3 py-2 hover:bg-[var(--bg-hover)] transition-colors duration-100"
+              >
+                <Tag variant={tag === 'future' ? 'future' : 'core'}>
+                  {tag}
+                </Tag>
+                <button
+                  onClick={() => onRemove(tag)}
+                  className="text-[var(--text-muted)] hover:text-[var(--accent)] cursor-pointer ml-3"
+                >
+                  <X size={10} />
+                </button>
+              </div>
+            ))}
+          </div>,
+          document.body,
+        )}
+    </>
+  )
 }
 
-/** Build markdown refs from uploaded attachments and append to text */
-function insertUploadedRefs(text: string, uploaded: AttachmentData[]): string {
-  if (uploaded.length === 0) return text
-  const refs = uploaded.map((a) => `![${a.fileName}](${a.url})`).join('\n')
-  const sep = text.length > 0 && !text.endsWith('\n') ? '\n' : ''
-  return text + sep + refs
-}
-
-export function CardTab({ card, users, teams }: CardTabProps) {
+export function CardTab({ card }: CardTabProps) {
   const { user } = useUser()
   const [title, setTitle] = useState(card.title)
   const [description, setDescription] = useState(card.description ?? '')
-  const [status, setStatus] = useState(card.status)
-  const [priority, setPriority] = useState(card.priority)
   const [newTag, setNewTag] = useState('')
+  const [addingTag, setAddingTag] = useState(false)
   const [newComment, setNewComment] = useState('')
-  const [editingDescription, setEditingDescription] = useState(false)
   const [, startTransition] = useTransition()
-  const descriptionRef = useRef<HTMLTextAreaElement>(null)
-  const commentRef = useRef<HTMLTextAreaElement>(null)
 
-  // Pending attachments for description and comment compose areas
+  const tagInputRef = useRef<HTMLInputElement>(null)
+  const descTextareaRef = useRef<HTMLTextAreaElement>(null)
+  // Prevents the blur event firing after Enter from re-submitting the tag
+  const tagCommittingRef = useRef(false)
+
   const descAttachments = useAttachments(card.id)
   const commentAttachments = useAttachments(card.id)
 
-  const tags: string[] = (() => {
-    try {
-      return JSON.parse(card.tags)
-    } catch {
-      return []
-    }
-  })()
+  const tags: string[] = useMemo(() => {
+    try { return JSON.parse(card.tags) } catch { return [] }
+  }, [card.tags])
+
+  const visibleTags = tags.slice(0, VISIBLE_TAG_COUNT)
+  const hiddenTags = tags.slice(VISIBLE_TAG_COUNT)
+
+  useEffect(() => {
+    if (addingTag) tagInputRef.current?.focus()
+  }, [addingTag])
+
+  // Size the description textarea to fit its content whenever description changes
+  // (covers initial mount with existing content and subsequent edits)
+  useEffect(() => {
+    const el = descTextareaRef.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = `${el.scrollHeight}px`
+  }, [description])
 
   function handleUpdate(data: Record<string, unknown>) {
     startTransition(async () => {
@@ -130,67 +154,58 @@ export function CardTab({ card, users, teams }: CardTabProps) {
   }
 
   function handleDescriptionBlur() {
-    // Don't close editor while uploads are in progress
-    if (descAttachments.isUploading) return
-
-    // Insert any uploaded attachment refs into the description text before saving
+    if (description !== (card.description ?? '')) {
+      handleUpdate({ description: description || null })
+    }
     const uploaded = descAttachments.getUploadedAttachments()
-    const finalDescription = insertUploadedRefs(description, uploaded)
     if (uploaded.length > 0) {
-      setDescription(finalDescription)
+      startTransition(async () => {
+        await associateAttachmentsWithCard(card.id, uploaded.map((a) => a.id))
+      })
       descAttachments.clear()
     }
-    if (finalDescription !== (card.description ?? '')) {
-      handleUpdate({ description: finalDescription || null })
-    }
-    setEditingDescription(false)
   }
 
-  function handleDescriptionPaste(e: React.ClipboardEvent) {
-    const files = extractPastedFiles(e)
-    if (files.length === 0) return
-    e.preventDefault()
-    descAttachments.addFiles(files)
-  }
-
-  function handleCommentPaste(e: React.ClipboardEvent) {
-    const files = extractPastedFiles(e)
-    if (files.length === 0) return
-    e.preventDefault()
-    commentAttachments.addFiles(files)
-  }
-
-  function handleAddTag() {
+  function commitTag() {
     const tag = newTag.trim()
-    if (!tag || tags.includes(tag)) return
-    const updatedTags = [...tags, tag]
-    handleUpdate({ tags: updatedTags })
     setNewTag('')
-  }
-
-  function handleRemoveTag(tagToRemove: string) {
-    const updatedTags = tags.filter((t) => t !== tagToRemove)
-    handleUpdate({ tags: updatedTags })
+    setAddingTag(false)
+    if (!tag || tags.includes(tag)) return
+    handleUpdate({ tags: [...tags, tag] })
   }
 
   function handleTagKeyDown(e: React.KeyboardEvent) {
     if (e.key === 'Enter') {
       e.preventDefault()
-      handleAddTag()
+      tagCommittingRef.current = true
+      commitTag()
+    }
+    if (e.key === 'Escape') {
+      tagCommittingRef.current = true
+      setNewTag('')
+      setAddingTag(false)
     }
   }
 
+  function handleTagBlur() {
+    if (tagCommittingRef.current) {
+      tagCommittingRef.current = false
+      return
+    }
+    commitTag()
+  }
+
+  function handleRemoveTag(tagToRemove: string) {
+    handleUpdate({ tags: tags.filter((t) => t !== tagToRemove) })
+  }
+
   function handleAddComment() {
+    const content = newComment.trim()
     const uploaded = commentAttachments.getUploadedAttachments()
-    const content = insertUploadedRefs(newComment.trim(), uploaded)
-    if (!content) return
+    if (!content && uploaded.length === 0) return
     startTransition(async () => {
       try {
-        await addComment(
-          card.id,
-          content,
-          uploaded.map((a) => a.id),
-        )
+        await addComment(card.id, content, uploaded.map((a) => a.id))
         setNewComment('')
         commentAttachments.clear()
       } catch (error) {
@@ -215,190 +230,94 @@ export function CardTab({ card, users, teams }: CardTabProps) {
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           onBlur={handleTitleBlur}
-          className="w-full text-[24px] font-bold tracking-[-0.03em] leading-[1.3] bg-transparent border-none outline-none mb-2"
+          className="w-full text-[24px] font-bold tracking-[-0.03em] leading-[1.3] bg-transparent border-none outline-none mb-3"
         />
 
-        {/* Description — click to edit, renders markdown when not editing */}
-        {editingDescription ? (
-          <div className="mb-8">
-            <textarea
-              ref={descriptionRef}
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              onBlur={handleDescriptionBlur}
-              onPaste={handleDescriptionPaste}
-              autoFocus
-              rows={5}
-              placeholder="Add a description... (paste images with Ctrl+V)"
-              className="w-full text-[14px] text-[var(--text-secondary)] leading-[1.7] bg-transparent border border-[var(--border-subtle)] rounded-[var(--radius-default)] outline-none resize-none p-3 focus:border-[var(--accent)] focus:shadow-[var(--shadow-input-focus)] transition-[border-color,box-shadow] duration-150 placeholder:text-[var(--text-faint)]"
+        {/* Tags */}
+        <div className="flex flex-wrap items-center gap-x-1 gap-y-1 mb-5 -mx-2">
+          {visibleTags.map((tag) => (
+            <Tag
+              key={tag}
+              variant={tag === 'future' ? 'future' : 'core'}
+              className="gap-1 cursor-default"
+            >
+              {tag}
+              <button
+                onClick={() => handleRemoveTag(tag)}
+                className="hover:opacity-60 cursor-pointer leading-none"
+              >
+                <X size={9} />
+              </button>
+            </Tag>
+          ))}
+
+          {/* +N more overflow */}
+          {hiddenTags.length > 0 && (
+            <TagOverflowDropdown tags={hiddenTags} onRemove={handleRemoveTag} />
+          )}
+
+          {/* Add tag */}
+          {addingTag ? (
+            <input
+              ref={tagInputRef}
+              type="text"
+              value={newTag}
+              onChange={(e) => setNewTag(e.target.value)}
+              onKeyDown={handleTagKeyDown}
+              onBlur={handleTagBlur}
+              placeholder="tag name"
+              className="px-2 py-1 text-[11px] font-medium bg-transparent border border-[var(--border-subtle)] rounded-[var(--radius-md)] outline-none focus:border-[var(--accent)] transition-[border-color] duration-100 w-[90px] placeholder:text-[var(--text-faint)]"
             />
-            <div className="mt-2 flex items-start gap-2" onMouseDown={(e) => e.preventDefault()}>
-              <AttachmentButton
-                onFiles={descAttachments.addFiles}
-                compact
-              />
-              {descAttachments.hasAttachments && (
-                <AttachmentPreview
-                  pending={descAttachments.pending}
-                  onRemovePending={descAttachments.removeAttachment}
-                  compact
-                />
+          ) : (
+            <button
+              onClick={() => setAddingTag(true)}
+              className={cn(
+                'inline-flex items-center gap-1 px-2 py-1 rounded-[var(--radius-md)]',
+                'text-[11px] font-medium text-[var(--text-muted)]',
+                'hover:bg-[var(--bg-hover)] hover:text-[var(--text-secondary)] transition-colors duration-100 cursor-pointer',
               )}
-            </div>
-          </div>
-        ) : (
-          <div
-            className="mb-8 min-h-[40px] cursor-text"
-            onClick={() => setEditingDescription(true)}
-          >
-            {description ? (
-              <div className="text-[14px] text-[var(--text-secondary)] leading-[1.7]">
-                <MarkdownContent content={description} />
-              </div>
-            ) : (
-              <p className="text-[14px] text-[var(--text-faint)] leading-[1.7]">
-                Add a description...
-              </p>
-            )}
-            {/* Show legacy card-level attachments not referenced inline */}
-            {card.attachments.length > 0 && !description.includes('![') && (
-              <div className="mt-2">
-                <AttachmentPreview saved={card.attachments.map(toAttachmentData)} />
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Metadata — compact rows */}
-        <div className="border-t border-[var(--border-subtle)] pt-5 space-y-3">
-          <MetadataRow label="Status">
-            <select
-              value={status}
-              onChange={(e) => {
-                setStatus(e.target.value)
-                handleUpdate({ status: e.target.value })
-              }}
-              className="text-[13px] bg-transparent border-none outline-none cursor-pointer text-[var(--text-secondary)] appearance-none pr-4"
             >
-              {STATUS_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-          </MetadataRow>
-
-          <MetadataRow label="Priority">
-            <select
-              value={priority}
-              onChange={(e) => {
-                setPriority(e.target.value)
-                handleUpdate({ priority: e.target.value })
-              }}
-              className="text-[13px] bg-transparent border-none outline-none cursor-pointer text-[var(--text-secondary)] appearance-none pr-4"
-            >
-              {PRIORITY_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-          </MetadataRow>
-
-          <MetadataRow label="Team">
-            <select
-              value={card.team.id}
-              onChange={(e) => handleUpdate({ teamId: e.target.value })}
-              className="text-[13px] bg-transparent border-none outline-none cursor-pointer text-[var(--text-secondary)] appearance-none pr-4"
-            >
-              {teams.map((team) => (
-                <option key={team.id} value={team.id}>
-                  {team.name}
-                </option>
-              ))}
-            </select>
-          </MetadataRow>
-
-          <MetadataRow label="Assignee">
-            <select
-              value={card.assignee?.id ?? ''}
-              onChange={(e) =>
-                handleUpdate({
-                  assigneeId: e.target.value || null,
-                })
-              }
-              className="text-[13px] bg-transparent border-none outline-none cursor-pointer text-[var(--text-secondary)] appearance-none pr-4"
-            >
-              <option value="">Unassigned</option>
-              {users.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.displayName}
-                </option>
-              ))}
-            </select>
-          </MetadataRow>
-
-          {card.dependsOn.length > 0 && (
-            <MetadataRow label="Depends on">
-              <div className="flex flex-wrap gap-[6px]">
-                {card.dependsOn.map((dep) => (
-                  <span
-                    key={dep.identifier}
-                    className="inline-flex items-center gap-1 px-2 py-[2px] text-[12px] bg-[var(--bg-inset)] rounded-[var(--radius-default)] text-[var(--text-secondary)]"
-                  >
-                    <span className="font-mono text-[var(--text-muted)]">
-                      {dep.identifier}
-                    </span>
-                    {dep.title}
-                  </span>
-                ))}
-              </div>
-            </MetadataRow>
+              <Plus size={10} />
+              tag
+            </button>
           )}
         </div>
 
-        {/* Tags */}
-        <div className="border-t border-[var(--border-subtle)] mt-8 pt-6">
-          <h3 className="text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-[0.06em] mb-3">
-            Tags
-          </h3>
-          <div className="flex flex-wrap items-center gap-2">
-            {tags.map((tag) => (
-              <span
-                key={tag}
-                className="inline-flex items-center gap-1 px-2 py-[2px] text-[11px] font-medium bg-[var(--bg-inset)] rounded-[5px] text-[var(--text-secondary)]"
-              >
-                {tag}
-                <button
-                  onClick={() => handleRemoveTag(tag)}
-                  className="text-[var(--text-muted)] hover:text-[var(--accent)] cursor-pointer ml-[2px]"
-                >
-                  <X size={10} />
-                </button>
-              </span>
-            ))}
-            <div className="inline-flex items-center gap-1">
-              <input
-                type="text"
-                value={newTag}
-                onChange={(e) => setNewTag(e.target.value)}
-                onKeyDown={handleTagKeyDown}
-                placeholder="Add tag..."
-                className="px-2 py-[2px] text-[11px] font-medium bg-transparent border border-[var(--border-subtle)] rounded-[5px] outline-none focus:border-[var(--accent)] transition-[border-color] duration-100 w-[100px] placeholder:text-[var(--text-faint)]"
-              />
-              <button
-                onClick={handleAddTag}
-                className="text-[var(--accent)] hover:text-[var(--accent-hover)] cursor-pointer disabled:opacity-0"
-                disabled={!newTag.trim()}
-              >
-                <Plus size={12} />
-              </button>
+        {/* Description — grows with content */}
+        <textarea
+          ref={descTextareaRef}
+          value={description}
+          onChange={(e) => {
+            setDescription(e.target.value)
+            e.target.style.height = 'auto'
+            e.target.style.height = `${e.target.scrollHeight}px`
+          }}
+          onBlur={handleDescriptionBlur}
+          placeholder="Add a description..."
+          rows={3}
+          className="w-full text-[14px] text-[var(--text-secondary)] leading-[1.7] bg-transparent border-none outline-none resize-none overflow-y-hidden mb-2 placeholder:text-[var(--text-faint)]"
+        />
+
+        {/* Description attachments */}
+        <div className="mb-8">
+          {card.attachments.length > 0 && (
+            <div className="mb-2">
+              <AttachmentPreview saved={card.attachments.map(toAttachmentData)} />
             </div>
-          </div>
+          )}
+          {descAttachments.hasAttachments && (
+            <div className="mb-2">
+              <AttachmentPreview
+                pending={descAttachments.pending}
+                onRemovePending={descAttachments.removeAttachment}
+              />
+            </div>
+          )}
+          <AttachmentButton onFiles={descAttachments.addFiles} compact />
         </div>
 
         {/* Comments */}
-        <div className="border-t border-[var(--border-subtle)] mt-8 pt-6">
+        <div className="border-t border-[var(--border-subtle)] mt-4 pt-6">
           <h3 className="text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-[0.06em] mb-4">
             Comments
           </h3>
@@ -427,11 +346,10 @@ export function CardTab({ card, users, teams }: CardTabProps) {
                         })}
                       </span>
                     </div>
-                    <div className="text-[13px] text-[var(--text-secondary)] leading-[1.6]">
-                      <MarkdownContent content={comment.content} />
-                    </div>
-                    {/* Show legacy separately-attached files that aren't referenced inline */}
-                    {comment.attachments.length > 0 && !comment.content.includes('![') && (
+                    <p className="text-[13px] text-[var(--text-secondary)] leading-[1.6]">
+                      {comment.content}
+                    </p>
+                    {comment.attachments.length > 0 && (
                       <div className="mt-2">
                         <AttachmentPreview
                           saved={comment.attachments.map(toAttachmentData)}
@@ -447,19 +365,13 @@ export function CardTab({ card, users, teams }: CardTabProps) {
 
           {/* Add comment form */}
           <div className="flex items-start gap-2">
-            <Avatar
-              variant="human"
-              initial={user.displayName}
-              size="sm"
-            />
+            <Avatar variant="human" initial={user.displayName} size="sm" />
             <div className="flex-1">
               <textarea
-                ref={commentRef}
                 value={newComment}
                 onChange={(e) => setNewComment(e.target.value)}
                 onKeyDown={handleCommentKeyDown}
-                onPaste={handleCommentPaste}
-                placeholder="Add a comment... (paste images with Ctrl+V)"
+                placeholder="Add a comment..."
                 rows={2}
                 className="w-full px-3 py-2 text-[13px] bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-[var(--radius-default)] outline-none transition-[border-color,box-shadow] duration-150 focus:border-[var(--accent)] focus:shadow-[var(--shadow-input-focus)] placeholder:text-[var(--text-faint)] resize-none"
               />
@@ -473,10 +385,7 @@ export function CardTab({ card, users, teams }: CardTabProps) {
                 </div>
               )}
               <div className="flex items-center justify-between mt-2">
-                <AttachmentButton
-                  onFiles={commentAttachments.addFiles}
-                  compact
-                />
+                <AttachmentButton onFiles={commentAttachments.addFiles} compact />
                 {(newComment.trim() || commentAttachments.hasAttachments) && (
                   <button
                     onClick={handleAddComment}
@@ -490,64 +399,7 @@ export function CardTab({ card, users, teams }: CardTabProps) {
             </div>
           </div>
         </div>
-
-        {/* Activity */}
-        {card.activities.length > 0 && (
-          <div className="border-t border-[var(--border-subtle)] mt-8 pt-6">
-            <h3 className="text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-[0.06em] mb-4">
-              Activity
-            </h3>
-            <div className="space-y-3">
-              {card.activities.map((activity) => (
-                <div key={activity.id} className="flex items-start gap-2">
-                  {activity.user ? (
-                    <Avatar
-                      variant="human"
-                      initial={activity.user.displayName}
-                      size="sm"
-                    />
-                  ) : (
-                    <Avatar variant="ai" size="sm" />
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <span className="text-[13px] text-[var(--text-secondary)]">
-                      {activity.user?.displayName ?? 'System'}{' '}
-                      <span className="text-[var(--text-muted)]">
-                        {activity.action.replace(/_/g, ' ')}
-                      </span>
-                    </span>
-                    <div className="text-[11px] text-[var(--text-faint)]">
-                      {new Date(activity.createdAt).toLocaleDateString('en-AU', {
-                        day: 'numeric',
-                        month: 'short',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
-    </div>
-  )
-}
-
-function MetadataRow({
-  label,
-  children,
-}: {
-  label: string
-  children: React.ReactNode
-}) {
-  return (
-    <div className="flex items-center">
-      <span className="w-[88px] shrink-0 text-[12px] text-[var(--text-muted)]">
-        {label}
-      </span>
-      {children}
     </div>
   )
 }

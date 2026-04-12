@@ -2,7 +2,6 @@
 title: Agent SDK session architecture
 area: agent
 card: WH-001
-status: draft
 ---
 
 The AI agent runs on the Claude Agent SDK, giving it full codebase access, automatic context window management, and the ability to write spec and mockup files directly to disk. Workhorse is an orchestration and approval UI — the Agent SDK handles the agentic loop, file tools (Read, Glob, Grep, Write, Edit), context window compaction, and session persistence.
@@ -15,7 +14,7 @@ User ↔ Workhorse UI ↔ /api/agent-session ↔ Claude Agent SDK session
                                  Target repo worktree on disk
                                  (Read, Glob, Grep, Write, Edit)
                             ↕
-                    DB stores: session ID, card linkage, file locks
+                    DB stores: session ID, card linkage
 ```
 
 The Agent SDK session runs against a git worktree of the target repo. The agent reads the codebase freely and writes spec/mockup files directly. Workhorse streams the agent's output to the UI.
@@ -112,17 +111,9 @@ This context means the agent never needs to explore the codebase to understand h
 - File path guidance for this card's specs and mockups
 - Attachment file list (if any)
 
-**3. Mode-specific instructions** — driven by the `mode` parameter from action pills:
+**3. Skill-specific instructions** — driven by the skill that triggered the session (see `workflow-orchestration.md`):
 
-- **Interview mode**: structured interview — ask probing questions, surface edge cases, challenge assumptions
-- **Draft spec mode**: read card description, generate spec files immediately without interviewing
-- **Review mode**: fresh-eyes review — look for gaps, contradictions, ambiguities, missing edge cases
-- **Directed editing mode**: follow user's specific instructions to edit spec files
-- **Design audit mode**: review implementation against `.workhorse/design/` system docs
-- **Security audit mode**: review implementation for OWASP top 10, injection, auth/authz issues
-- **Default (no mode)**: follow the user's lead
-
-The mode parameter flows from the action pill UI → `useAgentSession` hook → `/api/agent-session` POST body → `buildSessionInstructions()`. Each mode maps to a system prompt fragment that shapes the agent's behaviour without the user needing to write detailed instructions.
+Each skill maps to a system prompt fragment that shapes the agent's behaviour. The skill parameter flows from the trigger (pill, journey section, or scheduling) → API → system prompt builder. Skills include: workshop, interview, draft spec, review spec, implement, design audit, security audit, code review, and custom project-defined skills.
 
 ### Context window management
 
@@ -131,10 +122,8 @@ The mode parameter flows from the action pill UI → `useAgentSession` hook → 
 
 ### Session persistence and resumption
 
-> **Superseded by `conversation-sessions.md`.** The single `agentSessionId` on the Card model is replaced by a `ConversationSession` table that supports multiple sessions per card and standalone sessions. The Agent SDK integration described here still applies — `ConversationSession.agentSessionId` replaces `Card.agentSessionId`.
-
 - [ ] Agent SDK sessions persist to disk automatically (in `~/.claude/projects/`)
-- [ ] `session_id` stored on the `ConversationSession` record (was: Feature/Card record)
+- [ ] `session_id` stored on the `ConversationSession` record (see `conversation-sessions.md`)
 - [ ] Resume sessions with `resume: sessionId` on subsequent turns
 - [ ] Session transcript retrievable via `getSessionMessages()` for audit/display
 - [ ] Individual messages are not stored in Workhorse's database — the SDK is the source of truth for conversation history
@@ -212,29 +201,6 @@ The git branch is the source of truth for spec and mockup content. No database t
 - **Current content:** `fs.readFile()` in the worktree
 - **Conversation history:** Agent SDK session storage on disk, resumable by `session_id`. Display in UI via `getSessionMessages()`
 
-If a lightweight cache of touched files is needed (e.g. for listing cards that touch a given spec), the `Feature.touchedFiles` JSON field stores file paths, updated on each auto-commit.
-
-## File locking
-
-Each spec and mockup file has at most one active editor (user or AI) at a time.
-
-### Lock model
-
-A `FileLock` record tracks who is editing each file:
-
-- `featureId` + `filePath` (unique constraint)
-- `lockedBy`: user ID or `"ai-agent"`
-- `lockedAt`: timestamp
-- `expiresAt`: auto-expire stale locks (10 minutes for humans, 2 minutes for AI)
-
-### Lock behaviour
-
-- [ ] User clicks "Edit" on a spec file → acquire lock. If already locked, show "Being edited by {name}" in view-only mode
-- [ ] Agent needs to write a file → acquire lock. If locked by a user, the agent describes its intended changes in chat instead of writing the file
-- [ ] Lock released when: user clicks "Done editing", user navigates away, agent turn completes, or lock expires
-- [ ] Stale lock cleanup: on-access check against `expiresAt`, plus periodic sweep
-- [ ] Lock status visible in the files panel (unlocked / locked by {name} / locked by AI)
-
 ## Auto-commit model
 
 Every change to spec and mockup files is committed and pushed to the card's branch automatically. The branch is always up to date — there is no "uncommitted work."
@@ -255,16 +221,16 @@ Every change to spec and mockup files is committed and pushed to the card's bran
 
 ### Commit messages
 
-Commit messages are AI-generated and descriptive, not mechanical. They describe **what changed and why**, because these messages power the per-file version history UI:
+Commit messages are AI-generated and descriptive, not mechanical. They describe **what changed and why**:
 
 ```
-allergies.md history:
+allergies.md:
   3 min ago    Felix — added edge case for expired allergies
   12 min ago   Workhorse — initial draft with 5 criteria
   15 min ago   Workhorse — created file
 ```
 
-The version history displays the commit message as the description, the author, and the relative timestamp. Users never see SHAs or branch names — just a clean edit history per file.
+Users never see SHAs or branch names. The Changes view in the artifact header shows what's different from the base branch — this is the primary way users understand changes in this card.
 
 ### Marking specs ready
 
@@ -275,15 +241,6 @@ Work is always saved to git — there is no manual save/commit action. The "Mark
 - [ ] No PR is created at this point. The implementation phase creates PRs when the developer is ready
 - [ ] The AI pushes back if areas remain uncovered
 - [ ] Presented as a secondary action (status dropdown or subtle button), not a prominent CTA — the normal flow is iterating until the spec is solid
-
-### Per-file version history
-
-Since every change is committed with a descriptive message, `git log -- {filepath}` gives a full edit history per file:
-
-- [ ] Spec view shows a "History" affordance per file
-- [ ] Each version shows: relative timestamp, author (user name or "Workhorse"), and the commit message as a description
-- [ ] Clicking a version shows the file content at that point (`git show {sha}:{path}`)
-- [ ] Diff between versions available via `git diff {sha1} {sha2} -- {path}`
 
 ## Worktree recovery
 
@@ -309,7 +266,7 @@ If the server restarts (redeploy, crash, Railway restart), worktrees are recreat
 
 - `Feature.cardBranch` — the git branch for this card's work
 - `Feature.agentSessionId` — the Agent SDK session ID for resumption
-- `Feature.touchedFiles` (optional) — JSON array of file paths this card has modified
+- Changed file lists are derived from `git diff` against the default branch at query time
 
 ### Routes and hooks
 
@@ -326,116 +283,26 @@ If the server restarts (redeploy, crash, Railway restart), worktrees are recreat
 
 ## Card statuses
 
-- `NOT_STARTED` — card created, no spec activity yet
-- `SPECIFYING` — agent session or manual spec editing in progress
-- `IMPLEMENTING` — specs are ready, implementation in progress
-- `COMPLETE` — implementation done (PR merged, or manually marked)
+Statuses are configurable per project (see `workflow-orchestration.md`). Statuses are decoupled from skills — any skill can be triggered in any status. Backward transitions are allowed.
 
-Transitions: `NOT_STARTED` → `SPECIFYING` → `IMPLEMENTING` → `COMPLETE`. Backward transitions are allowed (e.g. `IMPLEMENTING` → `SPECIFYING` if specs need rework).
+## Handoff to external agents
 
-## Collaborate with agent button
-
-A split dropdown button appears in both `SPECIFYING` and `IMPLEMENTING` modes, adapting its prompt to the current phase. Uses the split button pattern (like GitHub's merge strategy button on PR reviews).
-
-### UX
-
-- [ ] Split button with dropdown: primary action on the face, chevron opens dropdown with both options
-- [ ] Two options: "Copy prompt" and "Launch Claude Code"
-- [ ] "Copy prompt" copies the phase-appropriate prompt to clipboard
-- [ ] "Launch Claude Code" copies prompt to clipboard AND opens `claude.ai/code` in a new tab
-- [ ] Button face shows whichever option the user chose last time (persisted in localStorage)
-- [ ] Default for first-time users: "Launch Claude Code"
-- [ ] Toast confirms: "Prompt copied" or "Prompt copied — opening Claude Code"
-
-### Specifying mode prompt
-
-When the card status is `SPECIFYING`, the prompt tells the agent to collaborate on specs:
-
-```
-git fetch origin workhorse/wh-042-spec
-git checkout workhorse/wh-042-spec
-
-Specs in progress:
-- .workhorse/specs/merge-patients.md (new)
-- .workhorse/specs/patient-search.md (updated)
-
-Mockups:
-- .workhorse/design/mockups/wh-042/merge-flow.html
-
-Review the current specs and the codebase, then help develop
-the acceptance criteria. Edit the spec files directly.
-```
-
-- [ ] Prompt includes git fetch/checkout for the card branch
-- [ ] Lists spec files this card touches, with new/updated labels
-- [ ] Lists mockup file paths
-- [ ] Instructs the agent to read specs and codebase, then edit spec files directly
-- [ ] Under 500 characters for typical features
-
-### Implementing mode prompt
-
-When the card status is `IMPLEMENTING`, the prompt tells the agent to implement:
-
-```
-git fetch origin workhorse/wh-042-spec
-git checkout workhorse/wh-042-spec
-
-New specs:
-- .workhorse/specs/merge-patients.md
-- .workhorse/specs/merge-conflicts.md
-
-Updated specs:
-- .workhorse/specs/patient-search.md
-
-Mockups:
-- .workhorse/design/mockups/wh-042/merge-flow.html
-
-Review the diff to see what changed:
-git diff main...workhorse/wh-042-spec -- .workhorse/
-
-Read the specs and mockups, then implement all acceptance criteria.
-```
-
-- [ ] Same structure as the specifying prompt but with implementation instruction
-- [ ] Includes git diff command to see the spec delta from main
-- [ ] Under 500 characters for typical features
-
-### Button placement
-
-- [ ] Appears in the topbar right section
-- [ ] Visible in both `SPECIFYING` and `IMPLEMENTING` modes
-- [ ] Button label adapts: could show "Collaborate on specs" vs "Implement" — or just always show "Launch Claude Code" / "Copy prompt" since the prompt itself carries the context
+A handoff button in the topbar generates a context-rich briefing prompt for external agents (Claude Code, Cursor, or any other AI tool). See `workflow-orchestration.md` for full details.
 
 ## External agent collaboration
 
-The worktree-on-disk architecture means that any agent with access to the same worktree can participate — not just the built-in agent. The collaborate button described above is the primary entry point, but the architecture is open by design.
+The worktree-on-disk architecture means that any agent with access to the same branch can participate.
 
-### How it works
-
-- [ ] The external Claude Code session operates on the same branch as the card
+- [ ] The external agent operates on the same branch as the card
 - [ ] It reads/writes the same spec and mockup files the built-in agent does
 - [ ] On return to Workhorse, the UI reflects any changes (it reads from disk)
-- [ ] File locking applies — the external session should acquire locks, or if that's impractical, Workhorse detects changed files on focus and refreshes
-
-### Implementation from within Workhorse
-
-- [ ] The same Agent SDK infrastructure can run an implementation agent — just a different mode and system prompt
-- [ ] The agent reads specs from `.workhorse/specs/`, diffs against main, and implements
-- [ ] This is a future capability but the architecture supports it with no changes — just a different system prompt appended to the same SDK setup
-- [ ] When ready, could replace the "Launch Claude Code" external flow with an in-app implementation experience
+- [ ] Workhorse detects changed files on focus and refreshes (last-write-wins)
+- [ ] The jockey detects external commits on the card's branch and updates the journal accordingly
 
 ## Open questions
 
-> **Worktree disk pressure:** For very large monorepos, even with partial clone, working tree checkout could be slow or large. Should we support sparse checkout (only materialise relevant directories)? Probably premature — try full checkout first.
+> **Worktree disk pressure:** For very large monorepos, even with partial clone, working tree checkout could be slow or large. Should we support sparse checkout (only materialise relevant directories)?
 
-> **Concurrent sessions on the same card:** ~~Current design is one Agent SDK session per card.~~ Resolved: multiple conversation sessions per card (see `conversation-sessions.md`). Each session is an independent Agent SDK session. Two users can have separate sessions on the same card. File locking still applies to prevent conflicting writes.
+> **Session transcript display:** Should the UI show the full Agent SDK session transcript (including tool calls), or just the text messages?
 
-> **Session transcript display:** Should the UI show the full Agent SDK session transcript (including tool calls), or just the text messages? The full transcript is richer but noisier. Could offer a toggle.
-
-> **Branch strategy for dependencies:** If card WH-043 depends on WH-042, should WH-043's worktree branch from WH-042's branch? This would let the agent see WH-042's spec changes. Adds complexity to branch management.
-
-> **Offline/degraded mode:** If the bare clone fetch fails (network issues), should we proceed with a stale worktree? Probably yes — stale code is better than no code.
-
-> **External agent auto-commit sync:** When an external Claude Code session pushes commits to the card's branch, Workhorse needs to detect these on focus/return. Should we poll the branch, use a webhook, or just `git pull` when the user returns to the card?
-
-> **Railway scaling:** A single Railway service handles both web requests and agent sessions. At what concurrency level does this become a problem? Should we have a concrete plan for splitting into web + worker services, or just monitor and react?
+> **Branch strategy for dependencies:** If card WH-043 depends on WH-042, should WH-043's worktree branch from WH-042's branch?

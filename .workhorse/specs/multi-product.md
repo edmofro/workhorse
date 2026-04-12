@@ -2,7 +2,6 @@
 title: Multi-product support
 area: products
 card: WH-010
-status: draft
 ---
 
 Workhorse manages specs across multiple projects. Projects are the user-facing concept (Tamanu, Tupaia) — each project maps to a GitHub repository under the hood. Since users sign in with GitHub, Workhorse can offer their repositories directly rather than requiring manual URL entry.

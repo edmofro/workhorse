@@ -1,10 +1,9 @@
 ---
 title: Workhorse design system
-status: complete
 ---
 # Workhorse Design System
 
-Workhorse is a spec-driven development workbench. The interface should feel like a sharp, quiet tool — professional and polished with a touch of warmth and character, in the lineage of Linear, GitHub, and Raycast.
+Workhorse is a spec-driven development wsdforkbench. The interface should feel like a sharp, quiet tool — professional and polished with a touch of warmth and character, in the lineage of Linear, GitHub, and Raycast.
 
 ## Design philosophy
 
@@ -64,6 +63,18 @@ The palette is warm neutral — stone-based greys with a burnt orange accent. No
 | `--green` | `#16a34a` | Checkboxes, complete status, spec extraction blocks |
 | `--amber` | `#b45309` | In-progress status, warnings, open questions |
 | `--blue` | `#2563eb` | Team dots (secondary), links |
+
+### Diff colours
+
+Used exclusively for code and spec diff views. These sit alongside the warm-neutral palette without clashing — the green is the same `--green` already in the palette, and the red is a warm-leaning red that harmonises with the stone tones.
+
+| Token | Value | Usage |
+|---|---|---|
+| `--diff-green` | `#16a34a` | Diff addition indicator text (same as `--green`) |
+| `--diff-green-bg` | `rgba(22,163,74,0.07)` | Diff addition line background |
+| `--diff-red` | `#dc2626` | Diff removal indicator text |
+| `--diff-red-bg` | `rgba(220,38,38,0.07)` | Diff removal line background |
+| `--diff-hunk-bg` | `rgba(37,99,235,0.06)` | Diff hunk header background (uses palette `--blue`) |
 
 ### Semantic backgrounds (low-opacity tints)
 
@@ -149,6 +160,7 @@ Base unit: **4px**. All spacing values are multiples of 4.
 | Topbar height | 52px |
 | Conversation max-width | 680px |
 | Spec document max-width | 720px |
+| Artifacts sidebar width | 248px |
 | Files panel width | ~180px |
 
 ---
@@ -163,7 +175,7 @@ Base unit: **4px**. All spacing values are multiples of 4.
 | `--radius-lg` | 10px | Cards, mockup frames |
 | `--radius-xl` | 12px | Chat input, floating panels |
 | `--radius-pill` | 24px | Chat pill button |
-| `--radius-round` | 50% | Avatars, status dots |
+| `--radius-round` | 50% | Avatars, journey track nodes |
 
 ---
 
@@ -211,7 +223,7 @@ The app uses a fixed sidebar (216px) with a main content area. The topbar (52px)
 
 ### Three primary views
 
-**Cards view** — Feature list grouped by status (Specifying, Not started, Spec complete). Each group has a status dot, title, and count. Cards stack vertically.
+**Cards view** — Kanban board with horizontal columns per status (Specifying, Implementing, Not started, Complete). Each column has a status icon, label, and card count. Cards stack vertically within columns. A project selector dropdown in the topbar filters by project. Compact icon buttons (Search, Filter, New) replace the old chunky header buttons. See `board-redesign.md`.
 
 **Chat view** — Full-width scrollable conversation centred at 680px max-width. Input fixed at the bottom, also centred.
 
@@ -305,11 +317,24 @@ font-weight: 500;
 "core" tag: amber background tint, amber text.
 "future" tag: inset background, muted text.
 
-### Status dots
+### Status icons
 
-- In progress: 8px circle, amber fill
-- Not started: 8px circle, default border (hollow)
-- Complete: 8px circle, green fill
+14px SVG icons with distinct shapes per state — distinguishable without colour.
+
+- Not started: dashed circle outline (`--border-default`)
+- Specifying: circle outline with quarter-fill arc in amber
+- Implementing: circle outline with three-quarter-fill arc in blue
+- Complete: filled green circle with white checkmark
+- Cancelled: circle outline with X in muted (`--text-muted`)
+
+### Journey track
+
+The journey section in the properties bar uses a connected track of 6px nodes joined by 2px connectors. Visually distinct from status icons — reads as a timeline rather than a single state.
+
+- Done nodes: green filled
+- Active node: accent filled
+- Scheduled nodes: `--border-default` filled
+- Suggested nodes: `--text-faint` filled, connectors at reduced opacity
 
 ### Spec extraction block (in chat)
 
@@ -334,6 +359,28 @@ Mockups open in the same chat + artifact layout as specs (no full-screen overlay
 ```
 
 Thin and unobtrusive. Matches the warm neutral palette.
+
+---
+
+## Responsiveness & perceived performance
+
+**The UI must feel instant.** Interactions like clicking a card or opening a conversation should produce visible feedback within one frame. If data takes time to load, the structural chrome (topbar, sidebar, layout) should appear immediately with skeleton placeholders for the content. The user should never stare at a frozen screen wondering whether their click registered.
+
+### Principles
+
+- **Loading states are not optional.** Every page must have a `loading.tsx` that renders a skeleton matching the page's eventual layout. Skeletons use `animate-pulse` on `bg-[var(--bg-inset)]` blocks shaped to approximate the real content — never a full-page spinner.
+- **Independent data loads independently.** If one query is slow (e.g. fetching specs from a remote repo), it must not block the rest of the page from rendering. Use `Promise.all` for independent server-side fetches. Use Suspense boundaries to stream sections that depend on slower data.
+- **Navigation feels instant.** Clicking a link should immediately show the skeleton for the target page. The layout (sidebar, topbar) should remain stable — only the content area transitions.
+- **No stale data masquerading as fresh.** Caching is encouraged for expensive operations (GitHub API calls, permission checks), but cached data must have a bounded TTL and must not cause the user to see outdated state for important things like card status or conversation messages.
+- **Optimistic updates for user actions.** When a user changes a card's status, adds a tag, or posts a comment, the UI should reflect the change immediately before the server confirms. Roll back gracefully on failure.
+
+### What to avoid
+
+- Full-page loading spinners or blank white screens during navigation
+- Sequential data fetches that could run in parallel (waterfall queries)
+- Blocking the entire page on a single slow operation (e.g. a GitHub API call)
+- Heavy client-side data refetching on every mount with no caching layer
+- Skeleton layouts that don't match the actual page structure (causes layout shift)
 
 ---
 

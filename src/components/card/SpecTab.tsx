@@ -4,7 +4,6 @@ import { useState, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { SpecEditor } from './SpecEditor'
 import { SpecListSidebar } from './SpecListSidebar'
-import { FileHistory } from './FileHistory'
 import { NewSpecDialog } from './NewSpecDialog'
 import { buildDefaultSpec, generateSpecPath, parseSpec } from '../../lib/specs/format'
 import { updateCardTitleFromSpec } from '../../lib/actions/cards'
@@ -120,12 +119,6 @@ export function SpecTab({ card, initialFiles, projectSpecs = [] }: SpecTabProps)
   const handleDoneEditing = useCallback(
     async (filePath: string) => {
       try {
-        // Release lock
-        await fetch(
-          `/api/file-lock?cardId=${card.id}&filePath=${encodeURIComponent(filePath)}`,
-          { method: 'DELETE' },
-        )
-
         // Auto-commit
         await fetch('/api/auto-commit', {
           method: 'POST',
@@ -155,24 +148,11 @@ export function SpecTab({ card, initialFiles, projectSpecs = [] }: SpecTabProps)
   )
 
   const handleStartEditing = useCallback(
-    async (filePath: string) => {
-      // Acquire lock
-      const res = await fetch('/api/file-lock', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cardId: card.id, filePath }),
-      })
-
-      if (res.status === 409) {
-        const data = await res.json()
-        alert(`File is being edited by ${data.holder?.displayName ?? 'someone else'}`)
-        return false
-      }
-
+    async () => {
       setIsEditing(true)
       return true
     },
-    [card.id],
+    [],
   )
 
   /** Create a brand-new spec file for this card */
@@ -291,13 +271,10 @@ export function SpecTab({ card, initialFiles, projectSpecs = [] }: SpecTabProps)
       <div className="flex-1 overflow-y-auto bg-[var(--bg-surface)] flex justify-center">
         {activeFile ? (
           <div className="w-full" style={{ maxWidth: '720px', padding: '48px 40px 80px' }}>
-            <div className="flex items-center justify-between mb-2">
+            <div className="mb-2">
               <span className="text-[12px] text-[var(--text-faint)] font-mono">
                 {activeFile.filePath}
               </span>
-              <div className="flex items-center gap-3">
-                <FileHistory cardId={card.id} filePath={activeFile.filePath} />
-              </div>
             </div>
 
             <SpecEditor
@@ -312,8 +289,7 @@ export function SpecTab({ card, initialFiles, projectSpecs = [] }: SpecTabProps)
                 handleSpecUpdate(activeFile.filePath, content)
               }
               isEditing={isEditing}
-              onStartEditing={() => handleStartEditing(activeFile.filePath)}
-              onDoneEditing={() => handleDoneEditing(activeFile.filePath)}
+              onStartEditing={() => handleStartEditing()}
               cardStatus={card.status}
             />
           </div>

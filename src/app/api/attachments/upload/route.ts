@@ -99,20 +99,13 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  // Assign a default name for pasted images with no meaningful filename
-  let rawName = file.name
-  if (!rawName || rawName === 'image.png' || rawName === 'blob') {
-    const ext = file.type.split('/')[1]?.replace('svg+xml', 'svg') ?? 'png'
-    rawName = `pasted-image.${ext}`
-  }
-
   // Sanitise filename: strip directory components and dangerous characters
-  const safeName = path.basename(rawName).replace(/[^\w.\-]/g, '_')
+  const safeName = path.basename(file.name).replace(/[^\w.\-]/g, '_')
 
   // Generate ID upfront so we can compute the storage path before creating the record
   const id = crypto.randomUUID()
-  const dir = path.join(ATTACHMENTS_DIR, id)
-  const filePath = path.join(dir, safeName)
+  const dir = path.join(/* turbopackIgnore: true */ ATTACHMENTS_DIR, id)
+  const filePath = path.join(/* turbopackIgnore: true */ dir, safeName)
 
   // Write file to disk first — only create DB record on success
   try {

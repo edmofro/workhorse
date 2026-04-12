@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useCallback, useEffect, useRef } from 'react'
-import type { ViewState } from '../../lib/hooks/useViewNavigation'
 import { useRouter } from 'next/navigation'
 import { cn } from '../../lib/cn'
 import { useUser } from '../UserProvider'
@@ -11,7 +10,7 @@ import { useViewNavigation } from '../../lib/hooks/useViewNavigation'
 import { SpecHeaderBar } from './SpecHeaderBar'
 import type { DeviceKey } from './SpecHeaderBar'
 import { ActionPills, type ActionPill } from './ActionPills'
-import { PropertiesBar } from './PropertiesBar'
+import { TopbarCardActions } from './TopbarCardActions'
 import { PrBar } from './PrBar'
 import { useJockeyState } from '../../lib/hooks/useJockeyState'
 import { BUILT_IN_SKILLS } from '../../lib/skills/registry'
@@ -32,7 +31,7 @@ import { deriveLabel } from '../../lib/labels'
 import { updateCardTitleFromSpec } from '../../lib/actions/cards'
 import { formatRelativeTime } from '../../lib/formatRelativeTime'
 import { isMockupPath } from '../../lib/paths'
-import { useCardBackRegister } from './CardBackContext'
+import { useCardShellUpdate, useCardShellPortalTarget } from './CardShellContext'
 
 interface SpecFileData {
   filePath: string
@@ -442,16 +441,6 @@ export function CardWorkspace({
     [handleSendMessage],
   )
 
-  /** Trigger a skill from the journey bar */
-  const handleTriggerSkill = useCallback(
-    (skillId: string, label: string) => {
-      const skill = BUILT_IN_SKILLS[skillId]
-      const message = skill?.description ?? `Run ${label}`
-      handleSendMessage(message, skillId)
-    },
-    [handleSendMessage],
-  )
-
   /** Handle PR creation — update local state with the new PR URL */
   const [localPrUrl, setLocalPrUrl] = useState<string | null>(card.prUrl ?? null)
   const handlePrCreated = useCallback((prUrl: string) => {
@@ -567,10 +556,6 @@ export function CardWorkspace({
       skillId: p.skillId,
     }
   })
-
-  // Deduplicate: remove suggestions that already appear in pills
-  const pillSkillIds = new Set(jockey.pills.map(p => p.skillId))
-  const dedupedSuggestions = jockey.suggestions.filter(s => !pillSkillIds.has(s.skillId))
 
   // --- Chat column (shared between chat mode and artifact mode) ---
   const chatColumn = (
@@ -740,24 +725,37 @@ export function CardWorkspace({
     </div>
   ) : null
 
-  // Register back handler for topbar: go to card home when in chat/artifact, null when already on card home
-  const backHandler = view.type !== 'card' ? goBack : null
-  useCardBackRegister(backHandler)
+  // Update the topbar shell context: breadcrumb label, title clickability, go-to-card-home handler
+  const updateShell = useCardShellUpdate()
+  const portalTarget = useCardShellPortalTarget()
+
+  const goToCardHome = useCallback(() => {
+    navigateTo({ type: 'card' })
+  }, [navigateTo])
+
+  useEffect(() => {
+    let breadcrumb: string | null = null
+    if (view.type === 'chat') {
+      breadcrumb = 'Chat'
+    } else if (view.type === 'artifact') {
+      const file = files.find((f) => f.filePath === view.filePath)
+      breadcrumb = deriveLabel(view.filePath, file?.content)
+    }
+    updateShell({
+      breadcrumb,
+      titleClickable: view.type !== 'card',
+      goToCardHome: view.type !== 'card' ? goToCardHome : null,
+    })
+  }, [view, files, updateShell, goToCardHome])
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
-      {/* Properties bar — single instance shared across all views */}
-      <PropertiesBar
+      {/* Status chip + properties popover — portaled into the topbar */}
+      <TopbarCardActions
         card={card}
         users={users}
         teams={teams}
-        journalEntries={jockey.journalEntries}
-        scheduledSteps={jockey.scheduledSteps}
-        suggestions={dedupedSuggestions}
-        activeStep={jockey.activeStep}
-        onTriggerSkill={handleTriggerSkill}
-        onScheduleStep={jockey.scheduleStep}
-        onUnscheduleStep={jockey.unscheduleStep}
+        portalTarget={portalTarget}
       />
       <div className="flex-1 flex overflow-hidden">
       {/* ===== Card home ===== */}

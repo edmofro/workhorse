@@ -11,7 +11,7 @@ import { useViewNavigation } from '../../lib/hooks/useViewNavigation'
 import { SpecHeaderBar } from './SpecHeaderBar'
 import type { DeviceKey } from './SpecHeaderBar'
 import { ActionPills, type ActionPill } from './ActionPills'
-import { JourneyBar } from './JourneyBar'
+import { PropertiesBar } from './PropertiesBar'
 import { PrBar } from './PrBar'
 import { useJockeyState } from '../../lib/hooks/useJockeyState'
 import { BUILT_IN_SKILLS } from '../../lib/skills/registry'
@@ -59,9 +59,15 @@ interface CardWorkspaceProps {
     identifier: string
     title: string
     status: string
+    priority: string
+    team: { id: string; name: string }
+    assignee: { id: string; displayName: string } | null
+    dependsOn: { identifier: string; title: string }[]
     cardBranch: string | null
     prUrl?: string | null
   }
+  users: { id: string; displayName: string }[]
+  teams: { id: string; name: string }[]
   cardTabContent: React.ReactNode
   initialFiles: SpecFileData[]
   initialCodeFiles?: { filePath: string; isNew: boolean; linesAdded?: number; linesRemoved?: number }[]
@@ -73,6 +79,8 @@ interface CardWorkspaceProps {
 
 export function CardWorkspace({
   card,
+  users,
+  teams,
   cardTabContent,
   initialFiles,
   initialCodeFiles = [],
@@ -130,6 +138,7 @@ export function CardWorkspace({
     messages,
     isStreaming,
     fileWrites,
+    committedFiles,
     thinkingSnippet,
     thinkingVerb,
     currentSessionId,
@@ -344,7 +353,7 @@ export function CardWorkspace({
     return () => clearInterval(interval)
   }, [card.id])
 
-  // Track file writes from the agent — add new files to the list and fetch content
+  // Track file writes from the agent — add or update files in the list
   useEffect(() => {
     for (const fw of fileWrites) {
       if (fw.filePath.startsWith('.workhorse/specs/') || isMockupPath(fw.filePath)) {
@@ -352,14 +361,14 @@ export function CardWorkspace({
           if (prev.some((f) => f.filePath === fw.filePath)) return prev
           return [...prev, { filePath: fw.filePath, isNew: true, content: '' }]
         })
-        // Immediately fetch the file content from the worktree so mockups
-        // and specs are not blank when first added to the sidebar
+        // Fetch the latest file content from the worktree — both for newly
+        // added files and for existing files the agent has just edited
         fetch(`/api/worktree-files?cardId=${card.id}&filePath=${encodeURIComponent(fw.filePath)}`)
           .then((res) => res.ok ? res.json() : null)
           .then((data) => {
             if (data?.content) {
               setFiles((prev) =>
-                prev.map((f) => f.filePath === fw.filePath && !f.content ? { ...f, content: data.content as string } : f),
+                prev.map((f) => f.filePath === fw.filePath ? { ...f, content: data.content as string } : f),
               )
             }
           })
@@ -373,6 +382,20 @@ export function CardWorkspace({
       }
     }
   }, [fileWrites, card.id])
+
+  // Refresh code files after a commit so the artifacts bar updates with
+  // accurate line stats from git, without requiring a page refresh.
+  useEffect(() => {
+    if (committedFiles.length === 0) return
+    fetch(`/api/card-files?cardId=${encodeURIComponent(card.identifier)}`)
+      .then((res) => res.ok ? res.json() : null)
+      .then((data) => {
+        if (data?.initialCodeFiles) {
+          setCodeFiles(data.initialCodeFiles)
+        }
+      })
+      .catch(() => { /* best-effort */ })
+  }, [committedFiles, card.identifier])
 
   // Open a file from card home in expanded mode (chat contracted)
   const openFileExpanded = useCallback(
@@ -553,16 +576,6 @@ export function CardWorkspace({
   // --- Chat column (shared between chat mode and artifact mode) ---
   const chatColumn = (
     <div className="flex-1 flex flex-col overflow-hidden">
-      {/* Journey bar — between topbar and chat */}
-      <JourneyBar
-        journalEntries={jockey.journalEntries}
-        scheduledSteps={jockey.scheduledSteps}
-        suggestions={dedupedSuggestions}
-        activeStep={jockey.activeStep}
-        onTriggerSkill={handleTriggerSkill}
-        onScheduleStep={jockey.scheduleStep}
-        onUnscheduleStep={jockey.unscheduleStep}
-      />
       <div ref={chatScrollRef} className="flex-1 overflow-y-auto flex justify-center">
         <div className="w-full" style={{ maxWidth: '680px', padding: '32px 24px 80px' }}>
           {messages.length === 0 && (
@@ -724,20 +737,25 @@ export function CardWorkspace({
   useCardBackRegister(backHandler)
 
   return (
-    <div className="flex-1 flex overflow-hidden">
+    <div className="flex-1 flex flex-col overflow-hidden">
+      {/* Properties bar — single instance shared across all views */}
+      <PropertiesBar
+        card={card}
+        users={users}
+        teams={teams}
+        journalEntries={jockey.journalEntries}
+        scheduledSteps={jockey.scheduledSteps}
+        suggestions={dedupedSuggestions}
+        activeStep={jockey.activeStep}
+        onTriggerSkill={handleTriggerSkill}
+        onScheduleStep={jockey.scheduleStep}
+        onUnscheduleStep={jockey.unscheduleStep}
+      />
+      <div className="flex-1 flex overflow-hidden">
       {/* ===== Card home ===== */}
       {view.type === 'card' && (
         <>
           <div className="flex-1 flex flex-col overflow-hidden">
-            <JourneyBar
-              journalEntries={jockey.journalEntries}
-              scheduledSteps={jockey.scheduledSteps}
-              suggestions={dedupedSuggestions}
-              activeStep={jockey.activeStep}
-              onTriggerSkill={handleTriggerSkill}
-              onScheduleStep={jockey.scheduleStep}
-              onUnscheduleStep={jockey.unscheduleStep}
-            />
             <div className="flex-1 overflow-y-auto">
               {cardTabContent}
 
@@ -857,6 +875,7 @@ export function CardWorkspace({
           </div>
         </>
       )}
+      </div>
 
       {/* New spec dialog */}
       {showNewSpecDialog && (

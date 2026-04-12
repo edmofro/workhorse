@@ -64,9 +64,9 @@ model Card {
   assigneeId      String?
   tags            String   @default("[]") // JSON array of strings
   cardBranch      String?  // Git branch for this card's work (internal, not surfaced to user)
-  touchedFiles    String   @default("[]") // JSON array of file paths this card has modified
   prNumber        Int?     // GitHub PR number
   prUrl           String?  // GitHub PR URL
+  touchedFiles    String   @default("[]") // JSON array of file paths modified by agents
   lastActivityAt  DateTime @default(now()) // For stale worktree cleanup
 
   // Quality step tracking
@@ -163,6 +163,7 @@ model JournalEntry {
   id        String   @id @default(cuid())
   cardId    String
   type      String   // skill name or general type: workshop, interview, spec-draft, spec-review, implementation, design-audit, etc.
+  label     String?  // short 1-3 word display name for the step (e.g. "Interview", "Design audit"). Nullable for backwards compat with existing rows.
   summary   String   // human-readable: "Spec interview completed — 2 specs written"
   createdAt DateTime @default(now())
 

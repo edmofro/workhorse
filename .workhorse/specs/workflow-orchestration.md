@@ -19,7 +19,8 @@ A skill is an action that can be performed on a card. Skills are the atomic unit
 Skills can be triggered from multiple surfaces:
 
 - [ ] **Pills** — contextual action buttons above the chat input. Clicking a pill triggers the corresponding skill
-- [ ] **Journey bar** — clicking a suggested item in the journey bar starts that skill immediately. Alternatively, the user can schedule it to run automatically after the current step completes (see "Scheduling" under Journey bar)
+- [ ] **Journey section** — clicking a suggested item in the journey section of the properties bar starts that skill immediately. Alternatively, the user can schedule it to run automatically after the current step completes (see "Scheduling" under Journey section)
+- [ ] **Free-form text** — when the user sends a message without selecting a pill, the jockey's pre-turn pass assesses whether the message clearly invokes a skill. If it does, that skill's instructions are injected alongside the message, producing the same agent behaviour as a pill click. If the intent is ambiguous or conversational, no skill is injected and the agent responds with general context.
 
 ### Built-in skills
 
@@ -39,13 +40,15 @@ Skills can be triggered from multiple surfaces:
 
 Projects can define custom skills as prompt files in `.workhorse/skills/`. Each file defines a skill with a name, execution mode, and prompt.
 
-- [ ] Custom skills appear alongside built-in skills — the jockey can suggest them in pills and in the journey bar
+- [ ] Custom skills appear alongside built-in skills — the jockey can suggest them in pills and in the journey section
 - [ ] A custom skill can define a tailored prompt for a specific project need (e.g. "review all acceptance criteria against the codebase and flag any that are already implemented")
 - [ ] Custom skills use the same execution modes as built-in skills (inline, subagent)
 
 ### Skills and agent modes
 
 Each inline skill maps to a system prompt fragment that shapes the agent's behaviour. The mode flows from the skill trigger → API → system prompt builder. The agent receives mode-specific instructions alongside the user's message, so it knows to conduct an interview, or implement from specs, or follow directed editing instructions.
+
+When a skill is identified — whether from a pill, journey bar, or the jockey's pre-turn intent detection — the same skill instructions are injected. The mechanism of triggering makes no difference to the agent.
 
 ## The jockey
 
@@ -55,20 +58,28 @@ Named after the rider who guides a workhorse — it doesn't do the work, but it 
 
 ### When the jockey runs
 
-The jockey runs a Haiku LLM pass in response to two kinds of trigger:
+The jockey runs two Haiku LLM passes per user message — one before the agent turn and one after — plus a pass in response to external state changes:
 
-- [ ] **Every message** (user or agent) posted to the conversation
+- [ ] **Pre-turn** — runs before the agent processes the user's message. Assesses whether the message clearly invokes a skill, so the right skill instructions can be injected before the agent responds
+- [ ] **Post-turn** — runs after the agent responds. Updates the journal, journey suggestions, and pills based on what happened in the exchange
 - [ ] **External state changes** detected by background polling — new commits on the card's branch, PR status updates, CI results
 
-Both triggers feed into the same assessment. The jockey reads the new input (message, or description of the external change) plus a few recent messages for context, against the current journal.
+The pre-turn and post-turn passes share the same context inputs (journal, recent conversation, card state) but have different outputs.
 
-### What the jockey does on each pass
+### What the jockey does pre-turn
+
+- [ ] Reads the incoming user message and recent conversation context
+- [ ] Returns a detected skill ID if the message clearly invokes a specific skill (e.g. "interview me", "just write a spec", "start implementing")
+- [ ] Returns nothing if the message is conversational, ambiguous, or a natural continuation of the current flow — in which case no skill instructions are injected
+- [ ] The detection is intentionally conservative: when in doubt, the jockey does not inject a skill
+
+### What the jockey does post-turn
 
 - [ ] Decides whether anything noteworthy just happened — did something finish? Did something start? Has the user's intent shifted? Did an external event change the picture?
 - [ ] Writes journal entries when warranted (see "Journal" section)
-- [ ] Updates the suggested steps in the journey bar
+- [ ] Updates the suggested steps in the journey section
 - [ ] Updates pill suggestions — the most relevant 2-4 actions for right now
-- [ ] Starts the next scheduled skill if the current step just completed (see "Scheduling" under Journey bar)
+- [ ] Starts the next scheduled skill if the current step just completed (see "Scheduling" under Journey section)
 - [ ] Detects when the conversation diverges from the spec (e.g. user directs the agent to implement something the spec doesn't cover) and surfaces "Update spec" in pills
 
 Most of the time, the assessment is "nothing noteworthy happened" and no changes are made. The jockey receives the journal (which provides a compressed history of the card's progress) plus a sliding window of recent conversation for context. A cursor tracks which messages have already been assessed, so the jockey knows what's new — but the context window extends further back than just the new messages, so it can recognise significance that only becomes apparent in hindsight.
@@ -77,20 +88,21 @@ Most of the time, the assessment is "nothing noteworthy happened" and no changes
 
 These are both generated by the jockey but serve different purposes:
 
-- **Suggestions** (in the journey bar) are the expected remaining sequence of steps. Linear — "here's what's probably ahead." Example during implementation: Design audit → Code review → Create PR.
+- **Suggestions** (in the journey section) are the expected remaining sequence of steps. Linear — "here's what's probably ahead." Example during implementation: Design audit → Code review → Create PR.
 - **Pills** (above the chat input) are branching options for what to do right now. They may include actions not in the suggestions. Example during implementation: "Continue", "Update spec", "Design audit." Labels are always short — 2–4 words, verb + noun form.
 
 ## Journal
 
-The journal is the single record of what's happened on a card, visible in the journey bar. The jockey writes journal entries; the primary agent does not manage the journal.
+The journal is the single record of what's happened on a card, visible in the journey section of the properties bar. The jockey writes journal entries; the primary agent does not manage the journal.
 
 ### Journal entries
 
 Each entry has:
 
 - [ ] **Type** — what kind of thing happened (e.g. workshop, interview, spec-draft, spec-review, implementation, design-audit, pr-created)
+- [ ] **Label** — a short 1–3 word display name for the step (e.g. "Interview", "Design audit"). Stored on creation, not re-derived on display. See `workflow/journey-step-labels.md`
 - [ ] **Timestamp** — when it happened
-- [ ] **Summary** — a brief human-readable description (e.g. "Spec interview completed — 2 specs written, 1 open question remaining")
+- [ ] **Summary** — a longer human-readable description for contexts that benefit from detail (e.g. handoff prompts, PR descriptions)
 
 ### Characteristics
 
@@ -99,59 +111,58 @@ Each entry has:
 - [ ] The journal is append-only. Entries are never rewritten or reordered
 - [ ] The journal is the input the jockey uses to determine suggestions and pills
 
-## Journey bar
+## Journey section
 
-The journey bar is the visual representation of the journal. It sits between the topbar and the chat area, always visible in a compact collapsed state, expandable to show the full journey.
+The journey section is the visual representation of the journal. It occupies the right side of the properties bar (see `card-navigation.md`) and is visible in all card views — card home, chat, and artifact mode.
 
 ### Collapsed state
 
 ```
-┌──────────────────────────────────────────────────────────────┐
-│  ✓ ✓ ● ◌ ◌   Implementing                            ▾     │
-└──────────────────────────────────────────────────────────────┘
+●─●─●─○─○─◌   Implementing   ▾
 ```
 
-- [ ] Shows progress dots: solid (✓) for completed steps, filled (●) for active step, hollow (◌) for suggested next steps
-- [ ] Current step label beside the dots
-- [ ] Expand chevron (▾) on the right
-- [ ] The journey bar does not appear on fresh cards with no completed steps. It appears after the first journal entry is written
+- [ ] Shows a connected track of small nodes joined by short connectors — visually distinct from the status icon on the left side of the properties bar
+- [ ] Node colours: green for completed steps, accent for the active step, muted for scheduled steps, faint for jockey suggestions
+- [ ] When a step is actively running, the step name is shown beside the track and pulses to indicate activity
+- [ ] When no step is currently running (idle), only the track is shown — no label
+- [ ] Expand chevron (▾) indicates the section is expandable
+- [ ] The journey section is hidden entirely on cards with no journal entries — the bar shows only properties until activity begins
 
 ### Expanded state
 
-The expanded journey overlays the top of the chat area. It's meant to be opened briefly and closed — not left open during normal work.
+Clicking the journey section opens a compact dropdown anchored to the section. It is not a full-width overlay.
 
 ```
-┌──────────────────────────────────────────────────────────────┐
-│  ✓ Spec interview              2 Apr                        │
-│  ✓ Spec review                 3 Apr                        │
-│  ● Implementing                In progress                  │
-│                                                              │
-│  Scheduled                                                   │
-│  ○ Design audit                                        ✕     │
-│  ○ Code review                                         ✕     │
-│                                                              │
-│  Suggestions                                                     │
-│  ◌ Create PR                                          ▴     │
-└──────────────────────────────────────────────────────────────┘
+  ✓ Interview          2 Apr
+  ✓ Spec review        3 Apr
+  ● Implementing       In progress
+
+  Scheduled
+  ○ Design audit                  ✕
+  ○ Code review                   ✕
+
+  Suggestions
+  ◌ Create PR                     →
 ```
 
-- [ ] Completed entries show at full opacity with timestamps
-- [ ] Scheduled items use a solid outline circle (○) — visually distinct from the dotted/hollow suggested items (◌), communicating that these are committed to
-- [ ] Suggested items under "Suggestions" are visually muted (lower opacity, dotted/hollow icons) to communicate that they are the jockey's guesses, not commitments
-- [ ] Clicking a suggested step triggers that skill immediately (same as clicking a pill)
+- [ ] Completed entries show their label at full opacity with timestamps
+- [ ] The active step (if any) is shown at full weight with "In progress"
+- [ ] Scheduled items use muted filled nodes — visually distinct from the fainter suggested nodes, communicating that these are committed to run
+- [ ] Suggested items are visually faint to communicate they are the jockey's guesses, not commitments
+- [ ] Clicking a suggested step triggers that skill immediately and closes the dropdown
 - [ ] Clicking a completed step does nothing
-- [ ] The overlay closes when the user clicks outside it, presses Escape, or triggers an action
+- [ ] The dropdown closes on click outside, Escape, or when an action is triggered
 
 ### Scheduling
 
 Users can schedule suggested steps to run automatically in sequence, rather than triggering them one at a time.
 
-- [ ] Each suggested item has a "schedule" affordance (e.g. a secondary action alongside the click-to-start-now behaviour)
+- [ ] Each suggested item has a schedule affordance alongside the direct-trigger action
 - [ ] Scheduling an item moves it from "Suggestions" into the "Scheduled" section
 - [ ] Scheduled items run in order: when the jockey assesses that the current step has completed, it auto-starts the next scheduled item
 - [ ] Each scheduled item has a cancel (✕) button to remove it from the schedule and return it to "Suggestions"
 - [ ] Multiple instances of the same skill can be scheduled in sequence (e.g. design audit, resolve findings, design audit again)
-- [ ] The collapsed journey bar reflects scheduled items with solid outline dots, distinct from the dotted suggested dots
+- [ ] Scheduled items are represented in the collapsed track as muted nodes, distinct from the fainter suggestion nodes
 
 ## PR bar
 
@@ -212,7 +223,7 @@ Card statuses are decoupled from skills and the journey. Any skill can be trigge
 
 - `auto-review.md` — the spec-review skill uses the fresh-eyes review mechanism defined there
 - `agent-sdk-session.md` — skills use the same Agent SDK infrastructure and system prompt injection described there; inline skills run in the card's primary session, subagent skills run in ephemeral sessions
-- `card-navigation.md` — the journey bar and PR bar are new UI elements in the card workspace; pills are now generated by the jockey rather than hardcoded by status
+- `card-navigation.md` — the properties bar (which contains the journey section) and PR bar are UI elements in the card workspace; pills are now generated by the jockey rather than hardcoded by status
 - `conversation-sessions.md` — the primary conversation model remains; subagent skills create ephemeral sessions that post results back to the primary conversation
 - `commit-specs.md` — auto-commit behaviour continues to apply to all file changes made by skills
 - `quality-gates.md` — soft gates are informed by the journal (whether review/audit skills have run) rather than separate boolean flags

@@ -10,35 +10,23 @@ Initially, users will copy-paste descriptions from Linear. Over time, Workhorse 
 
 ## Layout
 
-- [ ] Card view shows: title, property strip, description, attachments, comments
-- [ ] The property strip sits between the title and the description
+- [ ] Card view shows: title, description, attachments, comments
 - [ ] The description is unconstrained in height — it grows to fit its content rather than being capped at a fixed number of rows
 - [ ] The entire card scrolls as a single unit — there is no inner scroll region within the description
-
-## Property strip
-
-The property strip is a single horizontal row of interactive pills showing status, priority, team, assignee, and tags. It replaces the former stacked metadata rows and separate tags section.
-
-- [ ] The strip shows, left to right: status, priority, team, assignee — then dependency identifiers (if any) — then a mid-dot separator — then tags
-- [ ] Each property pill is bare text at rest, gaining a subtle rounded background on hover
-- [ ] Clicking a property pill opens a dropdown below it; the dropdown uses the same visual shell as the board card overflow menu: surface background, default border, extra-large border-radius, large shadow, 12px item text
-- [ ] The selected option is shown in medium weight; unselected options are secondary text
-- [ ] The status pill includes a status dot (matching the board column headers and the dot states used throughout the app)
-- [ ] Dropdown closes on selection, on click outside, or on scroll
-- [ ] Dependency identifiers are shown as read-only monospace labels in the strip; they are not interactive
+- [ ] Card metadata (status, priority, team, assignee) is managed via the properties bar shared across all card views — see `card-navigation.md`
 - [ ] Description is editable directly in the card view
-- [ ] Card metadata (status, team, assignee) is editable inline
 - [ ] All edits and metadata changes are visible to other users in real time
 - [ ] Card view is the default when opening a card
 - [ ] The AI agent reads the card description as starting context for the chat
 
-## Tags in the property strip
+## Tags
 
-- [ ] Tags appear inline in the property strip after the mid-dot separator
-- [ ] Each tag is shown as a chip with a remove button
+Tags appear in the card view body, below the title. They are not shown in the properties bar.
+
+- [ ] Tags are shown as a row of chips, each with a remove button
 - [ ] Up to three tags are shown inline; if more exist, a `+N more` pill appears after the visible tags
 - [ ] The `+N more` pill opens a small dropdown listing the hidden tags, each with a remove button
-- [ ] A `+ tag` pill at the end of the strip triggers an inline text input; pressing Enter or blurring commits the tag
+- [ ] A `+ tag` pill at the end triggers an inline text input; pressing Enter or blurring commits the tag
 - [ ] Tags are free text (no predefined set)
 - [ ] Duplicate tags are silently ignored
 
@@ -53,4 +41,4 @@ The property strip is a single horizontal row of interactive pills showing statu
 ## Activity log
 
 - [ ] An activity log records deterministic events on the card: creation, status changes, spec updates, commits, dependency changes
-- [ ] The activity log is stored for auditing but is not shown in the card view — the journey bar (see `workflow-orchestration.md`) is the user-facing record of progress
+- [ ] The activity log is stored for auditing but is not shown in the card view — the journey section in the properties bar (see `workflow-orchestration.md`) is the user-facing record of progress

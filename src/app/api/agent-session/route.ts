@@ -1,6 +1,7 @@
 import '../../../lib/ai/ensureSessionStorage'
 import { NextRequest, NextResponse } from 'next/server'
 import { query } from '@anthropic-ai/claude-agent-sdk'
+import { anthropic } from '../../../lib/anthropic'
 import type { SDKUserMessage } from '@anthropic-ai/claude-agent-sdk'
 import type { ImageBlockParam, TextBlockParam } from '@anthropic-ai/sdk/resources/messages/messages'
 import { readFile, mkdir, copyFile } from 'fs/promises'
@@ -9,18 +10,19 @@ import path from 'path'
 import { prisma } from '../../../lib/prisma'
 import { requireUser, requireCardAccess } from '../../../lib/auth/session'
 import { buildSessionInstructions } from '../../../lib/ai/sessionPrompt'
-import { isValidSkillId } from '../../../lib/skills/registry'
+import { isValidSkillId, humaniseSkillId } from '../../../lib/skills/registry'
 import { runJockeyAssessment } from '../../../lib/jockey/assess'
+import { detectSkillIntent } from '../../../lib/jockey/detectIntent'
 import type { JockeyAssessment } from '../../../lib/jockey/types'
 import {
   ensureBareClone,
   createWorktree,
   worktreePath,
   autoCommit,
+  getChangedFiles,
   getPendingChanges,
 } from '../../../lib/git/worktree'
 import { branchNameFromCard } from '../../../lib/git/branchNaming'
-
 import { safeParseTouchedFiles } from '../../../lib/safeParseTouchedFiles'
 import { publish as publishSessionEvent, close as closeSessionChannel } from '../../../lib/sessionEvents'
 import { acquireAdvisoryLock } from '../../../lib/advisoryLock'
@@ -150,6 +152,25 @@ export async function POST(request: NextRequest) {
   // Build deduplicated attachment file list for the prompt context
   const allAttachmentFiles = [...new Set(allAttachments.map((a) => a.fileName))]
 
+  // Resolve skill: explicit pill/journey trigger takes precedence; otherwise ask the
+  // jockey to detect intent from the incoming message (pre-turn pass).
+  let resolvedSkillId = isValidSkillId(skillId) ? skillId : undefined
+
+  if (!resolvedSkillId) {
+    const journalEntries = await prisma.journalEntry.findMany({
+      where: { cardId },
+      orderBy: { createdAt: 'desc' },
+      select: { type: true, summary: true },
+      take: 3,
+    })
+    resolvedSkillId = (await detectSkillIntent({
+      userMessage: message,
+      cardTitle: card.title,
+      cardStatus: card.status,
+      journalEntries,
+    })) ?? undefined
+  }
+
   // Build session instructions with skill-specific context
   const sessionInstructions = buildSessionInstructions({
     cardTitle: card.title,
@@ -159,7 +180,7 @@ export async function POST(request: NextRequest) {
     repoOwner: owner,
     repoName,
     attachmentFiles: allAttachmentFiles.length > 0 ? allAttachmentFiles : undefined,
-    skillId: isValidSkillId(skillId) ? skillId : undefined,
+    skillId: resolvedSkillId,
   })
 
   // Build multimodal prompt if there are raster image attachments (exclude SVG — not a valid
@@ -209,12 +230,6 @@ export async function POST(request: NextRequest) {
     promptInput = message
   }
 
-  // Skills that run extended implementation work get unlimited turns.
-  // All other skills get a capped limit to prevent runaway sessions.
-  const UNLIMITED_TURN_SKILLS = new Set(['implement', 'fix_ci'])
-  const resolvedSkillId = isValidSkillId(skillId) ? skillId : undefined
-  const maxTurns = resolvedSkillId && UNLIMITED_TURN_SKILLS.has(resolvedSkillId) ? undefined : 10
-
   // Configure Agent SDK query
   const options: Parameters<typeof query>[0]['options'] = {
     cwd: wtPath,
@@ -228,7 +243,6 @@ export async function POST(request: NextRequest) {
     settingSources: ['project' as const],
     includePartialMessages: true,
     model: 'claude-opus-4-6',
-    ...(maxTurns !== undefined ? { maxTurns } : {}),
     persistSession: true,
     ...(convSession.agentSessionId ? { resume: convSession.agentSessionId } : {}),
   }
@@ -250,6 +264,7 @@ export async function POST(request: NextRequest) {
     card,
     user,
     message,
+    defaultBranch,
   })
 
   // Return immediately with the session ID so the client can subscribe
@@ -271,6 +286,7 @@ function runAgentInBackground(ctx: {
   card: { id: string; identifier: string; title: string; status: string; team: { colour: string; project: { name: string } } }
   user: { id: string; displayName: string; githubUsername: string; accessToken: string }
   message: string
+  defaultBranch: string
 }) {
   // Create an AbortController so the agent can be cancelled via cancelAgent()
   const abortController = new AbortController()
@@ -400,6 +416,7 @@ function runAgentInBackground(ctx: {
           ctx.card.status,
           ctx.message,
           assistantText,
+          { owner: ctx.owner, repoName: ctx.repoName, cardIdentifier: ctx.card.identifier, defaultBranch: ctx.defaultBranch },
         )
         if (jockeyResult) {
           publishSessionEvent(ctx.convSession.id, { type: 'jockey', ...jockeyResult })
@@ -439,7 +456,13 @@ async function finaliseSessionAfterExchange(
 ) {
   try {
     const pending = await getPendingChanges(ctx.owner, ctx.repoName, ctx.card.identifier)
-    const commitMessage = buildCommitMessage(ctx.card.identifier, pending)
+    const commitMessage = await generateCommitMessage(
+      ctx.card.identifier,
+      ctx.cardTitle,
+      pending,
+      ctx.message,
+      ctx.assistantText,
+    )
 
     const changedFiles = await autoCommit(
       ctx.owner,
@@ -497,20 +520,77 @@ async function finaliseSessionAfterExchange(
 }
 
 /**
- * Build a meaningful commit message from the list of pending changed files.
- *
- * Examples:
- *   WH-042: add allergies spec
- *   WH-042: update 3 specs
- *   WH-048: add ward-overview mockup
- *   WH-042: update commit-messages spec and add mockup
+ * Generate a meaningful commit message using Haiku, informed by the files changed
+ * and the recent exchange. Falls back to a file-path-derived message if the LLM call fails.
  */
-function buildCommitMessage(
+async function generateCommitMessage(
   cardIdentifier: string,
+  cardTitle: string,
+  pending: { filePath: string; isNew: boolean }[],
+  userMessage: string,
+  assistantText: string,
+): Promise<string> {
+  const prefix = cardIdentifier.toUpperCase()
+  const fallback = buildCommitMessageFromFiles(prefix, pending)
+
+  if (pending.length === 0) return fallback
+
+  try {
+    const fileList = pending
+      .map((f) => `${f.isNew ? 'A' : 'M'} ${f.filePath}`)
+      .join('\n')
+
+    const prompt = `Generate a concise git commit message for a spec-driven development card.
+
+Card: ${prefix} — ${cardTitle}
+
+Changed files:
+${fileList}
+
+Recent exchange summary:
+User: ${userMessage.slice(0, 400)}${userMessage.length > 400 ? '...' : ''}
+Assistant: ${assistantText.slice(0, 400)}${assistantText.length > 400 ? '...' : ''}
+
+Rules:
+- Start with "${prefix}: " (already provided — do NOT include it, just write the rest)
+- One line, under 72 characters total including the prefix
+- Be specific about what changed and why, not just which files
+- Use lowercase imperative mood (e.g. "add allergies spec", "update ward-overview mockup with bed status")
+- No full stops at the end
+
+Respond with only the message text after the prefix, nothing else.`
+
+    const response = await anthropic.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 100,
+      messages: [{ role: 'user', content: prompt }],
+    })
+
+    const text = response.content
+      .filter((b) => b.type === 'text')
+      .map((b) => ('text' in b ? b.text : ''))
+      .join('')
+      .trim()
+      .replace(/^["']|["']$/g, '') // strip any surrounding quotes
+      .replace(/\.$/, '') // strip trailing full stop
+
+    if (text && text.length <= 72) {
+      return `${prefix}: ${text}`
+    }
+  } catch (err) {
+    console.warn('[commit-message] Haiku call failed, using fallback:', err)
+  }
+
+  return fallback
+}
+
+/**
+ * Fallback commit message derived purely from changed file paths.
+ */
+function buildCommitMessageFromFiles(
+  prefix: string,
   pending: { filePath: string; isNew: boolean }[],
 ): string {
-  const prefix = cardIdentifier.toUpperCase()
-
   if (pending.length === 0) return `${prefix}: update files`
 
   const specs = pending.filter((f) => f.filePath.startsWith('.workhorse/specs/'))
@@ -519,36 +599,31 @@ function buildCommitMessage(
 
   const parts: string[] = []
 
-  // Specs
   if (specs.length === 1) {
     const slug = specs[0].filePath.split('/').pop()?.replace(/\.md$/, '') ?? 'spec'
-    const verb = specs[0].isNew ? 'add' : 'update'
-    parts.push(`${verb} ${slug} spec`)
+    parts.push(`${specs[0].isNew ? 'add' : 'update'} ${slug} spec`)
   } else if (specs.length > 1) {
-    const verb = specs.every((f) => f.isNew) ? 'add' : 'update'
-    parts.push(`${verb} ${specs.length} specs`)
+    parts.push(`${specs.every((f) => f.isNew) ? 'add' : 'update'} ${specs.length} specs`)
   }
 
-  // Mockups
   if (mockups.length === 1) {
     const slug = mockups[0].filePath.split('/').pop()?.replace(/\.html$/, '') ?? 'mockup'
-    const verb = mockups[0].isNew ? 'add' : 'update'
-    parts.push(`${verb} ${slug} mockup`)
+    parts.push(`${mockups[0].isNew ? 'add' : 'update'} ${slug} mockup`)
   } else if (mockups.length > 1) {
-    const allNew = mockups.every((f) => f.isNew)
-    const verb = allNew ? 'add' : 'update'
-    parts.push(`${verb} ${mockups.length} mockups`)
+    parts.push(`${mockups.every((f) => f.isNew) ? 'add' : 'update'} ${mockups.length} mockups`)
   }
 
-  // Code files (non-.workhorse)
-  if (codeFiles.length > 0) {
-    parts.push(`update code`)
+  if (codeFiles.length === 1) {
+    const name = codeFiles[0].filePath.split('/').pop() ?? codeFiles[0].filePath
+    parts.push(`${codeFiles[0].isNew ? 'add' : 'update'} ${name}`)
+  } else if (codeFiles.length <= 3) {
+    parts.push(`update ${codeFiles.map((f) => f.filePath.split('/').pop() ?? f.filePath).join(', ')}`)
+  } else {
+    const dirs = [...new Set(codeFiles.map((f) => f.filePath.split('/')[0] ?? ''))]
+    parts.push(dirs.length === 1 && dirs[0] ? `update ${codeFiles.length} files in ${dirs[0]}/` : `update ${codeFiles.length} files`)
   }
 
-  // Fallback for .workhorse files that aren't specs or mockups
-  if (parts.length === 0) {
-    parts.push('update files')
-  }
+  if (parts.length === 0) parts.push('update files')
 
   return `${prefix}: ${parts.join(', ')}`
 }
@@ -637,10 +712,11 @@ async function runJockeyAfterExchange(
   cardStatus: string,
   userMessage: string,
   assistantText: string,
+  repo: { owner: string; repoName: string; cardIdentifier: string; defaultBranch: string },
 ): Promise<JockeyAssessment | null> {
   try {
     // Fetch current state
-    const [journalEntries, scheduledSteps, card] = await Promise.all([
+    const [journalEntries, scheduledSteps, card, { workhorseFiles, codeFiles: changedCodeFiles }] = await Promise.all([
       prisma.journalEntry.findMany({
         where: { cardId },
         orderBy: { createdAt: 'asc' },
@@ -654,13 +730,13 @@ async function runJockeyAfterExchange(
       }),
       prisma.card.findUnique({
         where: { id: cardId },
-        select: { touchedFiles: true, prUrl: true },
+        select: { prUrl: true },
       }),
+      getChangedFiles(repo.owner, repo.repoName, repo.cardIdentifier, repo.defaultBranch),
     ])
 
-    const touchedFiles = safeParseTouchedFiles(card?.touchedFiles ?? '[]')
-    const hasSpecs = touchedFiles.some(f => f.startsWith('.workhorse/specs/'))
-    const hasCodeChanges = touchedFiles.some(f => !f.startsWith('.workhorse/'))
+    const hasSpecs = workhorseFiles.some(f => f.filePath.startsWith('.workhorse/specs/'))
+    const hasCodeChanges = changedCodeFiles.length > 0
 
     // Build recent messages from the current exchange
     // (We don't have the full transcript here, so we use the current user + assistant messages)
@@ -690,6 +766,9 @@ async function runJockeyAfterExchange(
           cardId,
           // Constrain type to alphanumeric + hyphens, max 50 chars
           type: entry.type.replace(/[^a-z0-9-]/gi, '').slice(0, 50) || 'general',
+          // Short display label for the journey section, capped at 50 chars.
+          // Fall back to a humanised type if the LLM returns an empty string.
+          label: entry.label.slice(0, 50) || humaniseSkillId(entry.type),
           // Length-limit summary to prevent unbounded storage
           summary: entry.summary.slice(0, 500),
         })),

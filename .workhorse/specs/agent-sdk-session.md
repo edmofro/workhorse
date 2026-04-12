@@ -117,7 +117,7 @@ This context means the agent never needs to explore the codebase to understand h
 
 **3. Skill-specific instructions** — driven by the skill that triggered the session (see `workflow-orchestration.md`):
 
-Each skill maps to a system prompt fragment that shapes the agent's behaviour. The skill parameter flows from the trigger (pill, journey bar, or scheduling) → API → system prompt builder. Skills include: workshop, interview, draft spec, review spec, implement, design audit, security audit, code review, and custom project-defined skills.
+Each skill maps to a system prompt fragment that shapes the agent's behaviour. The skill parameter flows from the trigger (pill, journey section, or scheduling) → API → system prompt builder. Skills include: workshop, interview, draft spec, review spec, implement, design audit, security audit, code review, and custom project-defined skills.
 
 ### Context window management
 
@@ -200,8 +200,6 @@ The git branch is the source of truth for spec and mockup content. No database t
 - **Current content:** `fs.readFile()` in the worktree
 - **Conversation history:** Agent SDK session storage on disk, resumable by `session_id`. Display in UI via `getSessionMessages()`
 
-If a lightweight cache of touched files is needed (e.g. for listing cards that touch a given spec), the `Feature.touchedFiles` JSON field stores file paths, updated on each auto-commit.
-
 ## Auto-commit model
 
 Every change to spec and mockup files is committed and pushed to the card's branch automatically. The branch is always up to date — there is no "uncommitted work."
@@ -267,7 +265,7 @@ If the server restarts (redeploy, crash, Railway restart), worktrees are recreat
 
 - `Feature.cardBranch` — the git branch for this card's work
 - `Feature.agentSessionId` — the Agent SDK session ID for resumption
-- `Feature.touchedFiles` (optional) — JSON array of file paths this card has modified
+- Changed file lists are derived from `git diff` against the default branch at query time
 
 ### Routes and hooks
 

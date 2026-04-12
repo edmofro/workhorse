@@ -183,6 +183,17 @@ body {
 .prose-workhorse table.md-table tbody tr:last-child td {
   border-bottom: none;
 }
+.prose-workhorse .inline-image-link {
+  display: block; margin: 12px 0;
+}
+.prose-workhorse .inline-image {
+  display: block; max-width: 100%; border-radius: var(--radius-default);
+  border: 1px solid var(--border-subtle); cursor: pointer;
+  transition: border-color 0.1s;
+}
+.prose-workhorse .inline-image:hover {
+  border-color: var(--border-default);
+}
 
 /* Spec extract block in chat */
 .spec-extract-block {

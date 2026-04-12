@@ -1,15 +1,16 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useTransition, useRef, useCallback } from 'react'
 import { updateCard, addComment } from '../../lib/actions/cards'
-import { associateAttachmentsWithCard } from '../../lib/actions/attachments'
 import { Avatar } from '../Avatar'
 import { useUser } from '../UserProvider'
 import { useAttachments } from '../../lib/hooks/useAttachments'
 import { AttachmentButton } from './AttachmentButton'
 import { AttachmentPreview } from './AttachmentPreview'
+import { MarkdownContent } from './MarkdownContent'
 import { X, Plus } from 'lucide-react'
 import type { AttachmentData } from '../../lib/attachments'
+import { uploadAttachment } from '../../lib/attachments'
 
 interface CardAttachment {
   id: string
@@ -76,6 +77,14 @@ function toAttachmentData(att: CardAttachment): AttachmentData {
   }
 }
 
+/** Extract pasted files from a clipboard event */
+function extractPastedFiles(e: React.ClipboardEvent): File[] {
+  return Array.from(e.clipboardData.items)
+    .filter((item) => item.kind === 'file')
+    .map((item) => item.getAsFile())
+    .filter((f): f is File => f !== null)
+}
+
 export function CardTab({ card, users, teams }: CardTabProps) {
   const { user } = useUser()
   const [title, setTitle] = useState(card.title)
@@ -84,11 +93,12 @@ export function CardTab({ card, users, teams }: CardTabProps) {
   const [priority, setPriority] = useState(card.priority)
   const [newTag, setNewTag] = useState('')
   const [newComment, setNewComment] = useState('')
+  const [editingDescription, setEditingDescription] = useState(false)
   const [, startTransition] = useTransition()
+  const descriptionRef = useRef<HTMLTextAreaElement>(null)
+  const commentRef = useRef<HTMLTextAreaElement>(null)
 
-  // Attachments for description
-  const descAttachments = useAttachments(card.id)
-  // Attachments for new comment
+  // Attachments for new comment (only used when composing — not for inline paste)
   const commentAttachments = useAttachments(card.id)
 
   const tags: string[] = (() => {
@@ -115,19 +125,53 @@ export function CardTab({ card, users, teams }: CardTabProps) {
     if (description !== (card.description ?? '')) {
       handleUpdate({ description: description || null })
     }
+    setEditingDescription(false)
+  }
 
-    // Associate any pending description attachments with the card
-    // (independent of whether description text changed)
-    const uploaded = descAttachments.getUploadedAttachments()
-    if (uploaded.length > 0) {
-      startTransition(async () => {
-        await associateAttachmentsWithCard(
-          card.id,
-          uploaded.map((a) => a.id),
-        )
-      })
-      descAttachments.clear()
-    }
+  /** Upload pasted files and insert markdown image refs at cursor in a textarea */
+  const pasteAndInsert = useCallback(
+    async (
+      e: React.ClipboardEvent,
+      textareaRef: React.RefObject<HTMLTextAreaElement | null>,
+      getValue: () => string,
+      setValue: (v: string) => void,
+    ) => {
+      const files = extractPastedFiles(e)
+      if (files.length === 0) return
+
+      e.preventDefault()
+      const textarea = textareaRef.current
+      const cursorPos = textarea?.selectionStart ?? getValue().length
+      let current = getValue()
+      let insertPos = cursorPos
+
+      for (const file of files) {
+        try {
+          const data = await uploadAttachment(file, card.id)
+          const ref = `![${data.fileName}](${data.url})`
+          const before = current.slice(0, insertPos)
+          const after = current.slice(insertPos)
+          const prefix = before.length > 0 && !before.endsWith('\n') ? '\n' : ''
+          const suffix = after.length > 0 && !after.startsWith('\n') ? '\n' : ''
+          const insertion = prefix + ref + suffix
+          current = before + insertion + after
+          insertPos += insertion.length
+        } catch {
+          // Upload failed — ignore silently
+        }
+      }
+
+      setValue(current)
+    },
+    [card.id],
+  )
+
+  function handleDescriptionPaste(e: React.ClipboardEvent) {
+    pasteAndInsert(e, descriptionRef, () => description, setDescription)
+  }
+
+  function handleCommentPaste(e: React.ClipboardEvent) {
+    pasteAndInsert(e, commentRef, () => newComment, setNewComment)
   }
 
   function handleAddTag() {
@@ -188,36 +232,43 @@ export function CardTab({ card, users, teams }: CardTabProps) {
           className="w-full text-[24px] font-bold tracking-[-0.03em] leading-[1.3] bg-transparent border-none outline-none mb-2"
         />
 
-        {/* Description */}
-        <textarea
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          onBlur={handleDescriptionBlur}
-          placeholder="Add a description..."
-          rows={3}
-          className="w-full text-[14px] text-[var(--text-secondary)] leading-[1.7] bg-transparent border-none outline-none resize-none mb-2 placeholder:text-[var(--text-faint)]"
-        />
-
-        {/* Description attachments */}
-        <div className="mb-8">
-          {card.attachments.length > 0 && (
-            <div className="mb-2">
-              <AttachmentPreview saved={card.attachments.map(toAttachmentData)} />
-            </div>
-          )}
-          {descAttachments.hasAttachments && (
-            <div className="mb-2">
-              <AttachmentPreview
-                pending={descAttachments.pending}
-                onRemovePending={descAttachments.removeAttachment}
-              />
-            </div>
-          )}
-          <AttachmentButton
-            onFiles={descAttachments.addFiles}
-            compact
-          />
-        </div>
+        {/* Description — click to edit, renders markdown when not editing */}
+        {editingDescription ? (
+          <div className="mb-8">
+            <textarea
+              ref={descriptionRef}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              onBlur={handleDescriptionBlur}
+              onPaste={handleDescriptionPaste}
+              autoFocus
+              rows={5}
+              placeholder="Add a description... (paste images with Ctrl+V)"
+              className="w-full text-[14px] text-[var(--text-secondary)] leading-[1.7] bg-transparent border border-[var(--border-subtle)] rounded-[var(--radius-default)] outline-none resize-none p-3 focus:border-[var(--accent)] focus:shadow-[var(--shadow-input-focus)] transition-[border-color,box-shadow] duration-150 placeholder:text-[var(--text-faint)]"
+            />
+          </div>
+        ) : (
+          <div
+            className="mb-8 min-h-[40px] cursor-text"
+            onClick={() => setEditingDescription(true)}
+          >
+            {description ? (
+              <div className="text-[14px] text-[var(--text-secondary)] leading-[1.7]">
+                <MarkdownContent content={description} />
+              </div>
+            ) : (
+              <p className="text-[14px] text-[var(--text-faint)] leading-[1.7]">
+                Add a description...
+              </p>
+            )}
+            {/* Show legacy card-level attachments not referenced inline */}
+            {card.attachments.length > 0 && !description.includes('![') && (
+              <div className="mt-2">
+                <AttachmentPreview saved={card.attachments.map(toAttachmentData)} />
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Metadata — compact rows */}
         <div className="border-t border-[var(--border-subtle)] pt-5 space-y-3">
@@ -377,10 +428,11 @@ export function CardTab({ card, users, teams }: CardTabProps) {
                         })}
                       </span>
                     </div>
-                    <p className="text-[13px] text-[var(--text-secondary)] leading-[1.6]">
-                      {comment.content}
-                    </p>
-                    {comment.attachments.length > 0 && (
+                    <div className="text-[13px] text-[var(--text-secondary)] leading-[1.6]">
+                      <MarkdownContent content={comment.content} />
+                    </div>
+                    {/* Show legacy separately-attached files that aren't referenced inline */}
+                    {comment.attachments.length > 0 && !comment.content.includes('![') && (
                       <div className="mt-2">
                         <AttachmentPreview
                           saved={comment.attachments.map(toAttachmentData)}
@@ -403,10 +455,12 @@ export function CardTab({ card, users, teams }: CardTabProps) {
             />
             <div className="flex-1">
               <textarea
+                ref={commentRef}
                 value={newComment}
                 onChange={(e) => setNewComment(e.target.value)}
                 onKeyDown={handleCommentKeyDown}
-                placeholder="Add a comment..."
+                onPaste={handleCommentPaste}
+                placeholder="Add a comment... (paste images with Ctrl+V)"
                 rows={2}
                 className="w-full px-3 py-2 text-[13px] bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-[var(--radius-default)] outline-none transition-[border-color,box-shadow] duration-150 focus:border-[var(--accent)] focus:shadow-[var(--shadow-input-focus)] placeholder:text-[var(--text-faint)] resize-none"
               />

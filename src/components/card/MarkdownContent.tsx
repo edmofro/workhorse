@@ -102,6 +102,20 @@ function renderMarkdown(md: string): string {
     },
   )
 
+  // Extract markdown images before escaping — ![alt](url)
+  html = html.replace(
+    /!\[([^\]]*)\]\(([^)]+)\)/g,
+    (_match, alt: string, url: string) => {
+      // Only allow http(s) and relative URLs — block javascript: etc.
+      if (!/^(https?:\/\/|\/[^/])/.test(url)) return _match
+      const safeAlt = escapeHtml(alt)
+      const safeUrl = escapeHtml(url)
+      return placeholder(
+        `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="inline-image-link"><img src="${safeUrl}" alt="${safeAlt}" class="inline-image" /></a>`,
+      )
+    },
+  )
+
   // Extract fenced code blocks BEFORE inline code (prevents inline code regex eating fence content)
   html = html.replace(
     /```(\w*)\n([\s\S]*?)```/g,

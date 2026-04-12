@@ -139,17 +139,39 @@ export function MessageAttachments({ attachments }: { attachments: AttachmentDat
   if (attachments.length === 0) return null
 
   return (
-    <div className="flex flex-wrap gap-2 mt-2">
-      {attachments.map((att) => (
-        <AttachmentThumb
-          key={att.id}
-          fileName={att.fileName}
-          mimeType={att.mimeType}
-          fileSize={att.fileSize}
-          url={att.url}
-          size={64}
-        />
-      ))}
+    <div className="flex flex-col gap-2 mt-2">
+      {attachments.map((att) => {
+        const isImage = isImageMimeType(att.mimeType)
+        if (isImage) {
+          return (
+            <a
+              key={att.id}
+              href={att.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block max-w-[400px]"
+              title={`${att.fileName} (${formatFileSize(att.fileSize)})`}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={att.url}
+                alt={att.fileName}
+                className="block max-w-full rounded-[var(--radius-default)] border border-[var(--border-subtle)] hover:border-[var(--border-default)] transition-[border-color] duration-100"
+              />
+            </a>
+          )
+        }
+        return (
+          <AttachmentThumb
+            key={att.id}
+            fileName={att.fileName}
+            mimeType={att.mimeType}
+            fileSize={att.fileSize}
+            url={att.url}
+            size={64}
+          />
+        )
+      })}
     </div>
   )
 }

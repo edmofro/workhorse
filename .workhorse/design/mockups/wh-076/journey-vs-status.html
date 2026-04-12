@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>WH-076: Journey steps vs status dots</title>
+<title>WH-076: Journey steps vs status dots — refined</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
@@ -47,9 +47,18 @@
   .subtitle {
     font-size: 14px;
     color: var(--text-secondary);
-    margin-bottom: 40px;
+    margin-bottom: 48px;
     line-height: 1.7;
     max-width: 640px;
+  }
+
+  .section-heading {
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    margin-bottom: 24px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border-subtle);
   }
 
   .option-group {
@@ -107,7 +116,20 @@
     margin: 0 4px;
   }
 
-  /* Status dot — the existing component */
+  /* ─── Status icons (Linear-style) ─── */
+  .status-icon {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+    position: relative;
+  }
+  .status-icon svg {
+    width: 14px;
+    height: 14px;
+    display: block;
+  }
+
+  /* ─── Old status dot for comparison ─── */
   .status-dot {
     width: 8px;
     height: 8px;
@@ -119,24 +141,7 @@
   .status-dot.complete { background: var(--green); }
   .status-dot.not-started { border: 1px solid var(--border-default); background: transparent; }
 
-  /* ─── Current: journey dots (identical to status dots) ─── */
-  .journey-current {
-    display: flex;
-    align-items: center;
-    gap: 3px;
-  }
-  .journey-current .jdot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    flex-shrink: 0;
-  }
-  .journey-current .jdot.done { background: var(--green); }
-  .journey-current .jdot.active { background: var(--accent); }
-  .journey-current .jdot.scheduled { border: 1px solid var(--border-default); }
-  .journey-current .jdot.suggested { border: 1px dashed var(--text-faint); }
-
-  /* ─── Option A: Connected track ─── */
+  /* ─── Journey: connected track ─── */
   .journey-track {
     display: flex;
     align-items: center;
@@ -172,52 +177,22 @@
     );
   }
 
-  /* ─── Option B: Segments / bars ─── */
-  .journey-segments {
+  /* ─── Old journey dots for comparison ─── */
+  .journey-current {
     display: flex;
     align-items: center;
-    gap: 2px;
+    gap: 3px;
   }
-  .journey-segments .seg {
-    width: 12px;
-    height: 4px;
-    border-radius: 2px;
+  .journey-current .jdot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
     flex-shrink: 0;
   }
-  .journey-segments .seg.done { background: var(--green); }
-  .journey-segments .seg.active { background: var(--accent); }
-  .journey-segments .seg.scheduled { background: var(--border-default); }
-  .journey-segments .seg.suggested {
-    background: repeating-linear-gradient(
-      90deg,
-      var(--text-faint) 0px,
-      var(--text-faint) 3px,
-      transparent 3px,
-      transparent 5px
-    );
-  }
-
-  /* ─── Option C: Segmented bar (battery style) ─── */
-  .journey-battery {
-    display: flex;
-    align-items: center;
-    background: var(--bg-page);
-    border-radius: 3px;
-    padding: 1px;
-    gap: 1px;
-    overflow: hidden;
-  }
-  .journey-battery .cell {
-    width: 10px;
-    height: 6px;
-    flex-shrink: 0;
-  }
-  .journey-battery .cell:first-child { border-radius: 2px 0 0 2px; }
-  .journey-battery .cell:last-child { border-radius: 0 2px 2px 0; }
-  .journey-battery .cell.done { background: var(--green); }
-  .journey-battery .cell.active { background: var(--accent); }
-  .journey-battery .cell.scheduled { background: var(--bg-inset); }
-  .journey-battery .cell.suggested { background: var(--bg-inset); opacity: 0.5; }
+  .journey-current .jdot.done { background: var(--green); }
+  .journey-current .jdot.active { background: var(--accent); }
+  .journey-current .jdot.scheduled { border: 1px solid var(--border-default); }
+  .journey-current .jdot.suggested { border: 1px dashed var(--text-faint); }
 
   .active-label {
     font-size: 12px;
@@ -230,21 +205,94 @@
     font-size: 10px;
     margin-left: 2px;
   }
+
+  /* ─── Status icon gallery ─── */
+  .icon-gallery {
+    display: flex;
+    gap: 24px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+  }
+  .icon-sample {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-secondary);
+  }
+
+  .spacer { height: 48px; }
 </style>
 </head>
 <body>
 
 <h1>Journey steps vs status dots</h1>
 <p class="subtitle">
-  The status dot (left of "Implementing") and the journey step dots (right side) currently look too similar.
-  Here are three alternatives for the journey indicator. Each bar shows the same state:
-  status = Implementing, journey = 2 done + 1 active + 2 scheduled + 1 suggested.
+  Two changes: status indicators become Linear-style icons (distinct shapes per state, not just colours),
+  and journey steps use a connected track. Each concept has its own visual language.
 </p>
 
-<!-- ─── CURRENT ─── -->
+<!-- ════════════════════════════════════════════════════════ -->
+<div class="section-heading">1. Status icons — Linear style</div>
+
 <div class="option-group">
-  <div class="option-label">Current — hard to distinguish</div>
-  <p class="option-desc">Both use identical 8px circles with the same colour semantics. The journey dots read as more status dots.</p>
+  <div class="option-label">Icon gallery</div>
+  <p class="option-desc">Each status has a unique shape so they're distinguishable without colour. Sized at 14px to carry the detail.</p>
+  <div class="icon-gallery">
+    <div class="icon-sample">
+      <span class="status-icon">
+        <svg viewBox="0 0 14 14" fill="none">
+          <circle cx="7" cy="7" r="6" stroke="#dfdcd5" stroke-width="1.5" stroke-dasharray="3 2.5" />
+        </svg>
+      </span>
+      Not started
+    </div>
+    <div class="icon-sample">
+      <span class="status-icon">
+        <svg viewBox="0 0 14 14" fill="none">
+          <circle cx="7" cy="7" r="6" stroke="#dfdcd5" stroke-width="1.5" />
+          <path d="M7 1 A6 6 0 0 1 13 7" stroke="#b45309" stroke-width="1.5" stroke-linecap="round" />
+        </svg>
+      </span>
+      Specifying
+    </div>
+    <div class="icon-sample">
+      <span class="status-icon">
+        <svg viewBox="0 0 14 14" fill="none">
+          <circle cx="7" cy="7" r="6" stroke="#dfdcd5" stroke-width="1.5" />
+          <path d="M7 1 A6 6 0 1 1 1 7" stroke="#2563eb" stroke-width="1.5" stroke-linecap="round" />
+        </svg>
+      </span>
+      Implementing
+    </div>
+    <div class="icon-sample">
+      <span class="status-icon">
+        <svg viewBox="0 0 14 14" fill="none">
+          <circle cx="7" cy="7" r="6" fill="#16a34a" stroke="#16a34a" stroke-width="1" />
+          <path d="M4.5 7.2 L6.2 8.8 L9.5 5.5" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+        </svg>
+      </span>
+      Complete
+    </div>
+    <div class="icon-sample">
+      <span class="status-icon">
+        <svg viewBox="0 0 14 14" fill="none">
+          <circle cx="7" cy="7" r="6" stroke="#a8a29e" stroke-width="1.5" />
+          <path d="M5 5 L9 9 M9 5 L5 9" stroke="#a8a29e" stroke-width="1.5" stroke-linecap="round" />
+        </svg>
+      </span>
+      Cancelled
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════ -->
+<div class="section-heading">2. Before and after — properties bar</div>
+
+<div class="option-group">
+  <div class="option-label">Before — filled dots + dot journey</div>
+  <p class="option-desc">Status and journey use the same visual vocabulary. Hard to tell what's what at a glance.</p>
   <div class="properties-bar">
     <div class="prop-item">
       <span class="status-dot implementing"></span>
@@ -269,13 +317,17 @@
   </div>
 </div>
 
-<!-- ─── OPTION A: Connected track ─── -->
 <div class="option-group">
-  <div class="option-label">Option A — Connected track</div>
-  <p class="option-desc">Smaller nodes connected by lines. Reads as a timeline/path — visually distinct from the standalone status dot. Dashed connectors for suggestions.</p>
+  <div class="option-label">After — icon status + connected track journey</div>
+  <p class="option-desc">Status uses a 14px progress-ring icon (three-quarter fill = implementing). Journey uses a 6px connected track. Two clearly different visual systems.</p>
   <div class="properties-bar">
     <div class="prop-item">
-      <span class="status-dot implementing"></span>
+      <span class="status-icon">
+        <svg viewBox="0 0 14 14" fill="none">
+          <circle cx="7" cy="7" r="6" stroke="#dfdcd5" stroke-width="1.5" />
+          <path d="M7 1 A6 6 0 1 1 1 7" stroke="#2563eb" stroke-width="1.5" stroke-linecap="round" />
+        </svg>
+      </span>
       Implementing
     </div>
     <div class="prop-item">High</div>
@@ -302,13 +354,70 @@
   </div>
 </div>
 
-<!-- ─── OPTION B: Segments ─── -->
+<div class="spacer"></div>
+
+<!-- ════════════════════════════════════════════════════════ -->
+<div class="section-heading">3. All statuses in context</div>
+
 <div class="option-group">
-  <div class="option-label">Option B — Segments</div>
-  <p class="option-desc">Short horizontal bars instead of circles. The rectangular shape is immediately distinct from any dot in the UI. Dashed pattern for suggestions.</p>
+  <div class="option-label">Not started — empty card, no journey</div>
   <div class="properties-bar">
     <div class="prop-item">
-      <span class="status-dot implementing"></span>
+      <span class="status-icon">
+        <svg viewBox="0 0 14 14" fill="none">
+          <circle cx="7" cy="7" r="6" stroke="#dfdcd5" stroke-width="1.5" stroke-dasharray="3 2.5" />
+        </svg>
+      </span>
+      Not started
+    </div>
+    <div class="prop-item">Medium</div>
+    <div class="prop-item">Platform</div>
+    <div class="prop-item">Unassigned</div>
+  </div>
+</div>
+
+<div class="option-group">
+  <div class="option-label">Specifying — early in the journey</div>
+  <div class="properties-bar">
+    <div class="prop-item">
+      <span class="status-icon">
+        <svg viewBox="0 0 14 14" fill="none">
+          <circle cx="7" cy="7" r="6" stroke="#dfdcd5" stroke-width="1.5" />
+          <path d="M7 1 A6 6 0 0 1 13 7" stroke="#b45309" stroke-width="1.5" stroke-linecap="round" />
+        </svg>
+      </span>
+      Specifying
+    </div>
+    <div class="prop-item">High</div>
+    <div class="prop-item">Platform</div>
+    <div class="prop-item">Felix</div>
+    <div class="divider"></div>
+    <div class="prop-item">
+      <div class="journey-track">
+        <span class="node done"></span>
+        <span class="connector active"></span>
+        <span class="node active"></span>
+        <span class="connector suggested"></span>
+        <span class="node suggested"></span>
+        <span class="connector suggested"></span>
+        <span class="node suggested"></span>
+      </div>
+      <span class="active-label">Interviewing</span>
+      <span class="chevron">&#9662;</span>
+    </div>
+  </div>
+</div>
+
+<div class="option-group">
+  <div class="option-label">Implementing — mid journey</div>
+  <div class="properties-bar">
+    <div class="prop-item">
+      <span class="status-icon">
+        <svg viewBox="0 0 14 14" fill="none">
+          <circle cx="7" cy="7" r="6" stroke="#dfdcd5" stroke-width="1.5" />
+          <path d="M7 1 A6 6 0 1 1 1 7" stroke="#2563eb" stroke-width="1.5" stroke-linecap="round" />
+        </svg>
+      </span>
       Implementing
     </div>
     <div class="prop-item">High</div>
@@ -316,13 +425,18 @@
     <div class="prop-item">Felix</div>
     <div class="divider"></div>
     <div class="prop-item">
-      <div class="journey-segments">
-        <span class="seg done"></span>
-        <span class="seg done"></span>
-        <span class="seg active"></span>
-        <span class="seg scheduled"></span>
-        <span class="seg scheduled"></span>
-        <span class="seg suggested"></span>
+      <div class="journey-track">
+        <span class="node done"></span>
+        <span class="connector done"></span>
+        <span class="node done"></span>
+        <span class="connector active"></span>
+        <span class="node active"></span>
+        <span class="connector scheduled"></span>
+        <span class="node scheduled"></span>
+        <span class="connector scheduled"></span>
+        <span class="node scheduled"></span>
+        <span class="connector suggested"></span>
+        <span class="node suggested"></span>
       </div>
       <span class="active-label">Implementing</span>
       <span class="chevron">&#9662;</span>
@@ -330,29 +444,63 @@
   </div>
 </div>
 
-<!-- ─── OPTION C: Battery bar ─── -->
 <div class="option-group">
-  <div class="option-label">Option C — Segmented bar</div>
-  <p class="option-desc">Steps packed into a single bar shape (like a battery). Compact, reads as progress-through-a-sequence rather than discrete items. Faded cells for suggestions.</p>
+  <div class="option-label">Complete — journey finished</div>
   <div class="properties-bar">
     <div class="prop-item">
-      <span class="status-dot implementing"></span>
-      Implementing
+      <span class="status-icon">
+        <svg viewBox="0 0 14 14" fill="none">
+          <circle cx="7" cy="7" r="6" fill="#16a34a" stroke="#16a34a" stroke-width="1" />
+          <path d="M4.5 7.2 L6.2 8.8 L9.5 5.5" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+        </svg>
+      </span>
+      Complete
     </div>
     <div class="prop-item">High</div>
     <div class="prop-item">Platform</div>
     <div class="prop-item">Felix</div>
     <div class="divider"></div>
     <div class="prop-item">
-      <div class="journey-battery">
-        <span class="cell done"></span>
-        <span class="cell done"></span>
-        <span class="cell active"></span>
-        <span class="cell scheduled"></span>
-        <span class="cell scheduled"></span>
-        <span class="cell suggested"></span>
+      <div class="journey-track">
+        <span class="node done"></span>
+        <span class="connector done"></span>
+        <span class="node done"></span>
+        <span class="connector done"></span>
+        <span class="node done"></span>
+        <span class="connector done"></span>
+        <span class="node done"></span>
+        <span class="connector done"></span>
+        <span class="node done"></span>
+        <span class="connector done"></span>
+        <span class="node done"></span>
       </div>
-      <span class="active-label">Implementing</span>
+      <span class="chevron">&#9662;</span>
+    </div>
+  </div>
+</div>
+
+<div class="option-group">
+  <div class="option-label">Cancelled</div>
+  <div class="properties-bar">
+    <div class="prop-item">
+      <span class="status-icon">
+        <svg viewBox="0 0 14 14" fill="none">
+          <circle cx="7" cy="7" r="6" stroke="#a8a29e" stroke-width="1.5" />
+          <path d="M5 5 L9 9 M9 5 L5 9" stroke="#a8a29e" stroke-width="1.5" stroke-linecap="round" />
+        </svg>
+      </span>
+      Cancelled
+    </div>
+    <div class="prop-item">Low</div>
+    <div class="prop-item">Platform</div>
+    <div class="prop-item">Unassigned</div>
+    <div class="divider"></div>
+    <div class="prop-item">
+      <div class="journey-track">
+        <span class="node done"></span>
+        <span class="connector done"></span>
+        <span class="node done"></span>
+      </div>
       <span class="chevron">&#9662;</span>
     </div>
   </div>

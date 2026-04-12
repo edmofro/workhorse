@@ -25,23 +25,23 @@ export async function GET(
 
   const session = await prisma.conversationSession.findUnique({
     where: { id: sessionId },
-    select: { userId: true, streamingStartedAt: true },
+    select: { userId: true, agentActiveAt: true },
   })
 
   if (!session || session.userId !== user.id) {
     return new Response('Not found', { status: 404 })
   }
 
-  // Check for stale streaming — clear if older than threshold
-  if (session.streamingStartedAt) {
+  // Check for stale activity — clear if older than threshold
+  if (session.agentActiveAt) {
     const cleared = await clearStaleSessions({ sessionId })
     if (cleared > 0) {
-      session.streamingStartedAt = null
+      session.agentActiveAt = null
     }
   }
 
-  // If not streaming or no active channel, return idle
-  if (!session.streamingStartedAt || !isActive(sessionId)) {
+  // If not active or no active channel, return idle
+  if (!session.agentActiveAt || !isActive(sessionId)) {
     const encoder = new TextEncoder()
     return new Response(
       encoder.encode(`data: ${JSON.stringify({ type: 'status', status: 'idle' })}\n\n`),

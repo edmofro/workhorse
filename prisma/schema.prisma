@@ -193,7 +193,7 @@ model ConversationSession {
   messageCount    Int      @default(0)
   jockeyCursor         Int      @default(0)  // Index of last message assessed by jockey
   dismissedFromRecent  Boolean  @default(false)
-  streamingStartedAt   DateTime? // Non-null while an agent query is in flight
+  agentActiveAt        DateTime? // Non-null while an agent query is in flight
   lastMessageAt        DateTime @default(now())
   createdAt            DateTime @default(now())
 

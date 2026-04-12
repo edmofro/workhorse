@@ -124,7 +124,7 @@ export function FloatingChat({
             />
           </div>
         ))}
-        {isStreaming && messages[messages.length - 1]?.content === '' && (
+        {isStreaming && (
           <ThinkingIndicator snippet={thinkingSnippet ?? null} verb={thinkingVerb} />
         )}
       </div>

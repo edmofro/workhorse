@@ -15,9 +15,9 @@ import { JourneyBar } from './JourneyBar'
 import { PrBar } from './PrBar'
 import { useJockeyState } from '../../lib/hooks/useJockeyState'
 import { BUILT_IN_SKILLS } from '../../lib/skills/registry'
-import { ChatMessage } from './ChatMessage'
 import { ChatInput } from './ChatInput'
 import { ThinkingIndicator } from './ThinkingIndicator'
+import { MessageList } from './MessageList'
 import { SpecEditor } from './SpecEditor'
 import { MockupArtifact } from './MockupArtifact'
 import { NewSpecDialog } from './NewSpecDialog'
@@ -575,16 +575,7 @@ export function CardWorkspace({
               </p>
             </div>
           )}
-          {messages.map((msg) => (
-            <ChatMessage
-              key={msg.id}
-              role={msg.role}
-              content={msg.content}
-              userName={msg.userName}
-              timestamp={msg.createdAt}
-              attachments={msg.attachments}
-            />
-          ))}
+          <MessageList messages={messages} isStreaming={isStreaming} />
 
           {/* File write notifications */}
           {fileWrites.length > 0 && (
@@ -610,7 +601,7 @@ export function CardWorkspace({
             </div>
           )}
 
-          {isStreaming && messages[messages.length - 1]?.content === '' && (
+          {isStreaming && (
             <ThinkingIndicator snippet={thinkingSnippet} verb={thinkingVerb} />
           )}
         </div>

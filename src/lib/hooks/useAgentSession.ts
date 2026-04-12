@@ -23,6 +23,8 @@ export interface SessionMessage {
   userName?: string
   createdAt?: string
   attachments?: AttachmentData[]
+  /** Message classification for collapsing. */
+  classification?: 'interim' | 'final' | 'in_progress'
 }
 
 export interface ToolCallInfo {
@@ -53,8 +55,7 @@ export function useAgentSession(
   const thinkingBufferRef = useRef('')
   const thinkingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const historySessionIdRef = useRef<string | null>(null)
-  const abortRef = useRef<AbortController | null>(null)
-  const wasAbortedRef = useRef(false)
+  const eventAbortRef = useRef<AbortController | null>(null)
   const [queuedMessage, setQueuedMessage] = useState<{
     content: string
     userName: string
@@ -76,18 +77,14 @@ export function useAgentSession(
   const flushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const assistantContentRef = useRef('')
   const assistantIdRef = useRef('')
-  const turnConfirmedRef = useRef(false)
 
   // Update currentSessionId when prop changes — abort any in-flight stream
   // ONLY if this is an explicit session switch (not a sync-back from the server).
-  // When the server assigns a session ID to a new conversation, currentSessionIdRef
-  // is already set to that value by processEvent, so we skip the abort.
   useEffect(() => {
     if (sessionId !== currentSessionIdRef.current) {
       // Genuine session switch — abort any in-flight stream and clear messages
-      // so stale cached data from react-query can't leak into the wrong session
-      if (abortRef.current) {
-        abortRef.current.abort()
+      if (eventAbortRef.current) {
+        eventAbortRef.current.abort()
       }
       setMessages([])
       historySessionIdRef.current = null
@@ -118,14 +115,11 @@ export function useAgentSession(
       }
       return
     }
-    // Sync history once per session switch — never overwrite after that, because
-    // streaming and local state may have added messages the server doesn't know about.
+    // Sync history once per session switch — never overwrite after that
     if (historySessionIdRef.current === sessionId) return
-    // Never overwrite local messages while actively streaming — the local state
-    // is more up-to-date than the server history (which may not be persisted yet).
+    // Never overwrite local messages while actively streaming
     if (isStreamingRef.current) return
-    // Wait for the fetch to settle so we don't apply stale cached data from a
-    // previously-viewed session while the fresh fetch is still in flight.
+    // Wait for the fetch to settle
     if (isHistoryFetching) return
     if (historyData !== undefined && currentSessionIdRef.current === sessionId) {
       historySessionIdRef.current = sessionId
@@ -133,12 +127,8 @@ export function useAgentSession(
     }
   }, [sessionId, historyData, isHistoryFetching])
 
-  // Stable ref for sendMessage — initialised after sendMessage is defined (below),
-  // kept in sync every render so the dispatch effect doesn't depend on callback identity
+  // Stable ref for sendMessage
   const sendMessageRef = useRef<typeof sendMessage | null>(null)
-
-  // Track whether recovery is active so sendMessage doesn't conflict
-  const recoveryAbortRef = useRef<AbortController | null>(null)
 
   /**
    * Shared streaming plumbing used by both sendMessage and recovery.
@@ -155,7 +145,6 @@ export function useAgentSession(
     textBufferRef.current = ''
     assistantContentRef.current = ''
     assistantIdRef.current = assistantId
-    turnConfirmedRef.current = false
 
     function flushTextBuffer() {
       if (!textBufferRef.current) return
@@ -227,21 +216,22 @@ export function useAgentSession(
         clearTimeout(flushTimerRef.current)
         flushTimerRef.current = null
       }
-      recoveryAbortRef.current?.abort()
+      eventAbortRef.current?.abort()
     }
   }, [])
 
-  // Recovery on return — when mounting with a sessionId, check if it's
-  // actively streaming and reconnect to the live event stream if so.
-  useEffect(() => {
-    if (!sessionId || isStreamingRef.current) return
-
+  /**
+   * Subscribe to the SSE event stream for a session. This is the single
+   * code path for consuming events — whether sending a new message,
+   * navigating back mid-stream, or opening in another tab.
+   */
+  function subscribeToEvents(targetSessionId: string, assistantId: string, recovery?: boolean) {
     const abort = new AbortController()
-    recoveryAbortRef.current = abort
+    eventAbortRef.current = abort
 
-    async function tryRecover() {
+    void (async () => {
       try {
-        const res = await fetch(`/api/sessions/${sessionId}/events`, {
+        const res = await fetch(`/api/sessions/${targetSessionId}/events`, {
           signal: abort.signal,
         })
         if (!res.ok || !res.body) return
@@ -273,18 +263,19 @@ export function useAgentSession(
 
         if (!isLiveStreaming || abort.signal.aborted) return
 
-        // Session is actively streaming — set up recovery state
-        const recoveryAssistantId = `recovery-${Date.now()}-assistant`
-        setMessages((prev) => {
-          const last = prev[prev.length - 1]
-          if (last?.role === 'assistant' && last.content === '') return prev
-          return [...prev, { id: recoveryAssistantId, role: 'assistant', content: '', userName: 'Workhorse' }]
-        })
+        // Session is confirmed streaming — add placeholder now if recovering
+        if (recovery) {
+          setMessages((prev) => {
+            const last = prev[prev.length - 1]
+            if (last?.role === 'assistant' && last.content === '') return prev
+            return [...prev, { id: assistantId, role: 'assistant', content: '', userName: 'Workhorse' }]
+          })
+        }
 
-        const { scheduleFlush, finalise } = startStreamProcessor(recoveryAssistantId)
+        // Session is actively streaming — set up stream processor
+        const { scheduleFlush, finalise } = startStreamProcessor(assistantId)
 
         try {
-          // Process SSE lines from the recovery stream
           const processLines = (text: string) => {
             const lines = text.split('\n')
             const remainder = lines.pop() ?? ''
@@ -297,7 +288,7 @@ export function useAgentSession(
                 if (event.type === 'status' && event.status === 'idle') {
                   return { remainder, done: true }
                 }
-                processEvent(event, recoveryAssistantId, scheduleFlush)
+                processEvent(event, assistantId, scheduleFlush)
               } catch { /* skip */ }
             }
             return { remainder, done: false }
@@ -307,7 +298,6 @@ export function useAgentSession(
           const initial = processLines(buf)
           buf = initial.remainder
           if (!initial.done) {
-            // Continue reading live events
             while (!abort.signal.aborted) {
               const { done, value } = await reader.read()
               if (done) break
@@ -321,11 +311,23 @@ export function useAgentSession(
           finalise()
         }
       } catch {
-        // Recovery is best-effort
+        // Subscription is best-effort
       }
-    }
+    })()
 
-    tryRecover()
+    return abort
+  }
+
+  // Recovery on return — when mounting with a sessionId, check if it's
+  // actively streaming and reconnect to the live event stream if so.
+  // The placeholder message is added lazily inside subscribeToEvents
+  // only after confirming the session is actually streaming, to avoid
+  // ghost bubbles when the session is idle.
+  useEffect(() => {
+    if (!sessionId || isStreamingRef.current) return
+
+    const recoveryAssistantId = `recovery-${Date.now()}-assistant`
+    const abort = subscribeToEvents(sessionId, recoveryAssistantId, /* recovery */ true)
 
     return () => { abort.abort() }
   }, [sessionId]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -334,14 +336,13 @@ export function useAgentSession(
     async (content: string, userName: string, attachments?: AttachmentData[], skillId?: string) => {
       if (!content.trim() && (!attachments || attachments.length === 0)) return
 
-      // Cancel any active recovery stream — sendMessage takes over
-      recoveryAbortRef.current?.abort()
-      recoveryAbortRef.current = null
+      // Cancel any active event stream — sendMessage takes over
+      eventAbortRef.current?.abort()
+      eventAbortRef.current = null
 
       // If already streaming, queue the message for after the current turn
       if (isStreamingRef.current) {
         const tempId = `temp-${Date.now()}-queued`
-        // Remove the previous queued message's optimistic preview if overwriting
         const prev = queuedMessageRef.current
         if (prev) {
           setMessages((msgs) => msgs.filter((m) => m.id !== prev.tempId))
@@ -377,11 +378,14 @@ export function useAgentSession(
         { id: assistantId, role: 'assistant', content: '', userName: 'Workhorse' },
       ])
 
-      const { scheduleFlush, finalise } = startStreamProcessor(assistantId)
-      abortRef.current = new AbortController()
-      wasAbortedRef.current = false
+      // Mark as streaming immediately so the UI shows the thinking indicator
+      // during the POST request, not just after the SSE subscription starts
+      setIsStreaming(true)
+      isStreamingRef.current = true
+      setThinkingVerb('Thinking...')
 
       try {
+        // POST to start the agent — returns { sessionId }
         const attachmentIds = attachments?.map((a) => a.id) ?? []
         const res = await fetch('/api/agent-session', {
           method: 'POST',
@@ -393,44 +397,22 @@ export function useAgentSession(
             attachmentIds,
             skillId,
           }),
-          signal: abortRef.current.signal,
         })
 
-        if (!res.ok || !res.body) throw new Error('Agent session request failed')
+        if (!res.ok) throw new Error('Agent session request failed')
 
-        const reader = res.body.getReader()
-        const decoder = new TextDecoder()
-        let buffer = ''
+        const data = await res.json()
+        const newSessionId = data.sessionId as string
 
-        while (true) {
-          const { done, value } = await reader.read()
-          if (done) break
-
-          buffer += decoder.decode(value, { stream: true })
-
-          // Parse SSE events
-          const lines = buffer.split('\n')
-          buffer = lines.pop() ?? ''
-
-          for (const line of lines) {
-            if (!line.startsWith('data: ')) continue
-            const data = line.slice(6)
-
-            if (data === '[DONE]') continue
-
-            try {
-              const event = JSON.parse(data)
-              processEvent(event, assistantId, scheduleFlush)
-            } catch {
-              // Ignore unparseable events
-            }
-          }
+        // Update session ID if this was the first message
+        if (newSessionId && newSessionId !== currentSessionIdRef.current) {
+          setCurrentSessionId(newSessionId)
+          currentSessionIdRef.current = newSessionId
         }
-      } catch (err) {
-        if (err instanceof DOMException && err.name === 'AbortError') {
-          wasAbortedRef.current = true
-          return
-        }
+
+        // Subscribe to events via the unified SSE endpoint
+        subscribeToEvents(newSessionId, assistantId)
+      } catch {
         setMessages((prev) =>
           prev.map((m) =>
             m.id === assistantId
@@ -438,20 +420,13 @@ export function useAgentSession(
               : m,
           ),
         )
-      } finally {
-        // If aborted with no content, show "Stopped." notice
-        if (wasAbortedRef.current && !assistantContentRef.current) {
-          const id = assistantIdRef.current
-          setMessages((prev) =>
-            prev.map((m) => (m.id === id ? { ...m, content: 'Stopped.' } : m)),
-          )
-        }
-
-        finalise()
-        abortRef.current = null
+        // Reset streaming state on failure — subscribeToEvents/finalise won't run
+        setIsStreaming(false)
+        isStreamingRef.current = false
+        setThinkingSnippet(null)
       }
     },
-    [cardId],
+    [cardId], // eslint-disable-line react-hooks/exhaustive-deps
   )
   sendMessageRef.current = sendMessage
 
@@ -460,7 +435,6 @@ export function useAgentSession(
     if (!isStreaming && queuedMessage) {
       const { content, userName, attachments, skillId, tempId } = queuedMessage
       setQueuedMessage(null)
-      // Remove the optimistic preview — sendMessage will add its own user message
       setMessages((prev) => prev.filter((m) => m.id !== tempId))
       sendMessageRef.current?.(content, userName, attachments, skillId)
     }
@@ -471,14 +445,6 @@ export function useAgentSession(
     assistantId: string,
     scheduleFlush: () => void,
   ) {
-    // Handle session ID from server (conversation session, not Agent SDK session)
-    if (event.type === 'session') {
-      const newSessionId = event.sessionId as string
-      setCurrentSessionId(newSessionId)
-      currentSessionIdRef.current = newSessionId
-      return
-    }
-
     // Handle session metadata update (sent after exchange completes, includes title)
     if (event.type === 'session_update') {
       if (event.title) {
@@ -486,7 +452,6 @@ export function useAgentSession(
       }
       return
     }
-
 
     // Handle streaming text and thinking events
     if (event.type === 'stream_event') {
@@ -510,35 +475,29 @@ export function useAgentSession(
         if (delta?.type === 'text_delta' && typeof delta.text === 'string') {
           setThinkingSnippet(null)
           thinkingBufferRef.current = ''
-          // If a previous turn was confirmed, add a blank-line separator
-          if (turnConfirmedRef.current && assistantContentRef.current) {
-            textBufferRef.current += '\n\n'
-            turnConfirmedRef.current = false
-          }
           textBufferRef.current += delta.text
           scheduleFlush()
         }
 
-        // Thinking deltas — accumulate into buffer for periodic sampling (capped to avoid unbounded growth)
+        // Thinking deltas — accumulate into buffer for periodic sampling
         if (delta?.type === 'thinking_delta' && typeof delta.thinking === 'string') {
           thinkingBufferRef.current = (thinkingBufferRef.current + (delta.thinking as string)).slice(-256)
         }
       }
     }
 
-    // Handle complete assistant messages — confirms the content that was
-    // already streamed via text_delta events. Text from later turns is
-    // handled by text_delta with a newline separator, so we only need to
-    // flush and confirm here (never re-append).
+    // Handle complete assistant messages — each agent turn produces a separate
+    // visible message. New turns get their own message bubble.
     if (event.type === 'assistant') {
       const msg = event.message as Record<string, unknown> | undefined
       if (msg?.content && Array.isArray(msg.content)) {
-        const hasText = (msg.content as Array<Record<string, unknown>>).some(
-          (c) => c.type === 'text',
-        )
+        const textParts = (msg.content as Array<Record<string, unknown>>)
+          .filter((c) => c.type === 'text')
+          .map((c) => c.text as string)
+          .join('')
 
-        if (hasText) {
-          // Flush any pending buffer so assistantContentRef is up to date
+        if (textParts) {
+          // Flush any pending buffer
           const currentContent = assistantContentRef.current + textBufferRef.current
           textBufferRef.current = ''
           if (flushTimerRef.current) {
@@ -546,13 +505,24 @@ export function useAgentSession(
             flushTimerRef.current = null
           }
 
+          // Use the ref to get the current assistant ID, not the closed-over parameter
+          const currentAssistantId = assistantIdRef.current
           assistantContentRef.current = currentContent
           setMessages((prev) =>
             prev.map((m) =>
-              m.id === assistantId ? { ...m, content: currentContent } : m,
+              m.id === currentAssistantId ? { ...m, content: currentContent } : m,
             ),
           )
-          turnConfirmedRef.current = true
+
+          // Prepare for next turn — create a new assistant message placeholder
+          const nextAssistantId = `turn-${Date.now()}-assistant`
+          assistantIdRef.current = nextAssistantId
+          assistantContentRef.current = ''
+          textBufferRef.current = ''
+          setMessages((prev) => [
+            ...prev,
+            { id: nextAssistantId, role: 'assistant' as const, content: '', userName: 'Workhorse' },
+          ])
         }
       }
     }
@@ -562,31 +532,27 @@ export function useAgentSession(
       const subtype = event.subtype as string | undefined
       const stopReason = event.stop_reason as string | undefined
 
+      // Remove trailing empty assistant placeholder
+      setMessages((prev) => {
+        const last = prev[prev.length - 1]
+        if (last?.role === 'assistant' && !last.content) {
+          return prev.slice(0, -1)
+        }
+        return prev
+      })
+
       if (subtype === 'error_max_turns' && stopReason === 'tool_use') {
-        // Agent was cut off mid-work — append a friendly continuation message
-        const continuationMsg = 'I had more to explore but ran out of steps — send another message and I\u2019ll continue where I left off.'
-        setMessages((prev) => {
-          const lastMsg = prev.find((m) => m.id === assistantId)
-          if (lastMsg && lastMsg.content) {
-            // Already has content — append continuation note
-            return prev.map((m) =>
-              m.id === assistantId
-                ? { ...m, content: m.content + '\n\n' + continuationMsg }
-                : m,
-            )
-          }
-          // No content yet — use as the message
-          return prev.map((m) =>
-            m.id === assistantId ? { ...m, content: continuationMsg } : m,
-          )
-        })
+        const continuationMsg = 'I had more to explore but ran out of steps \u2014 send another message and I\u2019ll continue where I left off.'
+        setMessages((prev) => [
+          ...prev,
+          { id: `continuation-${Date.now()}`, role: 'assistant', content: continuationMsg, userName: 'Workhorse' },
+        ])
       }
     }
 
     // Handle tool use summaries (file operations)
     if (event.type === 'tool_use_summary') {
       const summary = event.summary as string
-      // Detect file write operations
       if (summary.includes('Updated') || summary.includes('Created') || summary.includes('Wrote')) {
         const fileMatch = summary.match(/(?:Updated|Created|Wrote)\s+`?([^`\n]+)`?/)
         if (fileMatch) {
@@ -620,12 +586,17 @@ export function useAgentSession(
   }
 
   const interrupt = useCallback(() => {
-    abortRef.current?.abort()
+    eventAbortRef.current?.abort()
     // Clear any queued message so it doesn't fire after the abort settles
     const queued = queuedMessageRef.current
     if (queued) {
       setMessages((msgs) => msgs.filter((m) => m.id !== queued.tempId))
       setQueuedMessage(null)
+    }
+    // Cancel the background agent so it stops consuming API credits
+    const sid = currentSessionIdRef.current
+    if (sid) {
+      fetch(`/api/sessions/${sid}/cancel`, { method: 'POST' }).catch(() => {})
     }
   }, [])
 

@@ -78,7 +78,7 @@ export function ChatView({ cardId, initialMessages }: ChatViewProps) {
               timestamp={msg.createdAt}
             />
           ))}
-          {isStreaming && messages[messages.length - 1]?.content === '' && (
+          {isStreaming && (
             <div className="flex items-center gap-2 pl-[34px] text-[13px] text-[var(--text-muted)]">
               <span className="animate-pulse">Thinking...</span>
             </div>

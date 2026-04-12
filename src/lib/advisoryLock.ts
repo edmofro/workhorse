@@ -7,6 +7,10 @@
  *
  * Uses a dedicated pg connection per lock (not Prisma's pool) so the lock
  * lifetime is tied to the connection lifetime.
+ *
+ * Lock keys use the two-key form `pg_advisory_lock(key1, key2)` with two
+ * independent 32-bit hashes to provide a 64-bit keyspace, avoiding the
+ * collision risk of a single hashtext() call.
  */
 
 import pg from 'pg'
@@ -20,6 +24,14 @@ interface LockHandle {
 const activeLocks = new Map<string, LockHandle>()
 
 /**
+ * Two-key advisory lock SQL fragments.
+ * Uses hashtext on two different inputs (the raw ID and a salted variant)
+ * to produce two independent 32-bit keys, giving an effective 64-bit keyspace.
+ */
+const LOCK_TRY = `SELECT pg_try_advisory_lock(hashtext($1), hashtext('workhorse:' || $1)) AS acquired`
+const LOCK_RELEASE = `SELECT pg_advisory_unlock(hashtext($1), hashtext('workhorse:' || $1))`
+
+/**
  * Acquire a session-level advisory lock for a conversation session.
  * Returns true if the lock was acquired, false if it's already held.
  */
@@ -30,11 +42,7 @@ export async function acquireAdvisoryLock(sessionId: string): Promise<boolean> {
   const client = new pg.Client({ connectionString: process.env.DATABASE_URL })
   try {
     await client.connect()
-    // Use hashtext() to convert the string session ID to an integer key
-    const result = await client.query(
-      `SELECT pg_try_advisory_lock(hashtext($1)) AS acquired`,
-      [sessionId],
-    )
+    const result = await client.query(LOCK_TRY, [sessionId])
     const acquired = result.rows[0]?.acquired === true
     if (acquired) {
       activeLocks.set(sessionId, { client, lockKey: sessionId })
@@ -59,10 +67,7 @@ export async function releaseAdvisoryLock(sessionId: string): Promise<void> {
 
   activeLocks.delete(sessionId)
   try {
-    await handle.client.query(
-      `SELECT pg_advisory_unlock(hashtext($1))`,
-      [sessionId],
-    )
+    await handle.client.query(LOCK_RELEASE, [sessionId])
   } catch {
     // Lock will be released when connection drops
   } finally {
@@ -81,17 +86,11 @@ export async function isLockOrphaned(sessionId: string): Promise<boolean> {
   const client = new pg.Client({ connectionString: process.env.DATABASE_URL })
   try {
     await client.connect()
-    const result = await client.query(
-      `SELECT pg_try_advisory_lock(hashtext($1)) AS acquired`,
-      [sessionId],
-    )
+    const result = await client.query(LOCK_TRY, [sessionId])
     const acquired = result.rows[0]?.acquired === true
     if (acquired) {
       // Nobody held it — release immediately and report orphaned
-      await client.query(
-        `SELECT pg_advisory_unlock(hashtext($1))`,
-        [sessionId],
-      )
+      await client.query(LOCK_RELEASE, [sessionId])
     }
     return acquired
   } catch {

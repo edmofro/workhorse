@@ -76,6 +76,7 @@ export async function GET() {
             where: { id: payload.sessionId },
             select: {
               id: true,
+              userId: true,
               title: true,
               messageCount: true,
               lastMessageAt: true,
@@ -97,6 +98,9 @@ export async function GET() {
             },
           })
           if (!session) return
+
+          // Verify this session belongs to the authenticated user
+          if (session.userId !== userId) return
 
           // Determine event type from changed fields
           const changed = payload.changed

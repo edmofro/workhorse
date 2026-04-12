@@ -58,6 +58,13 @@ export function MessageList({ messages, isStreaming }: MessageListProps) {
  */
 function groupMessages(messages: SessionMessage[], isStreaming: boolean): MessageGroup[] {
   const groups: MessageGroup[] = []
+
+  // Precompute the last user message index to avoid O(n²) scanning
+  let lastUserIdx = -1
+  for (let j = messages.length - 1; j >= 0; j--) {
+    if (messages[j].role === 'user') { lastUserIdx = j; break }
+  }
+
   let i = 0
 
   while (i < messages.length) {
@@ -77,7 +84,7 @@ function groupMessages(messages: SessionMessage[], isStreaming: boolean): Messag
     const run = messages.slice(runStart, i)
 
     // Check if this is the final run (no more user messages after it)
-    const isFinalRun = !messages.slice(i).some((m) => m.role === 'user')
+    const isFinalRun = runStart > lastUserIdx
 
     // Check classifications from the server
     const hasClassifications = run.some((m) => m.classification)

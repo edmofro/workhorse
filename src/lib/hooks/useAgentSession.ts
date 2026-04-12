@@ -225,7 +225,7 @@ export function useAgentSession(
    * code path for consuming events — whether sending a new message,
    * navigating back mid-stream, or opening in another tab.
    */
-  function subscribeToEvents(targetSessionId: string, assistantId: string) {
+  function subscribeToEvents(targetSessionId: string, assistantId: string, recovery?: boolean) {
     const abort = new AbortController()
     eventAbortRef.current = abort
 
@@ -262,6 +262,15 @@ export function useAgentSession(
         }
 
         if (!isLiveStreaming || abort.signal.aborted) return
+
+        // Session is confirmed streaming — add placeholder now if recovering
+        if (recovery) {
+          setMessages((prev) => {
+            const last = prev[prev.length - 1]
+            if (last?.role === 'assistant' && last.content === '') return prev
+            return [...prev, { id: assistantId, role: 'assistant', content: '', userName: 'Workhorse' }]
+          })
+        }
 
         // Session is actively streaming — set up stream processor
         const { scheduleFlush, finalise } = startStreamProcessor(assistantId)
@@ -311,18 +320,14 @@ export function useAgentSession(
 
   // Recovery on return — when mounting with a sessionId, check if it's
   // actively streaming and reconnect to the live event stream if so.
+  // The placeholder message is added lazily inside subscribeToEvents
+  // only after confirming the session is actually streaming, to avoid
+  // ghost bubbles when the session is idle.
   useEffect(() => {
     if (!sessionId || isStreamingRef.current) return
 
-    // Add a placeholder assistant message for recovery
     const recoveryAssistantId = `recovery-${Date.now()}-assistant`
-    setMessages((prev) => {
-      const last = prev[prev.length - 1]
-      if (last?.role === 'assistant' && last.content === '') return prev
-      return [...prev, { id: recoveryAssistantId, role: 'assistant', content: '', userName: 'Workhorse' }]
-    })
-
-    const abort = subscribeToEvents(sessionId, recoveryAssistantId)
+    const abort = subscribeToEvents(sessionId, recoveryAssistantId, /* recovery */ true)
 
     return () => { abort.abort() }
   }, [sessionId]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -490,10 +495,12 @@ export function useAgentSession(
             flushTimerRef.current = null
           }
 
+          // Use the ref to get the current assistant ID, not the closed-over parameter
+          const currentAssistantId = assistantIdRef.current
           assistantContentRef.current = currentContent
           setMessages((prev) =>
             prev.map((m) =>
-              m.id === assistantId ? { ...m, content: currentContent } : m,
+              m.id === currentAssistantId ? { ...m, content: currentContent } : m,
             ),
           )
 

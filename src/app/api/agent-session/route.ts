@@ -23,7 +23,8 @@ import { branchNameFromCard } from '../../../lib/git/branchNaming'
 
 import { safeParseTouchedFiles } from '../../../lib/safeParseTouchedFiles'
 import { publish as publishSessionEvent, close as closeSessionChannel } from '../../../lib/sessionEvents'
-import { acquireAdvisoryLock, releaseAdvisoryLock } from '../../../lib/advisoryLock'
+import { acquireAdvisoryLock } from '../../../lib/advisoryLock'
+import { cleanupAgentSession } from '../../../lib/agentLifecycle'
 
 class StaleSessionError extends Error {
   constructor() {
@@ -275,7 +276,20 @@ function runAgentInBackground(ctx: {
     let agentSdkSessionId = ctx.convSession.agentSessionId ?? ''
 
     // Acquire advisory lock — released on completion or implicitly on crash
-    await acquireAdvisoryLock(ctx.convSessionId)
+    const lockAcquired = await acquireAdvisoryLock(ctx.convSessionId)
+    if (!lockAcquired) {
+      publishSessionEvent(ctx.convSessionId, {
+        type: 'error',
+        message: 'Another agent session is already running for this conversation.',
+      })
+      // No lock to release — just clear activity and close channel
+      await prisma.conversationSession.update({
+        where: { id: ctx.convSessionId },
+        data: { agentActiveAt: null },
+      }).catch(() => {})
+      closeSessionChannel(ctx.convSessionId)
+      return
+    }
 
     try {
       let agentQuery: ReturnType<typeof query>
@@ -389,23 +403,12 @@ function runAgentInBackground(ctx: {
         console.warn('[jockey] Post-exchange assessment failed:', jockeyErr)
       }
 
-      // Clear activity status, release lock, and close session channel
-      await releaseAdvisoryLock(ctx.convSessionId)
-      await prisma.conversationSession.update({
-        where: { id: ctx.convSessionId },
-        data: { agentActiveAt: null },
-      }).catch(() => {})
-      closeSessionChannel(ctx.convSessionId)
+      await cleanupAgentSession(ctx.convSessionId)
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Agent session failed'
-      publishSessionEvent(ctx.convSessionId, { type: 'error', message: errorMsg })
-      // Clear activity status, release lock, and close session channel on error too
-      await releaseAdvisoryLock(ctx.convSessionId)
-      await prisma.conversationSession.update({
-        where: { id: ctx.convSessionId },
-        data: { agentActiveAt: null },
-      }).catch(() => {})
-      closeSessionChannel(ctx.convSessionId)
+      publishSessionEvent(ctx.convSessionId, { type: 'error', message: 'An unexpected error occurred. Please try again.' })
+      console.error(`[agent-session] Error for ${ctx.convSessionId}:`, errorMsg)
+      await cleanupAgentSession(ctx.convSessionId)
     }
   })()
 }

@@ -29,8 +29,8 @@ export function CollapsedTurns({ messages }: CollapsedTurnsProps) {
       <button
         onClick={() => setExpanded(!expanded)}
         className={cn(
-          'flex items-center gap-1.5 px-3 py-1.5',
-          'text-[12px] font-[450] text-[var(--text-muted)]',
+          'flex items-center gap-1 px-3 py-1',
+          'text-[12px] font-medium text-[var(--text-muted)]',
           'rounded-[var(--radius-default)]',
           'hover:bg-[var(--bg-hover)] transition-colors duration-100',
           'cursor-pointer select-none',

@@ -6,7 +6,9 @@
 
 import { prisma } from '../prisma'
 import { clearStaleSessions } from '../sessionEvents'
-import { isLockOrphaned } from '../advisoryLock'
+import { isLockOrphaned, acquireAdvisoryLock } from '../advisoryLock'
+import { cleanupAgentSession } from '../agentLifecycle'
+import { publish } from '../sessionEvents'
 import {
   ensureBareClone,
   createWorktree,
@@ -97,8 +99,6 @@ export async function detectAndResumeOrphans(): Promise<void> {
       // Attempt auto-resume via the Agent SDK
       try {
         const { query } = await import('@anthropic-ai/claude-agent-sdk')
-        const { publish, close } = await import('../sessionEvents')
-        const { acquireAdvisoryLock, releaseAdvisoryLock } = await import('../advisoryLock')
 
         const card = session.card
         const project = card.team.project
@@ -115,7 +115,15 @@ export async function detectAndResumeOrphans(): Promise<void> {
           where: { id: session.id },
           data: { agentActiveAt: new Date() },
         })
-        await acquireAdvisoryLock(session.id)
+        const lockAcquired = await acquireAdvisoryLock(session.id)
+        if (!lockAcquired) {
+          console.warn(`Cannot acquire lock for orphaned session ${session.id}, skipping`)
+          await prisma.conversationSession.update({
+            where: { id: session.id },
+            data: { agentActiveAt: null },
+          })
+          continue
+        }
 
         console.log(`Auto-resuming orphaned session ${session.id}`)
 
@@ -142,22 +150,11 @@ export async function detectAndResumeOrphans(): Promise<void> {
               publish(session.id, event as Record<string, unknown>)
             }
 
-            // Cleanup
-            await releaseAdvisoryLock(session.id)
-            await prisma.conversationSession.update({
-              where: { id: session.id },
-              data: { agentActiveAt: null },
-            }).catch(() => {})
-            close(session.id)
+            await cleanupAgentSession(session.id)
             console.log(`Auto-resumed session ${session.id} completed`)
           } catch (err) {
             console.error(`Auto-resume failed for session ${session.id}:`, err)
-            await releaseAdvisoryLock(session.id)
-            await prisma.conversationSession.update({
-              where: { id: session.id },
-              data: { agentActiveAt: null },
-            }).catch(() => {})
-            close(session.id)
+            await cleanupAgentSession(session.id)
           }
         })()
       } catch (err) {

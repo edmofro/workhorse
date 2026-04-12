@@ -327,9 +327,9 @@ font-weight: 500;
 - Complete: filled green circle with white checkmark
 - Cancelled: circle outline with X in muted (`--text-muted`)
 
-### Journey track
+### Journey track (deferred)
 
-The journey section in the properties bar uses a connected track of 6px nodes joined by 2px connectors. Visually distinct from status icons — reads as a timeline rather than a single state.
+A connected track of 6px nodes joined by 2px connectors, designed to visualise the card's journal. Visually distinct from status icons — reads as a timeline rather than a single state. Not currently surfaced in the UI.
 
 - Done nodes: green filled
 - Active node: accent filled

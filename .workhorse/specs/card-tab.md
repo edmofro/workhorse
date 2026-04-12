@@ -13,7 +13,7 @@ Initially, users will copy-paste descriptions from Linear. Over time, Workhorse 
 - [ ] Card view shows: title, description, attachments, comments
 - [ ] The description is unconstrained in height — it grows to fit its content rather than being capped at a fixed number of rows
 - [ ] The entire card scrolls as a single unit — there is no inner scroll region within the description
-- [ ] Card metadata (status, priority, team, assignee) is managed via the properties bar shared across all card views — see `card-navigation.md`
+- [ ] Card metadata (status, priority, team, assignee) is managed via the topbar status chip and properties popover — see `card-navigation.md`
 - [ ] Description is editable directly in the card view
 - [ ] All edits and metadata changes are visible to other users in real time
 - [ ] Card view is the default when opening a card
@@ -21,7 +21,7 @@ Initially, users will copy-paste descriptions from Linear. Over time, Workhorse 
 
 ## Tags
 
-Tags appear in the card view body, below the title. They are not shown in the properties bar.
+Tags appear in the card view body, below the title.
 
 - [ ] Tags are shown as a row of chips, each with a remove button
 - [ ] Up to three tags are shown inline; if more exist, a `+N more` pill appears after the visible tags
@@ -41,4 +41,4 @@ Tags appear in the card view body, below the title. They are not shown in the pr
 ## Activity log
 
 - [ ] An activity log records deterministic events on the card: creation, status changes, spec updates, commits, dependency changes
-- [ ] The activity log is stored for auditing but is not shown in the card view — the journey section in the properties bar (see `workflow-orchestration.md`) is the user-facing record of progress
+- [ ] The activity log is stored for auditing but is not shown in the card view — the journal (see `workflow-orchestration.md`) is the user-facing record of progress

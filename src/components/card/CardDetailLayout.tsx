@@ -3,7 +3,7 @@
 import { notFound } from 'next/navigation'
 import { useCardDetail, NotFoundError } from '../../lib/hooks/queries'
 import { CardDetailShell } from './CardDetailShell'
-import { CardBackStoreProvider } from './CardBackContext'
+import { CardShellStoreProvider } from './CardShellContext'
 import { Topbar } from '../Topbar'
 import { Skeleton } from '../Skeleton'
 
@@ -36,7 +36,7 @@ export function CardDetailLayout({ projectSlug, cardId, children }: Props) {
   const { card } = data
 
   return (
-    <CardBackStoreProvider>
+    <CardShellStoreProvider>
       <CardDetailShell
         card={{
           id: card.id,
@@ -50,6 +50,6 @@ export function CardDetailLayout({ projectSlug, cardId, children }: Props) {
       >
         {children}
       </CardDetailShell>
-    </CardBackStoreProvider>
+    </CardShellStoreProvider>
   )
 }

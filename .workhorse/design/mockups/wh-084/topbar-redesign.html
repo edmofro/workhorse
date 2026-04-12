@@ -1,0 +1,619 @@
+<!-- spec: card-navigation.md -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WH-084 — Topbar redesign with status + properties popover</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg-page:       #f8f7f4;
+    --bg-surface:    #ffffff;
+    --bg-sidebar:    #f1efeb;
+    --bg-hover:      #edeae5;
+    --bg-inset:      #e8e5df;
+    --text-primary:  #1c1917;
+    --text-secondary:#57534e;
+    --text-muted:    #a8a29e;
+    --text-faint:    #d1cdc6;
+    --border-default:#dfdcd5;
+    --border-subtle: #eae7e1;
+    --accent:        #c2410c;
+    --accent-hover:  #b33b09;
+    --green:         #16a34a;
+    --amber:         #b45309;
+    --blue:          #2563eb;
+    --radius-sm:     4px;
+    --radius-md:     6px;
+    --radius-default:8px;
+    --radius-lg:     10px;
+    --radius-xl:     12px;
+    --shadow-sm:     0 1px 3px rgba(28,25,23,0.04);
+    --shadow-md:     0 2px 8px rgba(28,25,23,0.06);
+    --shadow-lg:     0 12px 40px rgba(28,25,23,0.14), 0 2px 8px rgba(28,25,23,0.06);
+  }
+
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg-page);
+    padding: 48px 40px 100px;
+    color: var(--text-primary);
+    -webkit-font-smoothing: antialiased;
+    display: flex;
+    flex-direction: column;
+    gap: 48px;
+    align-items: center;
+  }
+
+  svg { display: block; }
+
+  /* ─── Section labels ─── */
+  .section { display: flex; flex-direction: column; gap: 10px; width: 860px; }
+  .section-label {
+    font-size: 11px; font-weight: 600; letter-spacing: 0.06em;
+    text-transform: uppercase; color: var(--text-muted);
+  }
+  .section-note {
+    font-size: 12px; color: var(--text-secondary); line-height: 1.55;
+    margin-bottom: 2px;
+  }
+
+  /* ─── Topbar chrome ─── */
+  .topbar {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    height: 52px;
+    padding: 0 24px;
+    background: var(--bg-surface);
+    border-bottom: 1px solid var(--border-subtle);
+    border-radius: 10px 10px 0 0;
+    width: 100%;
+  }
+
+  .back-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: var(--radius-md);
+    color: var(--text-muted);
+    cursor: pointer;
+    flex-shrink: 0;
+    border: none;
+    background: none;
+  }
+  .back-btn:hover { color: var(--text-primary); background: var(--bg-hover); }
+
+  .card-title-group {
+    display: flex;
+    align-items: baseline;
+    min-width: 0;
+    flex-shrink: 1;
+  }
+  .card-title-group.clickable { cursor: pointer; }
+  .card-title-group.clickable:hover .card-title { color: var(--accent); }
+  .card-title {
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    line-height: 1.3;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transition: color 0.1s;
+  }
+  .card-id {
+    font-size: 12px;
+    font-weight: 500;
+    font-family: ui-monospace, 'SF Mono', 'Cascadia Code', monospace;
+    color: var(--text-muted);
+    margin-left: 6px;
+    flex-shrink: 0;
+  }
+
+  .breadcrumb-sep {
+    font-size: 13px;
+    color: var(--text-faint);
+    margin: 0 6px;
+    flex-shrink: 0;
+  }
+  .breadcrumb-leaf {
+    font-size: 13px;
+    font-weight: 450;
+    color: var(--text-secondary);
+    flex-shrink: 0;
+  }
+
+  .topbar-spacer { flex: 1; }
+
+  /* ─── Status dropdown ─── */
+  .status-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 10px;
+    border-radius: var(--radius-md);
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    cursor: pointer;
+    border: none;
+    background: none;
+    flex-shrink: 0;
+    transition: background 0.1s;
+  }
+  .status-chip:hover { background: var(--bg-hover); }
+
+  .status-chip .chevron {
+    color: var(--text-faint);
+    margin-left: 2px;
+  }
+
+  /* Status dropdown menu */
+  .status-dropdown {
+    position: absolute;
+    top: calc(100% + 4px);
+    right: 0;
+    min-width: 180px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+    padding: 4px;
+    z-index: 50;
+  }
+  .status-option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    border-radius: var(--radius-md);
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    cursor: pointer;
+    width: 100%;
+    border: none;
+    background: none;
+    text-align: left;
+  }
+  .status-option:hover { background: var(--bg-hover); }
+  .status-option.active { color: var(--text-primary); font-weight: 600; }
+
+  /* ─── More menu (⋯) ─── */
+  .more-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: var(--radius-md);
+    color: var(--text-muted);
+    cursor: pointer;
+    flex-shrink: 0;
+    border: none;
+    background: none;
+    font-size: 16px;
+    letter-spacing: 1px;
+  }
+  .more-btn:hover { color: var(--text-primary); background: var(--bg-hover); }
+
+  /* Properties popover */
+  .props-popover {
+    position: absolute;
+    top: calc(100% + 4px);
+    right: 0;
+    width: 260px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+    padding: 8px 0;
+    z-index: 50;
+  }
+  .prop-row {
+    display: flex;
+    align-items: center;
+    padding: 6px 14px;
+    font-size: 12px;
+  }
+  .prop-label {
+    width: 80px;
+    color: var(--text-muted);
+    font-weight: 500;
+    flex-shrink: 0;
+  }
+  .prop-value {
+    color: var(--text-secondary);
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    padding: 2px 6px;
+    border-radius: var(--radius-sm);
+  }
+  .prop-value:hover { background: var(--bg-hover); }
+  .prop-divider {
+    height: 1px;
+    background: var(--border-subtle);
+    margin: 4px 0;
+  }
+  .prop-deps {
+    padding: 6px 14px;
+    font-size: 11px;
+  }
+  .prop-deps-label {
+    color: var(--text-muted);
+    font-weight: 500;
+    margin-bottom: 4px;
+  }
+  .dep-tag {
+    display: inline-flex;
+    align-items: center;
+    padding: 1px 6px;
+    background: var(--bg-inset);
+    border-radius: var(--radius-sm);
+    font-size: 11px;
+    font-weight: 500;
+    font-family: ui-monospace, 'SF Mono', 'Cascadia Code', monospace;
+    color: var(--text-muted);
+    margin-right: 4px;
+  }
+
+  /* ─── Right-side group ─── */
+  .topbar-right {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+    position: relative;
+  }
+
+  /* ─── Content area placeholder ─── */
+  .content-area {
+    height: 280px;
+    background: var(--bg-page);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0 0 10px 10px;
+    width: 100%;
+    border: 1px solid var(--border-subtle);
+    border-top: none;
+  }
+  .content-label {
+    font-size: 12px;
+    color: var(--text-faint);
+    font-weight: 500;
+  }
+
+  /* ─── Wrapper for topbar + content ─── */
+  .view-frame {
+    width: 100%;
+    border-radius: 10px;
+    overflow: hidden;
+  }
+
+  /* ─── Annotations ─── */
+  .annotation {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    margin-top: 6px;
+  }
+  .annotation-marker {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: white;
+    font-size: 10px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .annotation-text {
+    font-size: 12px;
+    color: var(--text-secondary);
+    line-height: 1.55;
+    padding-top: 2px;
+  }
+
+  /* ─── Status icon SVGs ─── */
+  .status-icon { width: 14px; height: 14px; flex-shrink: 0; }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- 1. CARD VIEW — on card home, no breadcrumb suffix                 -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+
+<div class="section">
+  <div class="section-label">Card view — on card home</div>
+  <div class="section-note">← goes to board. Status is a direct dropdown. ⋯ opens properties popover.</div>
+
+  <div class="view-frame">
+    <div class="topbar">
+      <button class="back-btn" title="Back to board">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
+      </button>
+      <div class="card-title-group">
+        <span class="card-title">UI simplifications and navigation redesign</span>
+        <span class="card-id">WH-084</span>
+      </div>
+      <div class="topbar-spacer"></div>
+      <div class="topbar-right">
+        <button class="status-chip">
+          <!-- specifying icon: quarter-fill amber -->
+          <svg class="status-icon" viewBox="0 0 14 14" fill="none">
+            <circle cx="7" cy="7" r="5.5" stroke="#b45309" stroke-width="1.5"/>
+            <path d="M7 7V1.5A5.5 5.5 0 0 1 12.5 7H7Z" fill="#b45309"/>
+          </svg>
+          Specifying
+          <svg class="chevron" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+        </button>
+        <button class="more-btn" title="Card properties">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="5" r="0.5"/><circle cx="12" cy="12" r="0.5"/><circle cx="12" cy="19" r="0.5"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="content-area">
+      <span class="content-label">Card home — description, conversations, specs sidebar</span>
+    </div>
+  </div>
+
+  <div class="annotation">
+    <div class="annotation-marker">1</div>
+    <div class="annotation-text">← always navigates to the team board. No dual-purpose behaviour.</div>
+  </div>
+  <div class="annotation">
+    <div class="annotation-marker">2</div>
+    <div class="annotation-text">Status chip is a direct dropdown — one click opens the status list immediately.</div>
+  </div>
+  <div class="annotation">
+    <div class="annotation-marker">3</div>
+    <div class="annotation-text">⋮ opens a properties popover for priority, team, assignee, dependencies (see below).</div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- 2. CHAT VIEW — breadcrumb shows "Chat", title is clickable        -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+
+<div class="section">
+  <div class="section-label">Chat view — in a conversation</div>
+  <div class="section-note">Clicking the card title navigates back to card home. "› Chat" labels the current context.</div>
+
+  <div class="view-frame">
+    <div class="topbar">
+      <button class="back-btn" title="Back to board">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
+      </button>
+      <div class="card-title-group clickable" title="Back to card">
+        <span class="card-title">UI simplifications and navigation redesign</span>
+        <span class="card-id">WH-084</span>
+      </div>
+      <span class="breadcrumb-sep">›</span>
+      <span class="breadcrumb-leaf">Chat</span>
+      <div class="topbar-spacer"></div>
+      <div class="topbar-right">
+        <button class="status-chip">
+          <svg class="status-icon" viewBox="0 0 14 14" fill="none">
+            <circle cx="7" cy="7" r="5.5" stroke="#b45309" stroke-width="1.5"/>
+            <path d="M7 7V1.5A5.5 5.5 0 0 1 12.5 7H7Z" fill="#b45309"/>
+          </svg>
+          Specifying
+          <svg class="chevron" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+        </button>
+        <button class="more-btn" title="Card properties">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="5" r="0.5"/><circle cx="12" cy="12" r="0.5"/><circle cx="12" cy="19" r="0.5"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="content-area">
+      <span class="content-label">Chat conversation — centred at 680px, input at bottom</span>
+    </div>
+  </div>
+
+  <div class="annotation">
+    <div class="annotation-marker">4</div>
+    <div class="annotation-text">Card title becomes a clickable link back to card home when not already there. Hover shows accent colour.</div>
+  </div>
+  <div class="annotation">
+    <div class="annotation-marker">5</div>
+    <div class="annotation-text">"› Chat" is a passive label — it tells you where you are. No properties bar below.</div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- 3. ARTIFACT VIEW — breadcrumb shows spec name                     -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+
+<div class="section">
+  <div class="section-label">Artifact view — spec or mockup open</div>
+  <div class="section-note">Same pattern — title links back to card, breadcrumb labels the open file.</div>
+
+  <div class="view-frame">
+    <div class="topbar">
+      <button class="back-btn" title="Back to board">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
+      </button>
+      <div class="card-title-group clickable" title="Back to card">
+        <span class="card-title">UI simplifications and navigation redesign</span>
+        <span class="card-id">WH-084</span>
+      </div>
+      <span class="breadcrumb-sep">›</span>
+      <span class="breadcrumb-leaf">Card navigation</span>
+      <div class="topbar-spacer"></div>
+      <div class="topbar-right">
+        <button class="status-chip">
+          <svg class="status-icon" viewBox="0 0 14 14" fill="none">
+            <circle cx="7" cy="7" r="5.5" stroke="#b45309" stroke-width="1.5"/>
+            <path d="M7 7V1.5A5.5 5.5 0 0 1 12.5 7H7Z" fill="#b45309"/>
+          </svg>
+          Specifying
+          <svg class="chevron" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+        </button>
+        <button class="more-btn" title="Card properties">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="5" r="0.5"/><circle cx="12" cy="12" r="0.5"/><circle cx="12" cy="19" r="0.5"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="content-area">
+      <span class="content-label">Chat (40%) + Artifact (60%) — spec editor or mockup viewer</span>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- 4. STATUS DROPDOWN — opened from status chip                       -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+
+<div class="section">
+  <div class="section-label">Status dropdown — one click from status chip</div>
+  <div class="section-note">Direct status change. No intermediate popover.</div>
+
+  <div class="view-frame">
+    <div class="topbar" style="position: relative;">
+      <button class="back-btn">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
+      </button>
+      <div class="card-title-group">
+        <span class="card-title">UI simplifications and navigation redesign</span>
+        <span class="card-id">WH-084</span>
+      </div>
+      <div class="topbar-spacer"></div>
+      <div class="topbar-right">
+        <button class="status-chip" style="background: var(--bg-hover);">
+          <svg class="status-icon" viewBox="0 0 14 14" fill="none">
+            <circle cx="7" cy="7" r="5.5" stroke="#b45309" stroke-width="1.5"/>
+            <path d="M7 7V1.5A5.5 5.5 0 0 1 12.5 7H7Z" fill="#b45309"/>
+          </svg>
+          Specifying
+          <svg class="chevron" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="transform: rotate(180deg);"><path d="m6 9 6 6 6-6"/></svg>
+        </button>
+        <button class="more-btn">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="5" r="0.5"/><circle cx="12" cy="12" r="0.5"/><circle cx="12" cy="19" r="0.5"/></svg>
+        </button>
+
+        <!-- Dropdown -->
+        <div class="status-dropdown" style="right: 32px;">
+          <button class="status-option">
+            <svg class="status-icon" viewBox="0 0 14 14" fill="none">
+              <circle cx="7" cy="7" r="5.5" stroke="#dfdcd5" stroke-width="1.5" stroke-dasharray="3 2.5"/>
+            </svg>
+            Not started
+          </button>
+          <button class="status-option active">
+            <svg class="status-icon" viewBox="0 0 14 14" fill="none">
+              <circle cx="7" cy="7" r="5.5" stroke="#b45309" stroke-width="1.5"/>
+              <path d="M7 7V1.5A5.5 5.5 0 0 1 12.5 7H7Z" fill="#b45309"/>
+            </svg>
+            Specifying
+          </button>
+          <button class="status-option">
+            <svg class="status-icon" viewBox="0 0 14 14" fill="none">
+              <circle cx="7" cy="7" r="5.5" stroke="#2563eb" stroke-width="1.5"/>
+              <path d="M7 1.5A5.5 5.5 0 0 1 12.5 7H7V1.5Z" fill="#2563eb"/>
+              <path d="M12.5 7A5.5 5.5 0 0 1 7 12.5V7H12.5Z" fill="#2563eb"/>
+              <path d="M7 12.5A5.5 5.5 0 0 1 1.5 7H7V12.5Z" fill="#2563eb"/>
+            </svg>
+            Implementing
+          </button>
+          <button class="status-option">
+            <svg class="status-icon" viewBox="0 0 14 14" fill="none">
+              <circle cx="7" cy="7" r="6" fill="#16a34a"/>
+              <path d="M4.5 7.2L6.2 8.9L9.5 5.5" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            Complete
+          </button>
+          <button class="status-option">
+            <svg class="status-icon" viewBox="0 0 14 14" fill="none">
+              <circle cx="7" cy="7" r="5.5" stroke="#a8a29e" stroke-width="1.5"/>
+              <path d="M5 5l4 4M9 5l-4 4" stroke="#a8a29e" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>
+            Cancelled
+          </button>
+        </div>
+      </div>
+    </div>
+    <div class="content-area" style="height: 200px;">
+      <span class="content-label"></span>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- 5. PROPERTIES POPOVER — opened from ⋮ button                      -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+
+<div class="section">
+  <div class="section-label">Properties popover — opened from ⋮</div>
+  <div class="section-note">Priority, team, assignee, and dependencies. Each value is clickable to change.</div>
+
+  <div class="view-frame">
+    <div class="topbar" style="position: relative;">
+      <button class="back-btn">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
+      </button>
+      <div class="card-title-group">
+        <span class="card-title">UI simplifications and navigation redesign</span>
+        <span class="card-id">WH-084</span>
+      </div>
+      <div class="topbar-spacer"></div>
+      <div class="topbar-right">
+        <button class="status-chip">
+          <svg class="status-icon" viewBox="0 0 14 14" fill="none">
+            <circle cx="7" cy="7" r="5.5" stroke="#b45309" stroke-width="1.5"/>
+            <path d="M7 7V1.5A5.5 5.5 0 0 1 12.5 7H7Z" fill="#b45309"/>
+          </svg>
+          Specifying
+          <svg class="chevron" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+        </button>
+        <button class="more-btn" style="background: var(--bg-hover); color: var(--text-primary);">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="5" r="0.5"/><circle cx="12" cy="12" r="0.5"/><circle cx="12" cy="19" r="0.5"/></svg>
+        </button>
+
+        <!-- Popover -->
+        <div class="props-popover">
+          <div class="prop-row">
+            <span class="prop-label">Priority</span>
+            <span class="prop-value">Medium</span>
+          </div>
+          <div class="prop-row">
+            <span class="prop-label">Team</span>
+            <span class="prop-value">Core</span>
+          </div>
+          <div class="prop-row">
+            <span class="prop-label">Assignee</span>
+            <span class="prop-value">
+              <!-- tiny avatar -->
+              <span style="width: 16px; height: 16px; border-radius: 50%; background: var(--accent); display: flex; align-items: center; justify-content: center; color: white; font-size: 9px; font-weight: 600;">F</span>
+              Felix
+            </span>
+          </div>
+          <div class="prop-divider"></div>
+          <div class="prop-deps">
+            <div class="prop-deps-label">Depends on</div>
+            <span class="dep-tag">WH-081</span>
+            <span class="dep-tag">WH-076</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="content-area" style="height: 200px;">
+      <span class="content-label"></span>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

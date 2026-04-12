@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Branch Context — WH-078</title>
+<title>Branch Context — WH-078 v4</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -39,97 +39,70 @@
     padding: 48px;
     display: flex;
     flex-direction: column;
-    gap: 48px;
+    gap: 56px;
   }
 
-  h2 {
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--text-primary);
-    margin-bottom: 4px;
-  }
-  .desc {
-    font-size: 12px;
-    color: var(--text-muted);
-    margin-bottom: 20px;
-    line-height: 1.5;
-    max-width: 600px;
-  }
-
+  h2 { font-size: 13px; font-weight: 600; color: var(--text-primary); margin-bottom: 4px; }
+  .desc { font-size: 12px; color: var(--text-muted); margin-bottom: 20px; line-height: 1.5; max-width: 620px; }
   .states { display: flex; flex-direction: column; gap: 20px; }
   .state-label {
-    font-size: 10px;
-    font-weight: 600;
-    color: var(--text-faint);
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    margin-bottom: 6px;
+    font-size: 10px; font-weight: 600; color: var(--text-faint);
+    text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 6px;
   }
 
   /* ─── Workspace chrome ─── */
   .frame {
-    background: var(--bg-surface);
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-lg);
-    overflow: hidden;
-    max-width: 900px;
+    background: var(--bg-surface); border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg); overflow: hidden; max-width: 900px;
   }
   .topbar {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 0 16px;
-    height: 48px;
-    border-bottom: 1px solid var(--border-subtle);
+    display: flex; align-items: center; gap: 10px;
+    padding: 0 16px; height: 48px; border-bottom: 1px solid var(--border-subtle);
   }
   .back {
-    color: var(--text-muted);
-    display: flex;
-    background: none;
-    border: none;
-    padding: 4px;
-    border-radius: var(--radius-sm);
-    cursor: pointer;
+    color: var(--text-muted); display: flex; background: none;
+    border: none; padding: 4px; border-radius: var(--radius-sm); cursor: pointer;
   }
   .title { font-size: 15px; font-weight: 600; color: var(--text-primary); letter-spacing: -0.01em; }
-  .id { font-family: ui-monospace, 'SF Mono', monospace; font-size: 12px; font-weight: 500; color: var(--text-muted); }
+  .card-id { font-family: ui-monospace, 'SF Mono', monospace; font-size: 12px; font-weight: 500; color: var(--text-muted); }
 
   .props-bar {
-    display: flex;
-    align-items: center;
-    height: 36px;
-    padding: 0 8px;
+    display: flex; align-items: center; height: 36px; padding: 0 8px;
     border-bottom: 1px solid var(--border-subtle);
   }
-  .props-left {
-    display: flex;
-    align-items: center;
-    flex: 1;
-    min-width: 0;
-  }
+  .props-left { display: flex; align-items: center; flex: 1; min-width: 0; }
   .prop {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    padding: 4px 8px;
-    font-size: 12px;
-    font-weight: 500;
-    color: var(--text-secondary);
-    white-space: nowrap;
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 4px 8px; font-size: 12px; font-weight: 500;
+    color: var(--text-secondary); white-space: nowrap;
   }
-  .dot-s { width: 8px; height: 8px; border-radius: 50%; background: var(--amber); flex-shrink: 0; }
+  .dot-s { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .dot-s.specifying { background: var(--amber); }
+  .dot-s.implementing { background: var(--amber); }
+
+  /* "Based on" property — sits with other properties */
+  .prop-base {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 4px 8px; font-size: 12px; font-weight: 500;
+    color: var(--text-muted); white-space: nowrap;
+    cursor: pointer; border-radius: var(--radius-md);
+    transition: background 0.1s;
+  }
+  .prop-base:hover { background: var(--bg-hover); }
+  .prop-base .arrow { font-size: 10px; color: var(--text-faint); }
+  .prop-base .base-val { color: var(--text-secondary); }
+  .prop-base .base-card {
+    font-family: ui-monospace, 'SF Mono', monospace;
+    font-size: 11px; color: var(--text-muted);
+  }
 
   .divider { width: 1px; height: 16px; background: var(--border-default); margin: 0 4px; flex-shrink: 0; }
 
   /* Journey dots */
   .journey {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 4px 8px;
-    border-radius: var(--radius-md);
-    cursor: pointer;
-    flex-shrink: 0;
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 8px; border-radius: var(--radius-md);
+    cursor: pointer; flex-shrink: 0;
   }
   .journey:hover { background: var(--bg-hover); }
   .jd { display: flex; gap: 3px; }
@@ -140,11 +113,8 @@
   .chev { color: var(--text-faint); display: flex; }
 
   .content-placeholder {
-    padding: 20px 16px;
-    min-height: 48px;
-    color: var(--text-faint);
-    font-size: 12px;
-    font-style: italic;
+    padding: 20px 16px; min-height: 48px;
+    color: var(--text-faint); font-size: 12px; font-style: italic;
   }
 
   /* ═══════════════════════════════════════════════ */
@@ -152,63 +122,48 @@
   /* ═══════════════════════════════════════════════ */
 
   .chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    padding: 2px 8px 2px 6px;
-    border-radius: 12px;
-    font-size: 11px;
-    font-weight: 500;
-    background: var(--bg-page);
-    border: 1px solid var(--border-subtle);
-    cursor: pointer;
-    white-space: nowrap;
-    transition: border-color 0.1s, background 0.1s;
-    flex-shrink: 0;
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 2px 8px 2px 7px; border-radius: 12px;
+    font-size: 11px; font-weight: 500;
+    background: var(--bg-page); border: 1px solid var(--border-subtle);
+    cursor: pointer; white-space: nowrap;
+    transition: border-color 0.1s, background 0.1s; flex-shrink: 0;
   }
-  .chip:hover {
-    border-color: var(--border-default);
-    background: var(--bg-hover);
+  .chip:hover { border-color: var(--border-default); background: var(--bg-hover); }
+  .chip.chip-open { border-color: var(--border-default); background: var(--bg-hover); }
+
+  /* Action chip — accent, for "Create PR" */
+  .chip.action {
+    background: var(--accent); border-color: var(--accent);
+    color: white; padding: 2px 9px;
   }
-  .chip.chip-active {
-    border-color: var(--border-default);
-    background: var(--bg-hover);
+  .chip.action:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+
+  /* PR chip — shows PR number, quiet */
+  .chip.pr { color: var(--text-secondary); }
+  .chip .pr-num {
+    font-family: ui-monospace, 'SF Mono', monospace; font-size: 11px;
   }
 
-  /* Current — quiet, muted, nothing to do */
-  .chip.current {
-    color: var(--text-faint);
-  }
+  /* Behind variant — up-arrow + count, secondary text not amber */
+  .chip.behind { color: var(--text-secondary); }
 
-  /* Behind — amber, draws attention */
-  .chip.behind {
-    color: var(--amber);
-    border-color: rgba(180, 83, 9, 0.2);
-    background: rgba(180, 83, 9, 0.04);
-  }
-  .chip.behind:hover {
-    background: rgba(180, 83, 9, 0.08);
-    border-color: rgba(180, 83, 9, 0.3);
-  }
+  /* Merged variant */
+  .chip.merged { color: var(--text-muted); }
 
-  /* Updating — spinner, muted */
-  .chip.updating {
-    color: var(--text-muted);
-  }
-
+  /* Updating */
+  .chip.updating { color: var(--text-muted); }
   .chip .spinner {
-    width: 10px;
-    height: 10px;
-    border: 1.5px solid var(--border-default);
-    border-top-color: var(--accent);
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-    flex-shrink: 0;
+    width: 10px; height: 10px;
+    border: 1.5px solid var(--border-default); border-top-color: var(--accent);
+    border-radius: 50%; animation: spin 0.8s linear infinite; flex-shrink: 0;
   }
   @keyframes spin { to { transform: rotate(360deg); } }
 
-  /* Arrow-up icon for "updates available" */
   .chip .icon { display: flex; align-items: center; flex-shrink: 0; }
+
+  /* Chip separator — thin line between sections */
+  .chip-sep { width: 1px; height: 10px; background: var(--border-default); flex-shrink: 0; }
 
   /* ═══════════════════════════════════════════════ */
   /* Popover                                         */
@@ -216,138 +171,162 @@
 
   .popover-anchor { position: relative; display: inline-flex; }
   .popover {
-    position: absolute;
-    top: calc(100% + 6px);
-    right: 0;
-    z-index: 50;
-    min-width: 260px;
-    background: var(--bg-surface);
-    border: 1px solid var(--border-default);
-    border-radius: var(--radius-xl);
-    box-shadow: var(--shadow-lg);
-    padding: 12px;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
+    position: absolute; top: calc(100% + 6px); right: 0; z-index: 50;
+    min-width: 280px; background: var(--bg-surface);
+    border: 1px solid var(--border-default); border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-lg); padding: 0; overflow: hidden;
+    display: flex; flex-direction: column;
   }
-  .popover-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
+  .pop-section { padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
+  .pop-section + .pop-section { border-top: 1px solid var(--border-subtle); }
+  .pop-section-label {
+    font-size: 10px; font-weight: 600; color: var(--text-muted);
+    text-transform: uppercase; letter-spacing: 0.06em;
   }
-  .popover-label {
-    font-size: 11px;
-    color: var(--text-muted);
-    font-weight: 500;
+  .pop-row {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
   }
-  .popover-value {
-    font-size: 12px;
-    color: var(--text-primary);
-    font-weight: 500;
-  }
-  .popover-value .dep-id {
+  .pop-label { font-size: 11px; color: var(--text-muted); font-weight: 500; }
+  .pop-value { font-size: 12px; color: var(--text-primary); font-weight: 500; }
+  .pop-value .dep-id {
     font-family: ui-monospace, 'SF Mono', monospace;
-    font-size: 11px;
-    color: var(--text-muted);
-    margin-right: 3px;
+    font-size: 11px; color: var(--text-muted); margin-right: 3px;
   }
-  .popover-nudge {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    font-size: 11px;
-    font-weight: 500;
-    color: var(--amber);
+  .pop-nudge {
+    display: flex; align-items: center; gap: 5px;
+    font-size: 12px; font-weight: 500; color: var(--text-secondary);
   }
-  .popover-actions {
-    display: flex;
-    gap: 6px;
-    padding-top: 2px;
+  .pop-nudge .icon { display: flex; color: var(--text-muted); }
+  .pop-actions { display: flex; gap: 6px; }
+
+  /* PR card inside popover */
+  .pop-pr-card {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 10px; background: var(--bg-page);
+    border-radius: var(--radius-default); gap: 8px;
   }
+  .pop-pr-info { display: flex; flex-direction: column; gap: 1px; }
+  .pop-pr-title { font-size: 12px; font-weight: 500; color: var(--text-primary); }
+  .pop-pr-meta { font-size: 11px; color: var(--text-muted); font-weight: 400; }
+  .pop-pr-meta .num {
+    font-family: ui-monospace, 'SF Mono', monospace; font-size: 10px;
+  }
+  .pop-pr-link {
+    font-size: 11px; font-weight: 500; color: var(--accent);
+    text-decoration: none; display: inline-flex; align-items: center;
+    gap: 3px; white-space: nowrap; flex-shrink: 0;
+  }
+  .pop-pr-link:hover { text-decoration: underline; }
+  .pop-pr-link svg { width: 10px; height: 10px; }
+
+  .pop-toggle-row {
+    display: flex; align-items: center; justify-content: space-between; font-size: 12px;
+  }
+  .pop-toggle-label { color: var(--text-secondary); font-weight: 500; font-size: 12px; }
+  .toggle-track {
+    width: 28px; height: 16px; border-radius: 8px; background: var(--green);
+    position: relative; cursor: pointer; flex-shrink: 0;
+  }
+  .toggle-track.off { background: var(--bg-inset); }
+  .toggle-thumb {
+    width: 12px; height: 12px; border-radius: 50%; background: white;
+    position: absolute; top: 2px; box-shadow: 0 1px 2px rgba(28,25,23,0.1);
+  }
+  .toggle-track .toggle-thumb { right: 2px; }
+  .toggle-track.off .toggle-thumb { right: auto; left: 2px; }
+
+  .pop-hint {
+    font-size: 11px; color: var(--text-muted); line-height: 1.4; font-weight: 400;
+  }
+
   .btn-accent {
-    padding: 5px 12px;
-    border-radius: var(--radius-default);
-    font-size: 12px;
-    font-weight: 500;
-    background: var(--accent);
-    color: white;
-    border: none;
-    cursor: pointer;
+    padding: 5px 12px; border-radius: var(--radius-default);
+    font-size: 12px; font-weight: 500; background: var(--accent);
+    color: white; border: none; cursor: pointer;
+    transition: background 0.1s;
   }
+  .btn-accent:hover { background: var(--accent-hover); }
   .btn-secondary {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    padding: 5px 12px;
-    border-radius: var(--radius-default);
-    font-size: 12px;
-    font-weight: 500;
-    background: var(--bg-surface);
-    color: var(--text-secondary);
-    border: 1px solid var(--border-default);
-    box-shadow: var(--shadow-sm);
-    text-decoration: none;
-    cursor: pointer;
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 5px 12px; border-radius: var(--radius-default);
+    font-size: 12px; font-weight: 500; background: var(--bg-surface);
+    color: var(--text-secondary); border: 1px solid var(--border-default);
+    box-shadow: var(--shadow-sm); text-decoration: none; cursor: pointer;
+    transition: background 0.1s;
   }
+  .btn-secondary:hover { background: var(--bg-hover); }
   .btn-secondary svg { width: 10px; height: 10px; color: var(--text-muted); }
 </style>
 </head>
 <body>
 
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- CHIP STATES — closed                                           -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+
 <div>
   <h2>Chip states — closed</h2>
   <p class="desc">
-    The chip communicates one thing: do you need to act? When current, it's
-    nearly invisible — just the word "Current" in faint text. When behind,
-    it shifts to amber with an up-arrow and a count. When updating, a spinner.
-    Click any state to open the popover with full detail.
+    The chip sits left of the journey section. "Based on" has moved to the
+    properties (like a "blocked by" in Linear). The chip is purely PR +
+    freshness. "Create PR" is a direct action. PR number is shown once
+    created. Up-arrow indicates upstream changes. Merge icon for merged PRs.
   </p>
 
   <div class="states">
 
-    <!-- Current, no journey -->
+    <!-- 1. No code changes — no chip -->
     <div>
-      <div class="state-label">Current — nothing to do (no journey yet)</div>
+      <div class="state-label">1. No code changes yet — no chip</div>
       <div class="frame">
         <div class="topbar">
           <button class="back"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg></button>
           <span class="title">Improve PR control bar</span>
-          <span class="id">WH-078</span>
+          <span class="card-id">WH-078</span>
         </div>
         <div class="props-bar">
           <div class="props-left">
-            <span class="prop"><span class="dot-s"></span> Specifying</span>
+            <span class="prop"><span class="dot-s specifying"></span> Specifying</span>
             <span class="prop">Medium</span>
             <span class="prop">Workhorse</span>
             <span class="prop" style="color: var(--text-muted);">Unassigned</span>
+            <span class="prop-base"><span class="arrow">←</span> <span class="base-val">main</span></span>
           </div>
-          <span class="chip current">Current</span>
+          <div class="journey">
+            <div class="jd">
+              <span class="done"></span>
+              <span class="active"></span>
+              <span class="sug"></span>
+            </div>
+            <span class="chev"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg></span>
+          </div>
         </div>
         <div class="content-placeholder">Chat area...</div>
       </div>
     </div>
 
-    <!-- Current, with journey -->
+    <!-- 2. Code changes, no PR — "Create PR" action chip -->
     <div>
-      <div class="state-label">Current — with journey section</div>
+      <div class="state-label">2. Code changes exist — Create PR (direct action, no popover)</div>
       <div class="frame">
         <div class="topbar">
           <button class="back"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg></button>
           <span class="title">Improve PR control bar</span>
-          <span class="id">WH-078</span>
+          <span class="card-id">WH-078</span>
         </div>
         <div class="props-bar">
           <div class="props-left">
-            <span class="prop"><span class="dot-s"></span> Specifying</span>
+            <span class="prop"><span class="dot-s implementing"></span> Implementing</span>
             <span class="prop">Medium</span>
             <span class="prop">Workhorse</span>
             <span class="prop" style="color: var(--text-muted);">Unassigned</span>
+            <span class="prop-base"><span class="arrow">←</span> <span class="base-val">main</span></span>
           </div>
-          <span class="chip current">Current</span>
+          <span class="chip action">Create PR</span>
           <div class="divider"></div>
           <div class="journey">
             <div class="jd">
+              <span class="done"></span>
               <span class="done"></span>
               <span class="active"></span>
               <span class="sug"></span>
@@ -360,21 +339,95 @@
       </div>
     </div>
 
-    <!-- Behind -->
+    <!-- 3. PR open, current -->
     <div>
-      <div class="state-label">Behind — 4 newer changes, draws attention</div>
+      <div class="state-label">3. PR open, up to date</div>
       <div class="frame">
         <div class="topbar">
           <button class="back"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg></button>
           <span class="title">Improve PR control bar</span>
-          <span class="id">WH-078</span>
+          <span class="card-id">WH-078</span>
         </div>
         <div class="props-bar">
           <div class="props-left">
-            <span class="prop"><span class="dot-s"></span> Specifying</span>
+            <span class="prop"><span class="dot-s implementing"></span> Implementing</span>
             <span class="prop">Medium</span>
             <span class="prop">Workhorse</span>
             <span class="prop" style="color: var(--text-muted);">Unassigned</span>
+            <span class="prop-base"><span class="arrow">←</span> <span class="base-val">main</span></span>
+          </div>
+          <span class="chip pr"><span class="pr-num">#142</span></span>
+          <div class="divider"></div>
+          <div class="journey">
+            <div class="jd">
+              <span class="done"></span>
+              <span class="done"></span>
+              <span class="done"></span>
+              <span class="active"></span>
+              <span class="sug"></span>
+            </div>
+            <span class="chev"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg></span>
+          </div>
+        </div>
+        <div class="content-placeholder">Chat area...</div>
+      </div>
+    </div>
+
+    <!-- 4. PR open, behind — up-arrow + PR number -->
+    <div>
+      <div class="state-label">4. PR open, 4 newer changes on main</div>
+      <div class="frame">
+        <div class="topbar">
+          <button class="back"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg></button>
+          <span class="title">Improve PR control bar</span>
+          <span class="card-id">WH-078</span>
+        </div>
+        <div class="props-bar">
+          <div class="props-left">
+            <span class="prop"><span class="dot-s implementing"></span> Implementing</span>
+            <span class="prop">Medium</span>
+            <span class="prop">Workhorse</span>
+            <span class="prop" style="color: var(--text-muted);">Unassigned</span>
+            <span class="prop-base"><span class="arrow">←</span> <span class="base-val">main</span></span>
+          </div>
+          <span class="chip behind">
+            <span class="icon"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 19V5"/><path d="M5 12l7-7 7 7"/></svg></span>
+            4
+            <span class="chip-sep"></span>
+            <span class="pr-num">#142</span>
+          </span>
+          <div class="divider"></div>
+          <div class="journey">
+            <div class="jd">
+              <span class="done"></span>
+              <span class="done"></span>
+              <span class="done"></span>
+              <span class="active"></span>
+              <span class="sug"></span>
+            </div>
+            <span class="chev"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg></span>
+          </div>
+        </div>
+        <div class="content-placeholder">Chat area...</div>
+      </div>
+    </div>
+
+    <!-- 5. No PR, behind -->
+    <div>
+      <div class="state-label">5. No PR, 4 newer changes on main</div>
+      <div class="frame">
+        <div class="topbar">
+          <button class="back"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg></button>
+          <span class="title">Improve PR control bar</span>
+          <span class="card-id">WH-078</span>
+        </div>
+        <div class="props-bar">
+          <div class="props-left">
+            <span class="prop"><span class="dot-s specifying"></span> Specifying</span>
+            <span class="prop">Medium</span>
+            <span class="prop">Workhorse</span>
+            <span class="prop" style="color: var(--text-muted);">Unassigned</span>
+            <span class="prop-base"><span class="arrow">←</span> <span class="base-val">main</span></span>
           </div>
           <span class="chip behind">
             <span class="icon"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 19V5"/><path d="M5 12l7-7 7 7"/></svg></span>
@@ -386,7 +439,6 @@
               <span class="done"></span>
               <span class="active"></span>
               <span class="sug"></span>
-              <span class="sug"></span>
             </div>
             <span class="chev"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg></span>
           </div>
@@ -395,21 +447,22 @@
       </div>
     </div>
 
-    <!-- Updating -->
+    <!-- 6. Updating -->
     <div>
-      <div class="state-label">Updating — in progress</div>
+      <div class="state-label">6. Updating from main</div>
       <div class="frame">
         <div class="topbar">
           <button class="back"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg></button>
           <span class="title">Improve PR control bar</span>
-          <span class="id">WH-078</span>
+          <span class="card-id">WH-078</span>
         </div>
         <div class="props-bar">
           <div class="props-left">
-            <span class="prop"><span class="dot-s"></span> Specifying</span>
+            <span class="prop"><span class="dot-s specifying"></span> Specifying</span>
             <span class="prop">Medium</span>
             <span class="prop">Workhorse</span>
             <span class="prop" style="color: var(--text-muted);">Unassigned</span>
+            <span class="prop-base"><span class="arrow">←</span> <span class="base-val">main</span></span>
           </div>
           <span class="chip updating">
             <span class="spinner"></span>
@@ -429,106 +482,184 @@
       </div>
     </div>
 
-  </div>
-</div>
-
-<!-- ═══════════════════════════════════════════════════════════════ -->
-<!-- Popover states                                                 -->
-<!-- ═══════════════════════════════════════════════════════════════ -->
-
-<div>
-  <h2>Popover — opened from chip</h2>
-  <p class="desc">
-    Click the chip to see full context: what this card is based on, when it
-    was last synced, and actions (Update, Create/View PR). The popover is the
-    only place "Based on" language appears.
-  </p>
-
-  <div class="states">
-
-    <!-- Popover: behind, based on latest specs, pre-PR -->
+    <!-- 7. PR merged, no new changes -->
     <div>
-      <div class="state-label">Behind — based on latest specs, pre-PR</div>
+      <div class="state-label">7. PR merged — card complete</div>
       <div class="frame">
         <div class="topbar">
           <button class="back"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg></button>
           <span class="title">Improve PR control bar</span>
-          <span class="id">WH-078</span>
+          <span class="card-id">WH-078</span>
         </div>
-        <div class="props-bar" style="overflow: visible;">
+        <div class="props-bar">
           <div class="props-left">
-            <span class="prop"><span class="dot-s"></span> Specifying</span>
+            <span class="prop"><span class="dot-s" style="background: var(--green);"></span> Complete</span>
             <span class="prop">Medium</span>
             <span class="prop">Workhorse</span>
             <span class="prop" style="color: var(--text-muted);">Unassigned</span>
+            <span class="prop-base"><span class="arrow">←</span> <span class="base-val">main</span></span>
           </div>
-          <div class="popover-anchor">
-            <span class="chip behind chip-active">
-              <span class="icon"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 19V5"/><path d="M5 12l7-7 7 7"/></svg></span>
-              4 newer
-            </span>
-            <div class="popover">
-              <div class="popover-row">
-                <span class="popover-label">Based on</span>
-                <span class="popover-value">Latest specs</span>
-              </div>
-              <div class="popover-row">
-                <span class="popover-label">Last synced</span>
-                <span class="popover-value">3 Apr</span>
-              </div>
-              <div class="popover-row">
-                <span class="popover-nudge">4 newer changes available</span>
-              </div>
-              <div class="popover-actions">
-                <button class="btn-accent">Update to latest</button>
-                <button class="btn-secondary">Create PR</button>
-              </div>
-            </div>
-          </div>
+          <!-- Merge icon (two paths joining) + PR number, muted -->
+          <span class="chip merged">
+            <span class="icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M6 9v12"/><path d="M6 21c6 0 6-6 12-6"/></svg></span>
+            <span class="pr-num">#142</span>
+          </span>
           <div class="divider"></div>
           <div class="journey">
             <div class="jd">
               <span class="done"></span>
-              <span class="active"></span>
-              <span class="sug"></span>
-              <span class="sug"></span>
+              <span class="done"></span>
+              <span class="done"></span>
+              <span class="done"></span>
+              <span class="done"></span>
             </div>
             <span class="chev"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg></span>
           </div>
         </div>
-        <div class="content-placeholder" style="min-height: 170px;">Chat area...</div>
+        <div class="content-placeholder">Chat area...</div>
       </div>
     </div>
 
-    <!-- Popover: current, depends on card, has PR -->
+    <!-- 8. PR merged, new changes since merge -->
     <div>
-      <div class="state-label">Current — depends on WH-058, PR exists</div>
+      <div class="state-label">8. PR merged, 1 new change since — needs fresh branch</div>
+      <div class="frame">
+        <div class="topbar">
+          <button class="back"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg></button>
+          <span class="title">Improve PR control bar</span>
+          <span class="card-id">WH-078</span>
+        </div>
+        <div class="props-bar">
+          <div class="props-left">
+            <span class="prop"><span class="dot-s implementing"></span> Implementing</span>
+            <span class="prop">Medium</span>
+            <span class="prop">Workhorse</span>
+            <span class="prop" style="color: var(--text-muted);">Unassigned</span>
+            <span class="prop-base"><span class="arrow">←</span> <span class="base-val">main</span></span>
+          </div>
+          <!-- Merge icon + "1 new" to indicate post-merge changes -->
+          <span class="chip pr">
+            <span class="icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M6 9v12"/><path d="M6 21c6 0 6-6 12-6"/></svg></span>
+            <span class="pr-num">#142</span>
+            <span class="chip-sep"></span>
+            1 new
+          </span>
+          <div class="divider"></div>
+          <div class="journey">
+            <div class="jd">
+              <span class="done"></span>
+              <span class="done"></span>
+              <span class="done"></span>
+              <span class="done"></span>
+              <span class="done"></span>
+              <span class="active"></span>
+            </div>
+            <span class="chev"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg></span>
+          </div>
+        </div>
+        <div class="content-placeholder">Chat area...</div>
+      </div>
+    </div>
+
+    <!-- 9. Based on another card -->
+    <div>
+      <div class="state-label">9. Based on WH-058 instead of main</div>
       <div class="frame">
         <div class="topbar">
           <button class="back"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg></button>
           <span class="title">Allergy checking in lab requests</span>
-          <span class="id">WH-082</span>
+          <span class="card-id">WH-082</span>
         </div>
-        <div class="props-bar" style="overflow: visible;">
+        <div class="props-bar">
           <div class="props-left">
-            <span class="prop"><span class="dot-s"></span> Implementing</span>
+            <span class="prop"><span class="dot-s implementing"></span> Implementing</span>
             <span class="prop">High</span>
             <span class="prop">Tamanu</span>
             <span class="prop">Felix</span>
+            <span class="prop-base"><span class="arrow">←</span> <span class="base-card">WH-058</span></span>
+          </div>
+          <span class="chip pr"><span class="pr-num">#87</span></span>
+          <div class="divider"></div>
+          <div class="journey">
+            <div class="jd">
+              <span class="done"></span>
+              <span class="done"></span>
+              <span class="done"></span>
+              <span class="active"></span>
+              <span class="sug"></span>
+            </div>
+            <span class="chev"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg></span>
+          </div>
+        </div>
+        <div class="content-placeholder">Chat area...</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- POPOVERS                                                       -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+
+<div>
+  <h2>Popover states</h2>
+  <p class="desc">
+    Click the chip (except "Create PR" which acts immediately) to open a
+    popover with full PR detail and upstream status. Sections are separated
+    by a line. Actions sit at the bottom of each section.
+  </p>
+
+  <div class="states">
+
+    <!-- Popover: PR open, behind -->
+    <div>
+      <div class="state-label">PR open, 4 newer changes from main</div>
+      <div class="frame">
+        <div class="topbar">
+          <button class="back"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg></button>
+          <span class="title">Improve PR control bar</span>
+          <span class="card-id">WH-078</span>
+        </div>
+        <div class="props-bar" style="overflow: visible;">
+          <div class="props-left">
+            <span class="prop"><span class="dot-s implementing"></span> Implementing</span>
+            <span class="prop">Medium</span>
+            <span class="prop">Workhorse</span>
+            <span class="prop" style="color: var(--text-muted);">Unassigned</span>
+            <span class="prop-base"><span class="arrow">←</span> <span class="base-val">main</span></span>
           </div>
           <div class="popover-anchor">
-            <span class="chip current chip-active">Current</span>
+            <span class="chip behind chip-open">
+              <span class="icon"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 19V5"/><path d="M5 12l7-7 7 7"/></svg></span>
+              4
+              <span class="chip-sep"></span>
+              <span class="pr-num">#142</span>
+            </span>
             <div class="popover">
-              <div class="popover-row">
-                <span class="popover-label">Based on</span>
-                <span class="popover-value"><span class="dep-id">WH-058</span> Patient allergies</span>
+              <div class="pop-section">
+                <div class="pop-section-label">Pull request</div>
+                <div class="pop-pr-card">
+                  <div class="pop-pr-info">
+                    <span class="pop-pr-title">Improve PR control bar UI</span>
+                    <span class="pop-pr-meta"><span class="num">#142</span> · Open</span>
+                  </div>
+                  <a class="pop-pr-link" href="#">Open <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a>
+                </div>
+                <div class="pop-toggle-row">
+                  <span class="pop-toggle-label">Auto-fix CI failures</span>
+                  <span class="toggle-track"><span class="toggle-thumb"></span></span>
+                </div>
               </div>
-              <div class="popover-row">
-                <span class="popover-label">Last synced</span>
-                <span class="popover-value">12 Apr</span>
-              </div>
-              <div class="popover-actions">
-                <a class="btn-secondary" href="#">View PR <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a>
+              <div class="pop-section">
+                <div class="pop-section-label">Updates from main</div>
+                <div class="pop-nudge">
+                  <span class="icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19V5"/><path d="M5 12l7-7 7 7"/></svg></span>
+                  4 newer changes available
+                </div>
+                <div class="pop-actions">
+                  <button class="btn-accent">Update from main</button>
+                </div>
               </div>
             </div>
           </div>
@@ -544,7 +675,182 @@
             <span class="chev"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg></span>
           </div>
         </div>
-        <div class="content-placeholder" style="min-height: 150px;">Chat area...</div>
+        <div class="content-placeholder" style="min-height: 240px;">Chat area...</div>
+      </div>
+    </div>
+
+    <!-- Popover: PR open, current -->
+    <div>
+      <div class="state-label">PR open, up to date</div>
+      <div class="frame">
+        <div class="topbar">
+          <button class="back"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg></button>
+          <span class="title">Improve PR control bar</span>
+          <span class="card-id">WH-078</span>
+        </div>
+        <div class="props-bar" style="overflow: visible;">
+          <div class="props-left">
+            <span class="prop"><span class="dot-s implementing"></span> Implementing</span>
+            <span class="prop">Medium</span>
+            <span class="prop">Workhorse</span>
+            <span class="prop" style="color: var(--text-muted);">Unassigned</span>
+            <span class="prop-base"><span class="arrow">←</span> <span class="base-val">main</span></span>
+          </div>
+          <div class="popover-anchor">
+            <span class="chip pr chip-open"><span class="pr-num">#142</span></span>
+            <div class="popover">
+              <div class="pop-section">
+                <div class="pop-section-label">Pull request</div>
+                <div class="pop-pr-card">
+                  <div class="pop-pr-info">
+                    <span class="pop-pr-title">Improve PR control bar UI</span>
+                    <span class="pop-pr-meta"><span class="num">#142</span> · Open</span>
+                  </div>
+                  <a class="pop-pr-link" href="#">Open <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a>
+                </div>
+                <div class="pop-toggle-row">
+                  <span class="pop-toggle-label">Auto-fix CI failures</span>
+                  <span class="toggle-track"><span class="toggle-thumb"></span></span>
+                </div>
+              </div>
+              <div class="pop-section">
+                <div class="pop-section-label">Updates from main</div>
+                <div class="pop-nudge" style="color: var(--text-muted);">
+                  Up to date
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="divider"></div>
+          <div class="journey">
+            <div class="jd">
+              <span class="done"></span>
+              <span class="done"></span>
+              <span class="done"></span>
+              <span class="active"></span>
+              <span class="sug"></span>
+            </div>
+            <span class="chev"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg></span>
+          </div>
+        </div>
+        <div class="content-placeholder" style="min-height: 200px;">Chat area...</div>
+      </div>
+    </div>
+
+    <!-- Popover: PR merged, new changes since -->
+    <div>
+      <div class="state-label">PR merged, 1 new change since — prepare new PR</div>
+      <div class="frame">
+        <div class="topbar">
+          <button class="back"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg></button>
+          <span class="title">Improve PR control bar</span>
+          <span class="card-id">WH-078</span>
+        </div>
+        <div class="props-bar" style="overflow: visible;">
+          <div class="props-left">
+            <span class="prop"><span class="dot-s implementing"></span> Implementing</span>
+            <span class="prop">Medium</span>
+            <span class="prop">Workhorse</span>
+            <span class="prop" style="color: var(--text-muted);">Unassigned</span>
+            <span class="prop-base"><span class="arrow">←</span> <span class="base-val">main</span></span>
+          </div>
+          <div class="popover-anchor">
+            <span class="chip pr chip-open">
+              <span class="icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M6 9v12"/><path d="M6 21c6 0 6-6 12-6"/></svg></span>
+              <span class="pr-num">#142</span>
+              <span class="chip-sep"></span>
+              1 new
+            </span>
+            <div class="popover">
+              <div class="pop-section">
+                <div class="pop-section-label">Pull request</div>
+                <div class="pop-pr-card">
+                  <div class="pop-pr-info">
+                    <span class="pop-pr-title">Improve PR control bar UI</span>
+                    <span class="pop-pr-meta"><span class="num">#142</span> · Merged · 10 Apr</span>
+                  </div>
+                  <a class="pop-pr-link" href="#">Open <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a>
+                </div>
+              </div>
+              <div class="pop-section">
+                <div class="pop-section-label">New changes</div>
+                <div class="pop-nudge" style="color: var(--text-secondary);">
+                  1 change made since PR was merged
+                </div>
+                <div class="pop-hint">
+                  Creates a fresh branch from main with your new changes and opens a new pull request.
+                </div>
+                <div class="pop-actions">
+                  <button class="btn-accent">Prepare new PR</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="divider"></div>
+          <div class="journey">
+            <div class="jd">
+              <span class="done"></span>
+              <span class="done"></span>
+              <span class="done"></span>
+              <span class="done"></span>
+              <span class="done"></span>
+              <span class="active"></span>
+            </div>
+            <span class="chev"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg></span>
+          </div>
+        </div>
+        <div class="content-placeholder" style="min-height: 240px;">Chat area...</div>
+      </div>
+    </div>
+
+    <!-- Popover: PR merged, no new changes -->
+    <div>
+      <div class="state-label">PR merged, no new changes — done</div>
+      <div class="frame">
+        <div class="topbar">
+          <button class="back"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg></button>
+          <span class="title">Improve PR control bar</span>
+          <span class="card-id">WH-078</span>
+        </div>
+        <div class="props-bar" style="overflow: visible;">
+          <div class="props-left">
+            <span class="prop"><span class="dot-s" style="background: var(--green);"></span> Complete</span>
+            <span class="prop">Medium</span>
+            <span class="prop">Workhorse</span>
+            <span class="prop" style="color: var(--text-muted);">Unassigned</span>
+            <span class="prop-base"><span class="arrow">←</span> <span class="base-val">main</span></span>
+          </div>
+          <div class="popover-anchor">
+            <span class="chip merged chip-open">
+              <span class="icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M6 9v12"/><path d="M6 21c6 0 6-6 12-6"/></svg></span>
+              <span class="pr-num">#142</span>
+            </span>
+            <div class="popover">
+              <div class="pop-section">
+                <div class="pop-section-label">Pull request</div>
+                <div class="pop-pr-card">
+                  <div class="pop-pr-info">
+                    <span class="pop-pr-title">Improve PR control bar UI</span>
+                    <span class="pop-pr-meta"><span class="num">#142</span> · Merged · 10 Apr</span>
+                  </div>
+                  <a class="pop-pr-link" href="#">Open <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="divider"></div>
+          <div class="journey">
+            <div class="jd">
+              <span class="done"></span>
+              <span class="done"></span>
+              <span class="done"></span>
+              <span class="done"></span>
+              <span class="done"></span>
+            </div>
+            <span class="chev"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg></span>
+          </div>
+        </div>
+        <div class="content-placeholder" style="min-height: 160px;">Chat area...</div>
       </div>
     </div>
 

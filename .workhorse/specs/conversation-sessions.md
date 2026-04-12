@@ -26,7 +26,7 @@ model ConversationSession {
   title              String?   // auto-generated from first exchange
   messageCount       Int       @default(0)
   lastMessageAt      DateTime  @default(now())
-  streamingStartedAt DateTime? // non-null while an agent query is in flight (see agent-streaming-status.md)
+  agentActiveAt      DateTime? // non-null while the agent is working (see agent-streaming-status.md)
   createdAt          DateTime  @default(now())
 
   card Card? @relation(fields: [cardId], references: [id], onDelete: Cascade)
@@ -227,6 +227,6 @@ The sidebar shows a "Recent" section with the most recently active conversation 
 
 > **Team context for standalone sessions:** When a user creates a standalone session without specifying a team, should we default to their most recently used team? Or leave `teamId` null and only set it when a card is auto-created? Leaning toward defaulting to last-used team since it determines which project's codebase the agent operates on.
 
-> **Agent SDK session expiry:** The Agent SDK stores sessions on disk. If they expire or are cleaned up, we lose the ability to resume. The `ConversationSession` record persists regardless, so the user still sees the session in their list — they just can't resume the exact agent context. New messages start a fresh Agent SDK session. Is this acceptable, or should we store message content in our DB as a backup? For v1, the Agent SDK is the source of truth and we accept graceful degradation.
+> **Agent SDK session expiry:** The Agent SDK stores sessions on disk. If they expire or are cleaned up, we lose the ability to resume. The `ConversationSession` record persists regardless, so the user still sees the session in their list — they just can't resume the exact agent context. New messages start a fresh Agent SDK session. The SDK transcript is the source of truth for message content; interim/final classification is derived positionally at read time (see `agent-streaming-status.md`). No message table in Workhorse's database.
 
 > **Auto-card creation triggers:** Beyond file writes, are there other signals that a standalone session should get a card? E.g. if the user says "let's make a ticket for this" or "this needs tracking." Could use keyword detection, but heuristics are fragile. For v1, file writes are the trigger; explicit user action ("Create card from this") is the fallback.

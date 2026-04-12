@@ -1,96 +1,128 @@
 ---
-title: Agent streaming status
+title: Agent activity status
 area: agent
 card: WH-070
 ---
 
-Workhorse tracks and displays the AI agent's streaming status so users always know whether the agent is thinking, responding, or idle. The status is reliable across navigation, page refresh, reconnection, and server restarts.
+Workhorse tracks and displays the AI agent's activity status so users always know whether the agent is working or idle. The status is reliable across navigation, page refresh, reconnection, and server restarts.
 
-## Streaming lifecycle
+## Activity lifecycle
 
-A conversation session is in one of two states: **idle** or **streaming**. The transition from idle to streaming happens when the server begins an agent query. The transition back to idle happens when the agent query completes, errors, or is interrupted.
+A conversation session is in one of two states: **idle** or **active**. The `ConversationSession` model has an `agentActiveAt` timestamp column, nullable. A non-null value means the agent is working on behalf of this session.
 
-- [ ] The `ConversationSession` model has a `streamingStartedAt` timestamp column, nullable. A non-null value means the session is actively streaming
-- [ ] When the server starts an agent query for a session, it sets `streamingStartedAt` to the current time
-- [ ] When the agent query completes (success, error, or abort), the server clears `streamingStartedAt` to null
-- [ ] A session whose `streamingStartedAt` is older than 10 minutes is considered stale — the server crashed or redeployed without cleaning up. Any code that reads streaming status treats a stale timestamp as idle and clears it
+- [ ] `agentActiveAt` is set to the current time at the very start of the agent-session request handler — before the Agent SDK query begins, before any streaming events are produced. This ensures the sidebar and other views reflect activity immediately, including during SDK setup
+- [ ] `agentActiveAt` is cleared to null when the agent query completes (success, error, or abort)
+- [ ] A session whose `agentActiveAt` is older than 10 minutes is considered stale — the server crashed or redeployed without cleaning up. Any code that reads activity status treats a stale timestamp as idle and clears it
+
+## Crash detection and auto-resume
+
+Server restarts during active agent work are common (deploys, crashes). The system detects orphaned sessions and automatically resumes them.
+
+### Advisory lock mechanism
+
+- [ ] When the agent-session route starts processing, it acquires a Postgres session-level advisory lock keyed to the conversation session (e.g. a hash of the session ID)
+- [ ] Session-level advisory locks (`pg_advisory_lock`) are automatically released when the database connection drops — which happens on server restart, crash, or process exit
+- [ ] The lock is held for the duration of the agent query. It is released explicitly on completion, or implicitly if the process dies
+
+### Orphan detection
+
+- [ ] On application startup, the server queries for sessions where `agentActiveAt` is non-null but no advisory lock is held for that session
+- [ ] These are orphaned sessions — the agent process died without cleaning up
+
+### Auto-resume
+
+- [ ] For each orphaned session, the server kicks off a new agent query using the Agent SDK's `resume` capability, which picks up the full conversation context from the SDK's on-disk session storage
+- [ ] The resume sends a system-level continuation prompt so the agent understands it was interrupted and should continue where it left off
+- [ ] The resumed session follows the normal activity lifecycle: `agentActiveAt` is set, events are published, and the session completes normally
+- [ ] If the Agent SDK session has expired or been cleaned up, the orphaned session is simply marked idle (graceful degradation)
+
+## Unified event architecture
+
+All real-time UI updates flow through a single path: database changes trigger Postgres notifications, which fan out to connected clients via SSE. There is no manual event emission in application code.
+
+### Database notifications
+
+- [ ] A Postgres trigger on the `ConversationSession` table fires `pg_notify` whenever `agentActiveAt`, `title`, `messageCount`, or `lastMessageAt` changes
+- [ ] The notification payload includes the session ID, the user ID, and which fields changed
+- [ ] A single long-lived `LISTEN` connection on the server receives these notifications and fans them out to the appropriate SSE subscribers (sidebar events, session events)
+- [ ] This replaces all manual `emitSidebarEvent()` calls — any code path that updates a session automatically triggers the right events
+
+### Session event stream
+
+Each active agent session broadcasts its SDK events (thinking deltas, text deltas, tool use, results) through an in-memory pub/sub channel keyed by session ID.
+
+- [ ] The agent-session route publishes every SDK event into the session's pub/sub channel
+- [ ] A dedicated SSE endpoint (`/api/sessions/[id]/events`) allows clients to subscribe to the live event stream for a session. If the session is idle, the endpoint sends a single `idle` event and closes. If the session is active, it streams events in real time until the session completes
+- [ ] The endpoint requires authentication and verifies the user owns the session
+- [ ] Each channel retains a bounded replay buffer (last 50 events) so that a subscriber connecting mid-stream receives recent context rather than starting from nothing
+
+### Client always subscribes via pub/sub
+
+- [ ] When a user sends a message, the client POSTs to `/api/agent-session` and receives a session ID in the response
+- [ ] The client then subscribes to `/api/sessions/[id]/events` to receive all SDK events — the same endpoint used for recovery on return
+- [ ] There is one code path on the client for consuming events, whether the user just sent the message, navigated back mid-stream, or opened the conversation in another tab
+- [ ] The agent-session POST response does not stream SDK events directly; it returns the session ID and a success status. All event delivery goes through the pub/sub SSE endpoint
 
 ## Thinking indicator
 
-The thinking indicator appears in the chat area while the agent is working, before any visible text output has arrived. It conveys active, purposeful work — not a static spinner.
+The thinking indicator appears in the chat area for the entire duration the agent is active. It sits below the current (growing) assistant message, providing continuous feedback about what the agent is doing.
 
 ### When it shows
 
-- [ ] The thinking indicator appears as soon as `isStreaming` is true and the last assistant message has empty content — regardless of whether a verb or snippet has arrived yet
-- [ ] This condition is the same across all three views: CardWorkspace chat zone, ChatSessionView, and FloatingChat
-- [ ] Once the first `text_delta` arrives and the assistant message has content, the thinking indicator disappears
+- [ ] The thinking indicator is visible whenever the agent is active — from the moment the user sends a message until the agent query completes
+- [ ] It does not disappear when the first text arrives. It remains below the streaming text throughout the multi-turn loop
+- [ ] The indicator is identical across all views: CardWorkspace chat zone, ChatSessionView, and FloatingChat
+- [ ] On recovery (navigating back to an active session), the indicator appears immediately based on `agentActiveAt` being non-null, even before any replay events arrive. It defaults to "Thinking..." until a more specific verb can be derived from events
 
 ### Verb ticker
 
-The indicator displays a cycling action verb that describes what the agent is currently doing. The verb cross-fades to the next one every few seconds, giving continuous visible motion without being distracting.
+The indicator displays a cycling action verb that describes what the agent is currently doing.
 
 - [ ] A pulsing accent-coloured dot sits to the left of the verb text
 - [ ] The dot pulses gently (scale and opacity) on a 1.4-second cycle
-- [ ] The verb text displays the agent's current activity: "Reading codebase...", "Searching files...", "Exploring specs...", "Drafting response..." and similar
-- [ ] Verbs are derived from the agent's actual tool use when available — a Read tool call shows "Reading codebase...", a Grep shows "Searching files...", a Write/Edit shows "Writing specs...". When no tool context is available (pure thinking), it shows "Thinking..."
+- [ ] Verbs are derived from the agent's actual tool use: a Read tool call shows "Reading...", a Grep/Glob shows "Searching...", a Write/Edit shows "Editing...". When no tool context is available (pure thinking), it shows "Thinking..."
 - [ ] The verb cross-fades when it changes (120ms fade out, swap, fade in)
 - [ ] Below the verb, an optional thinking snippet line shows a fragment of the agent's internal reasoning in faint text, truncated to one line. This is ephemeral texture — it conveys busy-ness, not readable information
 - [ ] The snippet is sampled from `thinking_delta` events every 1.5 seconds and cross-fades on update (150ms)
 
-## Consistent message rendering
+## Message rendering
 
-A single user message can trigger multiple internal agent turns (think, tool use, think again, respond, tool use, respond again). These are presented as a single coherent assistant message regardless of when the user views the conversation.
+A single user message can trigger multiple internal agent turns (think, tool use, think again, respond, tool use, respond again). The Agent SDK stores each turn as a separate assistant message in its transcript. The UI distinguishes between **interim** messages (narration during tool work) and the **final** message (the substantive response).
 
-### During live streaming
+### Interim vs. final classification
 
-- [ ] All text the agent produces across all turns within one exchange is collected into a single assistant message bubble, with turn boundaries separated by blank lines
+Messages are classified positionally from the SDK transcript, with no additional storage needed:
 
-### When returning to a conversation
+- [ ] In a consecutive run of assistant messages between two user messages, the last assistant message is the **final** message. All preceding assistant messages in that run are **interim**
+- [ ] At the end of the transcript (after the last user message), if `agentActiveAt` is null (agent finished), the last assistant message is final. If `agentActiveAt` is non-null (agent still working), all messages in the run are treated as in-progress — none is final yet
+- [ ] Empty assistant messages (turns that only used tools without producing text) are excluded entirely
 
-- [ ] Chat history from the Agent SDK transcript is collapsed before display: consecutive assistant messages (from multi-turn agent work) are merged into a single message, joined with blank line separators
-- [ ] The result is visually identical to what the user would have seen live — one assistant bubble per user message, not one per internal agent turn
-- [ ] Empty assistant messages (turns that only used tools without producing text) are excluded
+### Display behaviour
 
-## Session event stream
+- [ ] **While the agent is active**: all messages in the current run are visible, streaming in as they arrive. The user sees the full narration as a progress signal
+- [ ] **After the agent finishes** (same session, live): interim messages in the completed run collapse, leaving only the final message visible. A subtle expandable summary replaces them (e.g. "Worked through 3 steps" or similar), allowing the user to expand and see the full narration if they want to
+- [ ] **On return to a completed conversation**: interim messages start collapsed. Only final messages and user messages are visible by default. The expandable summary is available for each collapsed group
+- [ ] **On return to an active conversation**: the current in-progress run is expanded (all messages visible), matching the live experience. Completed earlier runs are collapsed as normal
 
-Each streaming session broadcasts its events (thinking deltas, text deltas, tool use, results) through an in-memory pub/sub channel keyed by session ID. Any number of subscribers can tap into the stream for a given session.
+### Chat history endpoint
 
-- [ ] The agent session route publishes every SSE event it sends to the client into the session's pub/sub channel, in addition to writing it to the original response stream
-- [ ] A dedicated SSE endpoint (`/api/sessions/[id]/events`) allows clients to subscribe to the live event stream for a session. If the session is not currently streaming, the endpoint sends a single `idle` event and closes. If the session is streaming, it streams events in real time until the session completes, then closes
-- [ ] The endpoint requires authentication and verifies the user owns the session
-- [ ] Each channel retains a bounded replay buffer (last 50 events) so that a subscriber connecting mid-stream receives recent context (the current partial assistant message, active tool calls) rather than starting from nothing
+- [ ] The chat history endpoint reads the SDK transcript via `getSessionMessages()` and classifies each assistant message as interim or final using the positional rule
+- [ ] The response includes the classification so the client can render collapsed/expanded state without re-deriving it
+- [ ] The endpoint also checks `agentActiveAt` for the session to determine whether the final run is still in progress
 
-## Recovery on return
+## Sidebar activity indicator
 
-When a user navigates to a conversation that is actively streaming — whether by clicking a sidebar item, using the browser back button, or opening a new tab — the UI reconnects to the live stream.
+The sidebar shows which conversations have an active agent with a pulsing animation on the session title.
 
-- [ ] On mount, `useAgentSession` checks whether the session is currently streaming. It does this by connecting to the session event stream endpoint
-- [ ] If the session is streaming, the hook sets `isStreaming` to true and processes incoming events exactly as it does for a locally-initiated stream — thinking deltas populate the thinking buffer, text deltas append to the assistant message, tool use events update active tool calls
-- [ ] The replay buffer provides enough recent context to display the current assistant message and thinking state, so the user sees where the agent is at rather than a blank slate
-- [ ] Chat history is loaded in parallel. The hook merges: history messages (all complete turns) plus the in-progress assistant message from the live stream. Duplicate messages are deduplicated by ID
-- [ ] If the session finishes while the user is watching, the hook transitions to idle normally
+- [ ] The sidebar SSE endpoint subscribes to Postgres notifications for `agentActiveAt` changes scoped to the authenticated user
+- [ ] On initial connection, the endpoint queries for all sessions with non-null `agentActiveAt` (excluding stale) and sends them as the initial set
+- [ ] When `agentActiveAt` changes (set or cleared), the notification triggers an SSE event to the client
+- [ ] The client maintains a Set of active session IDs and renders pulsing indicators accordingly
 
-## Sidebar streaming indicator
+## Stale activity cleanup
 
-The sidebar shows which conversations are actively streaming with a pulsing animation on the session title.
+Server crashes, redeploys, and network failures can leave sessions marked as active when no agent is running. Beyond the advisory lock mechanism for auto-resume, a fallback cleanup handles edge cases.
 
-- [ ] The sidebar SSE endpoint (`/api/sidebar-events`) continues to broadcast `streaming_start` and `streaming_stop` events as it does today
-- [ ] On initial connection (and reconnection after a drop), the sidebar SSE endpoint sends the set of currently streaming session IDs as a `streaming_sessions` event, so the client starts with correct state rather than an empty set
-- [ ] The client merges this initial set with any subsequent start/stop events
-- [ ] If the SSE connection drops and reconnects, the client replaces its streaming set with the fresh initial set from the server
-
-## Stale streaming cleanup
-
-Server crashes, redeploys, and network failures can leave sessions marked as streaming when no agent is actually running. The system detects and cleans up these orphaned states.
-
-- [ ] On application startup, the server clears `streamingStartedAt` for all sessions where the timestamp is older than 10 minutes
-- [ ] The sidebar SSE endpoint, when building the initial `streaming_sessions` set, excludes sessions with a `streamingStartedAt` older than 10 minutes and clears them
-- [ ] The session event stream endpoint, if asked about a session whose `streamingStartedAt` is stale, clears it and returns `idle`
-
-## Pre-stream visual feedback
-
-Between the user pressing send and the first event arriving from the server, the UI provides immediate feedback so the user knows their message was received and the agent is starting up.
-
-- [ ] When the user sends a message, `isStreaming` is set to true and an empty assistant placeholder message is appended immediately — before the HTTP request is made
-- [ ] This triggers the thinking indicator ("Thinking..." with pulsing dot) within the same render frame as the message send
-- [ ] If the HTTP request fails, the placeholder is replaced with an error message and `isStreaming` is set to false
+- [ ] A session whose `agentActiveAt` is older than 10 minutes is treated as stale by any code that reads it
+- [ ] The session event stream endpoint, if asked about a session whose `agentActiveAt` is stale, clears it and returns `idle`
+- [ ] The advisory lock check on startup is the primary mechanism. The 10-minute threshold is a safety net for cases where the lock check missed something (e.g. the lock was held by a connection that hasn't fully timed out yet)

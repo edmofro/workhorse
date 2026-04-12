@@ -4,13 +4,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Branch Context Bar — WH-078</title>
+<title>Branch Context — WH-078 Explorations</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root {
     --bg-page: #f8f7f4;
     --bg-surface: #ffffff;
-    --bg-sidebar: #f1efeb;
     --bg-hover: #edeae5;
     --bg-inset: #e8e5df;
     --text-primary: #1c1917;
@@ -23,14 +22,13 @@
     --accent-hover: #b33b09;
     --green: #16a34a;
     --amber: #b45309;
-    --blue: #2563eb;
     --shadow-sm: 0 1px 3px rgba(28,25,23,0.04);
-    --shadow-md: 0 2px 8px rgba(28,25,23,0.06);
     --shadow-lg: 0 12px 40px rgba(28,25,23,0.14), 0 2px 8px rgba(28,25,23,0.06);
-    --radius-default: 8px;
     --radius-sm: 4px;
     --radius-md: 6px;
+    --radius-default: 8px;
     --radius-lg: 10px;
+    --radius-xl: 12px;
   }
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -38,593 +36,798 @@
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     background: var(--bg-page);
     color: var(--text-secondary);
-    padding: 40px;
+    padding: 48px;
     display: flex;
     flex-direction: column;
-    gap: 40px;
+    gap: 56px;
   }
 
-  .scenario { display: flex; flex-direction: column; gap: 12px; }
-  .scenario-label {
-    font-size: 11px;
+  h2 {
+    font-size: 13px;
     font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+  }
+  .desc {
+    font-size: 12px;
     color: var(--text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
+    margin-bottom: 16px;
+    line-height: 1.5;
+    max-width: 640px;
   }
 
-  /* ─── Workspace frame ─── */
-  .workspace-frame {
+  .states { display: flex; flex-direction: column; gap: 16px; }
+  .state-label {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text-faint);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 4px;
+  }
+
+  /* ─── Shared workspace chrome ─── */
+  .frame {
     background: var(--bg-surface);
     border: 1px solid var(--border-subtle);
     border-radius: var(--radius-lg);
     overflow: hidden;
-    max-width: 960px;
+    max-width: 900px;
   }
 
-  /* ─── Topbar ─── */
   .topbar {
     display: flex;
     align-items: center;
     gap: 10px;
     padding: 0 16px;
-    height: 52px;
+    height: 48px;
     border-bottom: 1px solid var(--border-subtle);
-    background: var(--bg-surface);
   }
-  .topbar .back-btn {
+  .back {
     color: var(--text-muted);
     display: flex;
-    align-items: center;
-    cursor: pointer;
     background: none;
     border: none;
     padding: 4px;
     border-radius: var(--radius-sm);
+    cursor: pointer;
   }
-  .topbar .back-btn:hover { background: var(--bg-hover); }
-  .topbar .card-title {
-    font-size: 15px;
-    font-weight: 600;
-    color: var(--text-primary);
-    letter-spacing: -0.01em;
-  }
-  .topbar .card-id {
-    font-family: ui-monospace, 'SF Mono', 'Cascadia Code', monospace;
-    font-size: 12px;
-    font-weight: 500;
-    color: var(--text-muted);
-  }
+  .title { font-size: 15px; font-weight: 600; color: var(--text-primary); letter-spacing: -0.01em; }
+  .id { font-family: ui-monospace, 'SF Mono', monospace; font-size: 12px; font-weight: 500; color: var(--text-muted); }
 
-  /* ─── Properties bar ─── */
-  .properties-bar {
+  .props-bar {
     display: flex;
     align-items: center;
-    height: 32px;
     padding: 0 8px;
     border-bottom: 1px solid var(--border-subtle);
-    background: var(--bg-surface);
-    font-size: 12px;
   }
-
-  .properties-left {
+  .props-left {
     display: flex;
     align-items: center;
-    gap: 0;
     flex: 1;
     min-width: 0;
   }
-
-  .prop-item {
+  .prop {
     display: inline-flex;
     align-items: center;
     gap: 5px;
-    padding: 2px 8px;
-    border-radius: var(--radius-md);
+    padding: 4px 8px;
     font-size: 12px;
     font-weight: 500;
     color: var(--text-secondary);
-    cursor: pointer;
     white-space: nowrap;
-    transition: background 0.1s;
   }
-  .prop-item:hover { background: var(--bg-hover); }
+  .dot-s { width: 8px; height: 8px; border-radius: 50%; background: var(--amber); flex-shrink: 0; }
 
-  .status-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    flex-shrink: 0;
-  }
-  .status-dot.specifying { background: var(--amber); }
-  .status-dot.implementing { background: var(--amber); }
-  .status-dot.complete { background: var(--green); }
+  .divider { width: 1px; height: 16px; background: var(--border-default); margin: 0 4px; flex-shrink: 0; }
 
-  /* ─── Divider ─── */
-  .divider {
-    width: 1px;
-    height: 16px;
-    background: var(--border-default);
-    margin: 0 4px;
-    flex-shrink: 0;
-  }
-
-  /* ─── Journey dots ─── */
-  .journey-section {
+  /* Journey dots */
+  .journey {
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    padding: 2px 8px;
+    padding: 4px 8px;
     border-radius: var(--radius-md);
     cursor: pointer;
-    transition: background 0.1s;
     flex-shrink: 0;
   }
-  .journey-section:hover { background: var(--bg-hover); }
+  .journey:hover { background: var(--bg-hover); }
+  .jd { display: flex; gap: 3px; }
+  .jd span { width: 8px; height: 8px; border-radius: 50%; }
+  .jd .done { background: var(--green); }
+  .jd .active { background: var(--accent); }
+  .jd .sug { border: 1.5px dashed var(--text-faint); }
+  .chev { color: var(--text-faint); display: flex; }
 
-  .journey-dots {
-    display: flex;
-    align-items: center;
-    gap: 3px;
-  }
-  .j-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    flex-shrink: 0;
-  }
-  .j-dot.done { background: var(--green); }
-  .j-dot.active { background: var(--accent); }
-  .j-dot.scheduled {
-    border: 1.5px solid var(--border-default);
-    background: transparent;
-  }
-  .j-dot.suggested {
-    border: 1.5px dashed var(--text-faint);
-    background: transparent;
-  }
-
-  .journey-chevron {
+  .content-placeholder {
+    padding: 20px 16px;
+    min-height: 48px;
     color: var(--text-faint);
-    display: flex;
-    align-items: center;
+    font-size: 12px;
+    font-style: italic;
   }
 
-  /* ─── Branch context (right of journey) ─── */
-  .branch-context {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 2px 8px;
-    flex-shrink: 0;
-    font-size: 11px;
-    white-space: nowrap;
-  }
+  /* ═════════════════════════════════════════════════ */
+  /* OPTION A — Clickable chip with popover           */
+  /* ═════════════════════════════════════════════════ */
 
-  .base-label {
-    color: var(--text-muted);
-    font-weight: 400;
-  }
-
-  .base-value {
-    color: var(--text-secondary);
-    font-weight: 500;
-  }
-
-  .base-value .dep-id {
-    font-family: ui-monospace, 'SF Mono', 'Cascadia Code', monospace;
-    color: var(--text-muted);
-    font-size: 10px;
-    margin-right: 3px;
-  }
-
-  .base-timestamp {
-    color: var(--text-faint);
-    font-weight: 400;
-    font-size: 11px;
-  }
-
-  /* Update nudge */
-  .update-nudge {
+  .chip {
     display: inline-flex;
     align-items: center;
     gap: 4px;
-    color: var(--amber);
+    padding: 2px 8px;
+    border-radius: 12px;
     font-size: 11px;
     font-weight: 500;
+    background: var(--bg-page);
+    border: 1px solid var(--border-subtle);
+    color: var(--text-muted);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: border-color 0.1s, background 0.1s;
+    flex-shrink: 0;
   }
-
-  .nudge-dot {
+  .chip:hover {
+    border-color: var(--border-default);
+    background: var(--bg-hover);
+  }
+  .chip .nudge-dot {
     width: 5px;
     height: 5px;
     border-radius: 50%;
     background: var(--amber);
     flex-shrink: 0;
   }
-
-  .update-btn {
-    padding: 1px 7px;
-    border-radius: var(--radius-sm);
-    font-size: 11px;
-    font-weight: 500;
-    background: transparent;
-    color: var(--accent);
-    border: 1px solid var(--border-default);
-    cursor: pointer;
-    transition: background 0.1s, border-color 0.1s;
-  }
-  .update-btn:hover {
-    background: var(--bg-hover);
-    border-color: var(--accent);
-  }
-
-  /* Separator dot */
-  .sep {
-    width: 3px;
-    height: 3px;
-    border-radius: 50%;
-    background: var(--border-default);
-    flex-shrink: 0;
-  }
-
-  /* Up-to-date indicator */
-  .up-to-date {
-    display: inline-flex;
-    align-items: center;
-    gap: 3px;
+  .chip .check {
     color: var(--green);
-    font-size: 11px;
-    font-weight: 500;
+    display: flex;
   }
-  .up-to-date svg { width: 11px; height: 11px; }
-
-  /* Resolving state */
-  .resolving {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    color: var(--text-muted);
-    font-size: 11px;
-    font-weight: 500;
+  .chip .dep-id {
+    font-family: ui-monospace, 'SF Mono', monospace;
+    font-size: 10px;
   }
-  .resolving .spinner {
-    width: 10px;
-    height: 10px;
+  .chip .spinner {
+    width: 9px;
+    height: 9px;
     border: 1.5px solid var(--border-default);
     border-top-color: var(--accent);
     border-radius: 50%;
     animation: spin 0.8s linear infinite;
+    flex-shrink: 0;
   }
   @keyframes spin { to { transform: rotate(360deg); } }
 
-  /* PR actions */
-  .pr-btn {
-    padding: 1px 7px;
-    border-radius: var(--radius-sm);
-    font-size: 11px;
-    font-weight: 500;
-    background: var(--accent);
-    color: white;
-    border: none;
-    cursor: pointer;
-    transition: background 0.1s;
-    white-space: nowrap;
+  /* Popover (shown statically for mockup) */
+  .popover-anchor { position: relative; display: inline-flex; }
+  .popover {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    z-index: 50;
+    min-width: 260px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-lg);
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
   }
-  .pr-btn:hover { background: var(--accent-hover); }
-
-  .pr-link {
-    display: inline-flex;
-    align-items: center;
-    gap: 3px;
-    padding: 1px 7px;
-    border-radius: var(--radius-sm);
-    font-size: 11px;
-    font-weight: 500;
-    background: var(--accent);
-    color: white;
-    text-decoration: none;
-    transition: background 0.1s;
-    white-space: nowrap;
-  }
-  .pr-link:hover { background: var(--accent-hover); }
-  .pr-link svg { width: 9px; height: 9px; }
-
-  .overflow-btn {
-    width: 20px;
-    height: 20px;
+  .popover-row {
     display: flex;
     align-items: center;
-    justify-content: center;
-    border-radius: var(--radius-sm);
-    border: none;
-    background: transparent;
-    color: var(--text-muted);
-    cursor: pointer;
-    transition: background 0.1s, color 0.1s;
-    font-size: 12px;
+    justify-content: space-between;
+    gap: 8px;
   }
-  .overflow-btn:hover {
-    background: var(--bg-hover);
+  .popover-label {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-weight: 500;
+  }
+  .popover-value {
+    font-size: 12px;
     color: var(--text-primary);
+    font-weight: 500;
+  }
+  .popover-value .dep-id {
+    font-family: ui-monospace, 'SF Mono', monospace;
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-right: 3px;
+  }
+  .popover-nudge {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--amber);
+  }
+  .popover-nudge .nd {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--amber);
+  }
+  .popover-actions {
+    display: flex;
+    gap: 6px;
+    padding-top: 2px;
+  }
+  .btn-accent {
+    padding: 5px 12px;
+    border-radius: var(--radius-default);
+    font-size: 12px;
+    font-weight: 500;
+    background: var(--accent);
+    color: white;
+    border: none;
+    cursor: pointer;
+    transition: background 0.1s;
+  }
+  .btn-accent:hover { background: var(--accent-hover); }
+  .btn-secondary {
+    padding: 5px 12px;
+    border-radius: var(--radius-default);
+    font-size: 12px;
+    font-weight: 500;
+    background: var(--bg-surface);
+    color: var(--text-secondary);
+    border: 1px solid var(--border-default);
+    box-shadow: var(--shadow-sm);
+    cursor: pointer;
+    transition: background 0.1s;
+  }
+  .btn-secondary:hover { background: var(--bg-hover); }
+  .btn-link-ext {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 5px 12px;
+    border-radius: var(--radius-default);
+    font-size: 12px;
+    font-weight: 500;
+    background: var(--bg-surface);
+    color: var(--text-secondary);
+    border: 1px solid var(--border-default);
+    box-shadow: var(--shadow-sm);
+    text-decoration: none;
+    cursor: pointer;
+    transition: background 0.1s;
+  }
+  .btn-link-ext:hover { background: var(--bg-hover); }
+  .btn-link-ext svg { width: 10px; height: 10px; color: var(--text-muted); }
+
+  /* ═════════════════════════════════════════════════ */
+  /* OPTION B — Inline icon-only with dot indicator   */
+  /* ═════════════════════════════════════════════════ */
+
+  .icon-trigger {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    color: var(--text-muted);
+    flex-shrink: 0;
+    transition: background 0.1s, color 0.1s;
+  }
+  .icon-trigger:hover {
+    background: var(--bg-hover);
+    color: var(--text-secondary);
+  }
+  .icon-trigger .badge-dot {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--amber);
+    border: 1.5px solid var(--bg-surface);
   }
 
-  /* ─── Fake content ─── */
-  .fake-content {
-    padding: 24px 16px;
-    min-height: 60px;
-    color: var(--text-faint);
-    font-size: 13px;
-    font-style: italic;
+  /* ═════════════════════════════════════════════════ */
+  /* OPTION C — Taller bar, two visual zones          */
+  /* ═════════════════════════════════════════════════ */
+
+  .props-bar-tall {
+    display: flex;
+    align-items: center;
+    padding: 6px 8px;
+    border-bottom: 1px solid var(--border-subtle);
+    gap: 0;
   }
+  .context-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 10px;
+    border-radius: 14px;
+    font-size: 11px;
+    font-weight: 500;
+    background: var(--bg-page);
+    color: var(--text-muted);
+    flex-shrink: 0;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background 0.1s;
+  }
+  .context-tag:hover { background: var(--bg-hover); }
+  .context-tag .val { color: var(--text-secondary); }
+  .context-tag .ts { color: var(--text-faint); font-size: 10px; }
+  .context-tag .nd {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--amber);
+  }
+  .context-tag .dep {
+    font-family: ui-monospace, 'SF Mono', monospace;
+    font-size: 10px;
+    color: var(--text-muted);
+  }
+
 </style>
 </head>
 <body>
 
 <!-- ═══════════════════════════════════════════════════════════════ -->
-<!-- All states show the branch context integrated into the         -->
-<!-- properties bar, to the right of the journey section.           -->
+<!-- OPTION A: Compact chip — click to reveal popover              -->
+<!-- The chip shows minimal info. Everything else is in the popover -->
 <!-- ═══════════════════════════════════════════════════════════════ -->
 
-<!-- 1. Up to date, based on latest specs, no PR, no journey yet -->
-<div class="scenario">
-  <span class="scenario-label">1. Fresh card — based on latest specs, up to date, no journey yet</span>
-  <div class="workspace-frame">
-    <div class="topbar">
-      <button class="back-btn">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-      </button>
-      <span class="card-title">Improve PR control bar</span>
-      <span class="card-id">WH-078</span>
-    </div>
-    <div class="properties-bar">
-      <div class="properties-left">
-        <span class="prop-item"><span class="status-dot specifying"></span> Specifying</span>
-        <span class="prop-item">Medium</span>
-        <span class="prop-item">Workhorse</span>
-        <span class="prop-item" style="color: var(--text-muted);">Unassigned</span>
+<div>
+  <h2>A — Chip + popover</h2>
+  <p class="desc">
+    A small pill sits to the left of the journey dots. It shows just enough to
+    communicate status at a glance — a timestamp, or a card reference. An amber
+    dot appears when updates are available. Click to open a popover with full
+    context and actions (Update, Create PR, View PR).
+  </p>
+
+  <div class="states">
+
+    <div>
+      <div class="state-label">Up to date, no journey yet</div>
+      <div class="frame">
+        <div class="topbar">
+          <button class="back"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg></button>
+          <span class="title">Improve PR control bar</span>
+          <span class="id">WH-078</span>
+        </div>
+        <div class="props-bar" style="height: 36px;">
+          <div class="props-left">
+            <span class="prop"><span class="dot-s"></span> Specifying</span>
+            <span class="prop">Medium</span>
+            <span class="prop">Workhorse</span>
+            <span class="prop" style="color: var(--text-muted);">Unassigned</span>
+          </div>
+          <span class="chip">
+            <span class="check"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span>
+            3 Apr
+          </span>
+        </div>
+        <div class="content-placeholder">Chat area...</div>
       </div>
-      <!-- No journey section yet — bar goes straight to branch context -->
-      <div class="branch-context">
-        <span class="base-label">Based on</span>
-        <span class="base-value">Latest specs</span>
-        <span class="base-timestamp">· 3 Apr</span>
+    </div>
+
+    <div>
+      <div class="state-label">Updates available — amber dot on chip</div>
+      <div class="frame">
+        <div class="topbar">
+          <button class="back"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg></button>
+          <span class="title">Improve PR control bar</span>
+          <span class="id">WH-078</span>
+        </div>
+        <div class="props-bar" style="height: 36px;">
+          <div class="props-left">
+            <span class="prop"><span class="dot-s"></span> Specifying</span>
+            <span class="prop">Medium</span>
+            <span class="prop">Workhorse</span>
+            <span class="prop" style="color: var(--text-muted);">Unassigned</span>
+          </div>
+          <span class="chip">
+            <span class="nudge-dot"></span>
+            3 Apr
+          </span>
+          <div class="divider"></div>
+          <div class="journey">
+            <div class="jd">
+              <span class="done"></span>
+              <span class="active"></span>
+              <span class="sug"></span>
+              <span class="sug"></span>
+            </div>
+            <span class="chev"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg></span>
+          </div>
+        </div>
+        <div class="content-placeholder">Chat area...</div>
       </div>
     </div>
-    <div class="fake-content">Chat / content area...</div>
+
+    <div>
+      <div class="state-label">Depends on card, up to date — chip shows card ref</div>
+      <div class="frame">
+        <div class="topbar">
+          <button class="back"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg></button>
+          <span class="title">Allergy checking in lab requests</span>
+          <span class="id">WH-082</span>
+        </div>
+        <div class="props-bar" style="height: 36px;">
+          <div class="props-left">
+            <span class="prop"><span class="dot-s" style="background: var(--amber);"></span> Implementing</span>
+            <span class="prop">High</span>
+            <span class="prop">Tamanu</span>
+            <span class="prop">Felix</span>
+          </div>
+          <span class="chip">
+            <span class="check"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span>
+            <span class="dep-id">WH-058</span>
+          </span>
+          <div class="divider"></div>
+          <div class="journey">
+            <div class="jd">
+              <span class="done"></span>
+              <span class="done"></span>
+              <span class="done"></span>
+              <span class="active"></span>
+              <span class="sug"></span>
+            </div>
+            <span class="chev"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg></span>
+          </div>
+        </div>
+        <div class="content-placeholder">Chat area...</div>
+      </div>
+    </div>
+
+    <div>
+      <div class="state-label">Updating in progress</div>
+      <div class="frame">
+        <div class="topbar">
+          <button class="back"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg></button>
+          <span class="title">Improve PR control bar</span>
+          <span class="id">WH-078</span>
+        </div>
+        <div class="props-bar" style="height: 36px;">
+          <div class="props-left">
+            <span class="prop"><span class="dot-s"></span> Specifying</span>
+            <span class="prop">Medium</span>
+            <span class="prop">Workhorse</span>
+            <span class="prop" style="color: var(--text-muted);">Unassigned</span>
+          </div>
+          <span class="chip">
+            <span class="spinner"></span>
+            Updating
+          </span>
+          <div class="divider"></div>
+          <div class="journey">
+            <div class="jd">
+              <span class="done"></span>
+              <span class="active"></span>
+              <span class="sug"></span>
+            </div>
+            <span class="chev"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg></span>
+          </div>
+        </div>
+        <div class="content-placeholder">Chat area...</div>
+      </div>
+    </div>
+
+    <div>
+      <div class="state-label">Popover open — updates available (shown statically)</div>
+      <div class="frame">
+        <div class="topbar">
+          <button class="back"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg></button>
+          <span class="title">Improve PR control bar</span>
+          <span class="id">WH-078</span>
+        </div>
+        <div class="props-bar" style="height: 36px; overflow: visible;">
+          <div class="props-left">
+            <span class="prop"><span class="dot-s"></span> Specifying</span>
+            <span class="prop">Medium</span>
+            <span class="prop">Workhorse</span>
+            <span class="prop" style="color: var(--text-muted);">Unassigned</span>
+          </div>
+          <div class="popover-anchor">
+            <span class="chip" style="border-color: var(--border-default); background: var(--bg-hover);">
+              <span class="nudge-dot"></span>
+              3 Apr
+            </span>
+            <div class="popover">
+              <div class="popover-row">
+                <span class="popover-label">Based on</span>
+                <span class="popover-value">Latest specs</span>
+              </div>
+              <div class="popover-row">
+                <span class="popover-label">Last updated</span>
+                <span class="popover-value">3 Apr 2026</span>
+              </div>
+              <div class="popover-row">
+                <span class="popover-nudge"><span class="nd"></span> 4 newer changes available</span>
+              </div>
+              <div class="popover-actions">
+                <button class="btn-accent">Update to latest</button>
+              </div>
+            </div>
+          </div>
+          <div class="divider"></div>
+          <div class="journey">
+            <div class="jd">
+              <span class="done"></span>
+              <span class="active"></span>
+              <span class="sug"></span>
+              <span class="sug"></span>
+            </div>
+            <span class="chev"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg></span>
+          </div>
+        </div>
+        <div class="content-placeholder" style="min-height: 180px;">Chat area...</div>
+      </div>
+    </div>
+
+    <div>
+      <div class="state-label">Popover open — depends on card, has PR</div>
+      <div class="frame">
+        <div class="topbar">
+          <button class="back"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg></button>
+          <span class="title">Allergy checking in lab requests</span>
+          <span class="id">WH-082</span>
+        </div>
+        <div class="props-bar" style="height: 36px; overflow: visible;">
+          <div class="props-left">
+            <span class="prop"><span class="dot-s" style="background: var(--amber);"></span> Implementing</span>
+            <span class="prop">High</span>
+            <span class="prop">Tamanu</span>
+            <span class="prop">Felix</span>
+          </div>
+          <div class="popover-anchor">
+            <span class="chip" style="border-color: var(--border-default); background: var(--bg-hover);">
+              <span class="check"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span>
+              <span class="dep-id">WH-058</span>
+            </span>
+            <div class="popover">
+              <div class="popover-row">
+                <span class="popover-label">Based on</span>
+                <span class="popover-value"><span class="dep-id">WH-058</span> Patient allergies</span>
+              </div>
+              <div class="popover-row">
+                <span class="popover-label">Status</span>
+                <span style="color: var(--green); font-size: 12px; font-weight: 500;">Up to date</span>
+              </div>
+              <div class="popover-actions">
+                <a class="btn-link-ext" href="#">View PR <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a>
+                <button class="btn-secondary">Auto-fix: On</button>
+              </div>
+            </div>
+          </div>
+          <div class="divider"></div>
+          <div class="journey">
+            <div class="jd">
+              <span class="done"></span>
+              <span class="done"></span>
+              <span class="done"></span>
+              <span class="active"></span>
+              <span class="sug"></span>
+            </div>
+            <span class="chev"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg></span>
+          </div>
+        </div>
+        <div class="content-placeholder" style="min-height: 180px;">Chat area...</div>
+      </div>
+    </div>
+
   </div>
 </div>
 
-<!-- 2. With journey, updates available, pre-PR -->
-<div class="scenario">
-  <span class="scenario-label">2. Active card — journey in progress, 4 newer changes upstream</span>
-  <div class="workspace-frame">
-    <div class="topbar">
-      <button class="back-btn">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-      </button>
-      <span class="card-title">Improve PR control bar</span>
-      <span class="card-id">WH-078</span>
-    </div>
-    <div class="properties-bar">
-      <div class="properties-left">
-        <span class="prop-item"><span class="status-dot specifying"></span> Specifying</span>
-        <span class="prop-item">Medium</span>
-        <span class="prop-item">Workhorse</span>
-        <span class="prop-item" style="color: var(--text-muted);">Unassigned</span>
-      </div>
-      <div class="journey-section">
-        <div class="journey-dots">
-          <span class="j-dot done"></span>
-          <span class="j-dot active"></span>
-          <span class="j-dot suggested"></span>
-          <span class="j-dot suggested"></span>
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- OPTION B: Icon-only trigger — maximum compactness             -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+
+<div>
+  <h2>B — Icon-only trigger</h2>
+  <p class="desc">
+    A single icon button (abstract "layer" / "stack" icon) sits left of the
+    journey dots. An amber dot badge appears when updates are available. No
+    text at all in the bar — everything is in the popover. The most minimal
+    option, but discoverability is lower.
+  </p>
+
+  <div class="states">
+
+    <div>
+      <div class="state-label">Up to date — clean icon, no badge</div>
+      <div class="frame">
+        <div class="topbar">
+          <button class="back"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg></button>
+          <span class="title">Improve PR control bar</span>
+          <span class="id">WH-078</span>
         </div>
-        <span class="journey-chevron">
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
-        </span>
-      </div>
-      <div class="divider"></div>
-      <div class="branch-context">
-        <span class="base-label">Based on</span>
-        <span class="base-value">Latest specs</span>
-        <span class="base-timestamp">· 3 Apr</span>
-        <span class="sep"></span>
-        <span class="update-nudge">
-          <span class="nudge-dot"></span>
-          4 newer
-        </span>
-        <button class="update-btn">Update</button>
+        <div class="props-bar" style="height: 36px;">
+          <div class="props-left">
+            <span class="prop"><span class="dot-s"></span> Specifying</span>
+            <span class="prop">Medium</span>
+            <span class="prop">Workhorse</span>
+            <span class="prop" style="color: var(--text-muted);">Unassigned</span>
+          </div>
+          <span class="icon-trigger" title="Based on Latest specs · 3 Apr">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+          </span>
+          <div class="divider"></div>
+          <div class="journey">
+            <div class="jd">
+              <span class="done"></span>
+              <span class="active"></span>
+              <span class="sug"></span>
+              <span class="sug"></span>
+            </div>
+            <span class="chev"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg></span>
+          </div>
+        </div>
+        <div class="content-placeholder">Chat area...</div>
       </div>
     </div>
-    <div class="fake-content">Chat / content area...</div>
+
+    <div>
+      <div class="state-label">Updates available — amber badge dot</div>
+      <div class="frame">
+        <div class="topbar">
+          <button class="back"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg></button>
+          <span class="title">Improve PR control bar</span>
+          <span class="id">WH-078</span>
+        </div>
+        <div class="props-bar" style="height: 36px;">
+          <div class="props-left">
+            <span class="prop"><span class="dot-s"></span> Specifying</span>
+            <span class="prop">Medium</span>
+            <span class="prop">Workhorse</span>
+            <span class="prop" style="color: var(--text-muted);">Unassigned</span>
+          </div>
+          <span class="icon-trigger" title="4 newer changes available">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+            <span class="badge-dot"></span>
+          </span>
+          <div class="divider"></div>
+          <div class="journey">
+            <div class="jd">
+              <span class="done"></span>
+              <span class="active"></span>
+              <span class="sug"></span>
+              <span class="sug"></span>
+            </div>
+            <span class="chev"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg></span>
+          </div>
+        </div>
+        <div class="content-placeholder">Chat area...</div>
+      </div>
+    </div>
+
   </div>
 </div>
 
-<!-- 3. Depends on another card, up to date, has PR -->
-<div class="scenario">
-  <span class="scenario-label">3. Depends on WH-058 — up to date, PR exists</span>
-  <div class="workspace-frame">
-    <div class="topbar">
-      <button class="back-btn">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-      </button>
-      <span class="card-title">Allergy checking in lab requests</span>
-      <span class="card-id">WH-082</span>
-    </div>
-    <div class="properties-bar">
-      <div class="properties-left">
-        <span class="prop-item"><span class="status-dot implementing"></span> Implementing</span>
-        <span class="prop-item">High</span>
-        <span class="prop-item">Tamanu</span>
-        <span class="prop-item">Felix</span>
-      </div>
-      <div class="journey-section">
-        <div class="journey-dots">
-          <span class="j-dot done"></span>
-          <span class="j-dot done"></span>
-          <span class="j-dot done"></span>
-          <span class="j-dot active"></span>
-          <span class="j-dot suggested"></span>
-        </div>
-        <span class="journey-chevron">
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
-        </span>
-      </div>
-      <div class="divider"></div>
-      <div class="branch-context">
-        <span class="base-label">Based on</span>
-        <span class="base-value"><span class="dep-id">WH-058</span>Patient allergies</span>
-        <span class="sep"></span>
-        <span class="up-to-date">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-          Up to date
-        </span>
-        <span class="sep"></span>
-        <a class="pr-link" href="#">View PR <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a>
-        <button class="overflow-btn" title="More options">···</button>
-      </div>
-    </div>
-    <div class="fake-content">Chat / content area...</div>
-  </div>
-</div>
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- OPTION C: Pill tag in a slightly taller bar                   -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
 
-<!-- 4. Updating — resolving changes -->
-<div class="scenario">
-  <span class="scenario-label">4. Updating in progress — resolving changes from upstream</span>
-  <div class="workspace-frame">
-    <div class="topbar">
-      <button class="back-btn">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-      </button>
-      <span class="card-title">Improve PR control bar</span>
-      <span class="card-id">WH-078</span>
-    </div>
-    <div class="properties-bar">
-      <div class="properties-left">
-        <span class="prop-item"><span class="status-dot specifying"></span> Specifying</span>
-        <span class="prop-item">Medium</span>
-        <span class="prop-item">Workhorse</span>
-        <span class="prop-item" style="color: var(--text-muted);">Unassigned</span>
-      </div>
-      <div class="journey-section">
-        <div class="journey-dots">
-          <span class="j-dot done"></span>
-          <span class="j-dot active"></span>
-          <span class="j-dot suggested"></span>
-        </div>
-        <span class="journey-chevron">
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
-        </span>
-      </div>
-      <div class="divider"></div>
-      <div class="branch-context">
-        <span class="base-label">Based on</span>
-        <span class="base-value">Latest specs</span>
-        <span class="base-timestamp">· 3 Apr</span>
-        <span class="sep"></span>
-        <span class="resolving">
-          <span class="spinner"></span>
-          Updating...
-        </span>
-      </div>
-    </div>
-    <div class="fake-content">Chat / content area...</div>
-  </div>
-</div>
+<div>
+  <h2>C — Taller bar with pill tag</h2>
+  <p class="desc">
+    The properties bar gets a little more height (40px instead of 32px) so
+    elements breathe. The upstream context is a rounded pill tag that reads
+    naturally: "Latest specs · 3 Apr" or "WH-058". Clicking opens the same
+    popover as Option A. Feels less cramped without adding a whole new row.
+  </p>
 
-<!-- 5. Just updated, with Create PR -->
-<div class="scenario">
-  <span class="scenario-label">5. Just updated — now current, code changes exist, pre-PR</span>
-  <div class="workspace-frame">
-    <div class="topbar">
-      <button class="back-btn">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-      </button>
-      <span class="card-title">Improve PR control bar</span>
-      <span class="card-id">WH-078</span>
-    </div>
-    <div class="properties-bar">
-      <div class="properties-left">
-        <span class="prop-item"><span class="status-dot implementing"></span> Implementing</span>
-        <span class="prop-item">Medium</span>
-        <span class="prop-item">Workhorse</span>
-        <span class="prop-item" style="color: var(--text-muted);">Unassigned</span>
-      </div>
-      <div class="journey-section">
-        <div class="journey-dots">
-          <span class="j-dot done"></span>
-          <span class="j-dot done"></span>
-          <span class="j-dot active"></span>
-          <span class="j-dot suggested"></span>
-          <span class="j-dot suggested"></span>
-        </div>
-        <span class="journey-chevron">
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
-        </span>
-      </div>
-      <div class="divider"></div>
-      <div class="branch-context">
-        <span class="base-label">Based on</span>
-        <span class="base-value">Latest specs</span>
-        <span class="base-timestamp">· 12 Apr</span>
-        <span class="sep"></span>
-        <span class="up-to-date">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-          Updated just now
-        </span>
-        <span class="sep"></span>
-        <button class="pr-btn">Create PR</button>
-      </div>
-    </div>
-    <div class="fake-content">Chat / content area...</div>
-  </div>
-</div>
+  <div class="states">
 
-<!-- 6. Depends on card with updates available + PR -->
-<div class="scenario">
-  <span class="scenario-label">6. Depends on card, parent has new changes, PR exists</span>
-  <div class="workspace-frame">
-    <div class="topbar">
-      <button class="back-btn">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-      </button>
-      <span class="card-title">Allergy checking in lab requests</span>
-      <span class="card-id">WH-082</span>
-    </div>
-    <div class="properties-bar">
-      <div class="properties-left">
-        <span class="prop-item"><span class="status-dot implementing"></span> Implementing</span>
-        <span class="prop-item">High</span>
-        <span class="prop-item">Tamanu</span>
-        <span class="prop-item">Felix</span>
-      </div>
-      <div class="journey-section">
-        <div class="journey-dots">
-          <span class="j-dot done"></span>
-          <span class="j-dot done"></span>
-          <span class="j-dot active"></span>
-          <span class="j-dot suggested"></span>
+    <div>
+      <div class="state-label">Up to date</div>
+      <div class="frame">
+        <div class="topbar">
+          <button class="back"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg></button>
+          <span class="title">Improve PR control bar</span>
+          <span class="id">WH-078</span>
         </div>
-        <span class="journey-chevron">
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
-        </span>
-      </div>
-      <div class="divider"></div>
-      <div class="branch-context">
-        <span class="base-label">Based on</span>
-        <span class="base-value"><span class="dep-id">WH-058</span>Patient allergies</span>
-        <span class="sep"></span>
-        <span class="update-nudge">
-          <span class="nudge-dot"></span>
-          2 newer
-        </span>
-        <button class="update-btn">Update</button>
-        <span class="sep"></span>
-        <a class="pr-link" href="#">View PR <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a>
-        <button class="overflow-btn" title="More options">···</button>
+        <div class="props-bar-tall">
+          <div class="props-left">
+            <span class="prop"><span class="dot-s"></span> Specifying</span>
+            <span class="prop">Medium</span>
+            <span class="prop">Workhorse</span>
+            <span class="prop" style="color: var(--text-muted);">Unassigned</span>
+          </div>
+          <span class="context-tag">
+            <span class="val">Latest specs</span>
+            <span class="ts">3 Apr</span>
+          </span>
+          <div class="divider"></div>
+          <div class="journey">
+            <div class="jd">
+              <span class="done"></span>
+              <span class="active"></span>
+              <span class="sug"></span>
+              <span class="sug"></span>
+            </div>
+            <span class="chev"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg></span>
+          </div>
+        </div>
+        <div class="content-placeholder">Chat area...</div>
       </div>
     </div>
-    <div class="fake-content">Chat / content area...</div>
+
+    <div>
+      <div class="state-label">Updates available</div>
+      <div class="frame">
+        <div class="topbar">
+          <button class="back"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg></button>
+          <span class="title">Improve PR control bar</span>
+          <span class="id">WH-078</span>
+        </div>
+        <div class="props-bar-tall">
+          <div class="props-left">
+            <span class="prop"><span class="dot-s"></span> Specifying</span>
+            <span class="prop">Medium</span>
+            <span class="prop">Workhorse</span>
+            <span class="prop" style="color: var(--text-muted);">Unassigned</span>
+          </div>
+          <span class="context-tag">
+            <span class="nd"></span>
+            <span class="val">Latest specs</span>
+            <span class="ts">3 Apr</span>
+          </span>
+          <div class="divider"></div>
+          <div class="journey">
+            <div class="jd">
+              <span class="done"></span>
+              <span class="active"></span>
+              <span class="sug"></span>
+              <span class="sug"></span>
+            </div>
+            <span class="chev"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg></span>
+          </div>
+        </div>
+        <div class="content-placeholder">Chat area...</div>
+      </div>
+    </div>
+
+    <div>
+      <div class="state-label">Depends on card</div>
+      <div class="frame">
+        <div class="topbar">
+          <button class="back"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg></button>
+          <span class="title">Allergy checking in lab requests</span>
+          <span class="id">WH-082</span>
+        </div>
+        <div class="props-bar-tall">
+          <div class="props-left">
+            <span class="prop"><span class="dot-s" style="background: var(--amber);"></span> Implementing</span>
+            <span class="prop">High</span>
+            <span class="prop">Tamanu</span>
+            <span class="prop">Felix</span>
+          </div>
+          <span class="context-tag">
+            <span class="dep">WH-058</span>
+            <span class="val">Patient allergies</span>
+          </span>
+          <div class="divider"></div>
+          <div class="journey">
+            <div class="jd">
+              <span class="done"></span>
+              <span class="done"></span>
+              <span class="done"></span>
+              <span class="active"></span>
+              <span class="sug"></span>
+            </div>
+            <span class="chev"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg></span>
+          </div>
+        </div>
+        <div class="content-placeholder">Chat area...</div>
+      </div>
+    </div>
+
   </div>
 </div>
 

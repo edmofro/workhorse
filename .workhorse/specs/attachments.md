@@ -30,10 +30,11 @@ Files can be attached via two mechanisms on all supported surfaces:
 
 ### Card descriptions and comments
 
-- [ ] Image attachments render inline within the description or comment, immediately below the text content
-- [ ] Non-image attachments render as a compact file chip (icon, filename, file size) inline with the content
-- [ ] There is no separate "Attachments" section — attachments are part of the content block they belong to
-- [ ] Clicking an image thumbnail opens the full-size image
+- [ ] Attachments are embedded within the text flow — text can appear above and below an attachment, just as in Linear or Slab
+- [ ] Image attachments render as a block-level image between paragraphs, sized to fit the content width
+- [ ] Non-image attachments render as a compact file chip (icon, filename, file size) between paragraphs
+- [ ] There is no separate "Attachments" section — attachments live inside the rich text content at the position the user placed them
+- [ ] Clicking an image opens the full-size image
 
 ### Chat messages
 

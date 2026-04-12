@@ -99,19 +99,28 @@
     border-radius: 10px; padding: 20px; box-shadow: var(--shadow);
     margin-bottom: 28px;
   }
-  .description-text {
+  .rich-text p {
     font-size: 14px; line-height: 1.7; color: var(--text-2);
-    margin-bottom: 16px;
+    margin-bottom: 12px;
   }
-  .inline-images {
-    display: flex; gap: 8px; flex-wrap: wrap;
-  }
-  .inline-image {
-    width: 180px; height: 120px; border-radius: 8px;
-    object-fit: cover; border: 1px solid var(--border-light);
+  .rich-text p:last-child { margin-bottom: 0; }
+  .rich-text .embedded-image {
+    display: block; width: 100%; max-width: 480px;
+    border-radius: 8px; border: 1px solid var(--border-light);
     cursor: pointer; transition: border-color 0.1s;
+    margin: 12px 0;
   }
-  .inline-image:hover { border-color: var(--border); }
+  .rich-text .embedded-image:hover { border-color: var(--border); }
+  .rich-text .embedded-image-placeholder {
+    display: flex; align-items: center; justify-content: center;
+    width: 100%; max-width: 480px; height: 180px;
+    border-radius: 8px; border: 1px solid var(--border-light);
+    cursor: pointer; transition: border-color 0.1s;
+    margin: 12px 0;
+    background: linear-gradient(135deg, var(--inset) 0%, var(--hover) 100%);
+    color: var(--text-3); font-size: 12px; font-weight: 500;
+  }
+  .rich-text .embedded-image-placeholder:hover { border-color: var(--border); }
 
   /* File chip */
   .file-chip {
@@ -143,14 +152,8 @@
   .comment-header { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
   .comment-author { font-size: 13px; font-weight: 500; }
   .comment-time { font-size: 11px; color: var(--text-4); }
-  .comment-text { font-size: 14px; line-height: 1.7; color: var(--text-2); margin-bottom: 8px; }
-  .comment-attachments { display: flex; gap: 8px; flex-wrap: wrap; }
-  .comment-image {
-    width: 140px; height: 94px; border-radius: 6px;
-    object-fit: cover; border: 1px solid var(--border-light);
-    cursor: pointer; transition: border-color 0.1s;
-  }
-  .comment-image:hover { border-color: var(--border); }
+  .comment-body .rich-text p { margin-bottom: 8px; }
+  .comment-body .rich-text .embedded-image-placeholder { height: 140px; }
 
   /* Comment input */
   .comment-input-area {
@@ -205,12 +208,6 @@
     cursor: pointer;
   }
 
-  /* Placeholder images */
-  .placeholder-img {
-    display: flex; align-items: center; justify-content: center;
-    background: linear-gradient(135deg, var(--inset) 0%, var(--hover) 100%);
-    color: var(--text-3); font-size: 11px; font-weight: 500;
-  }
 </style>
 </head>
 <body>
@@ -249,15 +246,15 @@
   <div class="content">
     <div class="card-view">
 
-      <!-- Description with inline images -->
+      <!-- Description with images embedded in text flow -->
       <div class="section-label">Description</div>
       <div class="description">
-        <div class="description-text">
-          Should be able to attach an image by pasting it in, same goes for other docs. Attachments should show up inline, not in a separate attachments section.
-        </div>
-        <div class="inline-images">
-          <div class="inline-image placeholder-img" style="width: 180px; height: 120px;">Screenshot 1</div>
-          <div class="inline-image placeholder-img" style="width: 180px; height: 120px;">Screenshot 2</div>
+        <div class="rich-text">
+          <p>The upload button currently works but there's no way to paste images from the clipboard. Here's what the current flow looks like:</p>
+          <div class="embedded-image-placeholder">screenshot-current-flow.png (680 × 420)</div>
+          <p>The image above shows the separate attachments tray at the bottom of the card. Instead, images should appear inline within the text — like this mockup from the design doc:</p>
+          <div class="embedded-image-placeholder">mockup-inline-design.png (680 × 320)</div>
+          <p>Same applies to comments. PDFs and other non-image files should render as a compact chip within the text flow.</p>
         </div>
       </div>
 
@@ -266,7 +263,7 @@
       <div class="description" style="padding: 12px 20px;">
         <div class="comments-section">
 
-          <!-- Comment with image -->
+          <!-- Comment with image embedded in text -->
           <div class="comment">
             <div class="comment-avatar">F</div>
             <div class="comment-body">
@@ -274,14 +271,15 @@
                 <span class="comment-author">Felix</span>
                 <span class="comment-time">2 hours ago</span>
               </div>
-              <div class="comment-text">Here's the current state of the upload UI — the attachments section at the bottom feels disconnected from the content.</div>
-              <div class="comment-attachments">
-                <div class="comment-image placeholder-img" style="width: 140px; height: 94px;">current-ui.png</div>
+              <div class="rich-text">
+                <p>Here's what it looks like when you try to paste an image right now — nothing happens:</p>
+                <div class="embedded-image-placeholder" style="max-width: 400px; height: 140px;">paste-attempt.png (540 × 360)</div>
+                <p>We need to handle the paste event and pull the image from the clipboard data.</p>
               </div>
             </div>
           </div>
 
-          <!-- Comment with file chip -->
+          <!-- Comment with file chip embedded in text -->
           <div class="comment">
             <div class="comment-avatar" style="background: var(--green);">M</div>
             <div class="comment-body">
@@ -289,13 +287,14 @@
                 <span class="comment-author">Matt</span>
                 <span class="comment-time">1 hour ago</span>
               </div>
-              <div class="comment-text">Attaching the requirements doc for reference.</div>
-              <div class="comment-attachments">
-                <div class="file-chip">
+              <div class="rich-text">
+                <p>Here's the requirements doc for the file handling:</p>
+                <div class="file-chip" style="margin: 8px 0;">
                   <span class="file-chip-icon">&#128196;</span>
                   <span class="file-chip-name">requirements.pdf</span>
                   <span class="file-chip-size">· 240 KB</span>
                 </div>
+                <p>Section 3 covers the supported MIME types.</p>
               </div>
             </div>
           </div>

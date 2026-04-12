@@ -8,9 +8,17 @@
 
 const REPLAY_BUFFER_SIZE = 50
 
+/** Sessions with streamingStartedAt older than this are considered stale. */
+export const STALE_STREAMING_THRESHOLD_MS = 10 * 60 * 1000 // 10 minutes
+
+type EventListener = (event: Record<string, unknown>) => void
+
 interface SessionChannel {
-  listeners: Set<(event: Record<string, unknown>) => void>
+  listeners: Set<EventListener>
+  /** Circular buffer: events stored at indices, head advances on overflow. */
   buffer: Record<string, unknown>[]
+  head: number
+  count: number
 }
 
 const channels = new Map<string, SessionChannel>()
@@ -18,19 +26,38 @@ const channels = new Map<string, SessionChannel>()
 function getOrCreate(sessionId: string): SessionChannel {
   let channel = channels.get(sessionId)
   if (!channel) {
-    channel = { listeners: new Set(), buffer: [] }
+    channel = { listeners: new Set(), buffer: new Array(REPLAY_BUFFER_SIZE), head: 0, count: 0 }
     channels.set(sessionId, channel)
   }
   return channel
 }
 
+/** Read replay events from the circular buffer in insertion order. */
+function replayEvents(channel: SessionChannel): Record<string, unknown>[] {
+  const events: Record<string, unknown>[] = []
+  const start = channel.count <= REPLAY_BUFFER_SIZE
+    ? 0
+    : channel.head
+  const len = Math.min(channel.count, REPLAY_BUFFER_SIZE)
+  for (let i = 0; i < len; i++) {
+    events.push(channel.buffer[(start + i) % REPLAY_BUFFER_SIZE])
+  }
+  return events
+}
+
 /** Publish an event to all subscribers of a session and append to replay buffer. */
 export function publish(sessionId: string, event: Record<string, unknown>) {
   const channel = getOrCreate(sessionId)
-  channel.buffer.push(event)
-  if (channel.buffer.length > REPLAY_BUFFER_SIZE) {
-    channel.buffer.shift()
+
+  // Circular buffer write
+  const idx = (channel.head + channel.count) % REPLAY_BUFFER_SIZE
+  channel.buffer[idx] = event
+  if (channel.count < REPLAY_BUFFER_SIZE) {
+    channel.count++
+  } else {
+    channel.head = (channel.head + 1) % REPLAY_BUFFER_SIZE
   }
+
   for (const listener of channel.listeners) {
     try {
       listener(event)
@@ -48,12 +75,12 @@ export function publish(sessionId: string, event: Record<string, unknown>) {
  */
 export function subscribe(
   sessionId: string,
-  listener: (event: Record<string, unknown>) => void,
+  listener: EventListener,
 ): () => void {
   const channel = getOrCreate(sessionId)
 
   // Send replay buffer
-  for (const event of channel.buffer) {
+  for (const event of replayEvents(channel)) {
     try {
       listener(event)
     } catch {
@@ -64,20 +91,34 @@ export function subscribe(
   channel.listeners.add(listener)
   return () => {
     channel.listeners.delete(listener)
-    // Clean up empty channels
-    if (channel.listeners.size === 0 && channel.buffer.length === 0) {
+    // Clean up empty channels with no buffered events
+    if (channel.listeners.size === 0 && channel.count === 0) {
       channels.delete(sessionId)
     }
   }
 }
 
-/** Clear the channel for a session (called when streaming ends). */
+/**
+ * Close the channel for a session (called when streaming ends).
+ * Sends a sentinel event to all listeners before removing the channel,
+ * so subscribers can clean up without polling.
+ */
 export function close(sessionId: string) {
+  const channel = channels.get(sessionId)
+  if (channel) {
+    const sentinel: Record<string, unknown> = { type: 'channel_closed' }
+    for (const listener of channel.listeners) {
+      try {
+        listener(sentinel)
+      } catch {
+        // Ignore
+      }
+    }
+  }
   channels.delete(sessionId)
 }
 
-/** Check if a session has an active channel with buffered events. */
+/** Check if a session has an active channel (created by publish or subscribe). */
 export function isActive(sessionId: string): boolean {
-  const channel = channels.get(sessionId)
-  return !!channel && channel.buffer.length > 0
+  return channels.has(sessionId)
 }

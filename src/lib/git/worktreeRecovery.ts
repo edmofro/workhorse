@@ -5,6 +5,7 @@
  */
 
 import { prisma } from '../prisma'
+import { STALE_STREAMING_THRESHOLD_MS } from '../sessionEvents'
 import {
   ensureBareClone,
   createWorktree,
@@ -14,11 +15,10 @@ import {
 
 /**
  * Clear streamingStartedAt for all sessions that were left in
- * a streaming state by a server crash or redeploy. Any session
- * whose streamingStartedAt is older than 10 minutes is stale.
+ * a streaming state by a server crash or redeploy.
  */
 export async function clearStaleStreamingSessions(): Promise<void> {
-  const staleThreshold = new Date(Date.now() - 10 * 60 * 1000)
+  const staleThreshold = new Date(Date.now() - STALE_STREAMING_THRESHOLD_MS)
   const { count } = await prisma.conversationSession.updateMany({
     where: {
       streamingStartedAt: { not: null, lte: staleThreshold },

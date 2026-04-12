@@ -287,9 +287,9 @@ export function useAgentSession(
           if (result.done) break
         }
 
-        // Flush remaining text
-        if (flushTimerRef.current) { clearTimeout(flushTimerRef.current); flushTimerRef.current = null }
+        // Flush remaining text before finally block resets streaming state
         if (textBufferRef.current) {
+          if (flushTimerRef.current) { clearTimeout(flushTimerRef.current); flushTimerRef.current = null }
           const finalContent = assistantContentRef.current + textBufferRef.current
           textBufferRef.current = ''
           assistantContentRef.current = finalContent
@@ -298,16 +298,18 @@ export function useAgentSession(
             prev.map((m) => (m.id === id ? { ...m, content: finalContent } : m)),
           )
         }
-
+      } catch (err) {
+        // Recovery is best-effort — if it fails, the user just doesn't see the in-progress stream
+      } finally {
+        // Always reset streaming state — especially important when aborted
+        // by sendMessage, which checks isStreamingRef before proceeding.
+        if (flushTimerRef.current) { clearTimeout(flushTimerRef.current); flushTimerRef.current = null }
         setIsStreaming(false)
         isStreamingRef.current = false
         setActiveToolCalls([])
         setThinkingSnippet(null)
         thinkingBufferRef.current = ''
         if (thinkingTimerRef.current) { clearInterval(thinkingTimerRef.current); thinkingTimerRef.current = null }
-      } catch (err) {
-        if (err instanceof DOMException && err.name === 'AbortError') return
-        // Recovery is best-effort — if it fails, the user just doesn't see the in-progress stream
       }
     }
 

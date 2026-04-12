@@ -1,8 +1,11 @@
 import { requireUser } from '../../../lib/auth/session'
 import { subscribe } from '../../../lib/sidebarEvents'
 import { prisma } from '../../../lib/prisma'
+import { STALE_STREAMING_THRESHOLD_MS } from '../../../lib/sessionEvents'
 
-const STALE_THRESHOLD_MS = 10 * 60 * 1000 // 10 minutes
+/** Per-user timestamp of last stale cleanup, to avoid repeated writes on reconnect. */
+const lastCleanupByUser = new Map<string, number>()
+const CLEANUP_DEBOUNCE_MS = 60_000
 
 /**
  * GET /api/sidebar-events
@@ -27,7 +30,7 @@ export async function GET() {
   let cleanup: (() => void) | null = null
 
   // Find sessions currently streaming for this user, excluding stale ones
-  const staleThreshold = new Date(Date.now() - STALE_THRESHOLD_MS)
+  const staleThreshold = new Date(Date.now() - STALE_STREAMING_THRESHOLD_MS)
   const streamingSessions = await prisma.conversationSession.findMany({
     where: {
       userId,
@@ -36,14 +39,18 @@ export async function GET() {
     select: { id: true },
   })
 
-  // Clean up any stale streaming sessions in the background
-  prisma.conversationSession.updateMany({
-    where: {
-      userId,
-      streamingStartedAt: { not: null, lte: staleThreshold },
-    },
-    data: { streamingStartedAt: null },
-  }).catch(() => {})
+  // Clean up stale streaming sessions at most once per minute per user
+  const lastCleanup = lastCleanupByUser.get(userId) ?? 0
+  if (Date.now() - lastCleanup > CLEANUP_DEBOUNCE_MS) {
+    lastCleanupByUser.set(userId, Date.now())
+    prisma.conversationSession.updateMany({
+      where: {
+        userId,
+        streamingStartedAt: { not: null, lte: staleThreshold },
+      },
+      data: { streamingStartedAt: null },
+    }).catch(() => {})
+  }
 
   const streamingSessionIds = streamingSessions.map((s) => s.id)
 

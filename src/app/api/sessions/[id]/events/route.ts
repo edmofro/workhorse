@@ -1,9 +1,7 @@
 import { requireUser } from '../../../../../lib/auth/session'
 import { prisma } from '../../../../../lib/prisma'
-import { subscribe, isActive } from '../../../../../lib/sessionEvents'
+import { subscribe, isActive, STALE_STREAMING_THRESHOLD_MS } from '../../../../../lib/sessionEvents'
 import { NextRequest } from 'next/server'
-
-const STALE_THRESHOLD_MS = 10 * 60 * 1000 // 10 minutes
 
 /**
  * GET /api/sessions/[id]/events
@@ -34,10 +32,10 @@ export async function GET(
     return new Response('Not found', { status: 404 })
   }
 
-  // Check for stale streaming — clear if older than 10 minutes
+  // Check for stale streaming — clear if older than threshold
   if (session.streamingStartedAt) {
     const age = Date.now() - session.streamingStartedAt.getTime()
-    if (age > STALE_THRESHOLD_MS) {
+    if (age > STALE_STREAMING_THRESHOLD_MS) {
       await prisma.conversationSession.update({
         where: { id: sessionId },
         data: { streamingStartedAt: null },
@@ -63,7 +61,7 @@ export async function GET(
 
   // Stream live events
   const encoder = new TextEncoder()
-  let cleanup: (() => void) | null = null
+  let unsubscribe: (() => void) | null = null
 
   const stream = new ReadableStream({
     start(controller) {
@@ -72,36 +70,27 @@ export async function GET(
         encoder.encode(`data: ${JSON.stringify({ type: 'status', status: 'streaming' })}\n\n`),
       )
 
-      const unsubscribe = subscribe(sessionId, (event) => {
-        try {
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`))
-        } catch {
-          unsubscribe()
-        }
-      })
-
-      // When the agent finishes, the channel is closed and no more events
-      // arrive. We detect completion via a 'result' event or the channel
-      // closing. Use a periodic check as a fallback.
-      const checkAlive = setInterval(() => {
-        if (!isActive(sessionId)) {
-          clearInterval(checkAlive)
+      unsubscribe = subscribe(sessionId, (event) => {
+        // The channel_closed sentinel means the agent finished — send idle and close
+        if (event.type === 'channel_closed') {
           try {
             controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'status', status: 'idle' })}\n\n`))
             controller.close()
           } catch {
             // Already closed
           }
+          return
         }
-      }, 2000)
 
-      cleanup = () => {
-        clearInterval(checkAlive)
-        unsubscribe()
-      }
+        try {
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`))
+        } catch {
+          unsubscribe?.()
+        }
+      })
     },
     cancel() {
-      cleanup?.()
+      unsubscribe?.()
     },
   })
 

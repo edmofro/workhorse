@@ -31,7 +31,8 @@ import { deriveLabel } from '../../lib/labels'
 import { updateCardTitleFromSpec } from '../../lib/actions/cards'
 import { formatRelativeTime } from '../../lib/formatRelativeTime'
 import { isMockupPath } from '../../lib/paths'
-import { useCardShellUpdate, useCardShellPortalTarget } from './CardShellContext'
+import { useCardShellUpdate } from './CardShellContext'
+import { useTopbarPortalTarget } from './TopbarPortalContext'
 
 interface SpecFileData {
   filePath: string
@@ -727,7 +728,7 @@ export function CardWorkspace({
 
   // Update the topbar shell context: breadcrumb label, title clickability, go-to-card-home handler
   const updateShell = useCardShellUpdate()
-  const portalTarget = useCardShellPortalTarget()
+  const portalTarget = useTopbarPortalTarget()
 
   const goToCardHome = useCallback(() => {
     navigateTo({ type: 'card' })
@@ -746,6 +747,7 @@ export function CardWorkspace({
       titleClickable: view.type !== 'card',
       goToCardHome: view.type !== 'card' ? goToCardHome : null,
     })
+    return () => updateShell({ breadcrumb: null, titleClickable: false, goToCardHome: null })
   }, [view, files, updateShell, goToCardHome])
 
   return (

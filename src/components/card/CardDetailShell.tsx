@@ -3,7 +3,8 @@
 import { ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 import { Topbar, TopbarCardTitle } from '../Topbar'
-import { useCardShell, useCardShellPortalCallbackRef } from './CardShellContext'
+import { useCardShell } from './CardShellContext'
+import { useTopbarPortalCallbackRef } from './TopbarPortalContext'
 
 interface CardDetailShellProps {
   card: {
@@ -24,7 +25,7 @@ export function CardDetailShell({
   children,
 }: CardDetailShellProps) {
   const { breadcrumb, titleClickable, goToCardHome } = useCardShell()
-  const portalCallbackRef = useCardShellPortalCallbackRef()
+  const portalCallbackRef = useTopbarPortalCallbackRef()
 
   return (
     <>

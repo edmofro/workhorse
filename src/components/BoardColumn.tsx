@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { MoreHorizontal, ChevronRight } from 'lucide-react'
 import { useDroppable, useDraggable } from '@dnd-kit/core'
 import { cn } from '../lib/cn'
-import { StatusDot } from './StatusDot'
+import { StatusIcon, type StatusIconState } from './StatusIcon'
 import { Avatar } from './Avatar'
 import { Tag } from './Tag'
 import { updateCard } from '../lib/actions/cards'
@@ -24,11 +24,9 @@ export interface CardData {
   team: { id: string; name: string; colour: string }
 }
 
-type StatusDotState = 'not-started' | 'specifying' | 'implementing' | 'complete' | 'cancelled'
-
 interface BoardColumnProps {
   label: string
-  dotState: StatusDotState
+  dotState: StatusIconState
   cards: CardData[]
   projectName: string
   statusKey: string
@@ -44,7 +42,7 @@ export function BoardColumn({ label, dotState, cards, projectName, statusKey }: 
     <div className="flex flex-col min-w-0 flex-1">
       {/* Column header */}
       <div className="flex items-center gap-2 px-3 pb-3 shrink-0">
-        <StatusDot state={dotState} />
+        <StatusIcon state={dotState} />
         <span className="text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-[0.06em]">
           {label}
         </span>

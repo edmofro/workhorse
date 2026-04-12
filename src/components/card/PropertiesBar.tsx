@@ -4,16 +4,14 @@ import { useState, useEffect, useMemo, useTransition } from 'react'
 import { createPortal } from 'react-dom'
 import { ChevronDown, X, CalendarPlus } from 'lucide-react'
 import { cn } from '../../lib/cn'
-import { StatusDot } from '../StatusDot'
+import { StatusIcon, type StatusIconState } from '../StatusIcon'
 import { PropertyDropdown, usePortalMenu, type PropertyOption } from '../PropertyDropdown'
 import { updateCard } from '../../lib/actions/cards'
 import { STATUS_OPTIONS } from '../../lib/status'
 import { BUILT_IN_SKILLS } from '../../lib/skills/registry'
 import type { JournalEntryData, ScheduledStepData, PillSuggestion } from '../../lib/hooks/useJockeyState'
 
-type StatusDotState = 'not-started' | 'specifying' | 'implementing' | 'complete' | 'cancelled'
-
-function statusToDotState(status: string): StatusDotState {
+function statusToIconState(status: string): StatusIconState {
   switch (status) {
     case 'NOT_STARTED': return 'not-started'
     case 'SPECIFYING': return 'specifying'
@@ -73,7 +71,7 @@ function CardProperties({ card, users, teams }: CardPropertiesProps) {
     STATUS_OPTIONS.map((opt) => ({
       value: opt.value,
       label: opt.label,
-      icon: <StatusDot state={statusToDotState(opt.value)} />,
+      icon: <StatusIcon state={statusToIconState(opt.value)} />,
     }))
   ), [])
 
@@ -106,7 +104,7 @@ function CardProperties({ card, users, teams }: CardPropertiesProps) {
       <PropertyDropdown
         trigger={
           <>
-            <StatusDot state={statusToDotState(status)} />
+            <StatusIcon state={statusToIconState(status)} />
             {currentStatusLabel}
           </>
         }
@@ -169,6 +167,59 @@ function CardProperties({ card, users, teams }: CardPropertiesProps) {
   )
 }
 
+// ─── Journey Track (collapsed indicator) ────────────────────────────────────
+
+type TrackNodeKind = 'done' | 'active' | 'scheduled' | 'suggested'
+
+function JourneyTrack({
+  doneCount,
+  hasActive,
+  scheduledCount,
+  suggestedCount,
+}: {
+  doneCount: number
+  hasActive: boolean
+  scheduledCount: number
+  suggestedCount: number
+}) {
+  const nodes: TrackNodeKind[] = [
+    ...Array<TrackNodeKind>(doneCount).fill('done'),
+    ...(hasActive ? ['active' as const] : []),
+    ...Array<TrackNodeKind>(scheduledCount).fill('scheduled'),
+    ...Array<TrackNodeKind>(suggestedCount).fill('suggested'),
+  ]
+
+  if (nodes.length === 0) return null
+
+  const nodeColor: Record<TrackNodeKind, string> = {
+    done: 'bg-[var(--green)]',
+    active: 'bg-[var(--accent)]',
+    scheduled: 'bg-[var(--border-default)]',
+    suggested: 'bg-[var(--text-faint)]',
+  }
+
+  // Connector takes the colour of the node it leads into
+  return (
+    <div className="flex items-center">
+      {nodes.map((kind, i) => (
+        <span key={i} className="flex items-center">
+          {i > 0 && (
+            <span
+              className={cn(
+                'w-1.5 h-[2px] shrink-0',
+                kind === 'suggested'
+                  ? 'bg-[var(--text-faint)] opacity-40'
+                  : nodeColor[kind],
+              )}
+            />
+          )}
+          <span className={cn('w-1.5 h-1.5 rounded-full shrink-0', nodeColor[kind])} />
+        </span>
+      ))}
+    </div>
+  )
+}
+
 // ─── Journey Section ─────────────────────────────────────────────────────────
 
 interface JourneySectionProps {
@@ -207,29 +258,12 @@ function JourneySection({
           open && 'bg-[var(--bg-hover)]',
         )}
       >
-        <div className="flex items-center gap-1">
-          {journalEntries.map((_, i) => (
-            <span
-              key={`done-${i}`}
-              className="w-2 h-2 rounded-full bg-[var(--green)] shrink-0"
-            />
-          ))}
-          {activeStep && (
-            <span className="w-2 h-2 rounded-full bg-[var(--accent)] shrink-0" />
-          )}
-          {scheduledSteps.map((_, i) => (
-            <span
-              key={`sched-${i}`}
-              className="w-2 h-2 rounded-full border border-[var(--border-default)] shrink-0"
-            />
-          ))}
-          {suggestions.map((_, i) => (
-            <span
-              key={`sug-${i}`}
-              className="w-2 h-2 rounded-full border border-dashed border-[var(--text-faint)] shrink-0"
-            />
-          ))}
-        </div>
+        <JourneyTrack
+          doneCount={journalEntries.length}
+          hasActive={!!activeStep}
+          scheduledCount={scheduledSteps.length}
+          suggestedCount={suggestions.length}
+        />
 
         {activeStep && (
           <span className="animate-pulse">{skillLabel(activeStep)}</span>
@@ -256,7 +290,7 @@ function JourneySection({
               className="flex items-center gap-2 px-3 py-1 text-[12px] text-[var(--text-secondary)]"
             >
               <span className="w-4 flex justify-center shrink-0">
-                <span className="w-2 h-2 rounded-full bg-[var(--green)]" />
+                <span className="w-1.5 h-1.5 rounded-full bg-[var(--green)]" />
               </span>
               <span className="flex-1 truncate">{entry.summary}</span>
               <span className="text-[11px] text-[var(--text-faint)] shrink-0">{formatDate(entry.createdAt)}</span>
@@ -266,7 +300,7 @@ function JourneySection({
           {activeStep && (
             <div className="flex items-center gap-2 px-3 py-1 text-[12px] text-[var(--text-primary)] font-medium">
               <span className="w-4 flex justify-center shrink-0">
-                <span className="w-2 h-2 rounded-full bg-[var(--accent)]" />
+                <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)]" />
               </span>
               <span className="flex-1">{skillLabel(activeStep)}</span>
               <span className="text-[11px] text-[var(--text-muted)] shrink-0">In progress</span>
@@ -285,7 +319,7 @@ function JourneySection({
                   className="flex items-center gap-2 px-3 py-1 text-[12px] text-[var(--text-secondary)] group"
                 >
                   <span className="w-4 flex justify-center shrink-0">
-                    <span className="w-2 h-2 rounded-full border border-[var(--border-default)]" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-[var(--border-default)]" />
                   </span>
                   <span className="flex-1">{skillLabel(step.skillId)}</span>
                   <button
@@ -315,7 +349,7 @@ function JourneySection({
                   className="flex items-center gap-2 px-3 py-1 text-[12px] text-[var(--text-muted)] group"
                 >
                   <span className="w-4 flex justify-center shrink-0">
-                    <span className="w-2 h-2 rounded-full border border-dashed border-[var(--text-faint)]" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-[var(--text-faint)]" />
                   </span>
                   <button
                     onClick={(e) => {

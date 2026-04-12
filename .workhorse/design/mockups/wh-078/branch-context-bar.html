@@ -299,11 +299,11 @@
 <body>
 
 <!-- ═══════════════════════════════════════════════════ -->
-<!-- OPTION A: Standalone bar between journey and chat  -->
+<!-- OPTION A: Standalone context bar below topbar      -->
 <!-- ═══════════════════════════════════════════════════ -->
 
 <div class="scenario">
-  <span class="scenario-label">Option A — Standalone bar, between topbar and content</span>
+  <span class="scenario-label">Option A — Standalone context bar below topbar, above chat content</span>
 </div>
 
 <!-- A1: Up to date, based on latest specs, no PR yet -->
@@ -429,57 +429,15 @@
 </div>
 
 <!-- ═══════════════════════════════════════════════════ -->
-<!-- OPTION B: Merged into journey bar area             -->
+<!-- OPTION B: In topbar                                -->
 <!-- ═══════════════════════════════════════════════════ -->
 
 <div class="scenario" style="margin-top: 16px;">
-  <span class="scenario-label">Option B — Context merged into journey row (more compact)</span>
+  <span class="scenario-label">Option B — In the topbar, right-aligned</span>
 </div>
 
 <div class="scenario">
-  <span class="scenario-label">B1. Journey bar with upstream context and update nudge</span>
-  <div class="workspace-frame">
-    <div class="fake-topbar">
-      <span class="card-id" style="font-family: ui-monospace, 'SF Mono', monospace; font-size: 12px; color: var(--text-muted);">WH-078</span>
-      <span class="card-title" style="font-size: 14px; font-weight: 500; color: var(--text-primary);">Improve PR control bar</span>
-    </div>
-    <div class="fake-journey" style="justify-content: space-between;">
-      <div style="display: flex; align-items: center; gap: 10px;">
-        <div class="dots">
-          <span class="dot-filled"></span>
-          <span class="dot-filled"></span>
-          <span class="dot-active"></span>
-          <span class="dot-empty"></span>
-          <span class="dot-empty"></span>
-        </div>
-        <span style="font-weight: 500; color: var(--text-secondary);">Implementing</span>
-      </div>
-      <div style="display: flex; align-items: center; gap: 8px;">
-        <span style="color: var(--text-muted); font-size: 11px;">Based on Latest specs · 3 Apr</span>
-        <span class="sep"></span>
-        <div class="update-nudge">
-          <span class="dot"></span>
-          4 newer
-        </div>
-        <button class="update-btn">Update</button>
-        <span class="sep"></span>
-        <button class="pr-btn-primary" style="font-size: 11px; padding: 2px 8px;">Create PR</button>
-      </div>
-    </div>
-    <div class="fake-content">Chat / content area...</div>
-  </div>
-</div>
-
-<!-- ═══════════════════════════════════════════════════ -->
-<!-- OPTION C: In topbar                                -->
-<!-- ═══════════════════════════════════════════════════ -->
-
-<div class="scenario" style="margin-top: 16px;">
-  <span class="scenario-label">Option C — In the topbar, right-aligned</span>
-</div>
-
-<div class="scenario">
-  <span class="scenario-label">C1. Topbar with upstream + PR</span>
+  <span class="scenario-label">B1. Topbar with upstream + PR</span>
   <div class="workspace-frame">
     <div class="fake-topbar" style="justify-content: space-between;">
       <div style="display: flex; align-items: center; gap: 8px;">

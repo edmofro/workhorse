@@ -76,7 +76,7 @@ export async function GET(request: NextRequest) {
   // Git-based queries depend on worktree existing
   const [branchStatus, upstreamBehind] = hasWorktree
     ? await Promise.all([
-        getBranchStatus(owner, repoName, cardId),
+        getBranchStatus(owner, repoName, cardId, defaultBranch),
         (() => {
           const parentBranch = card.dependsOn[0]?.parent.cardBranch
           const upstreamRef = parentBranch ?? defaultBranch

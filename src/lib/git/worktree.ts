@@ -423,7 +423,13 @@ export async function pullBranch(
 
   // Rebase onto remote tracking branch
   const branchName = await git(['rev-parse', '--abbrev-ref', 'HEAD'], wtPath)
-  await git(['rebase', `origin/${branchName}`], wtPath)
+  try {
+    await git(['rebase', `origin/${branchName}`], wtPath)
+  } catch (err) {
+    // Abort the in-progress rebase so the worktree isn't left in a broken state
+    await git(['rebase', '--abort'], wtPath).catch(() => {})
+    throw err
+  }
 }
 
 /**
@@ -629,6 +635,7 @@ export async function getBranchStatus(
   owner: string,
   repo: string,
   cardIdentifier: string,
+  defaultBranch: string = 'main',
 ): Promise<{
   localChanges: number
   unpushedCommits: number
@@ -656,8 +663,11 @@ export async function getBranchStatus(
     .catch(() => false)
 
   if (!hasRemote) {
-    // No remote tracking — use rev-list --count instead of log --oneline
-    const count = await git(['rev-list', '--count', 'HEAD'], wtPath).catch(() => '0')
+    // No remote tracking — count commits since branching from the default branch
+    const mergeBase = await git(['merge-base', `origin/${defaultBranch}`, 'HEAD'], wtPath).catch(() => '')
+    const count = mergeBase
+      ? await git(['rev-list', '--count', `${mergeBase}..HEAD`], wtPath).catch(() => '0')
+      : '0'
     return { localChanges, unpushedCommits: parseInt(count, 10) || 0, remoteAhead: 0 }
   }
 

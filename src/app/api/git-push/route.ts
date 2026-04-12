@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireUser, requireCardAccess } from '../../../lib/auth/session'
+import { hasProjectAccess } from '../../../lib/auth/github'
 import { pushBranch } from '../../../lib/git/worktree'
 
 /**
@@ -8,7 +9,12 @@ import { pushBranch } from '../../../lib/git/worktree'
  * Push the card's worktree branch to the remote.
  */
 export async function POST(request: NextRequest) {
-  const user = await requireUser()
+  let user
+  try {
+    user = await requireUser()
+  } catch {
+    return NextResponse.json({ error: 'Unauthorised' }, { status: 401 })
+  }
 
   const body = await request.json()
   const { cardId } = body as { cardId: string }
@@ -23,6 +29,10 @@ export async function POST(request: NextRequest) {
   }
 
   const { owner, repoName } = card.team.project
+
+  if (!await hasProjectAccess(user.accessToken, owner, repoName)) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
 
   try {
     await pushBranch(owner, repoName, card.identifier, user.accessToken)

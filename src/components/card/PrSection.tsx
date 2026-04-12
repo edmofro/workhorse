@@ -75,7 +75,7 @@ export function PrSection({
 
   // Build GitHub checks URL
   const checksUrl = liveBranchName
-    ? `https://github.com/${repoOwner}/${repoName}/commits/${encodeURIComponent(liveBranchName)}`
+    ? `https://github.com/${encodeURIComponent(repoOwner)}/${encodeURIComponent(repoName)}/commits/${encodeURIComponent(liveBranchName)}`
     : null
 
   // Detect post-merge new commits

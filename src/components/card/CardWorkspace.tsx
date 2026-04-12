@@ -836,16 +836,14 @@ export function CardWorkspace({
               />
             </div>
           </div>
-          <aside className="shrink-0 w-[248px] border-l border-[var(--border-subtle)] bg-[var(--bg-page)] flex flex-col overflow-y-auto">
-            <PrSection {...prProps} />
-            <ArtifactsSidebar
-              specs={specFiles.map((f) => ({ filePath: f.filePath, isNew: f.isNew, content: f.content }))}
-              mockups={allMockupFiles}
-              codeFiles={codeFileItems}
-              activeFilePath={null}
-              onSelectFile={(fp) => openFileExpanded(fp)}
-            />
-          </aside>
+          <SidebarPanel
+            prProps={prProps}
+            specs={specFiles.map((f) => ({ filePath: f.filePath, isNew: f.isNew, content: f.content }))}
+            mockups={allMockupFiles}
+            codeFiles={codeFileItems}
+            activeFilePath={null}
+            onSelectFile={(fp) => openFileExpanded(fp)}
+          />
         </>
       )}
 
@@ -862,16 +860,14 @@ export function CardWorkspace({
               <Skeleton className="h-4 w-2/3" />
             </aside>
           ) : (
-            <aside className="shrink-0 w-[248px] border-l border-[var(--border-subtle)] bg-[var(--bg-page)] flex flex-col overflow-y-auto">
-              <PrSection {...prProps} />
-              <ArtifactsSidebar
-                specs={specFiles.map((f) => ({ filePath: f.filePath, isNew: f.isNew, content: f.content }))}
-                mockups={allMockupFiles}
-                codeFiles={codeFileItems}
-                activeFilePath={activeFilePath}
-                onSelectFile={(fp) => openFile(fp)}
-              />
-            </aside>
+            <SidebarPanel
+              prProps={prProps}
+              specs={specFiles.map((f) => ({ filePath: f.filePath, isNew: f.isNew, content: f.content }))}
+              mockups={allMockupFiles}
+              codeFiles={codeFileItems}
+              activeFilePath={activeFilePath}
+              onSelectFile={(fp) => openFile(fp)}
+            />
           )}
         </>
       )}
@@ -948,6 +944,36 @@ export function CardWorkspace({
         </>
       )}
     </div>
+  )
+}
+
+/** Shared sidebar wrapper — owns the aside chrome, PR section, and artifacts list. */
+function SidebarPanel({
+  prProps,
+  specs,
+  mockups,
+  codeFiles,
+  activeFilePath,
+  onSelectFile,
+}: {
+  prProps: React.ComponentProps<typeof PrSection>
+  specs: React.ComponentProps<typeof ArtifactsSidebar>['specs']
+  mockups: React.ComponentProps<typeof ArtifactsSidebar>['mockups']
+  codeFiles: CodeFileItem[]
+  activeFilePath: string | null
+  onSelectFile: (filePath: string) => void
+}) {
+  return (
+    <aside className="shrink-0 w-[248px] border-l border-[var(--border-subtle)] bg-[var(--bg-page)] flex flex-col overflow-y-auto">
+      <PrSection {...prProps} />
+      <ArtifactsSidebar
+        specs={specs}
+        mockups={mockups}
+        codeFiles={codeFiles}
+        activeFilePath={activeFilePath}
+        onSelectFile={onSelectFile}
+      />
+    </aside>
   )
 }
 

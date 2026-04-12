@@ -143,7 +143,7 @@ export async function getCheckStatus(
     fetch(`${GITHUB_API}/repos/${owner}/${repo}/commits/${encodedRef}/status`, {
       headers: getHeaders(token),
     }),
-    fetch(`${GITHUB_API}/repos/${owner}/${repo}/commits/${encodedRef}/check-suites`, {
+    fetch(`${GITHUB_API}/repos/${owner}/${repo}/commits/${encodedRef}/check-suites?per_page=100`, {
       headers: getHeaders(token),
     }),
   ])

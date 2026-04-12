@@ -15,7 +15,7 @@ export function StatusIcon({ state, size = 14, className }: StatusIconProps) {
       fill="none"
       className={cn('inline-block shrink-0', className)}
       style={{ width: size, height: size }}
-      role="status"
+      role="img"
       aria-label={state}
     >
       {state === 'not-started' && (

@@ -4,23 +4,12 @@ import { useState, useEffect, useMemo, useTransition } from 'react'
 import { createPortal } from 'react-dom'
 import { ChevronDown, X, CalendarPlus } from 'lucide-react'
 import { cn } from '../../lib/cn'
-import { StatusIcon, type StatusIconState } from '../StatusIcon'
+import { StatusIcon } from '../StatusIcon'
 import { PropertyDropdown, usePortalMenu, type PropertyOption } from '../PropertyDropdown'
 import { updateCard } from '../../lib/actions/cards'
-import { STATUS_OPTIONS } from '../../lib/status'
+import { STATUS_OPTIONS, dbStatusToIconState } from '../../lib/status'
 import { BUILT_IN_SKILLS } from '../../lib/skills/registry'
 import type { JournalEntryData, ScheduledStepData, PillSuggestion } from '../../lib/hooks/useJockeyState'
-
-function statusToIconState(status: string): StatusIconState {
-  switch (status) {
-    case 'NOT_STARTED': return 'not-started'
-    case 'SPECIFYING': return 'specifying'
-    case 'IMPLEMENTING': return 'implementing'
-    case 'COMPLETE': return 'complete'
-    case 'CANCELLED': return 'cancelled'
-    default: return 'not-started'
-  }
-}
 
 const PRIORITY_OPTIONS: PropertyOption[] = [
   { value: 'URGENT', label: 'Urgent' },
@@ -71,7 +60,7 @@ function CardProperties({ card, users, teams }: CardPropertiesProps) {
     STATUS_OPTIONS.map((opt) => ({
       value: opt.value,
       label: opt.label,
-      icon: <StatusIcon state={statusToIconState(opt.value)} />,
+      icon: <StatusIcon state={dbStatusToIconState(opt.value)} />,
     }))
   ), [])
 
@@ -104,7 +93,7 @@ function CardProperties({ card, users, teams }: CardPropertiesProps) {
       <PropertyDropdown
         trigger={
           <>
-            <StatusIcon state={statusToIconState(status)} />
+            <StatusIcon state={dbStatusToIconState(status)} />
             {currentStatusLabel}
           </>
         }
@@ -171,6 +160,13 @@ function CardProperties({ card, users, teams }: CardPropertiesProps) {
 
 type TrackNodeKind = 'done' | 'active' | 'scheduled' | 'suggested'
 
+const TRACK_NODE_COLOR: Record<TrackNodeKind, string> = {
+  done: 'bg-[var(--green)]',
+  active: 'bg-[var(--accent)]',
+  scheduled: 'bg-[var(--border-default)]',
+  suggested: 'bg-[var(--text-faint)]',
+}
+
 function JourneyTrack({
   doneCount,
   hasActive,
@@ -191,14 +187,6 @@ function JourneyTrack({
 
   if (nodes.length === 0) return null
 
-  const nodeColor: Record<TrackNodeKind, string> = {
-    done: 'bg-[var(--green)]',
-    active: 'bg-[var(--accent)]',
-    scheduled: 'bg-[var(--border-default)]',
-    suggested: 'bg-[var(--text-faint)]',
-  }
-
-  // Connector takes the colour of the node it leads into
   return (
     <div className="flex items-center">
       {nodes.map((kind, i) => (
@@ -209,11 +197,11 @@ function JourneyTrack({
                 'w-1.5 h-[2px] shrink-0',
                 kind === 'suggested'
                   ? 'bg-[var(--border-subtle)]'
-                  : nodeColor[kind],
+                  : TRACK_NODE_COLOR[kind],
               )}
             />
           )}
-          <span className={cn('w-1.5 h-1.5 rounded-full shrink-0', nodeColor[kind])} />
+          <span className={cn('w-1.5 h-1.5 rounded-full shrink-0', TRACK_NODE_COLOR[kind])} />
         </span>
       ))}
     </div>

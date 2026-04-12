@@ -17,6 +17,7 @@ import {
 } from 'lucide-react'
 import { cn } from '../lib/cn'
 import { StatusIcon } from './StatusIcon'
+import { dbStatusToIconState } from '../lib/status'
 import { Avatar } from './Avatar'
 import { useUser } from './UserProvider'
 import {
@@ -387,23 +388,7 @@ function ConversationsList({
 }
 
 function SidebarStatusIcon({ status }: { status: string | null }) {
-  const state = (() => {
-    switch (status) {
-      case 'COMPLETE':
-      case 'SPEC_COMPLETE':
-        return 'complete' as const
-      case 'IN_PROGRESS':
-      case 'SPECIFYING':
-        return 'specifying' as const
-      case 'IMPLEMENTING':
-        return 'implementing' as const
-      case 'CANCELLED':
-        return 'cancelled' as const
-      default:
-        return 'not-started' as const
-    }
-  })()
-  return <StatusIcon state={state} size={11} />
+  return <StatusIcon state={dbStatusToIconState(status)} size={11} />
 }
 
 function UserMenu({ user }: { user: { displayName: string; avatarUrl: string | null } }) {

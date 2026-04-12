@@ -178,6 +178,17 @@ The implementation or conversation has diverged from the current spec. Update th
   },
 }
 
+/**
+ * Convert a skill/type ID into a presentable label.
+ * Handles both underscores (skill IDs: design_audit) and hyphens
+ * (journal types: spec-draft), title-casing the result.
+ */
+export function humaniseSkillId(id: string): string {
+  return id
+    .replace(/[-_]/g, ' ')
+    .replace(/^\w/, c => c.toUpperCase())
+}
+
 /** Get a skill by ID, returns undefined if not found */
 export function getSkill(id: string): Skill | undefined {
   return BUILT_IN_SKILLS[id]

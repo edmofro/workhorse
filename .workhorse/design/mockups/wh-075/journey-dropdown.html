@@ -1,0 +1,252 @@
+<!-- spec: workflow/journey-step-labels.md -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Journey dropdown — succinct labels</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg-page: #f8f7f4;
+      --bg-surface: #ffffff;
+      --bg-hover: #edeae5;
+      --text-primary: #1c1917;
+      --text-secondary: #57534e;
+      --text-muted: #a8a29e;
+      --text-faint: #d1cdc6;
+      --border-default: #dfdcd5;
+      --border-subtle: #eae7e1;
+      --accent: #c2410c;
+      --green: #16a34a;
+      --radius-md: 6px;
+      --radius-lg: 12px;
+      --shadow-lg: 0 8px 24px rgba(0,0,0,0.08), 0 2px 8px rgba(0,0,0,0.04);
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg-page);
+      display: flex;
+      justify-content: center;
+      padding: 80px 24px;
+    }
+
+    .scene {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 8px;
+      width: 400px;
+    }
+
+    .label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+    }
+
+    /* ─── Collapsed bar ─── */
+
+    .collapsed-bar {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 4px 8px;
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-primary);
+    }
+    .collapsed-bar:hover {
+      background: var(--bg-hover);
+    }
+
+    .dots {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+    .dot--done { background: var(--green); }
+    .dot--active { background: var(--accent); }
+    .dot--scheduled { border: 1.5px solid var(--border-default); }
+    .dot--suggested { border: 1.5px dashed var(--text-faint); }
+
+    .active-label {
+      animation: pulse 2s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    .chevron {
+      color: var(--text-faint);
+      font-size: 10px;
+    }
+
+    /* ─── Dropdown ─── */
+
+    .dropdown {
+      min-width: 240px;
+      max-width: 320px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-lg);
+      padding: 8px 0;
+    }
+
+    .entry {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 4px 12px;
+      font-size: 12px;
+    }
+
+    .entry-dot-wrap {
+      width: 16px;
+      display: flex;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .entry-label {
+      flex: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .entry--done .entry-label { color: var(--text-secondary); }
+    .entry--active .entry-label { color: var(--text-primary); font-weight: 500; }
+
+    .entry-meta {
+      font-size: 11px;
+      color: var(--text-faint);
+      flex-shrink: 0;
+    }
+    .entry--active .entry-meta {
+      color: var(--text-muted);
+    }
+
+    .separator {
+      height: 1px;
+      background: var(--border-subtle);
+      margin: 8px 0;
+    }
+
+    .section-label {
+      padding: 4px 12px 2px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-muted);
+    }
+
+    .entry--scheduled .entry-label,
+    .entry--suggested .entry-label {
+      color: var(--text-secondary);
+    }
+    .entry--suggested {
+      opacity: 0.6;
+    }
+
+    .entry-action {
+      font-size: 11px;
+      color: var(--text-faint);
+      cursor: pointer;
+      flex-shrink: 0;
+      padding: 0 2px;
+    }
+    .entry-action:hover {
+      color: var(--text-secondary);
+    }
+
+    /* ─── Comparison ─── */
+    .comparison {
+      display: flex;
+      gap: 40px;
+      align-items: flex-start;
+      margin-top: 40px;
+    }
+    .comparison-col {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .comparison-col .label {
+      text-align: center;
+    }
+    .dropdown--before .entry--done .entry-label {
+      font-size: 11px;
+    }
+  </style>
+</head>
+<body>
+  <div class="scene">
+    <div class="label">Collapsed (active step running)</div>
+    <div class="collapsed-bar">
+      <div class="dots">
+        <span class="dot dot--done"></span>
+        <span class="dot dot--done"></span>
+        <span class="dot dot--active"></span>
+        <span class="dot dot--scheduled"></span>
+        <span class="dot dot--suggested"></span>
+      </div>
+      <span class="active-label">Implementing</span>
+      <span class="chevron">▾</span>
+    </div>
+
+    <div style="height: 12px"></div>
+    <div class="label">Expanded dropdown — succinct labels</div>
+
+    <div class="dropdown">
+      <div class="entry entry--done">
+        <span class="entry-dot-wrap"><span class="dot dot--done"></span></span>
+        <span class="entry-label">Interview</span>
+        <span class="entry-meta">2 Apr</span>
+      </div>
+      <div class="entry entry--done">
+        <span class="entry-dot-wrap"><span class="dot dot--done"></span></span>
+        <span class="entry-label">Spec review</span>
+        <span class="entry-meta">3 Apr</span>
+      </div>
+      <div class="entry entry--active">
+        <span class="entry-dot-wrap"><span class="dot dot--active"></span></span>
+        <span class="entry-label">Implementing</span>
+        <span class="entry-meta">In progress</span>
+      </div>
+
+      <div class="separator"></div>
+      <div class="section-label">Scheduled</div>
+      <div class="entry entry--scheduled">
+        <span class="entry-dot-wrap"><span class="dot dot--scheduled"></span></span>
+        <span class="entry-label">Design audit</span>
+        <span class="entry-action">✕</span>
+      </div>
+
+      <div class="separator"></div>
+      <div class="section-label">Suggestions</div>
+      <div class="entry entry--suggested">
+        <span class="entry-dot-wrap"><span class="dot dot--suggested"></span></span>
+        <span class="entry-label">Create PR</span>
+        <span class="entry-action">→</span>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

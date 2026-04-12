@@ -208,6 +208,7 @@ export function useBranchStatus(cardId: string, enabled = true) {
         `/api/card-branch-status?cardId=${encodeURIComponent(cardId)}`,
       ),
     refetchInterval: 15_000, // Poll every 15s when card is open
+    refetchIntervalInBackground: false, // Pause polling when tab is hidden
     staleTime: 10_000,
     enabled,
   })

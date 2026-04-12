@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
 
   const { searchParams } = new URL(request.url)
   const cardId = searchParams.get('cardId')
-  if (!cardId) {
+  if (!cardId || !/^[A-Z]+-\d{1,6}$/.test(cardId)) {
     return NextResponse.json({ error: 'cardId param required' }, { status: 400 })
   }
 

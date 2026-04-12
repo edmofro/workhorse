@@ -6,7 +6,9 @@
  */
 
 import { cookies } from 'next/headers'
+import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '../prisma'
+import { hasProjectAccess } from './github'
 
 const SESSION_COOKIE = 'sessionUserId'
 const SESSION_MAX_AGE = 60 * 60 * 24 * 365 // 1 year
@@ -61,4 +63,48 @@ export async function requireCardAccess(
   if (!card) return null
 
   return card
+}
+
+type CardAuthUser = NonNullable<Awaited<ReturnType<typeof getCurrentUser>>>
+type CardAuthCard = NonNullable<Awaited<ReturnType<typeof requireCardAccess>>>
+
+/**
+ * Shared boilerplate for POST routes that act on a card.
+ * Handles auth (401), body parsing (400), card lookup (404), and project access (403).
+ */
+export function withCardAuth(
+  handler: (user: CardAuthUser, card: CardAuthCard) => Promise<Response>,
+) {
+  return async (request: NextRequest): Promise<Response> => {
+    let user: CardAuthUser
+    try {
+      user = await requireUser()
+    } catch {
+      return NextResponse.json({ error: 'Unauthorised' }, { status: 401 })
+    }
+
+    let cardId: string
+    try {
+      const body = await request.json()
+      cardId = body?.cardId
+    } catch {
+      return new Response('Invalid request body', { status: 400 })
+    }
+
+    if (!cardId) {
+      return new Response('Missing cardId', { status: 400 })
+    }
+
+    const card = await requireCardAccess(user.id, cardId)
+    if (!card) {
+      return new Response('Card not found', { status: 404 })
+    }
+
+    const { owner, repoName } = card.team.project
+    if (!await hasProjectAccess(user.accessToken, owner, repoName)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+
+    return handler(user, card)
+  }
 }

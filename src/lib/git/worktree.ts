@@ -73,6 +73,17 @@ async function git(
   return stdout.trim()
 }
 
+/** Environment variables for git commands that need GitHub token auth. */
+function tokenEnv(token: string): Record<string, string> {
+  return {
+    GIT_ASKPASS: '/bin/echo',
+    GIT_TERMINAL_PROMPT: '0',
+    GIT_CONFIG_VALUE_0: `https://x-access-token:${token}@github.com`,
+    GIT_CONFIG_KEY_0: `url.https://x-access-token:${token}@github.com.insteadOf`,
+    GIT_CONFIG_COUNT: '1',
+  }
+}
+
 /**
  * Throttle state for ensureBareClone — avoids fetching on every request.
  * Key: "owner/repo", Value: timestamp of last successful fetch.
@@ -368,13 +379,11 @@ export async function autoCommit(
 
   // Push to remote using GIT_ASKPASS to avoid persisting token in config
   const branchName = await git(['rev-parse', '--abbrev-ref', 'HEAD'], wtPath)
-  await git(['push', 'origin', branchName], wtPath, {
-    GIT_ASKPASS: '/bin/echo',
-    GIT_TERMINAL_PROMPT: '0',
-    GIT_CONFIG_VALUE_0: `https://x-access-token:${token}@github.com`,
-    GIT_CONFIG_KEY_0: `url.https://x-access-token:${token}@github.com.insteadOf`,
-    GIT_CONFIG_COUNT: '1',
-  })
+  try {
+    await git(['push', 'origin', branchName], wtPath, tokenEnv(token))
+  } catch {
+    throw new Error('git push failed')
+  }
 
   return changedFiles
 }
@@ -390,13 +399,11 @@ export async function pushBranch(
 ): Promise<void> {
   const wtPath = worktreePath(owner, repo, cardIdentifier)
   const branchName = await git(['rev-parse', '--abbrev-ref', 'HEAD'], wtPath)
-  await git(['push', 'origin', branchName], wtPath, {
-    GIT_ASKPASS: '/bin/echo',
-    GIT_TERMINAL_PROMPT: '0',
-    GIT_CONFIG_VALUE_0: `https://x-access-token:${token}@github.com`,
-    GIT_CONFIG_KEY_0: `url.https://x-access-token:${token}@github.com.insteadOf`,
-    GIT_CONFIG_COUNT: '1',
-  })
+  try {
+    await git(['push', 'origin', branchName], wtPath, tokenEnv(token))
+  } catch {
+    throw new Error('git push failed')
+  }
 }
 
 /**
@@ -413,22 +420,20 @@ export async function pullBranch(
 
   // Fetch latest from origin
   const barePath = bareClonePath(owner, repo)
-  await git(['fetch', 'origin'], barePath, {
-    GIT_ASKPASS: '/bin/echo',
-    GIT_TERMINAL_PROMPT: '0',
-    GIT_CONFIG_VALUE_0: `https://x-access-token:${token}@github.com`,
-    GIT_CONFIG_KEY_0: `url.https://x-access-token:${token}@github.com.insteadOf`,
-    GIT_CONFIG_COUNT: '1',
-  })
+  try {
+    await git(['fetch', 'origin'], barePath, tokenEnv(token))
+  } catch {
+    throw new Error('git fetch failed')
+  }
 
   // Rebase onto remote tracking branch
   const branchName = await git(['rev-parse', '--abbrev-ref', 'HEAD'], wtPath)
   try {
     await git(['rebase', `origin/${branchName}`], wtPath)
-  } catch (err) {
+  } catch {
     // Abort the in-progress rebase so the worktree isn't left in a broken state
     await git(['rebase', '--abort'], wtPath).catch(() => {})
-    throw err
+    throw new Error('Rebase failed — there may be conflicts')
   }
 }
 
@@ -643,26 +648,22 @@ export async function getBranchStatus(
 }> {
   const wtPath = worktreePath(owner, repo, cardIdentifier)
 
-  // Run independent queries in parallel: local changes + branch name
-  const [statusResult, branchResult] = await Promise.all([
-    git(['status', '--porcelain'], wtPath).catch(() => ''),
-    git(['rev-parse', '--abbrev-ref', 'HEAD'], wtPath).catch(() => ''),
-  ])
+  // git status --porcelain -b returns branch name + tracking info + changed files in one call
+  const statusOutput = await git(['status', '--porcelain', '-b'], wtPath).catch(() => '')
+  const lines = statusOutput.split('\n').filter(Boolean)
 
-  const localChanges = statusResult
-    ? statusResult.split('\n').filter(Boolean).length
-    : 0
+  // First line is branch header: "## branch...origin/branch [ahead N, behind M]"
+  const headerLine = lines[0] ?? ''
+  const localChanges = lines.length > 1 ? lines.length - 1 : 0
 
-  if (!branchResult) return { localChanges, unpushedCommits: 0, remoteAhead: 0 }
+  // Parse branch name from header
+  const branchMatch = headerLine.match(/^## (.+?)(?:\.{3}|$)/)
+  const branchName = branchMatch?.[1]
+  if (!branchName) return { localChanges, unpushedCommits: 0, remoteAhead: 0 }
 
-  const trackingBranch = `origin/${branchResult}`
+  const hasTracking = headerLine.includes('...')
 
-  // Check if remote tracking branch exists
-  const hasRemote = await git(['rev-parse', '--verify', trackingBranch], wtPath)
-    .then(() => true)
-    .catch(() => false)
-
-  if (!hasRemote) {
+  if (!hasTracking) {
     // No remote tracking — count commits since branching from the default branch
     const mergeBase = await git(['merge-base', `origin/${defaultBranch}`, 'HEAD'], wtPath).catch(() => '')
     const count = mergeBase
@@ -671,16 +672,18 @@ export async function getBranchStatus(
     return { localChanges, unpushedCommits: parseInt(count, 10) || 0, remoteAhead: 0 }
   }
 
-  // Ahead/behind counts are independent — run in parallel
-  const [ahead, behind] = await Promise.all([
-    git(['rev-list', '--count', `${trackingBranch}..HEAD`], wtPath).catch(() => '0'),
-    git(['rev-list', '--count', `HEAD..${trackingBranch}`], wtPath).catch(() => '0'),
-  ])
+  // Use rev-list --left-right --count to get ahead/behind in a single call
+  const trackingBranch = `origin/${branchName}`
+  const leftRight = await git(
+    ['rev-list', '--left-right', '--count', `${trackingBranch}...HEAD`],
+    wtPath,
+  ).catch(() => '0\t0')
+  const [behindStr, aheadStr] = leftRight.split('\t')
 
   return {
     localChanges,
-    unpushedCommits: parseInt(ahead, 10) || 0,
-    remoteAhead: parseInt(behind, 10) || 0,
+    unpushedCommits: parseInt(aheadStr, 10) || 0,
+    remoteAhead: parseInt(behindStr, 10) || 0,
   }
 }
 

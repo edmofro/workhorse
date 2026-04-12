@@ -208,7 +208,7 @@ function JourneyTrack({
               className={cn(
                 'w-1.5 h-[2px] shrink-0',
                 kind === 'suggested'
-                  ? 'bg-[var(--text-faint)] opacity-40'
+                  ? 'bg-[var(--border-subtle)]'
                   : nodeColor[kind],
               )}
             />

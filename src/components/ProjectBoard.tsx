@@ -19,7 +19,7 @@ import { useProjectBoard, NotFoundError } from '../lib/hooks/queries'
 import { updateCard } from '../lib/actions/cards'
 import { Topbar, TopbarRight } from './Topbar'
 import { BoardColumn, BoardCardOverlay, type CardData } from './BoardColumn'
-import { StatusDot } from './StatusDot'
+import { StatusIcon } from './StatusIcon'
 import { CreateModal } from './CreateModal'
 import { FilterPanel } from './FilterPanel'
 import { ProjectSelector } from './ProjectSelector'
@@ -316,7 +316,7 @@ function CancelledColumn({
         title={isDragging ? 'Drop to cancel' : 'Show cancelled cards'}
       >
         <div className="flex items-center gap-1 pb-3">
-          <StatusDot state="cancelled" />
+          <StatusIcon state="cancelled" />
           <span className="text-[11px] font-semibold text-[var(--text-faint)] uppercase tracking-[0.06em]">
             {cards.length}
           </span>

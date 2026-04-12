@@ -16,6 +16,8 @@ import {
   X,
 } from 'lucide-react'
 import { cn } from '../lib/cn'
+import { StatusIcon } from './StatusIcon'
+import { dbStatusToIconState } from '../lib/status'
 import { Avatar } from './Avatar'
 import { useUser } from './UserProvider'
 import {
@@ -365,7 +367,7 @@ function ConversationsList({
             onDismiss={() => handleDismiss(session.id)}
             indicator={
               isCardBound
-                ? <StatusDot status={session.cardStatus} />
+                ? <SidebarStatusIcon status={session.cardStatus} />
                 : <MessageCircle size={11} className="text-[var(--text-muted)] shrink-0" />
             }
           >
@@ -385,26 +387,8 @@ function ConversationsList({
   )
 }
 
-function StatusDot({ status }: { status: string | null }) {
-  if (status === 'COMPLETE' || status === 'SPEC_COMPLETE') {
-    return (
-      <span className="w-[8px] h-[8px] rounded-full shrink-0 bg-[var(--green)]" />
-    )
-  }
-  if (status === 'IN_PROGRESS' || status === 'SPECIFYING') {
-    return (
-      <span className="w-[8px] h-[8px] rounded-full shrink-0 bg-[var(--amber)]" />
-    )
-  }
-  if (status === 'IMPLEMENTING') {
-    return (
-      <span className="w-[8px] h-[8px] rounded-full shrink-0 bg-[var(--blue,#2563eb)]" />
-    )
-  }
-  // NOT_STARTED or unknown — hollow dot
-  return (
-    <span className="w-[8px] h-[8px] rounded-full shrink-0 border border-[var(--border-default)]" />
-  )
+function SidebarStatusIcon({ status }: { status: string | null }) {
+  return <StatusIcon state={dbStatusToIconState(status)} size={11} />
 }
 
 function UserMenu({ user }: { user: { displayName: string; avatarUrl: string | null } }) {

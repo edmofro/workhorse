@@ -118,12 +118,13 @@ The journey section is the visual representation of the journal. It occupies the
 ### Collapsed state
 
 ```
-[● ● ○ ◌ ◌]   Implementing   ▾
+●─●─●─○─○─◌   Implementing   ▾
 ```
 
-- [ ] Shows progress dots: green filled for completed steps, accent filled for the active step, hollow border for scheduled steps, dashed border for jockey suggestions
-- [ ] When a step is actively running, the step name is shown beside the dots and pulses to indicate activity
-- [ ] When no step is currently running (idle), only the dots are shown — no label
+- [ ] Shows a connected track of small nodes joined by short connectors — visually distinct from the status icon on the left side of the properties bar
+- [ ] Node colours: green for completed steps, accent for the active step, muted for scheduled steps, faint for jockey suggestions
+- [ ] When a step is actively running, the step name is shown beside the track and pulses to indicate activity
+- [ ] When no step is currently running (idle), only the track is shown — no label
 - [ ] Expand chevron (▾) indicates the section is expandable
 - [ ] The journey section is hidden entirely on cards with no journal entries — the bar shows only properties until activity begins
 
@@ -146,8 +147,8 @@ Clicking the journey section opens a compact dropdown anchored to the section. I
 
 - [ ] Completed entries show their label at full opacity with timestamps
 - [ ] The active step (if any) is shown at full weight with "In progress"
-- [ ] Scheduled items use a solid outline dot (○) — visually distinct from the dashed suggested dots (◌), communicating that these are committed to run
-- [ ] Suggested items are visually muted to communicate they are the jockey's guesses, not commitments
+- [ ] Scheduled items use muted filled nodes — visually distinct from the fainter suggested nodes, communicating that these are committed to run
+- [ ] Suggested items are visually faint to communicate they are the jockey's guesses, not commitments
 - [ ] Clicking a suggested step triggers that skill immediately and closes the dropdown
 - [ ] Clicking a completed step does nothing
 - [ ] The dropdown closes on click outside, Escape, or when an action is triggered
@@ -161,7 +162,7 @@ Users can schedule suggested steps to run automatically in sequence, rather than
 - [ ] Scheduled items run in order: when the jockey assesses that the current step has completed, it auto-starts the next scheduled item
 - [ ] Each scheduled item has a cancel (✕) button to remove it from the schedule and return it to "Suggestions"
 - [ ] Multiple instances of the same skill can be scheduled in sequence (e.g. design audit, resolve findings, design audit again)
-- [ ] Scheduled items are represented in the collapsed dots with solid outline dots, distinct from the dashed suggestion dots
+- [ ] Scheduled items are represented in the collapsed track as muted nodes, distinct from the fainter suggestion nodes
 
 ## PR bar
 

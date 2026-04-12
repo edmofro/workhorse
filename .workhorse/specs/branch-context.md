@@ -48,7 +48,6 @@ The PR row at the top of the sidebar progresses through these states:
 Clicking the collapsed PR row expands the detail section inline within the sidebar, pushing the file sections down. All detail is visible immediately — no nested collapsibles.
 
 - [ ] **CI status** — a compact row showing pass/fail status with a link to view on GitHub
-- [ ] **Auto-fix CI toggle** — when enabled, the fix-ci skill runs automatically when CI fails on the card's PR
 - [ ] **Branch name** — displayed in monospace, with a copy-to-clipboard action
 - [ ] **Local changes** — lists uncommitted file changes. If present, shows a "Commit" action that auto-generates a commit message and commits
 - [ ] **Unpushed commits** — lists commits not yet on the remote. If present, shows a "Push" action
@@ -91,7 +90,7 @@ When a rebase or pull encounters conflicts, the system uses an AI subagent to re
 
 ## Cross-references
 
-- `workflow-orchestration.md` — the create-pr skill is triggered by the sidebar's "Create PR" button; the fix-ci skill is available from the expanded PR section when CI fails
+- `workflow-orchestration.md` — the create-pr skill is triggered by the sidebar's "Create PR" button
 - `dependencies.md` — the From property is the user-facing surface for card dependencies; changing the base is equivalent to changing the dependency
 - `commit-specs.md` — auto-commit behaviour applies to branch operations; the "under the hood" branch management is surfaced through the From property and branch details
 - `card-navigation.md` — the properties bar contains the From property; the artifacts sidebar contains the PR section

@@ -15,8 +15,8 @@ Deep GitHub integration — authentication (SSO), create PRs, view diffs, run re
 
 ## Pull requests
 
-- [ ] PR creation is a skill (see `workflow-orchestration.md`) triggered from the PR chip in the properties bar (see `branch-context.md`). The agent decides the PR title and description; the backend executes the GitHub API call using the user's OAuth token
-- [ ] The PR chip shows the current PR state (open, merged, behind upstream) and provides access to PR details via a popover (see `branch-context.md`)
+- [ ] PR creation is a skill (see `workflow-orchestration.md`) triggered from the PR section in the artifacts sidebar (see `branch-context.md`). The agent decides the PR title and description; the backend executes the GitHub API call using the user's OAuth token
+- [ ] The PR section in the artifacts sidebar shows the current PR state (open, merged, behind upstream) and provides access to PR details via inline expansion (see `branch-context.md`)
 - [ ] The jockey detects PR status changes (opened, CI results, review comments) and updates the card's journal
 
 ## Code diffs

@@ -206,6 +206,16 @@ export function PrSection({
             <p className="text-[11px] text-red-500">{error}</p>
           )}
 
+          {/* CI status — placeholder until GitHub checks API is wired */}
+          {!isMerged && (
+            <div className="flex items-center justify-between px-0.5">
+              <span className="text-[11px] font-medium text-[var(--text-muted)]">CI</span>
+              <span className="text-[11px] text-[var(--text-faint)]">No checks</span>
+            </div>
+          )}
+
+          {(cardBranch || !isMerged) && <div className="h-px bg-[var(--border-subtle)]" />}
+
           {/* Branch details — shown immediately */}
           {cardBranch && (
             <BranchDetails

@@ -165,7 +165,7 @@ Users can schedule suggested steps to run automatically in sequence, rather than
 
 ## PR and branch controls
 
-PR creation and branch management are handled by the **PR chip** and **From property** in the properties bar (see `branch-context.md`). The create-pr skill is triggered directly from the PR chip's "Create PR" button. The fix-ci skill is available from the PR popover when CI fails on the card's PR.
+PR creation and branch management are handled by the **PR section** in the artifacts sidebar and the **From property** in the properties bar (see `branch-context.md`). The create-pr skill is triggered directly from the sidebar's "Create PR" button.
 
 ## Handoff
 

@@ -22,7 +22,8 @@ interface PrSectionProps {
   prTitle?: string | null
   prMerged?: boolean
   postMergeCount?: number
-  onPrCreated: (prUrl: string) => void
+  cardBranch?: string | null
+  onPrCreated: (prUrl: string, prNumber?: number) => void
 }
 
 function isSafeUrl(url: string): boolean {
@@ -47,6 +48,7 @@ export function PrSection({
   prTitle,
   prMerged = false,
   postMergeCount = 0,
+  cardBranch,
   onPrCreated,
 }: PrSectionProps) {
   const [isCreating, setIsCreating] = useState(false)
@@ -86,7 +88,7 @@ export function PrSection({
         throw new Error(data.error ?? 'Failed to create PR')
       }
       const data = await res.json()
-      onPrCreated(data.prUrl)
+      onPrCreated(data.prUrl, data.prNumber)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create PR')
     } finally {
@@ -204,20 +206,14 @@ export function PrSection({
             <p className="text-[11px] text-red-500">{error}</p>
           )}
 
-          {/* Auto-fix CI toggle */}
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-medium text-[var(--text-muted)]">Auto-fix CI</span>
-            <ToggleSwitch enabled={false} onChange={() => { /* TODO: persist */ }} />
-          </div>
-
-          <div className="h-px bg-[var(--border-subtle)]" />
-
           {/* Branch details — shown immediately */}
-          <BranchDetails
-            branchName={`workhorse/card-${cardId.slice(0, 8)}`}
-            copied={copied}
-            onCopy={handleCopyBranch}
-          />
+          {cardBranch && (
+            <BranchDetails
+              branchName={cardBranch}
+              copied={copied}
+              onCopy={handleCopyBranch}
+            />
+          )}
 
           {/* Prepare new PR for merged+new */}
           {state === 'merged-new' && (
@@ -247,33 +243,6 @@ export function PrSection({
         </div>
       )}
     </div>
-  )
-}
-
-// ─── Toggle Switch ──────────────────────────────────────────────────────────
-
-function ToggleSwitch({
-  enabled,
-  onChange,
-}: {
-  enabled: boolean
-  onChange: (val: boolean) => void
-}) {
-  return (
-    <button
-      onClick={() => onChange(!enabled)}
-      className={cn(
-        'relative w-7 h-4 rounded-full transition-colors duration-100 cursor-pointer',
-        enabled ? 'bg-[var(--green)]' : 'bg-[var(--bg-inset)]',
-      )}
-    >
-      <span
-        className={cn(
-          'absolute top-0.5 w-3 h-3 rounded-full bg-white shadow-sm transition-[left,right] duration-100',
-          enabled ? 'left-3.5' : 'left-0.5',
-        )}
-      />
-    </button>
   )
 }
 

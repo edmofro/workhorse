@@ -64,6 +64,7 @@ interface CardWorkspaceProps {
     dependsOn: { identifier: string; title: string }[]
     cardBranch: string | null
     prUrl?: string | null
+    prNumber?: number | null
   }
   users: { id: string; displayName: string }[]
   teams: { id: string; name: string }[]
@@ -451,10 +452,12 @@ export function CardWorkspace({
     [handleSendMessage],
   )
 
-  /** Handle PR creation — update local state with the new PR URL */
+  /** Handle PR creation — update local state with the new PR URL and number */
   const [localPrUrl, setLocalPrUrl] = useState<string | null>(card.prUrl ?? null)
-  const handlePrCreated = useCallback((prUrl: string) => {
+  const [localPrNumber, setLocalPrNumber] = useState<number | null>(card.prNumber ?? null)
+  const handlePrCreated = useCallback((prUrl: string, prNumber?: number) => {
     setLocalPrUrl(prUrl)
+    if (prNumber) setLocalPrNumber(prNumber)
     router.refresh()
   }, [router])
 
@@ -827,6 +830,8 @@ export function CardWorkspace({
               cardId: card.id,
               hasCodeChanges: jockey.hasCodeChanges,
               prUrl: localPrUrl,
+              prNumber: localPrNumber,
+              cardBranch: card.cardBranch,
               onPrCreated: handlePrCreated,
             }}
           />

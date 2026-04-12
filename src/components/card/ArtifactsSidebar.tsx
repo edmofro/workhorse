@@ -25,7 +25,9 @@ interface ArtifactsSidebarProps {
     cardId: string
     hasCodeChanges: boolean
     prUrl: string | null
-    onPrCreated: (prUrl: string) => void
+    prNumber: number | null
+    cardBranch: string | null
+    onPrCreated: (prUrl: string, prNumber?: number) => void
   }
 }
 
@@ -46,6 +48,8 @@ export function ArtifactsSidebar({
           cardId={pr.cardId}
           hasCodeChanges={pr.hasCodeChanges}
           prUrl={pr.prUrl}
+          prNumber={pr.prNumber}
+          cardBranch={pr.cardBranch}
           onPrCreated={pr.onPrCreated}
         />
       )}

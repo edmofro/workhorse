@@ -80,6 +80,7 @@ export async function GET(request: NextRequest) {
       tags: card.tags,
       cardBranch: card.cardBranch,
       prUrl: card.prUrl,
+      prNumber: card.prNumber,
       team: { id: card.team.id, name: card.team.name, colour: card.team.colour },
       project: {
         id: card.team.project.id,

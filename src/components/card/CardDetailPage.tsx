@@ -86,6 +86,7 @@ export function CardDetailPage({ cardId, initialSessionId }: Props) {
         dependsOn: card.dependsOn,
         cardBranch: card.cardBranch,
         prUrl: card.prUrl,
+        prNumber: card.prNumber ?? null,
       }}
       users={users}
       teams={teams}

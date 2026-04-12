@@ -66,6 +66,7 @@ model Card {
   cardBranch      String?  // Git branch for this card's work (internal, not surfaced to user)
   prNumber        Int?     // GitHub PR number
   prUrl           String?  // GitHub PR URL
+  touchedFiles    String   @default("[]") // JSON array of file paths modified by agents
   lastActivityAt  DateTime @default(now()) // For stale worktree cleanup
 
   // Quality step tracking

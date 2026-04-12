@@ -20,6 +20,7 @@ Skills can be triggered from multiple surfaces:
 
 - [ ] **Pills** — contextual action buttons above the chat input. Clicking a pill triggers the corresponding skill
 - [ ] **Journey section** — clicking a suggested item in the journey section of the properties bar starts that skill immediately. Alternatively, the user can schedule it to run automatically after the current step completes (see "Scheduling" under Journey section)
+- [ ] **Free-form text** — when the user sends a message without selecting a pill, the jockey's pre-turn pass assesses whether the message clearly invokes a skill. If it does, that skill's instructions are injected alongside the message, producing the same agent behaviour as a pill click. If the intent is ambiguous or conversational, no skill is injected and the agent responds with general context.
 
 ### Built-in skills
 
@@ -47,6 +48,8 @@ Projects can define custom skills as prompt files in `.workhorse/skills/`. Each 
 
 Each inline skill maps to a system prompt fragment that shapes the agent's behaviour. The mode flows from the skill trigger → API → system prompt builder. The agent receives mode-specific instructions alongside the user's message, so it knows to conduct an interview, or implement from specs, or follow directed editing instructions.
 
+When a skill is identified — whether from a pill, journey bar, or the jockey's pre-turn intent detection — the same skill instructions are injected. The mechanism of triggering makes no difference to the agent.
+
 ## The jockey
 
 The jockey is a lightweight observer that watches the card's conversation and maintains an awareness of where things are. It runs on every message (user or agent), decides whether anything noteworthy just happened, and keeps the journey and pill suggestions current.
@@ -55,14 +58,22 @@ Named after the rider who guides a workhorse — it doesn't do the work, but it 
 
 ### When the jockey runs
 
-The jockey runs a Haiku LLM pass in response to two kinds of trigger:
+The jockey runs two Haiku LLM passes per user message — one before the agent turn and one after — plus a pass in response to external state changes:
 
-- [ ] **Every message** (user or agent) posted to the conversation
+- [ ] **Pre-turn** — runs before the agent processes the user's message. Assesses whether the message clearly invokes a skill, so the right skill instructions can be injected before the agent responds
+- [ ] **Post-turn** — runs after the agent responds. Updates the journal, journey suggestions, and pills based on what happened in the exchange
 - [ ] **External state changes** detected by background polling — new commits on the card's branch, PR status updates, CI results
 
-Both triggers feed into the same assessment. The jockey reads the new input (message, or description of the external change) plus a few recent messages for context, against the current journal.
+The pre-turn and post-turn passes share the same context inputs (journal, recent conversation, card state) but have different outputs.
 
-### What the jockey does on each pass
+### What the jockey does pre-turn
+
+- [ ] Reads the incoming user message and recent conversation context
+- [ ] Returns a detected skill ID if the message clearly invokes a specific skill (e.g. "interview me", "just write a spec", "start implementing")
+- [ ] Returns nothing if the message is conversational, ambiguous, or a natural continuation of the current flow — in which case no skill instructions are injected
+- [ ] The detection is intentionally conservative: when in doubt, the jockey does not inject a skill
+
+### What the jockey does post-turn
 
 - [ ] Decides whether anything noteworthy just happened — did something finish? Did something start? Has the user's intent shifted? Did an external event change the picture?
 - [ ] Writes journal entries when warranted (see "Journal" section)

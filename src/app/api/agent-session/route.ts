@@ -1,5 +1,5 @@
 import '../../../lib/ai/ensureSessionStorage'
-import { NextRequest } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { query } from '@anthropic-ai/claude-agent-sdk'
 import type { SDKUserMessage } from '@anthropic-ai/claude-agent-sdk'
 import type { ImageBlockParam, TextBlockParam } from '@anthropic-ai/sdk/resources/messages/messages'
@@ -22,8 +22,8 @@ import {
 import { branchNameFromCard } from '../../../lib/git/branchNaming'
 
 import { safeParseTouchedFiles } from '../../../lib/safeParseTouchedFiles'
-import { emit as emitSidebarEvent, type SidebarEvent } from '../../../lib/sidebarEvents'
 import { publish as publishSessionEvent, close as closeSessionChannel } from '../../../lib/sessionEvents'
+import { acquireAdvisoryLock, releaseAdvisoryLock } from '../../../lib/advisoryLock'
 
 class StaleSessionError extends Error {
   constructor() {
@@ -44,14 +44,14 @@ export async function POST(request: NextRequest) {
   }
 
   if (!cardId || !message) {
-    return new Response('Missing cardId or message', { status: 400 })
+    return NextResponse.json({ error: 'Missing cardId or message' }, { status: 400 })
   }
 
   // Fetch card with context and verify team membership
   const card = await requireCardAccess(user.id, cardId)
 
   if (!card) {
-    return new Response('Card not found', { status: 404 })
+    return NextResponse.json({ error: 'Card not found' }, { status: 404 })
   }
 
   // Resolve or create ConversationSession
@@ -59,13 +59,13 @@ export async function POST(request: NextRequest) {
   if (incomingSessionId) {
     convSession = await prisma.conversationSession.findUnique({ where: { id: incomingSessionId } })
     if (!convSession) {
-      return new Response('Session not found', { status: 404 })
+      return NextResponse.json({ error: 'Session not found' }, { status: 404 })
     }
     if (convSession.userId !== user.id) {
-      return new Response('Forbidden', { status: 403 })
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
     if (convSession.cardId !== cardId) {
-      return new Response('Session does not belong to this card', { status: 400 })
+      return NextResponse.json({ error: 'Session does not belong to this card' }, { status: 400 })
     }
   } else {
     convSession = await prisma.conversationSession.create({
@@ -77,20 +77,15 @@ export async function POST(request: NextRequest) {
     })
   }
 
-  // Helper to build sidebar event payload
-  const sidebarSession = (overrides?: Partial<SidebarEvent['session']>): SidebarEvent['session'] => ({
-    id: convSession.id,
-    title: convSession.title,
-    messageCount: convSession.messageCount,
-    lastMessageAt: new Date().toISOString(),
-    cardId: card.id,
-    cardIdentifier: card.identifier,
-    cardTitle: card.title,
-    cardStatus: card.status,
-    teamColour: card.team.colour,
-    projectName: card.team.project.name,
-    ...overrides,
+  // Mark session as active immediately — before any SDK setup, so the
+  // sidebar and other views reflect activity during the setup phase
+  await prisma.conversationSession.update({
+    where: { id: convSession.id },
+    data: { agentActiveAt: new Date() },
   })
+
+  const convSessionId = convSession.id
+  const isFirstMessage = convSession.messageCount === 0
 
   const { project } = card.team
   const { owner, repoName, defaultBranch } = project
@@ -237,215 +232,189 @@ export async function POST(request: NextRequest) {
     ...(convSession.agentSessionId ? { resume: convSession.agentSessionId } : {}),
   }
 
-  // Stream SSE to the client
-  const encoder = new TextEncoder()
-  let agentSdkSessionId = convSession.agentSessionId ?? ''
-  const convSessionId = convSession.id
-  const isFirstMessage = convSession.messageCount === 0
-
-  // AbortController for server-side agent cancellation — wired to the
-  // client's request signal so disconnecting the SSE stream also halts
-  // the SDK's agent loop (tool calls, API requests, etc).
-  const agentAbort = new AbortController()
-  if (request.signal.aborted) {
-    agentAbort.abort()
-  } else {
-    request.signal.addEventListener('abort', () => agentAbort.abort(), { once: true })
-  }
-
-  const stream = new ReadableStream({
-    async start(controller) {
-      // Safe enqueue — silently drops writes if the client has disconnected
-      function enqueue(chunk: Uint8Array) {
-        try { controller.enqueue(chunk) } catch { /* stream closed */ }
-      }
-
-      try {
-        // Send session ID to client immediately so it can track the session
-        // before the agent stream completes (prevents duplicate session creation)
-        enqueue(
-          encoder.encode(
-            `data: ${JSON.stringify({ type: 'session', sessionId: convSessionId })}\n\n`,
-          ),
-        )
-
-        // Mark session as streaming in the database
-        await prisma.conversationSession.update({
-          where: { id: convSessionId },
-          data: { streamingStartedAt: new Date() },
-        })
-
-        // Notify sidebar: new/active session is streaming
-        emitSidebarEvent({
-          type: isFirstMessage ? 'session_created' : 'streaming_start',
-          userId: user.id,
-          session: sidebarSession(),
-        })
-
-        let agentQuery: ReturnType<typeof query>
-
-        try {
-          agentQuery = query({ prompt: promptInput, options: { ...options, abortController: agentAbort } })
-          // Eagerly pull the first event to detect stale session errors early
-          const firstChunk = await (agentQuery as AsyncIterable<unknown>)[Symbol.asyncIterator]().next()
-          if (!firstChunk.done) {
-            const event = firstChunk.value as Record<string, unknown>
-
-            // Check if the first event itself is an error about a missing session
-            if (
-              event.type === 'result' &&
-              event.subtype === 'error_during_execution' &&
-              Array.isArray(event.errors) &&
-              (event.errors as string[]).some((e: string) => e.includes('No conversation found with session ID'))
-            ) {
-              throw new StaleSessionError()
-            }
-
-            // Process the first event normally
-            if (!agentSdkSessionId && 'session_id' in event && event.session_id) {
-              agentSdkSessionId = event.session_id as string
-              await prisma.conversationSession.update({
-                where: { id: convSessionId },
-                data: { agentSessionId: agentSdkSessionId },
-              })
-            }
-            enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`))
-            publishSessionEvent(convSessionId, event as Record<string, unknown>)
-          }
-        } catch (err) {
-          // If the session ID is stale, clear it and retry without resume
-          const isStaleSession =
-            err instanceof StaleSessionError ||
-            (err instanceof Error && err.message.includes('No conversation found with session ID'))
-
-          if (isStaleSession && convSession.agentSessionId) {
-            console.warn(`Stale agent session ${convSession.agentSessionId} for conversation ${convSessionId}, starting fresh`)
-            agentSdkSessionId = ''
-            await prisma.conversationSession.update({
-              where: { id: convSessionId },
-              data: { agentSessionId: null },
-            })
-            // Retry without resume
-            const freshOptions = { ...options, abortController: agentAbort }
-            delete (freshOptions as Record<string, unknown>).resume
-            agentQuery = query({ prompt: promptInput, options: freshOptions })
-          } else {
-            throw err
-          }
-        }
-
-        let assistantText = ''
-
-        for await (const event of agentQuery) {
-          // Capture agent SDK session ID from first message
-          if (!agentSdkSessionId && 'session_id' in event && event.session_id) {
-            agentSdkSessionId = event.session_id
-            await prisma.conversationSession.update({
-              where: { id: convSessionId },
-              data: { agentSessionId: agentSdkSessionId },
-            })
-          }
-
-          // Capture assistant text for title refinement
-          if (event.type === 'assistant') {
-            const msg = (event as unknown as Record<string, unknown>).message as Record<string, unknown> | undefined
-            if (msg?.content && Array.isArray(msg.content)) {
-              const text = (msg.content as Array<Record<string, unknown>>)
-                .filter((c) => c.type === 'text')
-                .map((c) => c.text as string)
-                .join('')
-              if (text) assistantText += text
-            }
-          }
-
-          // Stream event as SSE and publish to session channel for other subscribers
-          const sseData = JSON.stringify(event)
-          enqueue(
-            encoder.encode(`data: ${sseData}\n\n`),
-          )
-          publishSessionEvent(convSessionId, event as Record<string, unknown>)
-        }
-
-        // Agent turn complete — auto-commit, release locks, update session metadata
-        await finaliseSessionAfterExchange(enqueue, encoder, {
-          owner,
-          repoName,
-          card,
-          cardId,
-          user,
-          convSessionId,
-          isFirstMessage,
-          convSessionTitle: convSession.title,
-          message,
-          cardTitle: card.title,
-          assistantText,
-          sidebarSession,
-        })
-
-        // Run jockey assessment and send before [DONE] so the client
-        // always receives it before the stream is considered complete.
-        try {
-          const jockeyResult = await runJockeyAfterExchange(
-            cardId,
-            convSessionId,
-            card.title,
-            card.status,
-            message,
-            assistantText,
-          )
-          if (jockeyResult) {
-            enqueue(
-              encoder.encode(
-                `data: ${JSON.stringify({ type: 'jockey', ...jockeyResult })}\n\n`,
-              ),
-            )
-          }
-        } catch (jockeyErr) {
-          console.warn('[jockey] Post-exchange assessment failed:', jockeyErr)
-        }
-
-        enqueue(encoder.encode('data: [DONE]\n\n'))
-        // Clear streaming status and close session channel
-        await prisma.conversationSession.update({
-          where: { id: convSessionId },
-          data: { streamingStartedAt: null },
-        }).catch(() => {})
-        closeSessionChannel(convSessionId)
-        controller.close()
-      } catch (err) {
-        const errorMsg = err instanceof Error ? err.message : 'Interview failed'
-        enqueue(
-          encoder.encode(
-            `data: ${JSON.stringify({ type: 'error', message: errorMsg })}\n\n`,
-          ),
-        )
-        // Clear streaming status and close session channel on error too
-        await prisma.conversationSession.update({
-          where: { id: convSessionId },
-          data: { streamingStartedAt: null },
-        }).catch(() => {})
-        closeSessionChannel(convSessionId)
-        controller.close()
-      }
-    },
+  // Fire off the agent query in the background — events are delivered
+  // to the client via the /api/sessions/[id]/events SSE endpoint
+  runAgentInBackground({
+    promptInput,
+    options,
+    convSession,
+    convSessionId,
+    isFirstMessage,
+    owner,
+    repoName,
+    card,
+    cardId,
+    user,
+    message,
   })
 
-  return new Response(stream, {
-    headers: {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
-      Connection: 'keep-alive',
-    },
-  })
+  // Return immediately with the session ID so the client can subscribe
+  return NextResponse.json({ sessionId: convSessionId })
 }
 
 /**
- * Post-stream cleanup: auto-commit, release locks, update session metadata.
+ * Run the Agent SDK query in the background. All events are published to
+ * the in-memory pub/sub channel; the client subscribes via
+ * /api/sessions/[id]/events.
+ */
+function runAgentInBackground(ctx: {
+  promptInput: string | AsyncIterable<SDKUserMessage>
+  options: Parameters<typeof query>[0]['options']
+  convSession: { agentSessionId: string | null; title: string | null }
+  convSessionId: string
+  isFirstMessage: boolean
+  owner: string
+  repoName: string
+  card: { id: string; identifier: string; title: string; status: string; team: { colour: string; project: { name: string } } }
+  cardId: string
+  user: { id: string; displayName: string; githubUsername: string; accessToken: string }
+  message: string
+}) {
+  // Use an unhandled-safe async IIFE so errors don't crash the process
+  void (async () => {
+    let agentSdkSessionId = ctx.convSession.agentSessionId ?? ''
+
+    // Acquire advisory lock — released on completion or implicitly on crash
+    await acquireAdvisoryLock(ctx.convSessionId)
+
+    try {
+      let agentQuery: ReturnType<typeof query>
+
+      try {
+        agentQuery = query({ prompt: ctx.promptInput, options: ctx.options })
+        // Eagerly pull the first event to detect stale session errors early
+        const firstChunk = await (agentQuery as AsyncIterable<unknown>)[Symbol.asyncIterator]().next()
+        if (!firstChunk.done) {
+          const event = firstChunk.value as Record<string, unknown>
+
+          // Check if the first event itself is an error about a missing session
+          if (
+            event.type === 'result' &&
+            event.subtype === 'error_during_execution' &&
+            Array.isArray(event.errors) &&
+            (event.errors as string[]).some((e: string) => e.includes('No conversation found with session ID'))
+          ) {
+            throw new StaleSessionError()
+          }
+
+          // Process the first event normally
+          if (!agentSdkSessionId && 'session_id' in event && event.session_id) {
+            agentSdkSessionId = event.session_id as string
+            await prisma.conversationSession.update({
+              where: { id: ctx.convSessionId },
+              data: { agentSessionId: agentSdkSessionId },
+            })
+          }
+          publishSessionEvent(ctx.convSessionId, event as Record<string, unknown>)
+        }
+      } catch (err) {
+        // If the session ID is stale, clear it and retry without resume
+        const isStaleSession =
+          err instanceof StaleSessionError ||
+          (err instanceof Error && err.message.includes('No conversation found with session ID'))
+
+        if (isStaleSession && ctx.convSession.agentSessionId) {
+          console.warn(`Stale agent session ${ctx.convSession.agentSessionId} for conversation ${ctx.convSessionId}, starting fresh`)
+          agentSdkSessionId = ''
+          await prisma.conversationSession.update({
+            where: { id: ctx.convSessionId },
+            data: { agentSessionId: null },
+          })
+          // Retry without resume
+          const freshOptions = { ...ctx.options }
+          delete (freshOptions as Record<string, unknown>).resume
+          agentQuery = query({ prompt: ctx.promptInput, options: freshOptions })
+        } else {
+          throw err
+        }
+      }
+
+      let assistantText = ''
+
+      for await (const event of agentQuery) {
+        // Capture agent SDK session ID from first message
+        if (!agentSdkSessionId && 'session_id' in event && event.session_id) {
+          agentSdkSessionId = event.session_id
+          await prisma.conversationSession.update({
+            where: { id: ctx.convSessionId },
+            data: { agentSessionId: agentSdkSessionId },
+          })
+        }
+
+        // Capture assistant text for title refinement
+        if (event.type === 'assistant') {
+          const msg = (event as unknown as Record<string, unknown>).message as Record<string, unknown> | undefined
+          if (msg?.content && Array.isArray(msg.content)) {
+            const text = (msg.content as Array<Record<string, unknown>>)
+              .filter((c) => c.type === 'text')
+              .map((c) => c.text as string)
+              .join('')
+            if (text) assistantText += text
+          }
+        }
+
+        // Publish event to session channel for subscribers
+        publishSessionEvent(ctx.convSessionId, event as Record<string, unknown>)
+      }
+
+      // Agent turn complete — auto-commit, update session metadata
+      await finaliseSessionAfterExchange({
+        owner: ctx.owner,
+        repoName: ctx.repoName,
+        card: ctx.card,
+        cardId: ctx.cardId,
+        user: ctx.user,
+        convSessionId: ctx.convSessionId,
+        isFirstMessage: ctx.isFirstMessage,
+        convSessionTitle: ctx.convSession.title,
+        message: ctx.message,
+        cardTitle: ctx.card.title,
+        assistantText,
+      })
+
+      // Run jockey assessment and publish result via pub/sub
+      try {
+        const jockeyResult = await runJockeyAfterExchange(
+          ctx.cardId,
+          ctx.convSessionId,
+          ctx.card.title,
+          ctx.card.status,
+          ctx.message,
+          assistantText,
+        )
+        if (jockeyResult) {
+          publishSessionEvent(ctx.convSessionId, { type: 'jockey', ...jockeyResult })
+        }
+      } catch (jockeyErr) {
+        console.warn('[jockey] Post-exchange assessment failed:', jockeyErr)
+      }
+
+      // Clear activity status, release lock, and close session channel
+      await releaseAdvisoryLock(ctx.convSessionId)
+      await prisma.conversationSession.update({
+        where: { id: ctx.convSessionId },
+        data: { agentActiveAt: null },
+      }).catch(() => {})
+      closeSessionChannel(ctx.convSessionId)
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : 'Agent session failed'
+      publishSessionEvent(ctx.convSessionId, { type: 'error', message: errorMsg })
+      // Clear activity status, release lock, and close session channel on error too
+      await releaseAdvisoryLock(ctx.convSessionId)
+      await prisma.conversationSession.update({
+        where: { id: ctx.convSessionId },
+        data: { agentActiveAt: null },
+      }).catch(() => {})
+      closeSessionChannel(ctx.convSessionId)
+    }
+  })()
+}
+
+/**
+ * Post-agent cleanup: auto-commit, update session metadata.
  * Only called on the success path (full agent response received).
  */
 async function finaliseSessionAfterExchange(
-  enqueue: (chunk: Uint8Array) => void,
-  encoder: TextEncoder,
   ctx: {
     owner: string
     repoName: string
@@ -458,7 +427,6 @@ async function finaliseSessionAfterExchange(
     message: string
     cardTitle: string
     assistantText: string
-    sidebarSession: (overrides?: Partial<SidebarEvent['session']>) => SidebarEvent['session']
   },
 ) {
   try {
@@ -484,12 +452,7 @@ async function finaliseSessionAfterExchange(
         data: { touchedFiles: JSON.stringify(allFiles) },
       })
 
-      enqueue(
-        encoder.encode(
-          `data: ${JSON.stringify({ type: 'commit', files: changedFiles })}\n\n`,
-        ),
-      )
-
+      publishSessionEvent(ctx.convSessionId, { type: 'commit', files: changedFiles })
     }
   } catch (commitErr) {
     console.error('Auto-commit failed:', commitErr)
@@ -513,28 +476,16 @@ async function finaliseSessionAfterExchange(
     select: { title: true },
   })
 
-  // Send title update to client for sidebar refresh
+  // Publish title update via pub/sub so the client can update
   if (updatedSession.title) {
-    enqueue(
-      encoder.encode(
-        `data: ${JSON.stringify({
-          type: 'session_update',
-          sessionId: ctx.convSessionId,
-          title: updatedSession.title,
-        })}\n\n`,
-      ),
-    )
+    publishSessionEvent(ctx.convSessionId, {
+      type: 'session_update',
+      sessionId: ctx.convSessionId,
+      title: updatedSession.title,
+    })
   }
 
-  // Notify sidebar: streaming finished, update title/messageCount
-  emitSidebarEvent({
-    type: 'streaming_stop',
-    userId: ctx.user.id,
-    session: ctx.sidebarSession({
-      title: updatedSession.title,
-      lastMessageAt: now.toISOString(),
-    }),
-  })
+  // Sidebar picks up the changes automatically via DB LISTEN/NOTIFY trigger
 }
 
 /**

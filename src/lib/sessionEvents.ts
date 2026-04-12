@@ -6,10 +6,12 @@
  * conversation) receive the last N events as replay, then live events.
  */
 
+import { prisma } from './prisma'
+
 const REPLAY_BUFFER_SIZE = 50
 
-/** Sessions with streamingStartedAt older than this are considered stale. */
-export const STALE_STREAMING_THRESHOLD_MS = 10 * 60 * 1000 // 10 minutes
+/** Sessions with agentActiveAt older than this are considered stale. */
+export const STALE_ACTIVITY_THRESHOLD_MS = 10 * 60 * 1000 // 10 minutes
 
 type EventListener = (event: Record<string, unknown>) => void
 
@@ -123,21 +125,10 @@ export function isActive(sessionId: string): boolean {
   return channels.has(sessionId)
 }
 
-// ── Stale streaming cleanup ──
-
-// Lazy import to avoid circular dependency at module load time.
-// prisma is only resolved on first call to clearStaleSessions().
-let _prisma: typeof import('../prisma').prisma | null = null
-async function getPrisma() {
-  if (!_prisma) {
-    const mod = await import('../prisma')
-    _prisma = mod.prisma
-  }
-  return _prisma
-}
+// ── Stale activity cleanup ──
 
 /**
- * Clear stale streamingStartedAt flags. Accepts an optional scope:
+ * Clear stale agentActiveAt flags. Accepts an optional scope:
  * - no args: clears all stale sessions (for startup cleanup)
  * - { userId }: clears stale sessions for a specific user
  * - { sessionId }: clears a single stale session
@@ -147,22 +138,21 @@ async function getPrisma() {
 export async function clearStaleSessions(
   scope?: { userId?: string; sessionId?: string },
 ): Promise<number> {
-  const prisma = await getPrisma()
-  const staleThreshold = new Date(Date.now() - STALE_STREAMING_THRESHOLD_MS)
+  const staleThreshold = new Date(Date.now() - STALE_ACTIVITY_THRESHOLD_MS)
 
   if (scope?.sessionId) {
     const result = await prisma.conversationSession.updateMany({
       where: {
         id: scope.sessionId,
-        streamingStartedAt: { not: null, lte: staleThreshold },
+        agentActiveAt: { not: null, lte: staleThreshold },
       },
-      data: { streamingStartedAt: null },
+      data: { agentActiveAt: null },
     })
     return result.count
   }
 
   const where: Record<string, unknown> = {
-    streamingStartedAt: { not: null, lte: staleThreshold },
+    agentActiveAt: { not: null, lte: staleThreshold },
   }
   if (scope?.userId) {
     where.userId = scope.userId
@@ -170,7 +160,7 @@ export async function clearStaleSessions(
 
   const result = await prisma.conversationSession.updateMany({
     where,
-    data: { streamingStartedAt: null },
+    data: { agentActiveAt: null },
   })
   return result.count
 }

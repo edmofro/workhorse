@@ -7,8 +7,8 @@ import { prisma } from '../../../lib/prisma'
  * GET /api/chat-history?sessionId=xxx
  *
  * Retrieves chat history for a conversation session from the Agent SDK session transcript.
- * Falls back gracefully if the session no longer exists or getSessionMessages
- * is not available.
+ * Messages are classified as 'interim', 'final', or 'in_progress' based on their position
+ * in the transcript and whether the agent is currently active.
  */
 export async function GET(request: NextRequest) {
   const user = await requireUser()
@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
 
   const convSession = await prisma.conversationSession.findUnique({
     where: { id: sessionId },
-    select: { agentSessionId: true, userId: true },
+    select: { agentSessionId: true, userId: true, agentActiveAt: true },
   })
 
   if (!convSession) {
@@ -37,9 +37,10 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ messages: [] })
   }
 
+  const isAgentActive = convSession.agentActiveAt !== null
+
   try {
     // Attempt to load session messages from the Agent SDK
-    // The SDK stores sessions on disk; getSessionMessages retrieves them
     const sdk = await import('@anthropic-ai/claude-agent-sdk')
     const getSessionMessages = 'getSessionMessages' in sdk ? sdk.getSessionMessages : undefined
     if (typeof getSessionMessages !== 'function') {
@@ -52,13 +53,11 @@ export async function GET(request: NextRequest) {
     }
 
     // Map SDK transcript to our message format
-    // SDK SessionMessage shape: { type: 'user'|'assistant', message: unknown, uuid, session_id }
     const rawMessages = transcript
       .filter((msg: Record<string, unknown>) =>
         msg.type === 'user' || msg.type === 'assistant',
       )
       .map((msg: Record<string, unknown>, idx: number) => {
-        // The actual content is in msg.message (an API message object), not msg.content
         const apiMessage = msg.message as Record<string, unknown> | undefined
         let content = ''
         if (typeof apiMessage?.content === 'string') {
@@ -78,24 +77,93 @@ export async function GET(request: NextRequest) {
           createdAt: (msg.timestamp as string) ?? null,
         }
       })
-      .filter((msg: { content: string }) => msg.content.length > 0)
+      // Exclude empty assistant messages (turns that only used tools)
+      .filter((msg: { role: string; content: string }) =>
+        msg.role === 'user' || msg.content.length > 0,
+      )
 
-    // Collapse consecutive assistant messages into one — the SDK stores
-    // each internal agent turn separately, but the UI shows a single
-    // assistant bubble per user message (matching the live streaming view).
-    const messages: typeof rawMessages = []
-    for (const msg of rawMessages) {
-      const prev = messages[messages.length - 1]
-      if (prev && prev.role === 'assistant' && msg.role === 'assistant') {
-        prev.content = prev.content + '\n\n' + msg.content
-      } else {
-        messages.push({ ...msg })
-      }
-    }
+    // Classify each assistant message as interim, final, or in_progress
+    const messages = classifyMessages(rawMessages, isAgentActive)
 
     return NextResponse.json({ messages })
   } catch {
     // Agent SDK not available or session expired — return empty
     return NextResponse.json({ messages: [] })
   }
+}
+
+/**
+ * Classify assistant messages positionally:
+ * - In a consecutive run of assistant messages between user messages,
+ *   the last one is 'final', all others are 'interim'
+ * - For the final run (after the last user message): if agentActiveAt
+ *   is null (finished), last is 'final'; if non-null, all are 'in_progress'
+ */
+function classifyMessages(
+  messages: Array<{
+    id: string
+    role: 'user' | 'assistant'
+    content: string
+    userName: string
+    createdAt: string | null
+  }>,
+  isAgentActive: boolean,
+): Array<{
+  id: string
+  role: 'user' | 'assistant'
+  content: string
+  userName: string
+  createdAt: string | null
+  classification?: 'interim' | 'final' | 'in_progress'
+}> {
+  // Find the index of the last user message
+  let lastUserIdx = -1
+  for (let i = messages.length - 1; i >= 0; i--) {
+    if (messages[i].role === 'user') {
+      lastUserIdx = i
+      break
+    }
+  }
+
+  // Process assistant message runs
+  const result: typeof messages & { classification?: string }[] = []
+
+  let i = 0
+  while (i < messages.length) {
+    const msg = messages[i]
+
+    if (msg.role === 'user') {
+      result.push({ ...msg })
+      i++
+      continue
+    }
+
+    // Collect consecutive assistant messages
+    const runStart = i
+    while (i < messages.length && messages[i].role === 'assistant') {
+      i++
+    }
+    const runEnd = i // exclusive
+
+    // Determine if this is the final run (after last user message)
+    const isFinalRun = runStart > lastUserIdx
+
+    for (let j = runStart; j < runEnd; j++) {
+      const isLast = j === runEnd - 1
+
+      let classification: 'interim' | 'final' | 'in_progress'
+      if (isFinalRun && isAgentActive) {
+        // Agent still working — all messages in the current run are in-progress
+        classification = 'in_progress'
+      } else if (isLast) {
+        classification = 'final'
+      } else {
+        classification = 'interim'
+      }
+
+      result.push({ ...messages[j], classification })
+    }
+  }
+
+  return result
 }

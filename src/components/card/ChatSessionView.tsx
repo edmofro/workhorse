@@ -4,9 +4,9 @@ import { useEffect, useRef } from 'react'
 import { useUser } from '../UserProvider'
 import { useAgentSession } from '../../lib/hooks/useAgentSession'
 import { useAttachments } from '../../lib/hooks/useAttachments'
-import { ChatMessage } from './ChatMessage'
 import { ChatInput } from './ChatInput'
 import { ThinkingIndicator } from './ThinkingIndicator'
+import { MessageList } from './MessageList'
 import { FileText } from 'lucide-react'
 import { humaniseFilename } from '../../lib/labels'
 
@@ -66,16 +66,7 @@ export function ChatSessionView({ cardId }: ChatSessionViewProps) {
               </p>
             </div>
           )}
-          {messages.map((msg) => (
-            <ChatMessage
-              key={msg.id}
-              role={msg.role}
-              content={msg.content}
-              userName={msg.userName}
-              timestamp={msg.createdAt}
-              attachments={msg.attachments}
-            />
-          ))}
+          <MessageList messages={messages} isStreaming={isStreaming} />
 
           {/* File write notifications */}
           {fileWrites.length > 0 && (
@@ -92,7 +83,7 @@ export function ChatSessionView({ cardId }: ChatSessionViewProps) {
             </div>
           )}
 
-          {isStreaming && messages[messages.length - 1]?.content === '' && (
+          {isStreaming && (
             <ThinkingIndicator snippet={thinkingSnippet} verb={thinkingVerb} />
           )}
         </div>

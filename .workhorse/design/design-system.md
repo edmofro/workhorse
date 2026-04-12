@@ -175,7 +175,7 @@ Base unit: **4px**. All spacing values are multiples of 4.
 | `--radius-lg` | 10px | Cards, mockup frames |
 | `--radius-xl` | 12px | Chat input, floating panels |
 | `--radius-pill` | 24px | Chat pill button |
-| `--radius-round` | 50% | Avatars, status dots |
+| `--radius-round` | 50% | Avatars, journey track nodes |
 
 ---
 
@@ -223,7 +223,7 @@ The app uses a fixed sidebar (216px) with a main content area. The topbar (52px)
 
 ### Three primary views
 
-**Cards view** — Kanban board with horizontal columns per status (Specifying, Implementing, Not started, Complete). Each column has a status dot, label, and card count. Cards stack vertically within columns. A project selector dropdown in the topbar filters by project. Compact icon buttons (Search, Filter, New) replace the old chunky header buttons. See `board-redesign.md`.
+**Cards view** — Kanban board with horizontal columns per status (Specifying, Implementing, Not started, Complete). Each column has a status icon, label, and card count. Cards stack vertically within columns. A project selector dropdown in the topbar filters by project. Compact icon buttons (Search, Filter, New) replace the old chunky header buttons. See `board-redesign.md`.
 
 **Chat view** — Full-width scrollable conversation centred at 680px max-width. Input fixed at the bottom, also centred.
 
@@ -317,12 +317,24 @@ font-weight: 500;
 "core" tag: amber background tint, amber text.
 "future" tag: inset background, muted text.
 
-### Status dots
+### Status icons
 
-- In progress: 8px circle, amber fill
-- Not started: 8px circle, default border (hollow)
-- Complete: 8px circle, green fill
-- Cancelled: 8px circle, muted fill (`--text-muted`)
+14px SVG icons with distinct shapes per state — distinguishable without colour.
+
+- Not started: dashed circle outline (`--border-default`)
+- Specifying: circle outline with quarter-fill arc in amber
+- Implementing: circle outline with three-quarter-fill arc in blue
+- Complete: filled green circle with white checkmark
+- Cancelled: circle outline with X in muted (`--text-muted`)
+
+### Journey track
+
+The journey section in the properties bar uses a connected track of 6px nodes joined by 2px connectors. Visually distinct from status icons — reads as a timeline rather than a single state.
+
+- Done nodes: green filled
+- Active node: accent filled
+- Scheduled nodes: `--border-default` filled
+- Suggested nodes: `--text-faint` filled, connectors at reduced opacity
 
 ### Spec extraction block (in chat)
 

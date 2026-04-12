@@ -25,6 +25,7 @@ import {
 import { branchNameFromCard } from '../../../lib/git/branchNaming'
 import { safeParseTouchedFiles } from '../../../lib/safeParseTouchedFiles'
 import { emit as emitSidebarEvent, type SidebarEvent } from '../../../lib/sidebarEvents'
+import { publish as publishSessionEvent, close as closeSessionChannel } from '../../../lib/sessionEvents'
 
 class StaleSessionError extends Error {
   constructor() {
@@ -282,6 +283,12 @@ export async function POST(request: NextRequest) {
           ),
         )
 
+        // Mark session as streaming in the database
+        await prisma.conversationSession.update({
+          where: { id: convSessionId },
+          data: { streamingStartedAt: new Date() },
+        })
+
         // Notify sidebar: new/active session is streaming
         emitSidebarEvent({
           type: isFirstMessage ? 'session_created' : 'streaming_start',
@@ -317,6 +324,7 @@ export async function POST(request: NextRequest) {
               })
             }
             enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`))
+            publishSessionEvent(convSessionId, event as Record<string, unknown>)
           }
         } catch (err) {
           // If the session ID is stale, clear it and retry without resume
@@ -364,11 +372,12 @@ export async function POST(request: NextRequest) {
             }
           }
 
-          // Stream event as SSE
+          // Stream event as SSE and publish to session channel for other subscribers
           const sseData = JSON.stringify(event)
           enqueue(
             encoder.encode(`data: ${sseData}\n\n`),
           )
+          publishSessionEvent(convSessionId, event as Record<string, unknown>)
         }
 
         // Agent turn complete — auto-commit, release locks, update session metadata
@@ -411,6 +420,12 @@ export async function POST(request: NextRequest) {
         }
 
         enqueue(encoder.encode('data: [DONE]\n\n'))
+        // Clear streaming status and close session channel
+        await prisma.conversationSession.update({
+          where: { id: convSessionId },
+          data: { streamingStartedAt: null },
+        }).catch(() => {})
+        closeSessionChannel(convSessionId)
         controller.close()
       } catch (err) {
         const errorMsg = err instanceof Error ? err.message : 'Interview failed'
@@ -419,6 +434,12 @@ export async function POST(request: NextRequest) {
             `data: ${JSON.stringify({ type: 'error', message: errorMsg })}\n\n`,
           ),
         )
+        // Clear streaming status and close session channel on error too
+        await prisma.conversationSession.update({
+          where: { id: convSessionId },
+          data: { streamingStartedAt: null },
+        }).catch(() => {})
+        closeSessionChannel(convSessionId)
         controller.close()
       }
     },

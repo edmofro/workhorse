@@ -18,15 +18,16 @@ Conversations are the primary interaction model in Workhorse. A conversation ses
 
 ```prisma
 model ConversationSession {
-  id              String   @id @default(cuid())
-  cardId          String?  // null for standalone sessions
-  teamId          String?  // for standalone sessions, determines which team's board context
-  userId          String   // who created this session
-  agentSessionId  String?  // Agent SDK session ID for resumption
-  title           String?  // auto-generated from first exchange
-  messageCount    Int      @default(0)
-  lastMessageAt   DateTime @default(now())
-  createdAt       DateTime @default(now())
+  id                 String    @id @default(cuid())
+  cardId             String?   // null for standalone sessions
+  teamId             String?   // for standalone sessions, determines which team's board context
+  userId             String    // who created this session
+  agentSessionId     String?   // Agent SDK session ID for resumption
+  title              String?   // auto-generated from first exchange
+  messageCount       Int       @default(0)
+  lastMessageAt      DateTime  @default(now())
+  agentActiveAt      DateTime? // non-null while the agent is working (see agent-streaming-status.md)
+  createdAt          DateTime  @default(now())
 
   card Card? @relation(fields: [cardId], references: [id], onDelete: Cascade)
   team Team? @relation(fields: [teamId], references: [id], onDelete: SetNull)
@@ -186,7 +187,7 @@ The sidebar shows a "Recent" section with the most recently active conversation 
 - [ ] **Standalone sessions** show a `MessageCircle` icon (from Lucide, muted colour) followed by the session title — visually distinct from card-bound sessions
 - [ ] Each item is a deep link. Card-bound sessions link to `/:projectSlug/cards/:identifier?session=:sessionId`. Standalone sessions link to `/:projectSlug/sessions/:sessionId`
 - [ ] Clicking a recent item navigates directly to that conversation, preserving context
-- [ ] The "Recent" section updates reactively: when a new session is created or receives messages, the sidebar refreshes via `router.refresh()`. Active/streaming sessions show a subtle pulsing indicator on their title text to signal ongoing work
+- [ ] The "Recent" section updates reactively: when a new session is created or receives messages, the sidebar refreshes via real-time SSE events. Streaming status indicators and reconnection behaviour are covered in `agent-streaming-status.md`
 - [ ] When navigating to a card via a sidebar session deep link (`?session=`), the card page auto-opens the chat zone for that session (not just the card home)
 
 ### New conversation / card creation
@@ -226,6 +227,6 @@ The sidebar shows a "Recent" section with the most recently active conversation 
 
 > **Team context for standalone sessions:** When a user creates a standalone session without specifying a team, should we default to their most recently used team? Or leave `teamId` null and only set it when a card is auto-created? Leaning toward defaulting to last-used team since it determines which project's codebase the agent operates on.
 
-> **Agent SDK session expiry:** The Agent SDK stores sessions on disk. If they expire or are cleaned up, we lose the ability to resume. The `ConversationSession` record persists regardless, so the user still sees the session in their list — they just can't resume the exact agent context. New messages start a fresh Agent SDK session. Is this acceptable, or should we store message content in our DB as a backup? For v1, the Agent SDK is the source of truth and we accept graceful degradation.
+> **Agent SDK session expiry:** The Agent SDK stores sessions on disk. If they expire or are cleaned up, we lose the ability to resume. The `ConversationSession` record persists regardless, so the user still sees the session in their list — they just can't resume the exact agent context. New messages start a fresh Agent SDK session. The SDK transcript is the source of truth for message content; interim/final classification is derived positionally at read time (see `agent-streaming-status.md`). No message table in Workhorse's database.
 
 > **Auto-card creation triggers:** Beyond file writes, are there other signals that a standalone session should get a card? E.g. if the user says "let's make a ticket for this" or "this needs tracking." Could use keyword detection, but heuristics are fragile. For v1, file writes are the trigger; explicit user action ("Create card from this") is the fallback.

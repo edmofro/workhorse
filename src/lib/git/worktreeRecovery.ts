@@ -1,15 +1,28 @@
 /**
- * Worktree recovery on server startup.
- * Recreates worktrees from branches for all active cards.
+ * Worktree recovery and stale state cleanup on server startup.
+ * Recreates worktrees from branches for all active cards, and
+ * clears orphaned streaming flags left by crashes/redeploys.
  */
 
 import { prisma } from '../prisma'
+import { clearStaleSessions } from '../sessionEvents'
 import {
   ensureBareClone,
   createWorktree,
   worktreeExists,
   removeWorktree,
 } from './worktree'
+
+/**
+ * Clear streamingStartedAt for all sessions that were left in
+ * a streaming state by a server crash or redeploy.
+ */
+export async function clearStaleStreamingSessions(): Promise<void> {
+  const count = await clearStaleSessions()
+  if (count > 0) {
+    console.log(`Cleared ${count} stale streaming session(s)`)
+  }
+}
 
 /**
  * Recover worktrees for all active cards.

@@ -140,6 +140,7 @@ export function CardWorkspace({
     fileWrites,
     committedFiles,
     thinkingSnippet,
+    thinkingVerb,
     currentSessionId,
     currentSessionTitle,
     sendMessage: rawSendMessage,
@@ -622,8 +623,8 @@ export function CardWorkspace({
             </div>
           )}
 
-          {isStreaming && thinkingSnippet && (
-            <ThinkingIndicator snippet={thinkingSnippet} />
+          {isStreaming && messages[messages.length - 1]?.content === '' && (
+            <ThinkingIndicator snippet={thinkingSnippet} verb={thinkingVerb} />
           )}
         </div>
       </div>

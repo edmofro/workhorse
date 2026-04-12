@@ -21,6 +21,7 @@ export function ChatSessionView({ cardId }: ChatSessionViewProps) {
     isStreaming,
     fileWrites,
     thinkingSnippet,
+    thinkingVerb,
     sendMessage,
     interrupt,
   } = useAgentSession(cardId, null)
@@ -92,7 +93,7 @@ export function ChatSessionView({ cardId }: ChatSessionViewProps) {
           )}
 
           {isStreaming && messages[messages.length - 1]?.content === '' && (
-            <ThinkingIndicator snippet={thinkingSnippet} />
+            <ThinkingIndicator snippet={thinkingSnippet} verb={thinkingVerb} />
           )}
         </div>
       </div>

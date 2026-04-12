@@ -29,6 +29,14 @@ export function useSidebarEvents() {
     eventSource.onmessage = (e) => {
       try {
         const event = JSON.parse(e.data)
+
+        // Handle initial streaming sessions snapshot on connect/reconnect
+        if (event.type === 'streaming_sessions') {
+          const ids = event.sessionIds as string[]
+          setStreamingSessions(new Set(ids))
+          return
+        }
+
         const session = event.session as SidebarSession
 
         if (event.type === 'session_created') {

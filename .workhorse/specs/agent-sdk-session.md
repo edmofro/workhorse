@@ -9,15 +9,19 @@ The AI agent runs on the Claude Agent SDK, giving it full codebase access, autom
 ## Architecture overview
 
 ```
-User ↔ Workhorse UI ↔ /api/agent-session ↔ Claude Agent SDK session
-                                            ↕
-                                 Target repo worktree on disk
-                                 (Read, Glob, Grep, Write, Edit)
-                            ↕
-                    DB stores: session ID, card linkage
+User ↔ Workhorse UI ←SSE← /api/sessions/[id]/events ← pub/sub channel
+                                                          ↑
+         /api/agent-session → Claude Agent SDK session → publishes events
+                                       ↕
+                            Target repo worktree on disk
+                            (Read, Glob, Grep, Write, Edit)
+                                       ↕
+                    DB stores: session ID, card linkage, agentActiveAt
+                                       ↓
+                    pg_notify → sidebar SSE, session SSE
 ```
 
-The Agent SDK session runs against a git worktree of the target repo. The agent reads the codebase freely and writes spec/mockup files directly. Workhorse streams the agent's output to the UI.
+The Agent SDK session runs against a git worktree of the target repo. The agent reads the codebase freely and writes spec/mockup files directly. SDK events are published to an in-memory pub/sub channel; clients always subscribe via SSE rather than reading the agent-session response directly. Database changes trigger Postgres notifications for sidebar and activity state updates.
 
 ### Deployment
 
@@ -126,7 +130,7 @@ Each skill maps to a system prompt fragment that shapes the agent's behaviour. T
 - [ ] `session_id` stored on the `ConversationSession` record (see `conversation-sessions.md`)
 - [ ] Resume sessions with `resume: sessionId` on subsequent turns
 - [ ] Session transcript retrievable via `getSessionMessages()` for audit/display
-- [ ] Individual messages are not stored in Workhorse's database — the SDK is the source of truth for conversation history
+- [ ] Individual messages are not stored in Workhorse's database — the SDK transcript is the source of truth for conversation history. Interim/final classification is derived positionally at read time (see `agent-streaming-status.md`)
 - [ ] Multiple sessions per card — each is an independent Agent SDK session with its own context
 - [ ] Standalone sessions (no card) — used for Q&A, exploration, small fixes. May auto-create a card when file changes occur
 
@@ -143,15 +147,10 @@ Each skill maps to a system prompt fragment that shapes the agent's behaviour. T
 
 A single user message may trigger a long sequence of internal work — thinking, reading files, searching code, writing specs — that can take 30 seconds or more. The user doesn't need to see the machinery. They need reassurance that the agent is working, and then the response when it arrives.
 
-- [ ] While the agent is working, a progress indicator appears below the user's message: a gently pulsing dot in the accent colour next to the word "Thinking..."
-- [ ] Below the indicator, a short snippet from the agent's thinking stream cycles every 1–2 seconds — a raw snatch of whatever the agent is currently thinking, truncated to a single line
-- [ ] Each snippet replaces the previous one with a quick fade transition. They stay just long enough to register movement, not long enough to read carefully
-- [ ] The snippets are not selectable or interactive — they are ephemeral texture, not content. They convey busy-ness, not information
-- [ ] Thinking events, tool calls, file reads, and searches are not shown individually — all internal activity is behind the progress indicator
+- [ ] Thinking events, tool calls, file reads, and searches are not shown individually — all internal activity is behind a thinking indicator (see `agent-streaming-status.md` for indicator behaviour, activity lifecycle, and recovery on navigation)
 - [ ] File write/edit operations are the one exception: these appear as persistent notifications (e.g. "Updated specs/patient/allergies.md") since they represent meaningful output the user may want to act on
-- [ ] When the agent produces text, the progress indicator disappears and the response streams in character by character
-- [ ] If the agent produces text partway through and then continues working (more tool calls, more thinking), the text stays visible and the progress indicator reappears below it
-- [ ] All text the agent produces across the full query is collected into a single assistant message — the internal structure is not exposed
+- [ ] The thinking indicator is visible for the entire duration the agent is active, sitting below the growing assistant message. It does not disappear when text arrives — it remains as a continuous activity signal until the agent finishes
+- [ ] Each internal agent turn produces a separate assistant message. Interim messages (narration during tool work) are visible while the agent is active, then collapse when the turn completes, leaving only the final substantive response. See `agent-streaming-status.md` for the interim/final classification and collapsing behaviour
 - [ ] Soft-lock on the spec editor during active work ("Agent is working...")
 
 ### Agent turn limits and result handling
@@ -303,6 +302,6 @@ The worktree-on-disk architecture means that any agent with access to the same b
 
 > **Worktree disk pressure:** For very large monorepos, even with partial clone, working tree checkout could be slow or large. Should we support sparse checkout (only materialise relevant directories)?
 
-> **Session transcript display:** Should the UI show the full Agent SDK session transcript (including tool calls), or just the text messages?
+> **Session transcript display:** The UI shows text messages only. Internal tool calls are hidden behind the thinking indicator. Multi-turn assistant messages are classified as interim (narration) or final (substantive response) — interim messages collapse after the agent finishes, final messages remain visible. See `agent-streaming-status.md`.
 
 > **Branch strategy for dependencies:** If card WH-043 depends on WH-042, should WH-043's worktree branch from WH-042's branch?

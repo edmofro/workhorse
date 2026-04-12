@@ -1,0 +1,389 @@
+<!-- spec: agent-streaming-status.md -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Thinking indicator options</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-page: #f8f7f4;
+    --bg-surface: #ffffff;
+    --text-primary: #1c1917;
+    --text-secondary: #57534e;
+    --text-muted: #a8a29e;
+    --text-faint: #d1cdc6;
+    --accent: #c2410c;
+    --border-subtle: #eae7e1;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: var(--bg-page);
+    color: var(--text-secondary);
+    padding: 48px 40px;
+  }
+
+  h2 {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 16px;
+  }
+
+  .option-label {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+  }
+
+  .chat-context {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: 12px;
+    padding: 24px 28px;
+    max-width: 640px;
+    margin-bottom: 32px;
+  }
+
+  /* User message above for context */
+  .user-msg {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 20px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+  .user-msg .avatar {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: white;
+    font-size: 12px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .user-msg .text {
+    font-size: 14px;
+    line-height: 1.7;
+    color: var(--text-secondary);
+    padding-top: 3px;
+  }
+
+  /* ── Option A: Verb ticker ── */
+
+  .indicator-a {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding-left: 36px; /* align with message text after avatar */
+  }
+  .indicator-a .dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--accent);
+    animation: pulse-a 1.4s ease-in-out infinite;
+  }
+  .indicator-a .verb {
+    font-size: 13px;
+    font-weight: 450;
+    color: var(--text-muted);
+    overflow: hidden;
+    white-space: nowrap;
+  }
+  .indicator-a .verb span {
+    display: inline-block;
+    animation: verb-cycle-a 9s steps(1) infinite;
+  }
+
+  @keyframes pulse-a {
+    0%, 100% { opacity: 0.35; transform: scale(0.85); }
+    50% { opacity: 1; transform: scale(1); }
+  }
+
+  /* Verb cycles through states */
+  @keyframes verb-cycle-a {
+    0%   { content: ''; }
+  }
+
+  /* ── Option B: Rotating glyph + snippet ── */
+
+  .indicator-b {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding-left: 36px;
+  }
+  .indicator-b .top-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .indicator-b .glyph {
+    font-size: 14px;
+    color: var(--accent);
+    width: 14px;
+    text-align: center;
+    animation: glyph-rotate 2s steps(1) infinite;
+    font-weight: 500;
+  }
+  .indicator-b .label {
+    font-size: 13px;
+    font-weight: 450;
+    color: var(--text-muted);
+  }
+  .indicator-b .snippet {
+    font-size: 11px;
+    color: var(--text-faint);
+    line-height: 1.4;
+    max-width: 460px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding-left: 22px;
+    animation: snippet-fade 1.5s ease-in-out infinite alternate;
+  }
+
+  @keyframes glyph-rotate {
+    0%   { content: '\00B7'; }
+    25%  { content: '\2022'; }
+    50%  { content: '\25E6'; }
+    75%  { content: '\2219'; }
+  }
+  /* Fallback for content not working — use opacity pulse */
+  @keyframes snippet-fade {
+    0% { opacity: 0.7; }
+    100% { opacity: 1; }
+  }
+
+  /* ── Option C: Progress bar trace ── */
+
+  .indicator-c {
+    padding-left: 36px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .indicator-c .label-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .indicator-c .label {
+    font-size: 13px;
+    font-weight: 450;
+    color: var(--text-muted);
+  }
+  .indicator-c .trace {
+    width: 120px;
+    height: 2px;
+    background: var(--border-subtle);
+    border-radius: 1px;
+    overflow: hidden;
+    position: relative;
+  }
+  .indicator-c .trace-fill {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 40px;
+    background: var(--accent);
+    border-radius: 1px;
+    animation: trace-slide 1.8s ease-in-out infinite;
+  }
+  .indicator-c .snippet {
+    font-size: 11px;
+    color: var(--text-faint);
+    line-height: 1.4;
+    max-width: 460px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  @keyframes trace-slide {
+    0%   { left: -40px; }
+    100% { left: 120px; }
+  }
+</style>
+</head>
+<body>
+
+<h2>Option A: Verb ticker</h2>
+<p class="option-label">Cycling action verbs replace generic "Thinking..." — feels purposeful, like the agent is doing specific work. No snippet line.</p>
+<div class="chat-context">
+  <div class="user-msg">
+    <div class="avatar">F</div>
+    <div class="text">Interview me on this card</div>
+  </div>
+  <div class="indicator-a" id="indicator-a">
+    <div class="dot"></div>
+    <div class="verb"><span id="verb-a">Reading codebase...</span></div>
+  </div>
+</div>
+
+<h2>Option B: Rotating glyph + snippet</h2>
+<p class="option-label">Small character cycles through shapes (dot, ring, diamond, dash) while thinking snippets fade in below. More texture, less polished — shows raw activity.</p>
+<div class="chat-context">
+  <div class="user-msg">
+    <div class="avatar">F</div>
+    <div class="text">Interview me on this card</div>
+  </div>
+  <div class="indicator-b">
+    <div class="top-row">
+      <div class="glyph" id="glyph-b">&middot;</div>
+      <div class="label" id="label-b">Reading codebase...</div>
+    </div>
+    <div class="snippet" id="snippet-b">looking at the patient search component structure</div>
+  </div>
+</div>
+
+<h2>Option C: Trace line + snippet</h2>
+<p class="option-label">Thin accent line traces back and forth — subtle, continuous motion without character cycling. Snippet below for raw thinking texture. Quietest option.</p>
+<div class="chat-context">
+  <div class="user-msg">
+    <div class="avatar">F</div>
+    <div class="text">Interview me on this card</div>
+  </div>
+  <div class="indicator-c">
+    <div class="label-row">
+      <div class="label" id="label-c">Reading codebase...</div>
+      <div class="trace"><div class="trace-fill"></div></div>
+    </div>
+    <div class="snippet" id="snippet-c">looking at the patient search component structure</div>
+  </div>
+</div>
+
+<script>
+  // ── Option A: cycle verbs ──
+  const verbsA = [
+    'Reading codebase...',
+    'Exploring specs...',
+    'Searching for patterns...',
+    'Analysing structure...',
+    'Drafting response...',
+    'Reviewing context...',
+  ];
+  let verbIdxA = 0;
+  const verbElA = document.getElementById('verb-a');
+
+  function cycleVerbA() {
+    verbElA.style.opacity = '0';
+    verbElA.style.transition = 'opacity 0.12s ease';
+    setTimeout(() => {
+      verbIdxA = (verbIdxA + 1) % verbsA.length;
+      verbElA.textContent = verbsA[verbIdxA];
+      verbElA.style.opacity = '1';
+    }, 120);
+  }
+  setInterval(cycleVerbA, 2400);
+
+  // ── Option B: cycle glyph + label + snippet ──
+  const glyphs = ['\u00B7', '\u2022', '\u25E6', '\u2013', '\u25CA', '\u2219'];
+  let glyphIdx = 0;
+  const glyphEl = document.getElementById('glyph-b');
+
+  setInterval(() => {
+    glyphIdx = (glyphIdx + 1) % glyphs.length;
+    glyphEl.textContent = glyphs[glyphIdx];
+  }, 400);
+
+  const labelsB = [
+    'Reading codebase...',
+    'Searching files...',
+    'Thinking...',
+    'Exploring specs...',
+    'Drafting...',
+  ];
+  let labelIdxB = 0;
+  const labelElB = document.getElementById('label-b');
+
+  function cycleLabelB() {
+    labelElB.style.opacity = '0';
+    labelElB.style.transition = 'opacity 0.12s ease';
+    setTimeout(() => {
+      labelIdxB = (labelIdxB + 1) % labelsB.length;
+      labelElB.textContent = labelsB[labelIdxB];
+      labelElB.style.opacity = '1';
+    }, 120);
+  }
+  setInterval(cycleLabelB, 3000);
+
+  const snippetsB = [
+    'looking at the patient search component structure',
+    'checking how allergies are stored in the data model',
+    'reviewing the existing spec for edge cases',
+    'the form validation needs to handle empty states',
+  ];
+  let snippetIdxB = 0;
+  const snippetElB = document.getElementById('snippet-b');
+
+  function cycleSnippetB() {
+    snippetElB.style.opacity = '0';
+    snippetElB.style.transition = 'opacity 0.15s ease';
+    setTimeout(() => {
+      snippetIdxB = (snippetIdxB + 1) % snippetsB.length;
+      snippetElB.textContent = snippetsB[snippetIdxB];
+      snippetElB.style.opacity = '1';
+    }, 150);
+  }
+  setInterval(cycleSnippetB, 1800);
+
+  // ── Option C: cycle label + snippet ──
+  const labelsC = [
+    'Reading codebase...',
+    'Searching files...',
+    'Thinking...',
+    'Exploring specs...',
+    'Drafting...',
+  ];
+  let labelIdxC = 0;
+  const labelElC = document.getElementById('label-c');
+
+  function cycleLabelC() {
+    labelElC.style.opacity = '0';
+    labelElC.style.transition = 'opacity 0.12s ease';
+    setTimeout(() => {
+      labelIdxC = (labelIdxC + 1) % labelsC.length;
+      labelElC.textContent = labelsC[labelIdxC];
+      labelElC.style.opacity = '1';
+    }, 120);
+  }
+  setInterval(cycleLabelC, 3000);
+
+  const snippetsC = [
+    'looking at the patient search component structure',
+    'checking how allergies are stored in the data model',
+    'reviewing the existing spec for edge cases',
+    'the form validation needs to handle empty states',
+  ];
+  let snippetIdxC = 0;
+  const snippetElC = document.getElementById('snippet-c');
+
+  function cycleSnippetC() {
+    snippetElC.style.opacity = '0';
+    snippetElC.style.transition = 'opacity 0.15s ease';
+    setTimeout(() => {
+      snippetIdxC = (snippetIdxC + 1) % snippetsC.length;
+      snippetElC.textContent = snippetsC[snippetIdxC];
+      snippetElC.style.opacity = '1';
+    }, 150);
+  }
+  setInterval(cycleSnippetC, 1800);
+</script>
+
+</body>
+</html>

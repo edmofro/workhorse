@@ -13,6 +13,7 @@ interface FloatingChatProps {
   messages: SessionMessage[]
   isStreaming: boolean
   thinkingSnippet?: string | null
+  thinkingVerb?: string
   pills: ActionPill[]
   onSend: (content: string) => void
   onPillSelect: (pill: ActionPill) => void
@@ -37,6 +38,7 @@ export function FloatingChat({
   messages,
   isStreaming,
   thinkingSnippet,
+  thinkingVerb,
   pills,
   onSend,
   onPillSelect,
@@ -123,7 +125,7 @@ export function FloatingChat({
           </div>
         ))}
         {isStreaming && messages[messages.length - 1]?.content === '' && (
-          <ThinkingIndicator snippet={thinkingSnippet ?? null} />
+          <ThinkingIndicator snippet={thinkingSnippet ?? null} verb={thinkingVerb} />
         )}
       </div>
 

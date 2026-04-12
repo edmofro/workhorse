@@ -100,8 +100,9 @@ The journal is the single record of what's happened on a card, visible in the jo
 Each entry has:
 
 - [ ] **Type** — what kind of thing happened (e.g. workshop, interview, spec-draft, spec-review, implementation, design-audit, pr-created)
+- [ ] **Label** — a short 1–3 word display name for the step (e.g. "Interview", "Design audit"). Stored on creation, not re-derived on display. See `workflow/journey-step-labels.md`
 - [ ] **Timestamp** — when it happened
-- [ ] **Summary** — a brief human-readable description (e.g. "Spec interview completed — 2 specs written, 1 open question remaining")
+- [ ] **Summary** — a longer human-readable description for contexts that benefit from detail (e.g. handoff prompts, PR descriptions)
 
 ### Characteristics
 
@@ -131,7 +132,7 @@ The journey section is the visual representation of the journal. It occupies the
 Clicking the journey section opens a compact dropdown anchored to the section. It is not a full-width overlay.
 
 ```
-  ✓ Spec interview     2 Apr
+  ✓ Interview          2 Apr
   ✓ Spec review        3 Apr
   ● Implementing       In progress
 
@@ -143,7 +144,7 @@ Clicking the journey section opens a compact dropdown anchored to the section. I
   ◌ Create PR                     →
 ```
 
-- [ ] Completed entries show at full opacity with timestamps
+- [ ] Completed entries show their label at full opacity with timestamps
 - [ ] The active step (if any) is shown at full weight with "In progress"
 - [ ] Scheduled items use a solid outline dot (○) — visually distinct from the dashed suggested dots (◌), communicating that these are committed to run
 - [ ] Suggested items are visually muted to communicate they are the jockey's guesses, not commitments

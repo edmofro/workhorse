@@ -20,7 +20,8 @@ ${Object.values(BUILT_IN_SKILLS).map(s => `- **${s.id}** (${s.label}): ${s.descr
 ## Rules
 - Only create journal entries for genuinely noteworthy transitions — not every message deserves one
 - Journal entry types should match skill IDs where applicable (e.g. "interview", "implementation", "spec-draft")
-- Journal summaries should be concise and human-readable (e.g. "Spec interview completed — 2 specs written")
+- Journal labels are 1–3 words matching the skill's display name where applicable (e.g. "Interview", "Design audit", "Spec review")
+- Journal summaries provide additional detail for non-UI contexts (e.g. "Spec interview completed — 2 specs written")
 - Pills are 2-4 contextual actions for RIGHT NOW — the most useful things the user could click
 - Pill labels must be short: 2–4 words maximum, verb + noun form (e.g. "Draft spec", "Review spec", "Continue", "Update spec"). Never use verbose phrases like "Compare code changes against specs"
 - Suggestions are the expected remaining sequence — the big picture of what's ahead
@@ -92,7 +93,7 @@ function buildAssessmentPrompt(input: JockeyInput): string {
   parts.push('Respond with a JSON object matching this schema:')
   parts.push('```json')
   parts.push('{')
-  parts.push('  "journalEntries": [{ "type": "string", "summary": "string" }],')
+  parts.push('  "journalEntries": [{ "type": "string", "label": "string (1-3 words)", "summary": "string" }],')
   parts.push('  "activeStep": "string or null",')
   parts.push('  "pills": [{ "skillId": "string", "label": "string" }],')
   parts.push('  "suggestions": [{ "skillId": "string", "label": "string" }],')
@@ -142,13 +143,19 @@ export async function runJockeyAssessment(input: JockeyInput): Promise<JockeyAss
     const parsed = JSON.parse(jsonMatch[0]) as JockeyAssessment
 
     // Validate the shape — filter out malformed items from LLM arrays
-    const validEntry = (e: unknown): e is { type: string; summary: string } =>
+    const validEntry = (e: unknown): e is { type: string; label?: string; summary: string } =>
       !!e && typeof (e as Record<string, unknown>).type === 'string' && typeof (e as Record<string, unknown>).summary === 'string'
+    const normaliseEntry = (e: { type: string; label?: string; summary: string }): { type: string; label: string; summary: string } => ({
+      ...e,
+      label: typeof e.label === 'string' && e.label.length > 0
+        ? e.label
+        : BUILT_IN_SKILLS[e.type]?.label ?? e.type,
+    })
     const validPill = (p: unknown): p is { skillId: string; label: string } =>
       !!p && typeof (p as Record<string, unknown>).skillId === 'string' && typeof (p as Record<string, unknown>).label === 'string'
 
     return {
-      journalEntries: Array.isArray(parsed.journalEntries) ? parsed.journalEntries.filter(validEntry) : [],
+      journalEntries: Array.isArray(parsed.journalEntries) ? parsed.journalEntries.filter(validEntry).map(normaliseEntry) : [],
       activeStep: typeof parsed.activeStep === 'string' ? parsed.activeStep : null,
       pills: Array.isArray(parsed.pills) ? parsed.pills.filter(validPill).slice(0, 4) : defaultAssessment.pills,
       suggestions: Array.isArray(parsed.suggestions) ? parsed.suggestions.filter(validPill) : defaultAssessment.suggestions,

@@ -4,6 +4,18 @@ import { useState, useCallback, useRef, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import type { AttachmentData } from '../attachments'
 
+/** Map Agent SDK tool names to user-facing verb labels. */
+function verbFromToolName(toolName: string): string {
+  switch (toolName) {
+    case 'Read': return 'Reading codebase...'
+    case 'Grep': return 'Searching files...'
+    case 'Glob': return 'Finding files...'
+    case 'Write': return 'Writing files...'
+    case 'Edit': return 'Editing files...'
+    default: return 'Working...'
+  }
+}
+
 export interface SessionMessage {
   id: string
   role: 'user' | 'assistant'
@@ -37,6 +49,7 @@ export function useAgentSession(
   const [fileWrites, setFileWrites] = useState<FileWriteNotification[]>([])
   const [committedFiles, setCommittedFiles] = useState<string[]>([])
   const [thinkingSnippet, setThinkingSnippet] = useState<string | null>(null)
+  const [thinkingVerb, setThinkingVerb] = useState<string>('Thinking...')
   const thinkingBufferRef = useRef('')
   const thinkingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const historySessionIdRef = useRef<string | null>(null)
@@ -354,6 +367,7 @@ export function useAgentSession(
       isStreamingRef.current = true
       setActiveToolCalls([])
       setThinkingSnippet(null)
+      setThinkingVerb('Thinking...')
       thinkingBufferRef.current = ''
       textBufferRef.current = ''
       assistantContentRef.current = ''
@@ -527,6 +541,18 @@ export function useAgentSession(
     // Handle streaming text and thinking events
     if (event.type === 'stream_event') {
       const streamEvent = event.event as Record<string, unknown> | undefined
+
+      // Detect tool use starts to derive the thinking verb
+      if (streamEvent?.type === 'content_block_start') {
+        const block = streamEvent.content_block as Record<string, unknown> | undefined
+        if (block?.type === 'tool_use' && typeof block.name === 'string') {
+          setThinkingVerb(verbFromToolName(block.name as string))
+        }
+        if (block?.type === 'thinking') {
+          setThinkingVerb('Thinking...')
+        }
+      }
+
       if (streamEvent?.type === 'content_block_delta') {
         const delta = streamEvent.delta as Record<string, unknown> | undefined
 
@@ -660,6 +686,7 @@ export function useAgentSession(
     fileWrites,
     committedFiles,
     thinkingSnippet,
+    thinkingVerb,
     currentSessionId,
     currentSessionTitle,
     sendMessage,

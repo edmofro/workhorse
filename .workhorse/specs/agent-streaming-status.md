@@ -17,19 +17,39 @@ A conversation session is in one of two states: **idle** or **streaming**. The t
 
 ## Thinking indicator
 
-The thinking indicator is the pulsing dot with an optional snippet of the agent's internal reasoning. It appears in the chat area while the agent is working, before any visible text output has arrived.
+The thinking indicator appears in the chat area while the agent is working, before any visible text output has arrived. It conveys active, purposeful work — not a static spinner.
 
 ### When it shows
 
-- [ ] The thinking indicator appears as soon as `isStreaming` is true and the last assistant message has empty content — regardless of whether a thinking snippet has arrived yet
+- [ ] The thinking indicator appears as soon as `isStreaming` is true and the last assistant message has empty content — regardless of whether a verb or snippet has arrived yet
 - [ ] This condition is the same across all three views: CardWorkspace chat zone, ChatSessionView, and FloatingChat
 - [ ] Once the first `text_delta` arrives and the assistant message has content, the thinking indicator disappears
 
-### Thinking snippets
+### Verb ticker
 
-- [ ] Thinking snippets are sampled from the agent's `thinking_delta` events — a rolling buffer, displayed every 1.5 seconds
-- [ ] The snippet text cross-fades when it updates (150ms fade out, swap, fade in)
-- [ ] If no thinking deltas have arrived yet, the indicator shows "Thinking..." with the pulsing dot but no snippet text
+The indicator displays a cycling action verb that describes what the agent is currently doing. The verb cross-fades to the next one every few seconds, giving continuous visible motion without being distracting.
+
+- [ ] A pulsing accent-coloured dot sits to the left of the verb text
+- [ ] The dot pulses gently (scale and opacity) on a 1.4-second cycle
+- [ ] The verb text displays the agent's current activity: "Reading codebase...", "Searching files...", "Exploring specs...", "Drafting response..." and similar
+- [ ] Verbs are derived from the agent's actual tool use when available — a Read tool call shows "Reading codebase...", a Grep shows "Searching files...", a Write/Edit shows "Writing specs...". When no tool context is available (pure thinking), it shows "Thinking..."
+- [ ] The verb cross-fades when it changes (120ms fade out, swap, fade in)
+- [ ] Below the verb, an optional thinking snippet line shows a fragment of the agent's internal reasoning in faint text, truncated to one line. This is ephemeral texture — it conveys busy-ness, not readable information
+- [ ] The snippet is sampled from `thinking_delta` events every 1.5 seconds and cross-fades on update (150ms)
+
+## Consistent message rendering
+
+A single user message can trigger multiple internal agent turns (think, tool use, think again, respond, tool use, respond again). These are presented as a single coherent assistant message regardless of when the user views the conversation.
+
+### During live streaming
+
+- [ ] All text the agent produces across all turns within one exchange is collected into a single assistant message bubble, with turn boundaries separated by blank lines
+
+### When returning to a conversation
+
+- [ ] Chat history from the Agent SDK transcript is collapsed before display: consecutive assistant messages (from multi-turn agent work) are merged into a single message, joined with blank line separators
+- [ ] The result is visually identical to what the user would have seen live — one assistant bubble per user message, not one per internal agent turn
+- [ ] Empty assistant messages (turns that only used tools without producing text) are excluded
 
 ## Session event stream
 

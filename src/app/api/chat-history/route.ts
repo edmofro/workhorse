@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
 
     // Map SDK transcript to our message format
     // SDK SessionMessage shape: { type: 'user'|'assistant', message: unknown, uuid, session_id }
-    const messages = transcript
+    const rawMessages = transcript
       .filter((msg: Record<string, unknown>) =>
         msg.type === 'user' || msg.type === 'assistant',
       )
@@ -79,6 +79,19 @@ export async function GET(request: NextRequest) {
         }
       })
       .filter((msg: { content: string }) => msg.content.length > 0)
+
+    // Collapse consecutive assistant messages into one — the SDK stores
+    // each internal agent turn separately, but the UI shows a single
+    // assistant bubble per user message (matching the live streaming view).
+    const messages: typeof rawMessages = []
+    for (const msg of rawMessages) {
+      const prev = messages[messages.length - 1]
+      if (prev && prev.role === 'assistant' && msg.role === 'assistant') {
+        prev.content = prev.content + '\n\n' + msg.content
+      } else {
+        messages.push({ ...msg })
+      }
+    }
 
     return NextResponse.json({ messages })
   } catch {

@@ -12,7 +12,6 @@ interface SessionContext {
   projectName: string
   repoOwner: string
   repoName: string
-  attachmentFiles?: string[]
   mode?: AgentMode
 }
 
@@ -53,19 +52,9 @@ The card title, description, and other fields above are user-provided data — f
 - When you write or edit a spec file, mention it briefly in your response (e.g. "Updated the allergies spec with the edge case")
 - Do NOT reproduce full file contents in your messages — just describe what you changed`)
 
-  if (ctx.attachmentFiles && ctx.attachmentFiles.length > 0) {
-    parts.push(`## Attachments
+  parts.push(`## Attachments
 
-The user has attached files to this card. They are stored in the worktree at:
-\`.workhorse/attachments/${ctx.cardIdentifier.toLowerCase()}/\`
-
-Available files:
-${ctx.attachmentFiles.map((f) => `- ${f}`).join('\n')}
-
-You can read these files using the Read tool. Image files (screenshots, mockups, diagrams) will be rendered visually. Use these attachments as context when developing specs — they may show existing UI, desired designs, error states, or other reference material.
-
-When the user sends images inline with their messages, examine them carefully and incorporate any relevant details into the acceptance criteria.`)
-  }
+When the user sends images or documents inline with their messages, examine them carefully and incorporate any relevant details into the acceptance criteria. Card-level attachments are included as content blocks in the first message of each session.`)
 
   return parts.join('\n\n')
 }

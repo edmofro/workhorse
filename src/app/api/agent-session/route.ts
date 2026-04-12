@@ -2,10 +2,8 @@ import '../../../lib/ai/ensureSessionStorage'
 import { NextRequest } from 'next/server'
 import { query } from '@anthropic-ai/claude-agent-sdk'
 import type { SDKUserMessage } from '@anthropic-ai/claude-agent-sdk'
-import type { ImageBlockParam, TextBlockParam } from '@anthropic-ai/sdk/resources/messages/messages'
-import { readFile, mkdir, copyFile } from 'fs/promises'
-import { existsSync } from 'fs'
-import path from 'path'
+import type Anthropic from '@anthropic-ai/sdk'
+import { readFile } from 'fs/promises'
 import { prisma } from '../../../lib/prisma'
 import { requireUser, requireCardAccess } from '../../../lib/auth/session'
 import { buildSessionInstructions } from '../../../lib/ai/sessionPrompt'
@@ -116,25 +114,12 @@ export async function POST(request: NextRequest) {
     ? allAttachments.filter((a) => attachmentIds.includes(a.id))
     : []
 
-  // Copy attachments to worktree for persistence, skipping already-copied files
-  if (allAttachments.length > 0) {
-    const attachDir = path.join(wtPath, '.workhorse', 'attachments', card.identifier.toLowerCase())
-    await mkdir(attachDir, { recursive: true })
-    for (const att of allAttachments) {
-      const dest = path.join(attachDir, att.fileName)
-      if (existsSync(dest)) continue
-      try {
-        await copyFile(att.storagePath, dest)
-      } catch {
-        // Source missing — continue
-      }
-    }
-  }
+  // Card-level attachments not in the current message — passed as context
+  const cardAttachments = allAttachments.filter(
+    (a) => !attachmentIds?.includes(a.id),
+  )
 
-  // Build deduplicated attachment file list for the prompt context
-  const allAttachmentFiles = [...new Set(allAttachments.map((a) => a.fileName))]
-
-  // Build session instructions with mode-specific context
+  // Build session instructions
   const sessionInstructions = buildSessionInstructions({
     cardTitle: card.title,
     cardDescription: card.description,
@@ -142,42 +127,61 @@ export async function POST(request: NextRequest) {
     projectName: project.name,
     repoOwner: owner,
     repoName,
-    attachmentFiles: allAttachmentFiles.length > 0 ? allAttachmentFiles : undefined,
     mode: isValidAgentMode(mode) ? mode : undefined,
   })
 
-  // Build multimodal prompt if there are raster image attachments (exclude SVG — not a valid
-  // Claude API image media_type, and can contain scripts). Cap at 5 to limit memory usage.
-  const imageAttachments = messageAttachments
-    .filter((a) => a.mimeType.startsWith('image/') && a.mimeType !== 'image/svg+xml')
-    .slice(0, 5)
+  // Build content blocks for all attachments to include in the prompt.
+  // Images → image blocks, PDFs → document blocks, SVGs/other → skipped.
+  // Cap at 10 total to limit memory usage.
+  const promptAttachments = [...messageAttachments, ...cardAttachments].slice(0, 10)
+  const contentBlocks: Anthropic.ContentBlockParam[] = []
 
-  let promptInput: string | AsyncIterable<SDKUserMessage>
+  for (const att of promptAttachments) {
+    try {
+      const data = await readFile(att.storagePath)
+      const base64 = data.toString('base64')
 
-  if (imageAttachments.length > 0) {
-    // Build properly typed content blocks
-    const contentBlocks: Array<ImageBlockParam | TextBlockParam> = []
-
-    for (const att of imageAttachments) {
-      try {
-        const data = await readFile(att.storagePath)
-        const imageBlock: ImageBlockParam = {
+      if (att.mimeType === 'application/pdf') {
+        contentBlocks.push({
+          type: 'document',
+          source: {
+            type: 'base64',
+            media_type: 'application/pdf',
+            data: base64,
+          },
+        })
+      } else if (att.mimeType.startsWith('image/') && att.mimeType !== 'image/svg+xml') {
+        contentBlocks.push({
           type: 'image',
           source: {
             type: 'base64',
             media_type: att.mimeType as 'image/png' | 'image/jpeg' | 'image/gif' | 'image/webp',
-            data: data.toString('base64'),
+            data: base64,
           },
-        }
-        contentBlocks.push(imageBlock)
-      } catch {
-        // Skip unreadable files
+        })
       }
+      // SVG and other unsupported types are skipped
+    } catch {
+      // Skip unreadable files
+    }
+  }
+
+  let promptInput: string | AsyncIterable<SDKUserMessage>
+
+  if (contentBlocks.length > 0) {
+    if (message.trim()) {
+      contentBlocks.push({ type: 'text', text: message })
     }
 
-    if (message.trim()) {
-      const textBlock: TextBlockParam = { type: 'text', text: message }
-      contentBlocks.push(textBlock)
+    // Label card-level attachments so the agent knows what they are
+    if (cardAttachments.length > 0) {
+      const label = cardAttachments
+        .map((a) => a.fileName)
+        .join(', ')
+      contentBlocks.unshift({
+        type: 'text',
+        text: `[Card attachments: ${label}]`,
+      })
     }
 
     async function* generatePrompt(): AsyncGenerator<SDKUserMessage> {

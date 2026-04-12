@@ -44,9 +44,9 @@ Files can be attached via two mechanisms on all supported surfaces:
 
 ## AI agent context
 
-- [ ] When a chat message includes image attachments, the agent session receives them as viewable image content
-- [ ] Card-level attachments are copied into the card's worktree at `.workhorse/attachments/{card-id}/`, making them available to both the spec agent and the implementation agent
-- [ ] The handoff prompt references attachment file paths so the implementation agent can find them
+- [ ] When a chat message includes image attachments, the agent session receives them as multimodal content blocks (base64 images)
+- [ ] Card-level attachments are included as content blocks in the first message of each agent session — images as image blocks, PDFs as document blocks
+- [ ] Attachments are not committed to the git repository; they are stored on disk and served via the API
 - [ ] When the card creation dialog includes image attachments, the generate-card agent receives them as visual context
 
 ## Constraints

@@ -26,9 +26,11 @@
     --blue: #2563eb;
     --shadow-sm: 0 1px 3px rgba(28,25,23,0.04);
     --shadow-md: 0 2px 8px rgba(28,25,23,0.06);
+    --shadow-lg: 0 12px 40px rgba(28,25,23,0.14), 0 2px 8px rgba(28,25,23,0.06);
     --radius-default: 8px;
     --radius-sm: 4px;
     --radius-md: 6px;
+    --radius-lg: 10px;
   }
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -39,7 +41,7 @@
     padding: 40px;
     display: flex;
     flex-direction: column;
-    gap: 48px;
+    gap: 40px;
   }
 
   .scenario { display: flex; flex-direction: column; gap: 12px; }
@@ -51,68 +53,198 @@
     letter-spacing: 0.06em;
   }
 
-  /* ─── The bar itself ─── */
-  .context-bar {
+  /* ─── Workspace frame ─── */
+  .workspace-frame {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    max-width: 960px;
+  }
+
+  /* ─── Topbar ─── */
+  .topbar {
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 8px 16px;
-    background: var(--bg-surface);
+    gap: 10px;
+    padding: 0 16px;
+    height: 52px;
     border-bottom: 1px solid var(--border-subtle);
+    background: var(--bg-surface);
+  }
+  .topbar .back-btn {
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    background: none;
+    border: none;
+    padding: 4px;
+    border-radius: var(--radius-sm);
+  }
+  .topbar .back-btn:hover { background: var(--bg-hover); }
+  .topbar .card-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-primary);
+    letter-spacing: -0.01em;
+  }
+  .topbar .card-id {
+    font-family: ui-monospace, 'SF Mono', 'Cascadia Code', monospace;
     font-size: 12px;
-    min-height: 36px;
+    font-weight: 500;
+    color: var(--text-muted);
+  }
+
+  /* ─── Properties bar ─── */
+  .properties-bar {
+    display: flex;
+    align-items: center;
+    height: 32px;
+    padding: 0 8px;
+    border-bottom: 1px solid var(--border-subtle);
+    background: var(--bg-surface);
+    font-size: 12px;
+  }
+
+  .properties-left {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .prop-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 2px 8px;
+    border-radius: var(--radius-md);
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.1s;
+  }
+  .prop-item:hover { background: var(--bg-hover); }
+
+  .status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .status-dot.specifying { background: var(--amber); }
+  .status-dot.implementing { background: var(--amber); }
+  .status-dot.complete { background: var(--green); }
+
+  /* ─── Divider ─── */
+  .divider {
+    width: 1px;
+    height: 16px;
+    background: var(--border-default);
+    margin: 0 4px;
+    flex-shrink: 0;
+  }
+
+  /* ─── Journey dots ─── */
+  .journey-section {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 2px 8px;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: background 0.1s;
+    flex-shrink: 0;
+  }
+  .journey-section:hover { background: var(--bg-hover); }
+
+  .journey-dots {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+  }
+  .j-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .j-dot.done { background: var(--green); }
+  .j-dot.active { background: var(--accent); }
+  .j-dot.scheduled {
+    border: 1.5px solid var(--border-default);
+    background: transparent;
+  }
+  .j-dot.suggested {
+    border: 1.5px dashed var(--text-faint);
+    background: transparent;
+  }
+
+  .journey-chevron {
+    color: var(--text-faint);
+    display: flex;
+    align-items: center;
+  }
+
+  /* ─── Branch context (right of journey) ─── */
+  .branch-context {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 2px 8px;
+    flex-shrink: 0;
+    font-size: 11px;
+    white-space: nowrap;
   }
 
   .base-label {
     color: var(--text-muted);
-    font-weight: 500;
-    white-space: nowrap;
+    font-weight: 400;
   }
 
   .base-value {
-    color: var(--text-primary);
+    color: var(--text-secondary);
     font-weight: 500;
-    white-space: nowrap;
   }
 
-  .base-value .card-id {
+  .base-value .dep-id {
     font-family: ui-monospace, 'SF Mono', 'Cascadia Code', monospace;
     color: var(--text-muted);
-    font-size: 11px;
-    margin-right: 4px;
+    font-size: 10px;
+    margin-right: 3px;
   }
 
   .base-timestamp {
-    color: var(--text-muted);
+    color: var(--text-faint);
     font-weight: 400;
     font-size: 11px;
-    white-space: nowrap;
   }
-
-  .spacer { flex: 1; }
 
   /* Update nudge */
   .update-nudge {
-    display: flex;
+    display: inline-flex;
     align-items: center;
-    gap: 6px;
+    gap: 4px;
     color: var(--amber);
     font-size: 11px;
     font-weight: 500;
-    white-space: nowrap;
   }
 
-  .update-nudge .dot {
-    width: 6px;
-    height: 6px;
+  .nudge-dot {
+    width: 5px;
+    height: 5px;
     border-radius: 50%;
     background: var(--amber);
     flex-shrink: 0;
   }
 
   .update-btn {
-    padding: 3px 10px;
-    border-radius: var(--radius-md);
+    padding: 1px 7px;
+    border-radius: var(--radius-sm);
     font-size: 11px;
     font-weight: 500;
     background: transparent;
@@ -120,7 +252,6 @@
     border: 1px solid var(--border-default);
     cursor: pointer;
     transition: background 0.1s, border-color 0.1s;
-    white-space: nowrap;
   }
   .update-btn:hover {
     background: var(--bg-hover);
@@ -136,16 +267,40 @@
     flex-shrink: 0;
   }
 
-  /* PR actions inline */
-  .pr-actions {
-    display: flex;
+  /* Up-to-date indicator */
+  .up-to-date {
+    display: inline-flex;
     align-items: center;
-    gap: 6px;
+    gap: 3px;
+    color: var(--green);
+    font-size: 11px;
+    font-weight: 500;
   }
+  .up-to-date svg { width: 11px; height: 11px; }
 
-  .pr-btn-primary {
-    padding: 3px 10px;
-    border-radius: var(--radius-md);
+  /* Resolving state */
+  .resolving {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    color: var(--text-muted);
+    font-size: 11px;
+    font-weight: 500;
+  }
+  .resolving .spinner {
+    width: 10px;
+    height: 10px;
+    border: 1.5px solid var(--border-default);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* PR actions */
+  .pr-btn {
+    padding: 1px 7px;
+    border-radius: var(--radius-sm);
     font-size: 11px;
     font-weight: 500;
     background: var(--accent);
@@ -155,14 +310,14 @@
     transition: background 0.1s;
     white-space: nowrap;
   }
-  .pr-btn-primary:hover { background: var(--accent-hover); }
+  .pr-btn:hover { background: var(--accent-hover); }
 
   .pr-link {
     display: inline-flex;
     align-items: center;
-    gap: 4px;
-    padding: 3px 10px;
-    border-radius: var(--radius-md);
+    gap: 3px;
+    padding: 1px 7px;
+    border-radius: var(--radius-sm);
     font-size: 11px;
     font-weight: 500;
     background: var(--accent);
@@ -172,11 +327,11 @@
     white-space: nowrap;
   }
   .pr-link:hover { background: var(--accent-hover); }
-  .pr-link svg { width: 10px; height: 10px; }
+  .pr-link svg { width: 9px; height: 9px; }
 
   .overflow-btn {
-    width: 24px;
-    height: 24px;
+    width: 20px;
+    height: 20px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -186,110 +341,17 @@
     color: var(--text-muted);
     cursor: pointer;
     transition: background 0.1s, color 0.1s;
-    font-size: 14px;
+    font-size: 12px;
   }
   .overflow-btn:hover {
     background: var(--bg-hover);
     color: var(--text-primary);
   }
 
-  /* Up-to-date badge */
-  .up-to-date {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    color: var(--green);
-    font-size: 11px;
-    font-weight: 500;
-    white-space: nowrap;
-  }
-  .up-to-date svg { width: 12px; height: 12px; }
-
-  /* Resolving state */
-  .resolving {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    color: var(--text-muted);
-    font-size: 11px;
-    font-weight: 500;
-    white-space: nowrap;
-  }
-  .resolving .spinner {
-    width: 12px;
-    height: 12px;
-    border: 1.5px solid var(--border-default);
-    border-top-color: var(--accent);
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-  }
-  @keyframes spin { to { transform: rotate(360deg); } }
-
-  /* Variant B — positioned above journey bar */
-  .workspace-frame {
-    background: var(--bg-surface);
-    border: 1px solid var(--border-subtle);
-    border-radius: 10px;
-    overflow: hidden;
-    max-width: 720px;
-  }
-
-  .fake-topbar {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 0 16px;
-    height: 44px;
-    border-bottom: 1px solid var(--border-subtle);
-    background: var(--bg-surface);
-  }
-  .fake-topbar .card-title {
-    font-size: 14px;
-    font-weight: 500;
-    color: var(--text-primary);
-  }
-  .fake-topbar .card-id {
-    font-family: ui-monospace, 'SF Mono', 'Cascadia Code', monospace;
-    font-size: 12px;
-    color: var(--text-muted);
-  }
-
-  .fake-journey {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 6px 16px;
-    border-bottom: 1px solid var(--border-subtle);
-    background: var(--bg-surface);
-    font-size: 11px;
-    color: var(--text-muted);
-  }
-  .fake-journey .dots {
-    display: flex;
-    gap: 4px;
-  }
-  .fake-journey .dot-filled {
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-    background: var(--green);
-  }
-  .fake-journey .dot-active {
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-    background: var(--accent);
-  }
-  .fake-journey .dot-empty {
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-    border: 1.5px dashed var(--border-default);
-  }
-
+  /* ─── Fake content ─── */
   .fake-content {
     padding: 24px 16px;
-    min-height: 80px;
+    min-height: 60px;
     color: var(--text-faint);
     font-size: 13px;
     font-style: italic;
@@ -298,80 +360,126 @@
 </head>
 <body>
 
-<!-- ═══════════════════════════════════════════════════ -->
-<!-- OPTION A: Standalone context bar below topbar      -->
-<!-- ═══════════════════════════════════════════════════ -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- All states show the branch context integrated into the         -->
+<!-- properties bar, to the right of the journey section.           -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
 
+<!-- 1. Up to date, based on latest specs, no PR, no journey yet -->
 <div class="scenario">
-  <span class="scenario-label">Option A — Standalone context bar below topbar, above chat content</span>
-</div>
-
-<!-- A1: Up to date, based on latest specs, no PR yet -->
-<div class="scenario">
-  <span class="scenario-label">A1. Based on latest specs, up to date, pre-PR</span>
+  <span class="scenario-label">1. Fresh card — based on latest specs, up to date, no journey yet</span>
   <div class="workspace-frame">
-    <div class="fake-topbar">
-      <span class="card-id" style="font-family: ui-monospace, 'SF Mono', monospace; font-size: 12px; color: var(--text-muted);">WH-078</span>
-      <span class="card-title" style="font-size: 14px; font-weight: 500; color: var(--text-primary);">Improve PR control bar</span>
+    <div class="topbar">
+      <button class="back-btn">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+      </button>
+      <span class="card-title">Improve PR control bar</span>
+      <span class="card-id">WH-078</span>
     </div>
-    <div class="context-bar">
-      <span class="base-label">Based on</span>
-      <span class="base-value">Latest specs</span>
-      <span class="base-timestamp">3 Apr</span>
-      <span class="spacer"></span>
-      <div class="pr-actions">
-        <button class="pr-btn-primary">Create PR</button>
+    <div class="properties-bar">
+      <div class="properties-left">
+        <span class="prop-item"><span class="status-dot specifying"></span> Specifying</span>
+        <span class="prop-item">Medium</span>
+        <span class="prop-item">Workhorse</span>
+        <span class="prop-item" style="color: var(--text-muted);">Unassigned</span>
+      </div>
+      <!-- No journey section yet — bar goes straight to branch context -->
+      <div class="branch-context">
+        <span class="base-label">Based on</span>
+        <span class="base-value">Latest specs</span>
+        <span class="base-timestamp">· 3 Apr</span>
       </div>
     </div>
     <div class="fake-content">Chat / content area...</div>
   </div>
 </div>
 
-<!-- A2: Updates available, based on latest specs -->
+<!-- 2. With journey, updates available, pre-PR -->
 <div class="scenario">
-  <span class="scenario-label">A2. 4 newer changes available upstream</span>
+  <span class="scenario-label">2. Active card — journey in progress, 4 newer changes upstream</span>
   <div class="workspace-frame">
-    <div class="fake-topbar">
-      <span class="card-id" style="font-family: ui-monospace, 'SF Mono', monospace; font-size: 12px; color: var(--text-muted);">WH-078</span>
-      <span class="card-title" style="font-size: 14px; font-weight: 500; color: var(--text-primary);">Improve PR control bar</span>
+    <div class="topbar">
+      <button class="back-btn">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+      </button>
+      <span class="card-title">Improve PR control bar</span>
+      <span class="card-id">WH-078</span>
     </div>
-    <div class="context-bar">
-      <span class="base-label">Based on</span>
-      <span class="base-value">Latest specs</span>
-      <span class="base-timestamp">3 Apr</span>
-      <span class="spacer"></span>
-      <div class="update-nudge">
-        <span class="dot"></span>
-        4 newer changes
+    <div class="properties-bar">
+      <div class="properties-left">
+        <span class="prop-item"><span class="status-dot specifying"></span> Specifying</span>
+        <span class="prop-item">Medium</span>
+        <span class="prop-item">Workhorse</span>
+        <span class="prop-item" style="color: var(--text-muted);">Unassigned</span>
       </div>
-      <button class="update-btn">Update</button>
-      <span class="sep"></span>
-      <div class="pr-actions">
-        <button class="pr-btn-primary">Create PR</button>
+      <div class="journey-section">
+        <div class="journey-dots">
+          <span class="j-dot done"></span>
+          <span class="j-dot active"></span>
+          <span class="j-dot suggested"></span>
+          <span class="j-dot suggested"></span>
+        </div>
+        <span class="journey-chevron">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
+        </span>
+      </div>
+      <div class="divider"></div>
+      <div class="branch-context">
+        <span class="base-label">Based on</span>
+        <span class="base-value">Latest specs</span>
+        <span class="base-timestamp">· 3 Apr</span>
+        <span class="sep"></span>
+        <span class="update-nudge">
+          <span class="nudge-dot"></span>
+          4 newer
+        </span>
+        <button class="update-btn">Update</button>
       </div>
     </div>
     <div class="fake-content">Chat / content area...</div>
   </div>
 </div>
 
-<!-- A3: Based on another card -->
+<!-- 3. Depends on another card, up to date, has PR -->
 <div class="scenario">
-  <span class="scenario-label">A3. Depends on another card, up to date</span>
+  <span class="scenario-label">3. Depends on WH-058 — up to date, PR exists</span>
   <div class="workspace-frame">
-    <div class="fake-topbar">
-      <span class="card-id" style="font-family: ui-monospace, 'SF Mono', monospace; font-size: 12px; color: var(--text-muted);">WH-082</span>
-      <span class="card-title" style="font-size: 14px; font-weight: 500; color: var(--text-primary);">Allergy checking in lab requests</span>
+    <div class="topbar">
+      <button class="back-btn">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+      </button>
+      <span class="card-title">Allergy checking in lab requests</span>
+      <span class="card-id">WH-082</span>
     </div>
-    <div class="context-bar">
-      <span class="base-label">Based on</span>
-      <span class="base-value"><span class="card-id">WH-058</span>Patient allergies</span>
-      <span class="spacer"></span>
-      <span class="up-to-date">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-        Up to date
-      </span>
-      <span class="sep"></span>
-      <div class="pr-actions">
+    <div class="properties-bar">
+      <div class="properties-left">
+        <span class="prop-item"><span class="status-dot implementing"></span> Implementing</span>
+        <span class="prop-item">High</span>
+        <span class="prop-item">Tamanu</span>
+        <span class="prop-item">Felix</span>
+      </div>
+      <div class="journey-section">
+        <div class="journey-dots">
+          <span class="j-dot done"></span>
+          <span class="j-dot done"></span>
+          <span class="j-dot done"></span>
+          <span class="j-dot active"></span>
+          <span class="j-dot suggested"></span>
+        </div>
+        <span class="journey-chevron">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
+        </span>
+      </div>
+      <div class="divider"></div>
+      <div class="branch-context">
+        <span class="base-label">Based on</span>
+        <span class="base-value"><span class="dep-id">WH-058</span>Patient allergies</span>
+        <span class="sep"></span>
+        <span class="up-to-date">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          Up to date
+        </span>
+        <span class="sep"></span>
         <a class="pr-link" href="#">View PR <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a>
         <button class="overflow-btn" title="More options">···</button>
       </div>
@@ -380,79 +488,140 @@
   </div>
 </div>
 
-<!-- A4: Resolving conflicts after update -->
+<!-- 4. Updating — resolving changes -->
 <div class="scenario">
-  <span class="scenario-label">A4. Updating — resolving conflicts</span>
+  <span class="scenario-label">4. Updating in progress — resolving changes from upstream</span>
   <div class="workspace-frame">
-    <div class="fake-topbar">
-      <span class="card-id" style="font-family: ui-monospace, 'SF Mono', monospace; font-size: 12px; color: var(--text-muted);">WH-078</span>
-      <span class="card-title" style="font-size: 14px; font-weight: 500; color: var(--text-primary);">Improve PR control bar</span>
+    <div class="topbar">
+      <button class="back-btn">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+      </button>
+      <span class="card-title">Improve PR control bar</span>
+      <span class="card-id">WH-078</span>
     </div>
-    <div class="context-bar">
-      <span class="base-label">Based on</span>
-      <span class="base-value">Latest specs</span>
-      <span class="base-timestamp">3 Apr</span>
-      <span class="spacer"></span>
-      <div class="resolving">
-        <span class="spinner"></span>
-        Updating — resolving changes...
+    <div class="properties-bar">
+      <div class="properties-left">
+        <span class="prop-item"><span class="status-dot specifying"></span> Specifying</span>
+        <span class="prop-item">Medium</span>
+        <span class="prop-item">Workhorse</span>
+        <span class="prop-item" style="color: var(--text-muted);">Unassigned</span>
       </div>
-    </div>
-    <div class="fake-content">Chat / content area...</div>
-  </div>
-</div>
-
-<!-- A5: Just updated, showing what happened -->
-<div class="scenario">
-  <span class="scenario-label">A5. Just updated successfully</span>
-  <div class="workspace-frame">
-    <div class="fake-topbar">
-      <span class="card-id" style="font-family: ui-monospace, 'SF Mono', monospace; font-size: 12px; color: var(--text-muted);">WH-078</span>
-      <span class="card-title" style="font-size: 14px; font-weight: 500; color: var(--text-primary);">Improve PR control bar</span>
-    </div>
-    <div class="context-bar">
-      <span class="base-label">Based on</span>
-      <span class="base-value">Latest specs</span>
-      <span class="base-timestamp">12 Apr</span>
-      <span class="spacer"></span>
-      <span class="up-to-date">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-        Updated just now
-      </span>
-      <span class="sep"></span>
-      <div class="pr-actions">
-        <button class="pr-btn-primary">Create PR</button>
-      </div>
-    </div>
-    <div class="fake-content">Chat / content area...</div>
-  </div>
-</div>
-
-<!-- ═══════════════════════════════════════════════════ -->
-<!-- OPTION B: In topbar                                -->
-<!-- ═══════════════════════════════════════════════════ -->
-
-<div class="scenario" style="margin-top: 16px;">
-  <span class="scenario-label">Option B — In the topbar, right-aligned</span>
-</div>
-
-<div class="scenario">
-  <span class="scenario-label">B1. Topbar with upstream + PR</span>
-  <div class="workspace-frame">
-    <div class="fake-topbar" style="justify-content: space-between;">
-      <div style="display: flex; align-items: center; gap: 8px;">
-        <span class="card-id" style="font-family: ui-monospace, 'SF Mono', monospace; font-size: 12px; color: var(--text-muted);">WH-078</span>
-        <span class="card-title" style="font-size: 14px; font-weight: 500; color: var(--text-primary);">Improve PR control bar</span>
-      </div>
-      <div style="display: flex; align-items: center; gap: 8px; font-size: 11px;">
-        <span style="color: var(--text-muted);">Based on Latest specs · 3 Apr</span>
-        <div class="update-nudge">
-          <span class="dot"></span>
-          4 newer
+      <div class="journey-section">
+        <div class="journey-dots">
+          <span class="j-dot done"></span>
+          <span class="j-dot active"></span>
+          <span class="j-dot suggested"></span>
         </div>
+        <span class="journey-chevron">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
+        </span>
+      </div>
+      <div class="divider"></div>
+      <div class="branch-context">
+        <span class="base-label">Based on</span>
+        <span class="base-value">Latest specs</span>
+        <span class="base-timestamp">· 3 Apr</span>
+        <span class="sep"></span>
+        <span class="resolving">
+          <span class="spinner"></span>
+          Updating...
+        </span>
+      </div>
+    </div>
+    <div class="fake-content">Chat / content area...</div>
+  </div>
+</div>
+
+<!-- 5. Just updated, with Create PR -->
+<div class="scenario">
+  <span class="scenario-label">5. Just updated — now current, code changes exist, pre-PR</span>
+  <div class="workspace-frame">
+    <div class="topbar">
+      <button class="back-btn">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+      </button>
+      <span class="card-title">Improve PR control bar</span>
+      <span class="card-id">WH-078</span>
+    </div>
+    <div class="properties-bar">
+      <div class="properties-left">
+        <span class="prop-item"><span class="status-dot implementing"></span> Implementing</span>
+        <span class="prop-item">Medium</span>
+        <span class="prop-item">Workhorse</span>
+        <span class="prop-item" style="color: var(--text-muted);">Unassigned</span>
+      </div>
+      <div class="journey-section">
+        <div class="journey-dots">
+          <span class="j-dot done"></span>
+          <span class="j-dot done"></span>
+          <span class="j-dot active"></span>
+          <span class="j-dot suggested"></span>
+          <span class="j-dot suggested"></span>
+        </div>
+        <span class="journey-chevron">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
+        </span>
+      </div>
+      <div class="divider"></div>
+      <div class="branch-context">
+        <span class="base-label">Based on</span>
+        <span class="base-value">Latest specs</span>
+        <span class="base-timestamp">· 12 Apr</span>
+        <span class="sep"></span>
+        <span class="up-to-date">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          Updated just now
+        </span>
+        <span class="sep"></span>
+        <button class="pr-btn">Create PR</button>
+      </div>
+    </div>
+    <div class="fake-content">Chat / content area...</div>
+  </div>
+</div>
+
+<!-- 6. Depends on card with updates available + PR -->
+<div class="scenario">
+  <span class="scenario-label">6. Depends on card, parent has new changes, PR exists</span>
+  <div class="workspace-frame">
+    <div class="topbar">
+      <button class="back-btn">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+      </button>
+      <span class="card-title">Allergy checking in lab requests</span>
+      <span class="card-id">WH-082</span>
+    </div>
+    <div class="properties-bar">
+      <div class="properties-left">
+        <span class="prop-item"><span class="status-dot implementing"></span> Implementing</span>
+        <span class="prop-item">High</span>
+        <span class="prop-item">Tamanu</span>
+        <span class="prop-item">Felix</span>
+      </div>
+      <div class="journey-section">
+        <div class="journey-dots">
+          <span class="j-dot done"></span>
+          <span class="j-dot done"></span>
+          <span class="j-dot active"></span>
+          <span class="j-dot suggested"></span>
+        </div>
+        <span class="journey-chevron">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
+        </span>
+      </div>
+      <div class="divider"></div>
+      <div class="branch-context">
+        <span class="base-label">Based on</span>
+        <span class="base-value"><span class="dep-id">WH-058</span>Patient allergies</span>
+        <span class="sep"></span>
+        <span class="update-nudge">
+          <span class="nudge-dot"></span>
+          2 newer
+        </span>
         <button class="update-btn">Update</button>
         <span class="sep"></span>
-        <button class="pr-btn-primary" style="font-size: 11px; padding: 3px 10px;">Create PR</button>
+        <a class="pr-link" href="#">View PR <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a>
+        <button class="overflow-btn" title="More options">···</button>
       </div>
     </div>
     <div class="fake-content">Chat / content area...</div>

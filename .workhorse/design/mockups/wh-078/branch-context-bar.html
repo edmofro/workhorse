@@ -89,7 +89,8 @@
     transition: background 0.1s;
   }
   .prop-base:hover { background: var(--bg-hover); }
-  .prop-base .arrow { font-size: 10px; color: var(--text-faint); }
+  .prop-base .base-icon { display: flex; align-items: center; color: var(--text-faint); flex-shrink: 0; }
+  .prop-base .base-label { font-size: 11px; color: var(--text-faint); }
   .prop-base .base-val { color: var(--text-secondary); }
   .prop-base .base-card {
     font-family: ui-monospace, 'SF Mono', monospace;
@@ -132,15 +133,22 @@
   .chip:hover { border-color: var(--border-default); background: var(--bg-hover); }
   .chip.chip-open { border-color: var(--border-default); background: var(--bg-hover); }
 
-  /* Action chip — accent, for "Create PR" */
-  .chip.action {
-    background: var(--accent); border-color: var(--accent);
-    color: white; padding: 2px 9px;
+  /* Action button — uses design system button sizing, not chip sizing */
+  .pr-create-btn {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 7px 14px; border-radius: var(--radius-default);
+    font-size: 12px; font-weight: 500;
+    background: var(--accent); color: white;
+    border: none; cursor: pointer; white-space: nowrap;
+    flex-shrink: 0; transition: background 0.1s;
   }
-  .chip.action:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+  .pr-create-btn:hover { background: var(--accent-hover); }
+  .pr-create-btn .icon { display: flex; align-items: center; }
 
-  /* PR chip — shows PR number, quiet */
+  /* PR chip — shows PR icon + number, quiet */
   .chip.pr { color: var(--text-secondary); }
+  .chip .pr-icon { display: flex; align-items: center; color: var(--green); flex-shrink: 0; }
+  .chip.merged .pr-icon { color: var(--text-muted); }
   .chip .pr-num {
     font-family: ui-monospace, 'SF Mono', monospace; font-size: 11px;
   }
@@ -290,7 +298,7 @@
             <span class="prop">Medium</span>
             <span class="prop">Workhorse</span>
             <span class="prop" style="color: var(--text-muted);">Unassigned</span>
-            <span class="prop-base"><span class="arrow">←</span> <span class="base-val">main</span></span>
+            <span class="prop-base"><span class="base-label">From</span> <span class="base-val">main</span></span>
           </div>
           <div class="journey">
             <div class="jd">
@@ -320,9 +328,9 @@
             <span class="prop">Medium</span>
             <span class="prop">Workhorse</span>
             <span class="prop" style="color: var(--text-muted);">Unassigned</span>
-            <span class="prop-base"><span class="arrow">←</span> <span class="base-val">main</span></span>
+            <span class="prop-base"><span class="base-label">From</span> <span class="base-val">main</span></span>
           </div>
-          <span class="chip action">Create PR</span>
+          <button class="pr-create-btn">Create PR</button>
           <div class="divider"></div>
           <div class="journey">
             <div class="jd">
@@ -354,9 +362,9 @@
             <span class="prop">Medium</span>
             <span class="prop">Workhorse</span>
             <span class="prop" style="color: var(--text-muted);">Unassigned</span>
-            <span class="prop-base"><span class="arrow">←</span> <span class="base-val">main</span></span>
+            <span class="prop-base"><span class="base-label">From</span> <span class="base-val">main</span></span>
           </div>
-          <span class="chip pr"><span class="pr-num">#142</span></span>
+          <span class="chip pr"><span class="pr-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M13 6h3a2 2 0 0 1 2 2v7"/><path d="M6 9v12"/></svg></span><span class="pr-num">#142</span></span>
           <div class="divider"></div>
           <div class="journey">
             <div class="jd">
@@ -388,12 +396,13 @@
             <span class="prop">Medium</span>
             <span class="prop">Workhorse</span>
             <span class="prop" style="color: var(--text-muted);">Unassigned</span>
-            <span class="prop-base"><span class="arrow">←</span> <span class="base-val">main</span></span>
+            <span class="prop-base"><span class="base-label">From</span> <span class="base-val">main</span></span>
           </div>
           <span class="chip behind">
             <span class="icon"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 19V5"/><path d="M5 12l7-7 7 7"/></svg></span>
             4
             <span class="chip-sep"></span>
+            <span class="pr-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M13 6h3a2 2 0 0 1 2 2v7"/><path d="M6 9v12"/></svg></span>
             <span class="pr-num">#142</span>
           </span>
           <div class="divider"></div>
@@ -427,7 +436,7 @@
             <span class="prop">Medium</span>
             <span class="prop">Workhorse</span>
             <span class="prop" style="color: var(--text-muted);">Unassigned</span>
-            <span class="prop-base"><span class="arrow">←</span> <span class="base-val">main</span></span>
+            <span class="prop-base"><span class="base-label">From</span> <span class="base-val">main</span></span>
           </div>
           <span class="chip behind">
             <span class="icon"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 19V5"/><path d="M5 12l7-7 7 7"/></svg></span>
@@ -462,7 +471,7 @@
             <span class="prop">Medium</span>
             <span class="prop">Workhorse</span>
             <span class="prop" style="color: var(--text-muted);">Unassigned</span>
-            <span class="prop-base"><span class="arrow">←</span> <span class="base-val">main</span></span>
+            <span class="prop-base"><span class="base-label">From</span> <span class="base-val">main</span></span>
           </div>
           <span class="chip updating">
             <span class="spinner"></span>
@@ -497,11 +506,11 @@
             <span class="prop">Medium</span>
             <span class="prop">Workhorse</span>
             <span class="prop" style="color: var(--text-muted);">Unassigned</span>
-            <span class="prop-base"><span class="arrow">←</span> <span class="base-val">main</span></span>
+            <span class="prop-base"><span class="base-label">From</span> <span class="base-val">main</span></span>
           </div>
           <!-- Merge icon (two paths joining) + PR number, muted -->
           <span class="chip merged">
-            <span class="icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M6 9v12"/><path d="M6 21c6 0 6-6 12-6"/></svg></span>
+            <span class="pr-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M6 9v12"/><path d="M6 21c6 0 6-6 12-6"/></svg></span>
             <span class="pr-num">#142</span>
           </span>
           <div class="divider"></div>
@@ -535,11 +544,11 @@
             <span class="prop">Medium</span>
             <span class="prop">Workhorse</span>
             <span class="prop" style="color: var(--text-muted);">Unassigned</span>
-            <span class="prop-base"><span class="arrow">←</span> <span class="base-val">main</span></span>
+            <span class="prop-base"><span class="base-label">From</span> <span class="base-val">main</span></span>
           </div>
           <!-- Merge icon + "1 new" to indicate post-merge changes -->
           <span class="chip pr">
-            <span class="icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M6 9v12"/><path d="M6 21c6 0 6-6 12-6"/></svg></span>
+            <span class="pr-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M6 9v12"/><path d="M6 21c6 0 6-6 12-6"/></svg></span>
             <span class="pr-num">#142</span>
             <span class="chip-sep"></span>
             1 new
@@ -576,9 +585,9 @@
             <span class="prop">High</span>
             <span class="prop">Tamanu</span>
             <span class="prop">Felix</span>
-            <span class="prop-base"><span class="arrow">←</span> <span class="base-card">WH-058</span></span>
+            <span class="prop-base"><span class="base-label">From</span> <span class="base-card">WH-058</span></span>
           </div>
-          <span class="chip pr"><span class="pr-num">#87</span></span>
+          <span class="chip pr"><span class="pr-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M13 6h3a2 2 0 0 1 2 2v7"/><path d="M6 9v12"/></svg></span><span class="pr-num">#87</span></span>
           <div class="divider"></div>
           <div class="journey">
             <div class="jd">
@@ -627,13 +636,14 @@
             <span class="prop">Medium</span>
             <span class="prop">Workhorse</span>
             <span class="prop" style="color: var(--text-muted);">Unassigned</span>
-            <span class="prop-base"><span class="arrow">←</span> <span class="base-val">main</span></span>
+            <span class="prop-base"><span class="base-label">From</span> <span class="base-val">main</span></span>
           </div>
           <div class="popover-anchor">
             <span class="chip behind chip-open">
               <span class="icon"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 19V5"/><path d="M5 12l7-7 7 7"/></svg></span>
               4
               <span class="chip-sep"></span>
+              <span class="pr-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M13 6h3a2 2 0 0 1 2 2v7"/><path d="M6 9v12"/></svg></span>
               <span class="pr-num">#142</span>
             </span>
             <div class="popover">
@@ -694,10 +704,10 @@
             <span class="prop">Medium</span>
             <span class="prop">Workhorse</span>
             <span class="prop" style="color: var(--text-muted);">Unassigned</span>
-            <span class="prop-base"><span class="arrow">←</span> <span class="base-val">main</span></span>
+            <span class="prop-base"><span class="base-label">From</span> <span class="base-val">main</span></span>
           </div>
           <div class="popover-anchor">
-            <span class="chip pr chip-open"><span class="pr-num">#142</span></span>
+            <span class="chip pr chip-open"><span class="pr-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M13 6h3a2 2 0 0 1 2 2v7"/><path d="M6 9v12"/></svg></span><span class="pr-num">#142</span></span>
             <div class="popover">
               <div class="pop-section">
                 <div class="pop-section-label">Pull request</div>
@@ -752,11 +762,11 @@
             <span class="prop">Medium</span>
             <span class="prop">Workhorse</span>
             <span class="prop" style="color: var(--text-muted);">Unassigned</span>
-            <span class="prop-base"><span class="arrow">←</span> <span class="base-val">main</span></span>
+            <span class="prop-base"><span class="base-label">From</span> <span class="base-val">main</span></span>
           </div>
           <div class="popover-anchor">
             <span class="chip pr chip-open">
-              <span class="icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M6 9v12"/><path d="M6 21c6 0 6-6 12-6"/></svg></span>
+              <span class="pr-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M6 9v12"/><path d="M6 21c6 0 6-6 12-6"/></svg></span>
               <span class="pr-num">#142</span>
               <span class="chip-sep"></span>
               1 new
@@ -818,11 +828,11 @@
             <span class="prop">Medium</span>
             <span class="prop">Workhorse</span>
             <span class="prop" style="color: var(--text-muted);">Unassigned</span>
-            <span class="prop-base"><span class="arrow">←</span> <span class="base-val">main</span></span>
+            <span class="prop-base"><span class="base-label">From</span> <span class="base-val">main</span></span>
           </div>
           <div class="popover-anchor">
             <span class="chip merged chip-open">
-              <span class="icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M6 9v12"/><path d="M6 21c6 0 6-6 12-6"/></svg></span>
+              <span class="pr-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M6 9v12"/><path d="M6 21c6 0 6-6 12-6"/></svg></span>
               <span class="pr-num">#142</span>
             </span>
             <div class="popover">

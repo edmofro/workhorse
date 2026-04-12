@@ -380,6 +380,53 @@ export async function autoCommit(
 }
 
 /**
+ * Push the current branch to origin without committing.
+ */
+export async function pushBranch(
+  owner: string,
+  repo: string,
+  cardIdentifier: string,
+  token: string,
+): Promise<void> {
+  const wtPath = worktreePath(owner, repo, cardIdentifier)
+  const branchName = await git(['rev-parse', '--abbrev-ref', 'HEAD'], wtPath)
+  await git(['push', 'origin', branchName], wtPath, {
+    GIT_ASKPASS: '/bin/echo',
+    GIT_TERMINAL_PROMPT: '0',
+    GIT_CONFIG_VALUE_0: `https://x-access-token:${token}@github.com`,
+    GIT_CONFIG_KEY_0: `url.https://x-access-token:${token}@github.com.insteadOf`,
+    GIT_CONFIG_COUNT: '1',
+  })
+}
+
+/**
+ * Pull remote changes into the worktree branch.
+ * Uses rebase to keep a linear history.
+ */
+export async function pullBranch(
+  owner: string,
+  repo: string,
+  cardIdentifier: string,
+  token: string,
+): Promise<void> {
+  const wtPath = worktreePath(owner, repo, cardIdentifier)
+
+  // Fetch latest from origin
+  const barePath = bareClonePath(owner, repo)
+  await git(['fetch', 'origin'], barePath, {
+    GIT_ASKPASS: '/bin/echo',
+    GIT_TERMINAL_PROMPT: '0',
+    GIT_CONFIG_VALUE_0: `https://x-access-token:${token}@github.com`,
+    GIT_CONFIG_KEY_0: `url.https://x-access-token:${token}@github.com.insteadOf`,
+    GIT_CONFIG_COUNT: '1',
+  })
+
+  // Rebase onto remote tracking branch
+  const branchName = await git(['rev-parse', '--abbrev-ref', 'HEAD'], wtPath)
+  await git(['rebase', `origin/${branchName}`], wtPath)
+}
+
+/**
  * Get the list of spec/mockup files changed on a branch vs main.
  */
 const MAX_CODE_FILES = 200

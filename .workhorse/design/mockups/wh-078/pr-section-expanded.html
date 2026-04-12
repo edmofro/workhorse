@@ -1,0 +1,585 @@
+<!-- spec: cards/branch-context.md -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PR Section — Expanded with Based On</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-page: #f8f7f4;
+    --bg-surface: #ffffff;
+    --bg-sidebar: #f1efeb;
+    --bg-hover: #edeae5;
+    --bg-inset: #e8e5df;
+    --text-primary: #1c1917;
+    --text-secondary: #57534e;
+    --text-muted: #a8a29e;
+    --text-faint: #d1cdc6;
+    --border-default: #dfdcd5;
+    --border-subtle: #eae7e1;
+    --accent: #c2410c;
+    --accent-hover: #b33b09;
+    --green: #16a34a;
+    --amber: #b45309;
+    --radius-sm: 4px;
+    --radius-md: 6px;
+    --radius-default: 8px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg-page);
+    color: var(--text-secondary);
+    padding: 48px;
+    display: flex;
+    flex-direction: column;
+    gap: 64px;
+  }
+
+  h1 { font-size: 16px; font-weight: 700; color: var(--text-primary); letter-spacing: -0.02em; margin-bottom: 4px; }
+  .page-desc { font-size: 13px; color: var(--text-muted); margin-bottom: 40px; line-height: 1.6; max-width: 640px; }
+  h2 { font-size: 13px; font-weight: 600; color: var(--text-primary); margin-bottom: 4px; }
+  .desc { font-size: 12px; color: var(--text-muted); margin-bottom: 20px; line-height: 1.5; max-width: 640px; }
+
+  .sidebar {
+    width: 248px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-default);
+    overflow: hidden;
+  }
+
+  /* ── PR collapsed bar ── */
+  .pr-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    cursor: pointer;
+    transition: background 0.1s;
+  }
+  .pr-bar:hover { background: var(--bg-hover); }
+
+  .pr-icon { flex-shrink: 0; }
+  .pr-icon svg { display: block; }
+
+  .pr-title {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex: 1;
+    min-width: 0;
+  }
+  .pr-title.merged { color: var(--text-muted); }
+
+  .pr-number {
+    font-size: 11px;
+    font-weight: 500;
+    font-family: ui-monospace, 'SF Mono', 'Cascadia Code', monospace;
+    color: var(--text-muted);
+    flex-shrink: 0;
+  }
+
+  .pr-badge {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--accent);
+    background: rgba(194,65,12,0.06);
+    padding: 1px 6px;
+    border-radius: 99px;
+    flex-shrink: 0;
+  }
+
+  .chevron {
+    flex-shrink: 0;
+    color: var(--text-faint);
+    transition: transform 0.1s;
+  }
+  .chevron.open { transform: rotate(180deg); }
+
+  .ext-link {
+    flex-shrink: 0;
+    padding: 4px;
+    border-radius: var(--radius-sm);
+    color: var(--text-muted);
+    transition: color 0.1s;
+    display: flex;
+  }
+  .ext-link:hover { color: var(--text-secondary); }
+
+  /* ── Expanded detail ── */
+  .expanded {
+    padding: 0 16px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .detail-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 2px;
+  }
+
+  .detail-label {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-muted);
+  }
+
+  .detail-value {
+    font-size: 11px;
+    color: var(--text-faint);
+  }
+  .detail-value.active {
+    font-weight: 500;
+    color: var(--text-secondary);
+  }
+  .detail-value.passing { font-weight: 500; color: var(--green); }
+  .detail-value.failing { font-weight: 500; color: #dc2626; }
+  .detail-value.pending { font-weight: 500; color: var(--amber); }
+
+  .detail-action {
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--accent);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    margin-left: 6px;
+  }
+  .detail-action:hover { text-decoration: underline; }
+
+  .separator {
+    height: 1px;
+    background: var(--border-subtle);
+  }
+
+  .branch-box {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 8px;
+    background: var(--bg-page);
+    border-radius: var(--radius-md);
+  }
+  .branch-name {
+    font-size: 10px;
+    font-weight: 500;
+    font-family: ui-monospace, 'SF Mono', 'Cascadia Code', monospace;
+    color: var(--text-secondary);
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .copy-btn {
+    flex-shrink: 0;
+    padding: 2px;
+    border-radius: 2px;
+    color: var(--text-faint);
+    background: none;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    transition: color 0.1s;
+  }
+  .copy-btn:hover { color: var(--text-muted); }
+
+  /* ── Based on row ── */
+  .based-on-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 2px;
+  }
+  .based-on-label {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-muted);
+  }
+  .based-on-value {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-primary);
+  }
+  .based-on-badge {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--accent);
+  }
+
+  /* ── File sections (stub) ── */
+  .file-section {
+    padding: 10px 16px;
+    border-top: 1px solid var(--border-subtle);
+  }
+  .file-section-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 6px;
+  }
+  .file-item {
+    font-size: 12px;
+    color: var(--text-secondary);
+    padding: 3px 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .file-icon { color: var(--text-faint); flex-shrink: 0; }
+
+  .section-group { display: flex; flex-direction: column; gap: 48px; }
+</style>
+</head>
+<body>
+
+<div>
+  <h1>PR Section — Expanded Detail with Based On</h1>
+  <p class="page-desc">
+    The "Based on" row moves from the properties bar into the branch details section of the expanded PR area.
+    It sits below the branch name, showing what upstream the card was branched from, with an update indicator when behind.
+  </p>
+</div>
+
+<div class="section-group">
+
+  <!-- ═══ State: Open PR, expanded, up to date ═══ -->
+  <div>
+    <h2>Open PR — expanded, up to date</h2>
+    <p class="desc">Based on main, no upstream changes available. Everything clean and pushed.</p>
+    <div class="sidebar">
+      <div class="pr-bar">
+        <span class="pr-icon">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--green)">
+            <circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M13 6h3a2 2 0 0 1 2 2v7"/><line x1="6" y1="9" x2="6" y2="21"/>
+          </svg>
+        </span>
+        <span class="pr-title">Improve PR control bar UI</span>
+        <span class="pr-number">#142</span>
+        <svg class="chevron open" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        <a class="ext-link" title="Open on GitHub">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+        </a>
+      </div>
+
+      <div class="expanded">
+        <!-- CI -->
+        <div class="detail-row">
+          <span class="detail-label">CI</span>
+          <span class="detail-value passing">Passing</span>
+        </div>
+
+        <div class="separator"></div>
+
+        <!-- Branch name -->
+        <div class="branch-box">
+          <span class="branch-name">workhorse/wh-078-spec</span>
+          <button class="copy-btn" title="Copy branch name">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          </button>
+        </div>
+
+        <!-- Based on -->
+        <div class="based-on-row">
+          <span class="based-on-label">Based on</span>
+          <span class="based-on-value">main</span>
+        </div>
+
+        <!-- Status rows -->
+        <div class="detail-row">
+          <span class="detail-label">Local</span>
+          <span class="detail-value">Clean</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Unpushed</span>
+          <span class="detail-value">None</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Remote</span>
+          <span class="detail-value">Up to date</span>
+        </div>
+      </div>
+
+      <div class="file-section">
+        <div class="file-section-label">Specs</div>
+        <div class="file-item">
+          <span class="file-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><polyline points="14 2 14 8 20 8"/></svg></span>
+          branch-context.md
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ State: Open PR, expanded, behind upstream ═══ -->
+  <div>
+    <h2>Open PR — expanded, 4 commits behind main</h2>
+    <p class="desc">Upstream has newer changes. The "Based on" row shows the count and an Update action. Also has 2 unpushed commits.</p>
+    <div class="sidebar">
+      <div class="pr-bar">
+        <span class="pr-icon">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--green)">
+            <circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M13 6h3a2 2 0 0 1 2 2v7"/><line x1="6" y1="9" x2="6" y2="21"/>
+          </svg>
+        </span>
+        <span class="pr-title">Improve PR control bar UI</span>
+        <span class="pr-number">#142</span>
+        <svg class="chevron open" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        <a class="ext-link" title="Open on GitHub">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+        </a>
+      </div>
+
+      <div class="expanded">
+        <!-- CI -->
+        <div class="detail-row">
+          <span class="detail-label">CI</span>
+          <span>
+            <span class="detail-value failing">Failing</span>
+          </span>
+        </div>
+
+        <div class="separator"></div>
+
+        <!-- Branch name -->
+        <div class="branch-box">
+          <span class="branch-name">workhorse/wh-078-spec</span>
+          <button class="copy-btn" title="Copy branch name">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          </button>
+        </div>
+
+        <!-- Based on — behind upstream -->
+        <div class="based-on-row">
+          <span class="based-on-label">Based on</span>
+          <span class="based-on-value">
+            main
+            <span class="based-on-badge">↑4</span>
+            <button class="detail-action">Update</button>
+          </span>
+        </div>
+
+        <!-- Status rows -->
+        <div class="detail-row">
+          <span class="detail-label">Local</span>
+          <span class="detail-value">Clean</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Unpushed</span>
+          <span>
+            <span class="detail-value active">2 commits</span>
+            <button class="detail-action">Push</button>
+          </span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Remote</span>
+          <span class="detail-value">Up to date</span>
+        </div>
+      </div>
+
+      <div class="file-section">
+        <div class="file-section-label">Specs</div>
+        <div class="file-item">
+          <span class="file-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><polyline points="14 2 14 8 20 8"/></svg></span>
+          branch-context.md
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ State: Based on another card ═══ -->
+  <div>
+    <h2>Open PR — based on another card (WH-058)</h2>
+    <p class="desc">Card branched from WH-058 instead of main. WH-058 has 1 new commit.</p>
+    <div class="sidebar">
+      <div class="pr-bar">
+        <span class="pr-icon">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--green)">
+            <circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M13 6h3a2 2 0 0 1 2 2v7"/><line x1="6" y1="9" x2="6" y2="21"/>
+          </svg>
+        </span>
+        <span class="pr-title">Add spec interview flow</span>
+        <span class="pr-number">#98</span>
+        <svg class="chevron open" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        <a class="ext-link" title="Open on GitHub">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+        </a>
+      </div>
+
+      <div class="expanded">
+        <div class="detail-row">
+          <span class="detail-label">CI</span>
+          <span class="detail-value pending">Running</span>
+        </div>
+
+        <div class="separator"></div>
+
+        <div class="branch-box">
+          <span class="branch-name">workhorse/wh-078-spec</span>
+          <button class="copy-btn" title="Copy branch name">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          </button>
+        </div>
+
+        <!-- Based on another card -->
+        <div class="based-on-row">
+          <span class="based-on-label">Based on</span>
+          <span class="based-on-value">
+            <span style="font-family: ui-monospace, 'SF Mono', monospace;">WH-058</span>
+            <span class="based-on-badge">↑1</span>
+            <button class="detail-action">Update</button>
+          </span>
+        </div>
+
+        <div class="detail-row">
+          <span class="detail-label">Local</span>
+          <span>
+            <span class="detail-value active">3 files</span>
+            <button class="detail-action">Commit</button>
+          </span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Unpushed</span>
+          <span class="detail-value">None</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Remote</span>
+          <span class="detail-value">Up to date</span>
+        </div>
+      </div>
+
+      <div class="file-section">
+        <div class="file-section-label">Specs</div>
+        <div class="file-item">
+          <span class="file-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><polyline points="14 2 14 8 20 8"/></svg></span>
+          branch-context.md
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ State: Merged with new changes ═══ -->
+  <div>
+    <h2>Merged PR — 2 new commits since merge</h2>
+    <p class="desc">PR was merged (possibly squash-merged). Card has 2 commits since. Badge on collapsed bar, "Prepare new PR" in expanded.</p>
+    <div class="sidebar">
+      <div class="pr-bar">
+        <span class="pr-icon">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--text-muted)">
+            <circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M6 21V9a9 9 0 0 0 9 9"/></svg>
+        </span>
+        <span class="pr-title merged">Improve PR control bar UI</span>
+        <span class="pr-number">#142</span>
+        <span class="pr-badge">2 new</span>
+        <svg class="chevron open" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        <a class="ext-link" title="Open on GitHub">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+        </a>
+      </div>
+
+      <div class="expanded">
+        <div class="separator"></div>
+
+        <div class="branch-box">
+          <span class="branch-name">workhorse/wh-078-spec</span>
+          <button class="copy-btn" title="Copy branch name">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          </button>
+        </div>
+
+        <div class="based-on-row">
+          <span class="based-on-label">Based on</span>
+          <span class="based-on-value">main</span>
+        </div>
+
+        <div class="detail-row">
+          <span class="detail-label">Local</span>
+          <span class="detail-value">Clean</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Unpushed</span>
+          <span class="detail-value">None</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Remote</span>
+          <span class="detail-value">Up to date</span>
+        </div>
+
+        <div class="separator"></div>
+
+        <div style="padding-top: 2px;">
+          <button style="
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 5px 12px;
+            border-radius: var(--radius-default);
+            font-size: 12px;
+            font-weight: 500;
+            background: var(--accent);
+            color: white;
+            border: none;
+            cursor: pointer;
+          ">Prepare new PR</button>
+        </div>
+      </div>
+
+      <div class="file-section">
+        <div class="file-section-label">Specs</div>
+        <div class="file-item">
+          <span class="file-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><polyline points="14 2 14 8 20 8"/></svg></span>
+          branch-context.md
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ State: No PR yet, pre-creation ═══ -->
+  <div>
+    <h2>No PR — Create PR button only</h2>
+    <p class="desc">Code changes exist but no PR. Branch details are hidden until a PR exists (or the section is expanded — this state has no expansion).</p>
+    <div class="sidebar">
+      <div style="padding: 10px 16px; border-bottom: 1px solid var(--border-subtle);">
+        <button style="
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          padding: 5px 12px;
+          border-radius: var(--radius-default);
+          font-size: 12px;
+          font-weight: 500;
+          background: var(--accent);
+          color: white;
+          border: none;
+          cursor: pointer;
+        ">Create PR</button>
+      </div>
+
+      <div class="file-section">
+        <div class="file-section-label">Specs</div>
+        <div class="file-item">
+          <span class="file-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><polyline points="14 2 14 8 20 8"/></svg></span>
+          branch-context.md
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>

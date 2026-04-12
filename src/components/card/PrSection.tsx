@@ -20,6 +20,9 @@ interface PrSectionProps {
   prUrl: string | null
   prNumber: number | null
   cardBranch: string | null
+  dependsOn: { identifier: string; title: string }[]
+  repoOwner: string
+  repoName: string
   onPrCreated: (prUrl: string, prNumber?: number) => void
 }
 
@@ -39,6 +42,9 @@ export function PrSection({
   prUrl,
   prNumber,
   cardBranch,
+  dependsOn,
+  repoOwner,
+  repoName,
   onPrCreated,
 }: PrSectionProps) {
   const [isCreating, setIsCreating] = useState(false)
@@ -61,12 +67,24 @@ export function PrSection({
   const ci = status?.ci ?? null
   const branch = status?.branch ?? null
   const liveBranchName = branch?.name ?? cardBranch
+  const upstreamBehind = status?.upstreamBehind ?? 0
+  const basedOn = dependsOn.length > 0 ? dependsOn[0].identifier : 'main'
+
+  // Build GitHub checks URL
+  const checksUrl = liveBranchName
+    ? `https://github.com/${repoOwner}/${repoName}/commits/${encodeURIComponent(liveBranchName)}`
+    : null
+
+  // Detect post-merge new commits
+  const postMergeCommits = (prMerged && branch) ? branch.unpushedCommits : 0
 
   // Derive state
-  type PrState = 'hidden' | 'create' | 'open' | 'merged' | 'updating'
+  type PrState = 'hidden' | 'create' | 'open' | 'merged' | 'merged-new' | 'updating'
   let state: PrState = 'hidden'
   if (isCreating) {
     state = 'updating'
+  } else if (safePrUrl && prMerged && postMergeCommits > 0) {
+    state = 'merged-new'
   } else if (safePrUrl && prMerged) {
     state = 'merged'
   } else if (safePrUrl) {
@@ -127,6 +145,18 @@ export function PrSection({
     }
   }, [cardId])
 
+  const handlePull = useCallback(async () => {
+    try {
+      await fetch('/api/git-pull', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cardId }),
+      })
+    } catch {
+      // best-effort
+    }
+  }, [cardId])
+
   if (state === 'hidden') return null
 
   // Pre-PR: just the Create PR button
@@ -163,7 +193,7 @@ export function PrSection({
     )
   }
 
-  const isMerged = state === 'merged'
+  const isMerged = state === 'merged' || state === 'merged-new'
 
   return (
     <div className="border-b border-[var(--border-subtle)]">
@@ -193,6 +223,11 @@ export function PrSection({
           {displayNumber && (
             <span className="shrink-0 text-[11px] font-medium font-mono text-[var(--text-muted)]">
               {displayNumber}
+            </span>
+          )}
+          {state === 'merged-new' && (
+            <span className="shrink-0 text-[10px] font-semibold text-[var(--accent)] bg-[rgba(194,65,12,0.06)] px-1.5 py-px rounded-full">
+              {postMergeCommits} new
             </span>
           )}
           <ChevronDown
@@ -228,7 +263,7 @@ export function PrSection({
 
           {/* CI status */}
           {!isMerged && (
-            <CiStatusRow ci={ci} />
+            <CiStatusRow ci={ci} checksUrl={checksUrl} />
           )}
 
           {liveBranchName && (
@@ -236,6 +271,8 @@ export function PrSection({
               <div className="h-px bg-[var(--border-subtle)]" />
               <BranchDetails
                 branchName={liveBranchName}
+                basedOn={basedOn}
+                upstreamBehind={upstreamBehind}
                 localChanges={branch?.localChanges ?? 0}
                 unpushedCommits={branch?.unpushedCommits ?? 0}
                 remoteAhead={branch?.remoteAhead ?? 0}
@@ -243,7 +280,28 @@ export function PrSection({
                 onCopy={handleCopyBranch}
                 onCommit={handleCommit}
                 onPush={handlePush}
+                onPull={handlePull}
               />
+            </>
+          )}
+
+          {/* Prepare new PR for post-merge commits */}
+          {state === 'merged-new' && (
+            <>
+              <div className="h-px bg-[var(--border-subtle)]" />
+              <div className="pt-0.5">
+                <button
+                  className={cn(
+                    'inline-flex items-center gap-1.5 px-3 py-[5px]',
+                    'rounded-[var(--radius-default)] text-[12px] font-medium',
+                    'bg-[var(--accent)] text-white',
+                    'hover:bg-[var(--accent-hover)] transition-colors duration-100 cursor-pointer',
+                  )}
+                  title="Cherry-picks post-merge commits onto a fresh branch and creates a new PR"
+                >
+                  Prepare new PR
+                </button>
+              </div>
             </>
           )}
         </div>
@@ -254,7 +312,7 @@ export function PrSection({
 
 // ─── CI Status ──────────────────────────────────────────────────────────
 
-function CiStatusRow({ ci }: { ci: BranchStatusData['ci'] | null }) {
+function CiStatusRow({ ci, checksUrl }: { ci: BranchStatusData['ci'] | null; checksUrl: string | null }) {
   if (!ci || ci.total === 0) {
     return (
       <div className="flex items-center justify-between px-0.5">
@@ -279,7 +337,18 @@ function CiStatusRow({ ci }: { ci: BranchStatusData['ci'] | null }) {
   return (
     <div className="flex items-center justify-between px-0.5">
       <span className="text-[11px] font-medium text-[var(--text-muted)]">CI</span>
-      <span className={cn('text-[11px] font-medium', colour)}>{label}</span>
+      {checksUrl ? (
+        <a
+          href={checksUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={cn('text-[11px] font-medium hover:underline', colour)}
+        >
+          {label}
+        </a>
+      ) : (
+        <span className={cn('text-[11px] font-medium', colour)}>{label}</span>
+      )}
     </div>
   )
 }
@@ -288,6 +357,8 @@ function CiStatusRow({ ci }: { ci: BranchStatusData['ci'] | null }) {
 
 function BranchDetails({
   branchName,
+  basedOn,
+  upstreamBehind,
   localChanges,
   unpushedCommits,
   remoteAhead,
@@ -295,8 +366,11 @@ function BranchDetails({
   onCopy,
   onCommit,
   onPush,
+  onPull,
 }: {
   branchName: string
+  basedOn: string
+  upstreamBehind: number
   localChanges: number
   unpushedCommits: number
   remoteAhead: number
@@ -304,6 +378,7 @@ function BranchDetails({
   onCopy: (name: string) => void
   onCommit: () => void
   onPush: () => void
+  onPull: () => void
 }) {
   return (
     <div className="flex flex-col gap-1.5">
@@ -319,6 +394,29 @@ function BranchDetails({
         >
           {copied ? <Check size={11} /> : <Copy size={11} />}
         </button>
+      </div>
+
+      {/* Based on */}
+      <div className="flex items-center justify-between px-0.5">
+        <span className="text-[11px] font-medium text-[var(--text-muted)]">Based on</span>
+        <span className="flex items-center gap-1">
+          <span className={cn(
+            'text-[11px] font-medium text-[var(--text-primary)]',
+            basedOn !== 'main' && 'font-mono',
+          )}>
+            {basedOn}
+          </span>
+          {upstreamBehind > 0 && (
+            <>
+              <span className="text-[10px] font-semibold text-[var(--accent)]">
+                ↑{upstreamBehind}
+              </span>
+              <button className="text-[10px] font-medium text-[var(--accent)] hover:underline cursor-pointer">
+                Update
+              </button>
+            </>
+          )}
+        </span>
       </div>
 
       {/* Status rows */}
@@ -341,7 +439,7 @@ function BranchDetails({
         value={remoteAhead > 0 ? `${remoteAhead} ahead` : 'Up to date'}
         isWarning={remoteAhead > 0}
         action={remoteAhead > 0 ? 'Pull' : undefined}
-        onAction={remoteAhead > 0 ? () => { /* TODO: pull with conflict resolution */ } : undefined}
+        onAction={remoteAhead > 0 ? onPull : undefined}
       />
     </div>
   )

@@ -28,6 +28,9 @@ interface ArtifactsSidebarProps {
     prUrl: string | null
     prNumber: number | null
     cardBranch: string | null
+    dependsOn: { identifier: string; title: string }[]
+    repoOwner: string
+    repoName: string
     onPrCreated: (prUrl: string, prNumber?: number) => void
   }
 }
@@ -52,6 +55,9 @@ export function ArtifactsSidebar({
           prUrl={pr.prUrl}
           prNumber={pr.prNumber}
           cardBranch={pr.cardBranch}
+          dependsOn={pr.dependsOn}
+          repoOwner={pr.repoOwner}
+          repoName={pr.repoName}
           onPrCreated={pr.onPrCreated}
         />
       )}

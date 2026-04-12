@@ -41,7 +41,7 @@ Status changes are handled via the status dropdown on the card view. Statuses ar
 - [ ] Subsequent changes push new commits to the same branch automatically
 - [ ] Dependent cards branch off parent card branches; rebasing is automatic
 - [ ] Branch is the source of truth; worktree on disk is a recreatable cache (see agent-sdk-session spec for recovery details)
-- [ ] The From property and branch details section (see `branch-context.md`) surface branch status — uncommitted changes, unpushed commits, and remote status — for users who want visibility into these operations
+- [ ] The branch details section in the PR area (see `branch-context.md`) surfaces branch status — uncommitted changes, unpushed commits, and remote status — for users who want visibility into these operations
 
 ## Handoff to external agents
 

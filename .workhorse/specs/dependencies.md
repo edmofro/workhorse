@@ -22,10 +22,10 @@ No special "epic" concept is needed. An epic is just a card whose description is
 
 ## Setting dependencies
 
-The **From property** in the properties bar (see `branch-context.md`) is the primary surface for viewing and changing a card's dependency. It shows `From main` or `From WH-058`.
+The **Based on** row in the PR section's branch details (see `branch-context.md`) is the primary surface for viewing a card's dependency. It shows `main` or the parent card identifier (e.g. `WH-058`).
 
-- [ ] User can set "depends on" from one card to another via the From property dropdown
-- [ ] The From property dropdown is searchable and lists all cards on the same team/project, plus "main"
+- [ ] User can set "depends on" from one card to another via the Based on row (changing the base triggers a rebase)
+- [ ] The Based on interaction lists all cards on the same team/project, plus "main"
 - [ ] Dependencies can be set during card creation or later
 - [ ] The AI can suggest dependencies during the session when it identifies interactions
 - [ ] A card can depend on multiple cards

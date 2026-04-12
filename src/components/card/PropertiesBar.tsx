@@ -69,14 +69,12 @@ interface CardPropertiesProps {
     priority: string
     team: { id: string; name: string }
     assignee: { id: string; displayName: string } | null
-    dependsOn: { identifier: string; title: string }[]
   }
   users: { id: string; displayName: string }[]
   teams: { id: string; name: string }[]
-  upstreamBehind?: number
 }
 
-function CardProperties({ card, users, teams, upstreamBehind = 0 }: CardPropertiesProps) {
+function CardProperties({ card, users, teams }: CardPropertiesProps) {
   const [status, setStatus] = useState(card.status)
   const [priority, setPriority] = useState(card.priority)
   const [teamId, setTeamId] = useState(card.team.id)
@@ -171,24 +169,6 @@ function CardProperties({ card, users, teams, upstreamBehind = 0 }: CardProperti
         }}
       />
 
-      <div
-        className={cn(
-          'inline-flex items-center gap-1 px-2 py-1 rounded-[var(--radius-md)]',
-          'text-[12px] font-medium',
-          'hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer',
-        )}
-        title={card.dependsOn.length > 0 ? card.dependsOn[0].title : 'Based on main branch'}
-      >
-        <span className="text-[var(--text-muted)]">From</span>
-        <span className="text-[var(--text-primary)]">
-          {card.dependsOn.length > 0 ? card.dependsOn[0].identifier : 'main'}
-        </span>
-        {upstreamBehind > 0 && (
-          <span className="text-[11px] font-semibold text-[var(--accent)]">
-            ↑{upstreamBehind}
-          </span>
-        )}
-      </div>
     </div>
   )
 }
@@ -382,7 +362,6 @@ interface PropertiesBarProps {
     priority: string
     team: { id: string; name: string }
     assignee: { id: string; displayName: string } | null
-    dependsOn: { identifier: string; title: string }[]
   }
   users: { id: string; displayName: string }[]
   teams: { id: string; name: string }[]
@@ -390,7 +369,6 @@ interface PropertiesBarProps {
   scheduledSteps: ScheduledStepData[]
   suggestions: PillSuggestion[]
   activeStep: string | null
-  upstreamBehind?: number
   onTriggerSkill: (skillId: string, label: string) => void
   onScheduleStep: (skillId: string, label: string) => void
   onUnscheduleStep: (stepId: string) => void
@@ -404,7 +382,6 @@ export function PropertiesBar({
   scheduledSteps,
   suggestions,
   activeStep,
-  upstreamBehind = 0,
   onTriggerSkill,
   onScheduleStep,
   onUnscheduleStep,
@@ -413,7 +390,7 @@ export function PropertiesBar({
 
   return (
     <div className="flex items-center h-8 px-2 border-b border-[var(--border-subtle)] bg-[var(--bg-surface)]">
-      <CardProperties card={card} users={users} teams={teams} upstreamBehind={upstreamBehind} />
+      <CardProperties card={card} users={users} teams={teams} />
 
       {hasJourney && (
         <JourneySection

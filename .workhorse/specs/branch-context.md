@@ -4,32 +4,13 @@ area: cards
 card: WH-078
 ---
 
-The **From property** in the properties bar shows what the card is based on. The **PR section** at the top of the artifacts sidebar manages the pull request lifecycle — status, CI, branch diagnostics, and actions. Together they replace the standalone PR bar.
+The **PR section** at the top of the artifacts sidebar manages the pull request lifecycle — status, CI, branch diagnostics, upstream base, and actions. It replaces the standalone PR bar.
 
-Mockups: `.workhorse/design/mockups/wh-078/branch-context-split.html`, `.workhorse/design/mockups/wh-078/pr-sidebar-interactive.html`
-
-## From property
-
-A property pill in the properties bar (left side, after the existing properties like status, priority, team, assignee). Shows where the card's branch originates from.
-
-- [ ] Displays `From main` when the card branches from the main branch, or `From WH-058` when branching from another card
-- [ ] The label text "From" is faint (secondary text colour); the value ("main" or card identifier) uses primary text colour
-- [ ] Behaves like other property pills: bare text at rest, subtle rounded background on hover, click opens a dropdown
-- [ ] The dropdown is searchable and lists all cards on the same team/project as selectable options, plus "main" at the top
-- [ ] Changing the base triggers a rebase. A confirmation modal appears: "Rebase onto [new base]? This may require conflict resolution." with Confirm and Cancel actions
-- [ ] The currently selected item in the dropdown shows an update affordance when newer changes are available upstream: an up-arrow count indicator (e.g. `↑4`) and an "Update" action inline on that item
-- [ ] Clicking "Update" triggers a rebase onto the latest upstream. The first update on a card applies silently if it resolves cleanly. Subsequent updates show a confirmation prompt before proceeding
-- [ ] The From property is visible in all card views (card home, chat, artifact mode), consistent with other properties
-
-### Upstream update indicator
-
-- [ ] When the upstream branch (main or parent card) has newer commits than the card's current base, the From property shows an up-arrow with a count (e.g. `↑4`) indicating how many commits are available
-- [ ] The up-arrow indicator uses the accent colour to draw attention without being confused with CI status dots or card status dots
-- [ ] When no newer commits are available, no indicator is shown — the property displays cleanly as `From main` or `From WH-058`
+Mockups: `.workhorse/design/mockups/wh-078/pr-section-expanded.html`, `.workhorse/design/mockups/wh-078/pr-sidebar-interactive.html`
 
 ## PR section in artifacts sidebar
 
-A section at the top of the artifacts sidebar (above Specs, Mockups, Code changes) that manages the full pull request lifecycle. This replaces the standalone PR bar and the properties bar chip.
+A section at the top of the artifacts sidebar (above Specs, Mockups, Code changes) that manages the full pull request lifecycle.
 
 ### Collapsed bar states
 
@@ -47,8 +28,9 @@ The PR row at the top of the sidebar progresses through these states:
 
 Clicking the collapsed PR row expands the detail section inline within the sidebar, pushing the file sections down. All detail is visible immediately — no nested collapsibles.
 
-- [ ] **CI status** — a compact row showing pass/fail status with a link to view on GitHub
+- [ ] **CI status** — a compact row showing pass/fail status with a link to view checks on GitHub
 - [ ] **Branch name** — displayed in monospace, with a copy-to-clipboard action
+- [ ] **Based on** — shows `main` or the parent card identifier (e.g. `WH-058`). When the upstream has newer commits, shows an up-arrow count (e.g. `↑4`) in accent colour and an "Update" action. Clicking "Update" triggers a rebase onto the latest upstream (see Conflict resolution). When up to date, the row displays cleanly with no indicator
 - [ ] **Local changes** — lists uncommitted file changes. If present, shows a "Commit" action that auto-generates a commit message and commits
 - [ ] **Unpushed commits** — lists commits not yet on the remote. If present, shows a "Push" action
 - [ ] **Remote status** — indicates whether the remote has commits not yet pulled. If present, shows a "Pull" action. Pulling uses the same conflict resolution as upstream updates
@@ -81,14 +63,14 @@ When a rebase or pull encounters conflicts, the system uses an AI subagent to re
 Branch status, CI results, and PR state are pushed to the client via the existing server-sent events (SSE) infrastructure — the same mechanism the sidebar uses for session updates.
 
 - [ ] The server emits card-scoped events (branch status changes, CI updates, PR state transitions) through SSE
-- [ ] The client receives events for any card the user has open and updates the PR section, From property badge, and branch details immediately
+- [ ] The client receives events for any card the user has open and updates the PR section and branch details immediately
 - [ ] Long-running operations (rebase, conflict resolution) emit start/complete/failed events so the spinner state is driven by the event stream, not persisted in the database
 - [ ] If the SSE connection drops and reconnects, the client fetches the current state once to resynchronise
 
 ## Cross-references
 
 - `workflow-orchestration.md` — the create-pr skill is triggered by the sidebar's "Create PR" button
-- `dependencies.md` — the From property is the user-facing surface for card dependencies; changing the base is equivalent to changing the dependency
-- `commit-specs.md` — auto-commit behaviour applies to branch operations; the "under the hood" branch management is surfaced through the From property and branch details
-- `card-navigation.md` — the properties bar contains the From property; the artifacts sidebar contains the PR section
+- `dependencies.md` — the "Based on" row is the user-facing surface for card dependencies; changing the base is equivalent to changing the dependency
+- `commit-specs.md` — auto-commit behaviour applies to branch operations; branch management is surfaced through the PR section's branch details
+- `card-navigation.md` — the artifacts sidebar contains the PR section
 - `github.md` — PR creation and status tracking use the GitHub integration's OAuth token and API calls

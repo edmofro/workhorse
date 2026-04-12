@@ -23,6 +23,7 @@
     --accent-hover: #b33b09;
     --green: #16a34a;
     --amber: #b45309;
+    --diff-red: #dc2626;
     --radius-sm: 4px;
     --radius-md: 6px;
     --radius-default: 8px;
@@ -57,7 +58,7 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 10px 16px;
+    padding: 8px 16px;
     cursor: pointer;
     transition: background 0.1s;
   }
@@ -87,7 +88,7 @@
   }
 
   .pr-badge {
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 600;
     color: var(--accent);
     background: rgba(194,65,12,0.06);
@@ -143,18 +144,18 @@
     color: var(--text-secondary);
   }
   .detail-value.passing { font-weight: 500; color: var(--green); }
-  .detail-value.failing { font-weight: 500; color: #dc2626; }
+  .detail-value.failing { font-weight: 500; color: var(--diff-red); }
   .detail-value.pending { font-weight: 500; color: var(--amber); }
 
   .detail-action {
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 500;
     color: var(--accent);
     background: none;
     border: none;
     cursor: pointer;
     padding: 0;
-    margin-left: 6px;
+    margin-left: 4px;
   }
   .detail-action:hover { text-decoration: underline; }
 
@@ -167,12 +168,12 @@
     display: flex;
     align-items: center;
     gap: 4px;
-    padding: 6px 8px;
+    padding: 8px 8px;
     background: var(--bg-page);
     border-radius: var(--radius-md);
   }
   .branch-name {
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 500;
     font-family: ui-monospace, 'SF Mono', 'Cascadia Code', monospace;
     color: var(--text-secondary);
@@ -215,14 +216,14 @@
     color: var(--text-primary);
   }
   .based-on-badge {
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 600;
     color: var(--accent);
   }
 
   /* ── File sections (stub) ── */
   .file-section {
-    padding: 10px 16px;
+    padding: 8px 16px;
     border-top: 1px solid var(--border-subtle);
   }
   .file-section-label {

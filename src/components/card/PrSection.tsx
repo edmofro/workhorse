@@ -162,14 +162,14 @@ export function PrSection({
   // Pre-PR: just the Create PR button
   if (state === 'create') {
     return (
-      <div className="px-4 py-2.5 border-b border-[var(--border-subtle)]">
+      <div className="px-4 py-2 border-b border-[var(--border-subtle)]">
         {error && (
-          <p className="text-[11px] text-red-500 mb-1.5">{error}</p>
+          <p className="text-[11px] text-[var(--diff-red)] mb-1.5">{error}</p>
         )}
         <button
           onClick={handleCreatePr}
           className={cn(
-            'inline-flex items-center gap-1.5 px-3 py-[5px]',
+            'inline-flex items-center gap-1.5 px-3.5 py-[5px]',
             'rounded-[var(--radius-default)] text-[12px] font-medium',
             'bg-[var(--accent)] text-white',
             'hover:bg-[var(--accent-hover)] transition-colors duration-100 cursor-pointer',
@@ -184,7 +184,7 @@ export function PrSection({
   // Updating: spinner state
   if (state === 'updating') {
     return (
-      <div className="flex items-center gap-2 px-4 py-2.5 border-b border-[var(--border-subtle)]">
+      <div className="flex items-center gap-2 px-4 py-2 border-b border-[var(--border-subtle)]">
         <Loader2 size={14} className="animate-spin text-[var(--accent)]" />
         <span className="text-[12px] font-medium text-[var(--text-muted)]">
           {isCreating ? 'Creating PR…' : 'Updating…'}
@@ -198,7 +198,7 @@ export function PrSection({
   return (
     <div className="border-b border-[var(--border-subtle)]">
       {/* Collapsed bar */}
-      <div className="flex items-center gap-2 px-4 py-2.5">
+      <div className="flex items-center gap-2 px-4 py-2">
         {/* Clickable area: icon + title + number */}
         <button
           onClick={() => setExpanded(!expanded)}
@@ -226,7 +226,7 @@ export function PrSection({
             </span>
           )}
           {state === 'merged-new' && (
-            <span className="shrink-0 text-[10px] font-semibold text-[var(--accent)] bg-[rgba(194,65,12,0.06)] px-1.5 py-px rounded-full">
+            <span className="shrink-0 text-[11px] font-semibold text-[var(--accent)] bg-[rgba(194,65,12,0.06)] px-1.5 py-px rounded-full">
               {postMergeCommits} new
             </span>
           )}
@@ -258,7 +258,7 @@ export function PrSection({
       {expanded && (
         <div className="px-4 pb-3 flex flex-col gap-2">
           {error && (
-            <p className="text-[11px] text-red-500">{error}</p>
+            <p className="text-[11px] text-[var(--diff-red)]">{error}</p>
           )}
 
           {/* CI status */}
@@ -292,7 +292,7 @@ export function PrSection({
               <div className="pt-0.5">
                 <button
                   className={cn(
-                    'inline-flex items-center gap-1.5 px-3 py-[5px]',
+                    'inline-flex items-center gap-1.5 px-3.5 py-[5px]',
                     'rounded-[var(--radius-default)] text-[12px] font-medium',
                     'bg-[var(--accent)] text-white',
                     'hover:bg-[var(--accent-hover)] transition-colors duration-100 cursor-pointer',
@@ -330,7 +330,7 @@ function CiStatusRow({ ci, checksUrl }: { ci: BranchStatusData['ci'] | null; che
 
   const colour =
     ci.status === 'passing' ? 'text-[var(--green)]' :
-    ci.status === 'failing' ? 'text-[#dc2626]' :
+    ci.status === 'failing' ? 'text-[var(--diff-red)]' :
     ci.status === 'pending' ? 'text-[var(--amber)]' :
     'text-[var(--text-faint)]'
 
@@ -381,10 +381,10 @@ function BranchDetails({
   onPull: () => void
 }) {
   return (
-    <div className="flex flex-col gap-1.5">
+    <div className="flex flex-col gap-2">
       {/* Branch name */}
-      <div className="flex items-center gap-1 px-2 py-1.5 bg-[var(--bg-page)] rounded-[var(--radius-md)]">
-        <span className="text-[10px] font-medium font-mono text-[var(--text-secondary)] truncate flex-1">
+      <div className="flex items-center gap-1 px-2 py-2 bg-[var(--bg-page)] rounded-[var(--radius-md)]">
+        <span className="text-[11px] font-medium font-mono text-[var(--text-secondary)] truncate flex-1">
           {branchName}
         </span>
         <button
@@ -408,10 +408,10 @@ function BranchDetails({
           </span>
           {upstreamBehind > 0 && (
             <>
-              <span className="text-[10px] font-semibold text-[var(--accent)]">
+              <span className="text-[11px] font-semibold text-[var(--accent)]">
                 ↑{upstreamBehind}
               </span>
-              <button className="text-[10px] font-medium text-[var(--accent)] hover:underline cursor-pointer">
+              <button className="text-[11px] font-medium text-[var(--accent)] hover:underline cursor-pointer">
                 Update
               </button>
             </>
@@ -461,7 +461,7 @@ function StatusRow({
   return (
     <div className="flex items-center justify-between px-0.5">
       <span className="text-[11px] font-medium text-[var(--text-muted)]">{label}</span>
-      <span className="flex items-center gap-1.5">
+      <span className="flex items-center gap-1">
         <span className={cn(
           'text-[11px]',
           isWarning ? 'font-medium text-[var(--text-secondary)]' : 'text-[var(--text-faint)]',
@@ -471,7 +471,7 @@ function StatusRow({
         {action && onAction && (
           <button
             onClick={onAction}
-            className="text-[10px] font-medium text-[var(--accent)] hover:underline cursor-pointer"
+            className="text-[11px] font-medium text-[var(--accent)] hover:underline cursor-pointer"
           >
             {action}
           </button>

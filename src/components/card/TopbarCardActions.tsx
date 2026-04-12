@@ -180,7 +180,7 @@ function StatusChip({
         ref={triggerRef}
         onClick={toggle}
         className={cn(
-          'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-[var(--radius-md)]',
+          'inline-flex items-center gap-1.5 px-2 py-1 rounded-[var(--radius-md)]',
           'text-[12px] font-medium text-[var(--text-secondary)]',
           'hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer',
           open && 'bg-[var(--bg-hover)]',
@@ -203,7 +203,7 @@ function StatusChip({
           <div
             ref={menuRef}
             style={{ position: 'fixed', top: pos.top, right: pos.right }}
-            className="z-50 min-w-[180px] bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-[var(--radius-lg)] shadow-[var(--shadow-lg)] py-1"
+            className="z-50 min-w-[180px] bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-[var(--radius-xl)] shadow-[var(--shadow-lg)] py-1"
           >
             {statusOptions.map((opt) => (
               <button
@@ -314,10 +314,10 @@ function PropertiesPopover({ card, users, teams }: PropertiesPopoverProps) {
           <div
             ref={menuRef}
             style={{ position: 'fixed', top: pos.top, right: pos.right }}
-            className="z-50 w-[260px] bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-[var(--radius-lg)] shadow-[var(--shadow-lg)] py-2"
+            className="z-50 w-[260px] bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-[var(--radius-xl)] shadow-[var(--shadow-lg)] py-2"
           >
             {/* Priority */}
-            <div className="flex items-center px-3.5 py-1.5">
+            <div className="flex items-center px-3 py-1">
               <span className="w-[76px] text-[12px] font-medium text-[var(--text-muted)] shrink-0">
                 Priority
               </span>
@@ -349,7 +349,7 @@ function PropertiesPopover({ card, users, teams }: PropertiesPopoverProps) {
               ) : (
                 <button
                   onClick={() => setEditing('priority')}
-                  className="flex items-center gap-1.5 text-[12px] font-medium text-[var(--text-secondary)] px-1.5 py-0.5 rounded-[var(--radius-sm)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer"
+                  className="flex items-center gap-1.5 text-[12px] font-medium text-[var(--text-secondary)] px-2 py-0.5 rounded-[var(--radius-sm)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer"
                 >
                   <PriorityIcon priority={priority} />
                   {currentPriorityLabel}
@@ -358,7 +358,7 @@ function PropertiesPopover({ card, users, teams }: PropertiesPopoverProps) {
             </div>
 
             {/* Assignee */}
-            <div className="flex items-center px-3.5 py-1.5">
+            <div className="flex items-center px-3 py-1">
               <span className="w-[76px] text-[12px] font-medium text-[var(--text-muted)] shrink-0">
                 Assignee
               </span>
@@ -399,7 +399,7 @@ function PropertiesPopover({ card, users, teams }: PropertiesPopoverProps) {
               ) : (
                 <button
                   onClick={() => setEditing('assignee')}
-                  className="flex items-center gap-1.5 text-[12px] font-medium text-[var(--text-secondary)] px-1.5 py-0.5 rounded-[var(--radius-sm)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer"
+                  className="flex items-center gap-1.5 text-[12px] font-medium text-[var(--text-secondary)] px-2 py-0.5 rounded-[var(--radius-sm)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer"
                 >
                   {assigneeId ? (
                     <MiniAvatar
@@ -414,7 +414,7 @@ function PropertiesPopover({ card, users, teams }: PropertiesPopoverProps) {
             </div>
 
             {/* Team */}
-            <div className="flex items-center px-3.5 py-1.5">
+            <div className="flex items-center px-3 py-1">
               <span className="w-[76px] text-[12px] font-medium text-[var(--text-muted)] shrink-0">
                 Team
               </span>
@@ -444,7 +444,7 @@ function PropertiesPopover({ card, users, teams }: PropertiesPopoverProps) {
               ) : (
                 <button
                   onClick={() => setEditing('team')}
-                  className="flex items-center gap-1.5 text-[12px] font-medium text-[var(--text-secondary)] px-1.5 py-0.5 rounded-[var(--radius-sm)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer"
+                  className="flex items-center gap-1.5 text-[12px] font-medium text-[var(--text-secondary)] px-2 py-0.5 rounded-[var(--radius-sm)] hover:bg-[var(--bg-hover)] transition-colors duration-100 cursor-pointer"
                 >
                   <TeamIcon />
                   {currentTeamName}
@@ -455,8 +455,8 @@ function PropertiesPopover({ card, users, teams }: PropertiesPopoverProps) {
             {/* Dependencies */}
             {card.dependsOn.length > 0 && (
               <>
-                <div className="h-px bg-[var(--border-subtle)] my-1.5" />
-                <div className="px-3.5 py-1.5">
+                <div className="h-px bg-[var(--border-subtle)] my-2" />
+                <div className="px-3 py-1">
                   <span className="text-[12px] font-medium text-[var(--text-muted)]">
                     Depends on
                   </span>
@@ -464,7 +464,7 @@ function PropertiesPopover({ card, users, teams }: PropertiesPopoverProps) {
                     {card.dependsOn.map((dep) => (
                       <span
                         key={dep.identifier}
-                        className="inline-flex items-center px-1.5 py-0.5 bg-[var(--bg-inset)] rounded-[var(--radius-sm)] text-[11px] font-medium font-mono text-[var(--text-muted)]"
+                        className="inline-flex items-center px-2 py-0.5 bg-[var(--bg-inset)] rounded-[var(--radius-sm)] text-[11px] font-medium font-mono text-[var(--text-muted)]"
                         title={dep.title}
                       >
                         {dep.identifier}

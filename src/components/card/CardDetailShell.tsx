@@ -54,11 +54,11 @@ export function CardDetailShell({
           <TopbarCardTitle title={card.title} identifier={card.identifier} />
         )}
 
-        {/* Breadcrumb label */}
+        {/* Breadcrumb label — uses negative margins to tighten against the topbar's gap-4 */}
         {breadcrumb && (
           <>
-            <span className="text-[13px] text-[var(--text-faint)] shrink-0">›</span>
-            <span className="text-[13px] font-[450] text-[var(--text-secondary)] shrink-0 truncate max-w-[200px]">
+            <span className="text-[13px] text-[var(--text-faint)] shrink-0 -ml-2">›</span>
+            <span className="text-[13px] font-[450] text-[var(--text-secondary)] shrink-0 truncate max-w-[200px] -ml-2">
               {breadcrumb}
             </span>
           </>

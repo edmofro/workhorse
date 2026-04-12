@@ -7,6 +7,7 @@
  */
 
 import { prisma } from './prisma'
+import { cancelAgent } from './agentLifecycle'
 
 const REPLAY_BUFFER_SIZE = 50
 
@@ -140,26 +141,31 @@ export async function clearStaleSessions(
 ): Promise<number> {
   const staleThreshold = new Date(Date.now() - STALE_ACTIVITY_THRESHOLD_MS)
 
-  if (scope?.sessionId) {
-    const result = await prisma.conversationSession.updateMany({
-      where: {
-        id: scope.sessionId,
-        agentActiveAt: { not: null, lte: staleThreshold },
-      },
-      data: { agentActiveAt: null },
-    })
-    return result.count
-  }
-
+  // Query stale session IDs first so we can abort any running agents
   const where: Record<string, unknown> = {
     agentActiveAt: { not: null, lte: staleThreshold },
+  }
+  if (scope?.sessionId) {
+    where.id = scope.sessionId
   }
   if (scope?.userId) {
     where.userId = scope.userId
   }
 
-  const result = await prisma.conversationSession.updateMany({
+  const staleSessions = await prisma.conversationSession.findMany({
     where,
+    select: { id: true },
+  })
+
+  if (staleSessions.length === 0) return 0
+
+  // Abort any running agents before clearing the DB flag
+  for (const session of staleSessions) {
+    cancelAgent(session.id)
+  }
+
+  const result = await prisma.conversationSession.updateMany({
+    where: { id: { in: staleSessions.map((s) => s.id) } },
     data: { agentActiveAt: null },
   })
   return result.count

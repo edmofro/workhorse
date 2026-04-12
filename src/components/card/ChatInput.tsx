@@ -87,7 +87,7 @@ export function ChatInput({
   const canSend = hasContent && !disabled && !isUploading
 
   const iconSize = compact ? 14 : 16
-  const btnPad = compact ? 'p-1' : 'p-2'
+  const btnPad = compact ? 'p-1 mb-[5px]' : 'p-2 mb-[2px]'
 
   const sendButton = (
     <button

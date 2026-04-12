@@ -263,6 +263,7 @@ export function PrSection({
               <BranchDetails
                 branchName={liveBranchName}
                 basedOn={basedOn}
+                isCardDependency={dependsOn.length > 0}
                 upstreamBehind={upstreamBehind}
                 localChanges={branch?.localChanges ?? 0}
                 unpushedCommits={branch?.unpushedCommits ?? 0}
@@ -350,6 +351,7 @@ function CiStatusRow({ ci, checksUrl }: { ci: BranchStatusData['ci'] | null; che
 function BranchDetails({
   branchName,
   basedOn,
+  isCardDependency,
   upstreamBehind,
   localChanges,
   unpushedCommits,
@@ -363,6 +365,7 @@ function BranchDetails({
 }: {
   branchName: string
   basedOn: string
+  isCardDependency: boolean
   upstreamBehind: number
   localChanges: number
   unpushedCommits: number
@@ -396,7 +399,7 @@ function BranchDetails({
         <span className="flex items-center gap-1">
           <span className={cn(
             'text-[11px] font-medium text-[var(--text-primary)]',
-            dependsOn.length > 0 && 'font-mono',
+            isCardDependency && 'font-mono',
           )}>
             {basedOn}
           </span>

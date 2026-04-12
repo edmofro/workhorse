@@ -15,20 +15,30 @@ export interface PropertyOption {
  * position calculation, click-outside dismissal, and scroll-to-close.
  * Used by PropertyDropdown and any custom pill that needs its own menu body.
  */
-export function usePortalMenu() {
+export function usePortalMenu(options?: { align?: 'left' | 'right' }) {
+  const align = options?.align ?? 'left'
   const [open, setOpen] = useState(false)
   const triggerRef = useRef<HTMLButtonElement>(null)
   const menuRef = useRef<HTMLDivElement>(null)
-  const [pos, setPos] = useState<{ top: number; left: number } | null>(null)
+  const [pos, setPos] = useState<{ top: number; left?: number; right?: number } | null>(null)
+
+  function computePos(): { top: number; left?: number; right?: number } | null {
+    if (!triggerRef.current) return null
+    const rect = triggerRef.current.getBoundingClientRect()
+    if (align === 'right') {
+      return { top: rect.bottom + 4, right: window.innerWidth - rect.right }
+    }
+    return { top: rect.bottom + 4, left: rect.left }
+  }
 
   function toggle() {
     if (open) {
       setOpen(false)
       return
     }
-    if (!triggerRef.current) return
-    const rect = triggerRef.current.getBoundingClientRect()
-    setPos({ top: rect.bottom + 4, left: rect.left })
+    const newPos = computePos()
+    if (!newPos) return
+    setPos(newPos)
     setOpen(true)
   }
 

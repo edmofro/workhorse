@@ -11,7 +11,7 @@ import { useViewNavigation } from '../../lib/hooks/useViewNavigation'
 import { SpecHeaderBar } from './SpecHeaderBar'
 import type { DeviceKey } from './SpecHeaderBar'
 import { ActionPills, type ActionPill } from './ActionPills'
-import { JourneyBar } from './JourneyBar'
+import { PropertiesBar } from './PropertiesBar'
 import { PrBar } from './PrBar'
 import { useJockeyState } from '../../lib/hooks/useJockeyState'
 import { BUILT_IN_SKILLS } from '../../lib/skills/registry'
@@ -59,9 +59,15 @@ interface CardWorkspaceProps {
     identifier: string
     title: string
     status: string
+    priority: string
+    team: { id: string; name: string }
+    assignee: { id: string; displayName: string } | null
+    dependsOn: { identifier: string; title: string }[]
     cardBranch: string | null
     prUrl?: string | null
   }
+  users: { id: string; displayName: string }[]
+  teams: { id: string; name: string }[]
   cardTabContent: React.ReactNode
   initialFiles: SpecFileData[]
   initialCodeFiles?: { filePath: string; isNew: boolean; linesAdded?: number; linesRemoved?: number }[]
@@ -73,6 +79,8 @@ interface CardWorkspaceProps {
 
 export function CardWorkspace({
   card,
+  users,
+  teams,
   cardTabContent,
   initialFiles,
   initialCodeFiles = [],
@@ -567,16 +575,6 @@ export function CardWorkspace({
   // --- Chat column (shared between chat mode and artifact mode) ---
   const chatColumn = (
     <div className="flex-1 flex flex-col overflow-hidden">
-      {/* Journey bar — between topbar and chat */}
-      <JourneyBar
-        journalEntries={jockey.journalEntries}
-        scheduledSteps={jockey.scheduledSteps}
-        suggestions={dedupedSuggestions}
-        activeStep={jockey.activeStep}
-        onTriggerSkill={handleTriggerSkill}
-        onScheduleStep={jockey.scheduleStep}
-        onUnscheduleStep={jockey.unscheduleStep}
-      />
       <div ref={chatScrollRef} className="flex-1 overflow-y-auto flex justify-center">
         <div className="w-full" style={{ maxWidth: '680px', padding: '32px 24px 80px' }}>
           {messages.length === 0 && (
@@ -747,20 +745,25 @@ export function CardWorkspace({
   useCardBackRegister(backHandler)
 
   return (
-    <div className="flex-1 flex overflow-hidden">
+    <div className="flex-1 flex flex-col overflow-hidden">
+      {/* Properties bar — single instance shared across all views */}
+      <PropertiesBar
+        card={card}
+        users={users}
+        teams={teams}
+        journalEntries={jockey.journalEntries}
+        scheduledSteps={jockey.scheduledSteps}
+        suggestions={dedupedSuggestions}
+        activeStep={jockey.activeStep}
+        onTriggerSkill={handleTriggerSkill}
+        onScheduleStep={jockey.scheduleStep}
+        onUnscheduleStep={jockey.unscheduleStep}
+      />
+      <div className="flex-1 flex overflow-hidden">
       {/* ===== Card home ===== */}
       {view.type === 'card' && (
         <>
           <div className="flex-1 flex flex-col overflow-hidden">
-            <JourneyBar
-              journalEntries={jockey.journalEntries}
-              scheduledSteps={jockey.scheduledSteps}
-              suggestions={dedupedSuggestions}
-              activeStep={jockey.activeStep}
-              onTriggerSkill={handleTriggerSkill}
-              onScheduleStep={jockey.scheduleStep}
-              onUnscheduleStep={jockey.unscheduleStep}
-            />
             <div className="flex-1 overflow-y-auto">
               {cardTabContent}
 
@@ -880,6 +883,7 @@ export function CardWorkspace({
           </div>
         </>
       )}
+      </div>
 
       {/* New spec dialog */}
       {showNewSpecDialog && (

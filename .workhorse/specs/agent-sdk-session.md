@@ -113,7 +113,7 @@ This context means the agent never needs to explore the codebase to understand h
 
 **3. Skill-specific instructions** — driven by the skill that triggered the session (see `workflow-orchestration.md`):
 
-Each skill maps to a system prompt fragment that shapes the agent's behaviour. The skill parameter flows from the trigger (pill, journey bar, or scheduling) → API → system prompt builder. Skills include: workshop, interview, draft spec, review spec, implement, design audit, security audit, code review, and custom project-defined skills.
+Each skill maps to a system prompt fragment that shapes the agent's behaviour. The skill parameter flows from the trigger (pill, journey section, or scheduling) → API → system prompt builder. Skills include: workshop, interview, draft spec, review spec, implement, design audit, security audit, code review, and custom project-defined skills.
 
 ### Context window management
 

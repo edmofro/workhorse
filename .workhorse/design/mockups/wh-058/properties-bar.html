@@ -1,0 +1,617 @@
+<!-- spec: cards/card-detail.md -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WH-058 — Unified properties + journey bar</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg-page:       #f8f7f4;
+    --bg-surface:    #ffffff;
+    --bg-sidebar:    #f1efeb;
+    --bg-hover:      #edeae5;
+    --bg-inset:      #e8e5df;
+    --text-primary:  #1c1917;
+    --text-secondary:#57534e;
+    --text-muted:    #a8a29e;
+    --text-faint:    #d1cdc6;
+    --border-default:#dfdcd5;
+    --border-subtle: #eae7e1;
+    --accent:        #c2410c;
+    --accent-hover:  #b33b09;
+    --green:         #16a34a;
+    --amber:         #b45309;
+    --blue:          #2563eb;
+    --radius-sm:     4px;
+    --radius-md:     6px;
+    --radius-default:8px;
+    --radius-lg:     10px;
+    --radius-xl:     12px;
+    --shadow-sm:     0 1px 3px rgba(28,25,23,0.04);
+    --shadow-md:     0 2px 8px rgba(28,25,23,0.06);
+    --shadow-lg:     0 12px 40px rgba(28,25,23,0.14), 0 2px 8px rgba(28,25,23,0.06);
+  }
+
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg-page);
+    padding: 48px 40px 100px;
+    color: var(--text-primary);
+    -webkit-font-smoothing: antialiased;
+    display: flex;
+    flex-direction: column;
+    gap: 48px;
+    align-items: center;
+  }
+
+  svg { display: block; }
+
+  /* ─── Section labels ─── */
+  .section { display: flex; flex-direction: column; gap: 10px; width: 760px; }
+  .section-label {
+    font-size: 11px; font-weight: 600; letter-spacing: 0.06em;
+    text-transform: uppercase; color: var(--text-muted);
+  }
+  .section-note {
+    font-size: 12px; color: var(--text-secondary); line-height: 1.55;
+    margin-bottom: 2px;
+  }
+
+  /* ─── Card shell ─── */
+  .card-shell {
+    width: 760px; background: var(--bg-surface);
+    border-radius: var(--radius-xl); border: 1px solid var(--border-subtle);
+    box-shadow: var(--shadow-md); overflow: hidden;
+  }
+
+  /* Topbar */
+  .topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    height: 48px; padding: 0 16px;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+  .topbar-left { display: flex; align-items: center; gap: 8px; }
+  .topbar-back {
+    width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;
+    border-radius: var(--radius-md); border: none; background: transparent;
+    color: var(--text-muted); cursor: pointer;
+  }
+  .card-id {
+    font-size: 12px; font-weight: 500; color: var(--text-muted);
+    font-family: ui-monospace, 'SF Mono', monospace;
+  }
+  .topbar-title { font-size: 13px; font-weight: 500; color: var(--text-primary); }
+
+  /* ─── THE UNIFIED BAR ─────────────────────────────────
+     Replaces both JourneyBar and the property strip in CardTab.
+     Lives in CardWorkspace — shared across card home and chat views.
+  ─────────────────────────────────────────────────────── */
+  .unified-bar {
+    display: flex; align-items: center;
+    height: 38px; padding: 0 8px;
+    border-bottom: 1px solid var(--border-subtle);
+    background: var(--bg-surface);
+    gap: 0;
+    position: relative;
+  }
+
+  /* Properties sit on the left, take up available space */
+  .bar-props {
+    display: flex; align-items: center; gap: 0; flex: 1; min-width: 0;
+  }
+
+  /* Each property pill — matches PropertyDropdown.tsx exactly */
+  .prop {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 4px 8px; border-radius: var(--radius-md); border: none; background: transparent;
+    font-size: 12px; font-weight: 500; color: var(--text-secondary);
+    cursor: pointer; white-space: nowrap;
+    transition: background 100ms, color 100ms; flex-shrink: 0;
+  }
+  .prop:hover { background: var(--bg-hover); color: var(--text-primary); }
+  .prop-icon { width: 14px; height: 14px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .sdot {
+    display: inline-block; width: 7px; height: 7px;
+    border-radius: 50%; flex-shrink: 0;
+  }
+  .sdot-not-started  { border: 1px solid var(--border-default); background: transparent; }
+  .sdot-specifying   { background: var(--amber); }
+  .sdot-implementing { background: var(--blue); }
+  .sdot-complete     { background: var(--green); }
+  .mini-av {
+    width: 14px; height: 14px; border-radius: 50%;
+    background: var(--accent); color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 7px; font-weight: 600; flex-shrink: 0;
+  }
+
+  /* ─── Journey section (right side of bar) ─── */
+  .bar-divider {
+    width: 1px; height: 16px; background: var(--border-default);
+    margin: 0 4px; flex-shrink: 0;
+  }
+  /* The journey trigger pill */
+  .journey-pill {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 4px 8px; border-radius: var(--radius-md); border: none; background: transparent;
+    font-size: 12px; font-weight: 500; color: var(--text-secondary);
+    cursor: pointer; white-space: nowrap; flex-shrink: 0;
+    transition: background 100ms, color 100ms; position: relative;
+  }
+  .journey-pill:hover { background: var(--bg-hover); color: var(--text-primary); }
+  .journey-pill.active { color: var(--text-primary); }
+
+  /* Progress dots row */
+  .progress-dots { display: flex; align-items: center; gap: 3px; }
+  .jdot {
+    width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0;
+  }
+  .jdot-done      { background: var(--green); }
+  .jdot-active    { background: var(--accent); }
+  .jdot-scheduled { border: 1px solid var(--border-default); background: transparent; }
+  .jdot-suggested { border: 1px dashed var(--text-faint); background: transparent; }
+
+  /* Active step label (shown only when a step is running) */
+  .journey-step-label {
+    font-size: 12px; font-weight: 500; color: var(--text-secondary);
+  }
+  .journey-step-label.pulsing { animation: pulse 1.6s ease-in-out infinite; }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.55; } }
+
+  /* Chevron */
+  .journey-chevron {
+    color: var(--text-faint); transition: transform 120ms;
+  }
+  .journey-pill.open .journey-chevron { transform: rotate(180deg); }
+
+  /* ─── Journey dropdown ─── */
+  .journey-dropdown {
+    position: absolute; top: calc(100% + 4px); right: 0;
+    min-width: 240px; max-width: 320px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+    padding: 10px 0;
+    z-index: 40;
+  }
+  .jd-section-title {
+    font-size: 10px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.06em; color: var(--text-muted);
+    padding: 4px 12px 2px;
+  }
+  .jd-row {
+    display: flex; align-items: center; gap: 8px;
+    padding: 5px 12px; font-size: 12px; color: var(--text-secondary);
+  }
+  .jd-row.active { color: var(--text-primary); font-weight: 500; }
+  .jd-row-icon { width: 16px; display: flex; justify-content: center; flex-shrink: 0; }
+  .jd-row-time { font-size: 11px; color: var(--text-faint); margin-left: auto; flex-shrink: 0; }
+  .jd-sep { height: 1px; background: var(--border-subtle); margin: 6px 0; }
+  .jd-trigger {
+    display: flex; align-items: center; gap: 8px;
+    padding: 5px 12px; font-size: 12px; color: var(--text-muted);
+    cursor: pointer; transition: background 100ms, color 100ms;
+    border: none; background: transparent; width: 100%; text-align: left;
+    font-family: inherit;
+  }
+  .jd-trigger:hover { background: var(--bg-hover); color: var(--text-secondary); }
+
+  /* ─── Card content area ─── */
+  .card-content { padding: 24px 32px; }
+  .card-title {
+    font-size: 22px; font-weight: 700; letter-spacing: -0.03em;
+    line-height: 1.3; color: var(--text-primary); margin-bottom: 12px;
+  }
+  .card-body { font-size: 14px; line-height: 1.7; color: var(--text-secondary); }
+
+  /* ─── Annotation boxes ─── */
+  .ann {
+    width: 760px;
+    background: var(--bg-surface); border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg); padding: 12px 14px;
+    font-size: 12px; line-height: 1.55; color: var(--text-secondary);
+    display: flex; flex-direction: column; gap: 5px;
+  }
+  .ann-row { display: flex; gap: 10px; }
+  .ann-title {
+    font-size: 10px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.06em; color: var(--text-muted);
+    flex-shrink: 0; padding-top: 1px; min-width: 96px;
+  }
+
+  /* ─── Bar-only strips (for close-up comparison) ─── */
+  .bar-strip {
+    width: 760px;
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-default);
+    background: var(--bg-surface);
+    overflow: visible;
+  }
+
+</style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════════════
+  SECTION 1 — BAR STATES (close-up)
+════════════════════════════════════════════ -->
+<div class="section">
+  <div class="section-label">Bar states — close-up</div>
+  <div class="section-note">The unified bar replaces both the JourneyBar and the in-card property strip. It sits between the topbar and page content in all views.</div>
+
+  <!-- State A: no journey activity yet -->
+  <div class="bar-strip">
+    <div class="unified-bar">
+      <div class="bar-props">
+        <button class="prop">
+          <span class="prop-icon"><span class="sdot sdot-not-started"></span></span>
+          Not started
+        </button>
+        <button class="prop">
+          <span class="prop-icon">
+            <svg width="11" height="9" viewBox="0 0 12 8" fill="none"><rect x="0" y="0" width="12" height="1.5" rx="0.75" fill="currentColor"/><rect x="0" y="3.25" width="8" height="1.5" rx="0.75" fill="currentColor"/><rect x="0" y="6.5" width="5" height="1.5" rx="0.75" fill="currentColor"/></svg>
+          </span>
+          Medium
+        </button>
+        <button class="prop">
+          <span class="prop-icon">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="1.5"/><path d="M4 20c0-4 3.58-7 8-7s8 3 8 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+          </span>
+          Unassigned
+        </button>
+        <button class="prop">
+          <span class="prop-icon">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.5"/></svg>
+          </span>
+          Tamanu
+        </button>
+      </div>
+      <!-- No journey section when nothing has run -->
+    </div>
+  </div>
+  <div style="font-size:11px;color:var(--text-muted);margin-top:-4px;">No journey activity — just properties</div>
+
+  <!-- State B: step currently running -->
+  <div class="bar-strip" style="margin-top:8px;">
+    <div class="unified-bar">
+      <div class="bar-props">
+        <button class="prop">
+          <span class="prop-icon"><span class="sdot sdot-specifying"></span></span>
+          Specifying
+        </button>
+        <button class="prop">
+          <span class="prop-icon">
+            <svg width="11" height="9" viewBox="0 0 12 8" fill="none"><rect x="0" y="0" width="12" height="1.5" rx="0.75" fill="var(--accent)"/><rect x="0" y="3.25" width="8" height="1.5" rx="0.75" fill="var(--accent)" opacity=".6"/><rect x="0" y="6.5" width="5" height="1.5" rx="0.75" fill="var(--accent)" opacity=".3"/></svg>
+          </span>
+          High
+        </button>
+        <button class="prop">
+          <div class="mini-av">E</div>
+          Edwin
+        </button>
+        <button class="prop">
+          <span class="prop-icon">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.5"/></svg>
+          </span>
+          Tamanu
+        </button>
+      </div>
+      <div class="bar-divider"></div>
+      <button class="journey-pill active">
+        <div class="progress-dots">
+          <span class="jdot jdot-done"></span>
+          <span class="jdot jdot-active"></span>
+          <span class="jdot jdot-scheduled"></span>
+        </div>
+        <span class="journey-step-label pulsing">Interview</span>
+        <svg class="journey-chevron" width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2.5 4L5 6.5 7.5 4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+    </div>
+  </div>
+  <div style="font-size:11px;color:var(--text-muted);margin-top:-4px;">One step done (Workshop), Interview running, Draft spec scheduled — label pulses while active</div>
+
+  <!-- State C: steps done, suggestions visible -->
+  <div class="bar-strip" style="margin-top:8px;">
+    <div class="unified-bar">
+      <div class="bar-props">
+        <button class="prop">
+          <span class="prop-icon"><span class="sdot sdot-implementing"></span></span>
+          Implementing
+        </button>
+        <button class="prop">
+          <span class="prop-icon">
+            <svg width="11" height="9" viewBox="0 0 12 8" fill="none"><rect x="0" y="0" width="12" height="1.5" rx="0.75" fill="var(--accent)"/><rect x="0" y="3.25" width="8" height="1.5" rx="0.75" fill="var(--accent)" opacity=".6"/><rect x="0" y="6.5" width="5" height="1.5" rx="0.75" fill="var(--accent)" opacity=".3"/></svg>
+          </span>
+          High
+        </button>
+        <button class="prop">
+          <div class="mini-av">E</div>
+          Edwin
+        </button>
+        <button class="prop">
+          <span class="prop-icon">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.5"/></svg>
+          </span>
+          Tamanu
+        </button>
+      </div>
+      <div class="bar-divider"></div>
+      <button class="journey-pill">
+        <div class="progress-dots">
+          <span class="jdot jdot-done"></span>
+          <span class="jdot jdot-done"></span>
+          <span class="jdot jdot-done"></span>
+          <span class="jdot jdot-suggested"></span>
+          <span class="jdot jdot-suggested"></span>
+        </div>
+        <svg class="journey-chevron" width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2.5 4L5 6.5 7.5 4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+    </div>
+  </div>
+  <div style="font-size:11px;color:var(--text-muted);margin-top:-4px;">Three steps done, no active step, two jockey suggestions — no label shown when idle</div>
+</div>
+
+
+<!-- ════════════════════════════════════════════
+  SECTION 2 — EXPANDED DROPDOWN
+════════════════════════════════════════════ -->
+<div class="section">
+  <div class="section-label">Journey dropdown — expanded</div>
+  <div class="section-note">Clicking the journey pill opens a compact dropdown anchored to the pill, not a full-width overlay. Consistent with how property dropdowns work.</div>
+
+  <div class="bar-strip" style="position:relative;">
+    <div class="unified-bar">
+      <div class="bar-props">
+        <button class="prop">
+          <span class="prop-icon"><span class="sdot sdot-specifying"></span></span>
+          Specifying
+        </button>
+        <button class="prop">
+          <span class="prop-icon">
+            <svg width="11" height="9" viewBox="0 0 12 8" fill="none"><rect x="0" y="0" width="12" height="1.5" rx="0.75" fill="var(--accent)"/><rect x="0" y="3.25" width="8" height="1.5" rx="0.75" fill="var(--accent)" opacity=".6"/><rect x="0" y="6.5" width="5" height="1.5" rx="0.75" fill="var(--accent)" opacity=".3"/></svg>
+          </span>
+          High
+        </button>
+        <button class="prop">
+          <div class="mini-av">E</div>
+          Edwin
+        </button>
+        <button class="prop">
+          <span class="prop-icon">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.5"/></svg>
+          </span>
+          Tamanu
+        </button>
+      </div>
+      <div class="bar-divider"></div>
+      <!-- pill in open state -->
+      <button class="journey-pill active open" style="background:var(--bg-hover);">
+        <div class="progress-dots">
+          <span class="jdot jdot-done"></span>
+          <span class="jdot jdot-active"></span>
+          <span class="jdot jdot-scheduled"></span>
+        </div>
+        <span class="journey-step-label">Interview</span>
+        <svg class="journey-chevron" width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2.5 4L5 6.5 7.5 4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+
+      <!-- Dropdown anchored to journey pill -->
+      <div class="journey-dropdown">
+        <!-- Done -->
+        <div class="jd-row">
+          <span class="jd-row-icon"><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><circle cx="5" cy="5" r="4" fill="var(--green)" opacity=".15"/><path d="M2.5 5l1.8 1.8L7.5 3.5" stroke="var(--green)" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+          Workshop
+          <span class="jd-row-time">2 Apr</span>
+        </div>
+
+        <!-- Active -->
+        <div class="jd-row active">
+          <span class="jd-row-icon"><svg width="8" height="8" viewBox="0 0 8 8"><circle cx="4" cy="4" r="3" fill="var(--accent)"/></svg></span>
+          Interview
+          <span class="jd-row-time" style="color:var(--text-muted);">In progress</span>
+        </div>
+
+        <div class="jd-sep"></div>
+        <div class="jd-section-title">Scheduled</div>
+        <div class="jd-row">
+          <span class="jd-row-icon"><svg width="8" height="8" viewBox="0 0 8 8"><circle cx="4" cy="4" r="3" stroke="var(--border-default)" fill="none" stroke-width="1.2"/></svg></span>
+          Draft spec
+        </div>
+
+        <div class="jd-sep"></div>
+        <div class="jd-section-title">Suggestions</div>
+        <button class="jd-trigger">
+          <span class="jd-row-icon"><svg width="8" height="8" viewBox="0 0 8 8"><circle cx="4" cy="4" r="3" stroke="var(--text-faint)" fill="none" stroke-width="1" stroke-dasharray="1.5 1.5"/></svg></span>
+          Code review
+          <!-- arrow -->
+          <svg style="margin-left:auto;opacity:0.35;" width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 5h6M5.5 2.5L8 5l-2.5 2.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <button class="jd-trigger">
+          <span class="jd-row-icon"><svg width="8" height="8" viewBox="0 0 8 8"><circle cx="4" cy="4" r="3" stroke="var(--text-faint)" fill="none" stroke-width="1" stroke-dasharray="1.5 1.5"/></svg></span>
+          Design audit
+          <svg style="margin-left:auto;opacity:0.35;" width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 5h6M5.5 2.5L8 5l-2.5 2.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+  <div style="font-size:11px;color:var(--text-muted);margin-top:160px;">Dropdown is compact, anchored to the pill — not a full-width overlay. Suggestions are immediately triggerable.</div>
+</div>
+
+
+<!-- ════════════════════════════════════════════
+  SECTION 3 — IN CONTEXT: CARD HOME VIEW
+════════════════════════════════════════════ -->
+<div class="section">
+  <div class="section-label">Card home view</div>
+  <div class="section-note">The bar sits between topbar and content. The card title and description no longer have a property strip below them — it moved up into the shared bar.</div>
+
+  <div class="card-shell">
+    <div class="topbar">
+      <div class="topbar-left">
+        <button class="topbar-back">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M9 2L4 7l5 5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <span class="card-id">WH-031</span>
+        <span style="color:var(--border-default);font-size:13px;">·</span>
+        <span class="topbar-title">Medication conflict warning icon</span>
+      </div>
+    </div>
+
+    <!-- THE UNIFIED BAR -->
+    <div class="unified-bar">
+      <div class="bar-props">
+        <button class="prop">
+          <span class="prop-icon"><span class="sdot sdot-specifying"></span></span>
+          Specifying
+        </button>
+        <button class="prop">
+          <span class="prop-icon">
+            <svg width="11" height="9" viewBox="0 0 12 8" fill="none"><rect x="0" y="0" width="12" height="1.5" rx="0.75" fill="var(--accent)"/><rect x="0" y="3.25" width="8" height="1.5" rx="0.75" fill="var(--accent)" opacity=".6"/><rect x="0" y="6.5" width="5" height="1.5" rx="0.75" fill="var(--accent)" opacity=".3"/></svg>
+          </span>
+          High
+        </button>
+        <button class="prop">
+          <div class="mini-av">E</div>
+          Edwin
+        </button>
+        <button class="prop">
+          <span class="prop-icon">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.5"/></svg>
+          </span>
+          Tamanu
+        </button>
+      </div>
+      <div class="bar-divider"></div>
+      <button class="journey-pill active">
+        <div class="progress-dots">
+          <span class="jdot jdot-done"></span>
+          <span class="jdot jdot-active"></span>
+          <span class="jdot jdot-scheduled"></span>
+        </div>
+        <span class="journey-step-label pulsing">Interview</span>
+        <svg class="journey-chevron" width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2.5 4L5 6.5 7.5 4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+    </div>
+
+    <!-- Card content (title only, no property strip below it) -->
+    <div class="card-content">
+      <div class="card-title">Medication conflict warning icon</div>
+      <div class="card-body">Display a warning icon in the allergies panel when two active medications share a flagged interaction.</div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ════════════════════════════════════════════
+  SECTION 4 — IN CONTEXT: CONVERSATION VIEW
+════════════════════════════════════════════ -->
+<div class="section">
+  <div class="section-label">Conversation view — same bar</div>
+  <div class="section-note">The identical bar appears in the chat view. No duplication, no separate journey bar rendering for chat vs card home.</div>
+
+  <div class="card-shell">
+    <div class="topbar">
+      <div class="topbar-left">
+        <button class="topbar-back">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M9 2L4 7l5 5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <span class="card-id">WH-031</span>
+        <span style="color:var(--border-default);font-size:13px;">·</span>
+        <span class="topbar-title">Medication conflict warning icon</span>
+      </div>
+    </div>
+
+    <!-- SAME UNIFIED BAR -->
+    <div class="unified-bar">
+      <div class="bar-props">
+        <button class="prop">
+          <span class="prop-icon"><span class="sdot sdot-specifying"></span></span>
+          Specifying
+        </button>
+        <button class="prop">
+          <span class="prop-icon">
+            <svg width="11" height="9" viewBox="0 0 12 8" fill="none"><rect x="0" y="0" width="12" height="1.5" rx="0.75" fill="var(--accent)"/><rect x="0" y="3.25" width="8" height="1.5" rx="0.75" fill="var(--accent)" opacity=".6"/><rect x="0" y="6.5" width="5" height="1.5" rx="0.75" fill="var(--accent)" opacity=".3"/></svg>
+          </span>
+          High
+        </button>
+        <button class="prop">
+          <div class="mini-av">E</div>
+          Edwin
+        </button>
+        <button class="prop">
+          <span class="prop-icon">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.5"/></svg>
+          </span>
+          Tamanu
+        </button>
+      </div>
+      <div class="bar-divider"></div>
+      <button class="journey-pill active">
+        <div class="progress-dots">
+          <span class="jdot jdot-done"></span>
+          <span class="jdot jdot-active"></span>
+          <span class="jdot jdot-scheduled"></span>
+        </div>
+        <span class="journey-step-label pulsing">Interview</span>
+        <svg class="journey-chevron" width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2.5 4L5 6.5 7.5 4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+    </div>
+
+    <!-- Chat messages (abbreviated) -->
+    <div style="padding: 20px 24px 0; display:flex; flex-direction:column; gap:0;">
+      <div style="display:flex;flex-direction:column;margin-bottom:24px;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+          <div style="width:26px;height:26px;border-radius:50%;background:var(--bg-inset);color:var(--text-secondary);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;flex-shrink:0;">W</div>
+          <span style="font-size:13px;font-weight:500;">Workhorse</span>
+          <span style="font-size:11px;color:var(--text-faint);">10:44 am</span>
+        </div>
+        <div style="padding-left:34px;font-size:14px;line-height:1.7;color:var(--text-secondary);">I've started the interview. Walk me through what should happen when the user has both atenolol and verapamil active at the same time.</div>
+      </div>
+      <div style="display:flex;flex-direction:column;margin-bottom:24px;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+          <div style="width:26px;height:26px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;flex-shrink:0;">E</div>
+          <span style="font-size:13px;font-weight:500;">Edwin</span>
+          <span style="font-size:11px;color:var(--text-faint);">10:46 am</span>
+        </div>
+        <div style="padding-left:34px;font-size:14px;line-height:1.7;color:var(--text-secondary);">A warning icon should appear next to the medication name in the panel, not a blocking modal.</div>
+      </div>
+    </div>
+
+    <!-- Input area (abbreviated) -->
+    <div style="border-top:1px solid var(--border-subtle);padding:10px 16px 14px;background:var(--bg-page);">
+      <div style="background:var(--bg-surface);border:1px solid var(--border-default);border-radius:10px;overflow:hidden;">
+        <div style="padding:10px 10px 8px;">
+          <textarea style="width:100%;border:none;outline:none;resize:none;font-family:inherit;font-size:14px;line-height:1.5;color:var(--text-faint);background:transparent;min-height:40px;" placeholder="Reply or give a direction…"></textarea>
+        </div>
+        <div style="height:1px;background:var(--border-subtle);"></div>
+        <div style="padding:6px 8px 10px;display:flex;align-items:center;gap:4px;">
+          <div style="flex:1;display:flex;gap:4px;overflow:hidden;">
+            <button style="display:inline-flex;align-items:center;gap:4px;height:28px;padding:0 9px;border-radius:8px;border:1px solid var(--border-subtle);background:transparent;font-family:inherit;font-size:12px;font-weight:500;color:var(--text-muted);cursor:pointer;white-space:nowrap;">Continue <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 5h6M5.5 2.5L8 5l-2.5 2.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+            <button style="display:inline-flex;align-items:center;gap:4px;height:28px;padding:0 9px;border-radius:8px;border:1px solid var(--border-subtle);background:transparent;font-family:inherit;font-size:12px;font-weight:500;color:var(--text-muted);cursor:pointer;white-space:nowrap;">Draft spec <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 5h6M5.5 2.5L8 5l-2.5 2.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+          </div>
+          <button style="padding:7px 14px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-family:inherit;font-size:12px;font-weight:500;cursor:pointer;white-space:nowrap;flex-shrink:0;">Send</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ════════════════════════════════════════════
+  ANNOTATIONS
+════════════════════════════════════════════ -->
+<div class="ann">
+  <div class="ann-row"><span class="ann-title">Layout change</span><span>The property strip moves out of CardTab and into CardWorkspace as a shared bar — same position as the current JourneyBar. CardTab loses its property strip; the bar handles it everywhere.</span></div>
+  <div class="ann-row"><span class="ann-title">Journey section</span><span>Appears only when there's journey activity. When nothing has run, the divider and journey pill are hidden — the bar is just properties, no empty space.</span></div>
+  <div class="ann-row"><span class="ann-title">Expand mechanic</span><span>Journey pill opens a compact dropdown anchored to itself, replacing the current full-width overlay. Consistent with how property dropdowns work.</span></div>
+  <div class="ann-row"><span class="ann-title">Pills vs suggestions</span><span>Suggestions (in this dropdown) are the expected remaining sequence — linear, "here's what's probably ahead." Pills (above the chat input) are branching right-now options and may include actions not in the suggestions. Both are jockey-generated but serve different purposes — showing both is intentional.</span></div>
+  <div class="ann-row"><span class="ann-title">Active label</span><span>When a step is running, the step name is shown inline in the bar and pulses. When idle (no active step), only the dots are shown — no label taking up space.</span></div>
+  <div class="ann-row"><span class="ann-title">Dot encoding</span><span>Green filled = done · Accent filled = active/running · Hollow border = scheduled · Dashed border = jockey suggestion</span></div>
+</div>
+
+</body>
+</html>

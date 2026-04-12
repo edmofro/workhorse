@@ -65,7 +65,8 @@ The left side of the bar shows the card's core properties as interactive pills: 
 - [ ] Each property pill is bare text at rest, gaining a subtle rounded background on hover
 - [ ] Clicking a property pill opens a compact dropdown below it
 - [ ] The status pill includes a status dot (matching the board column headers and the dot states used throughout the app)
-- [ ] Dependency identifiers, if any, are shown as read-only monospace labels after the core properties
+- [ ] The **From property** shows the card's upstream base (`From main` or `From WH-058`) as an interactive pill after the core properties. Clicking opens a searchable dropdown for changing the base (see `branch-context.md`)
+- [ ] The **PR chip** sits to the left of the journey section, showing PR lifecycle state — from "Create PR" through open, merged, and post-merge states (see `branch-context.md`)
 - [ ] Changes to properties take effect immediately and are visible to all users in real time
 
 ### Journey section

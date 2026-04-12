@@ -276,7 +276,7 @@ function JourneySection({
                 <span className="w-2 h-2 rounded-full bg-[var(--green)]" />
               </span>
               <span className="flex-1 truncate">{entry.label}</span>
-              <span className="text-[11px] text-[var(--text-faint)] shrink-0">{formatTimestamp(entry.createdAt)}</span>
+              <span className="text-[11px] font-normal text-[var(--text-faint)] shrink-0">{formatTimestamp(entry.createdAt)}</span>
             </div>
           ))}
 

@@ -23,8 +23,9 @@
       --accent: #c2410c;
       --green: #16a34a;
       --radius-md: 6px;
-      --radius-lg: 12px;
-      --shadow-lg: 0 8px 24px rgba(0,0,0,0.08), 0 2px 8px rgba(0,0,0,0.04);
+      --radius-lg: 10px;
+      --radius-xl: 12px;
+      --shadow-lg: 0 12px 40px rgba(28,25,23,0.14), 0 2px 8px rgba(28,25,23,0.06);
     }
 
     body {
@@ -81,8 +82,8 @@
     }
     .dot--done { background: var(--green); }
     .dot--active { background: var(--accent); }
-    .dot--scheduled { border: 1.5px solid var(--border-default); }
-    .dot--suggested { border: 1.5px dashed var(--text-faint); }
+    .dot--scheduled { border: 1px solid var(--border-default); }
+    .dot--suggested { border: 1px dashed var(--text-faint); }
 
     .active-label {
       animation: pulse 2s ease-in-out infinite;
@@ -104,7 +105,7 @@
       max-width: 320px;
       background: var(--bg-surface);
       border: 1px solid var(--border-default);
-      border-radius: var(--radius-lg);
+      border-radius: var(--radius-xl);
       box-shadow: var(--shadow-lg);
       padding: 8px 0;
     }
